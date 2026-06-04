@@ -1,0 +1,109 @@
+'use client';
+
+import { Archive, BookOpenText, CalendarDays, ChevronRight, Home, MessageCircle, Mic, RefreshCw, ShieldCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { EntryCard } from '@/components/cards/EntryCard';
+import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
+import { AppShell } from '@/components/layout/AppShell';
+import { TopProgressBar } from '@/components/layout/TopProgressBar';
+
+const recentItems = [
+  {
+    title: '数学作业开始前更容易拖延',
+    body: '当前更像是启动压力，而不是单纯贪玩手机。'
+  },
+  {
+    title: '催促后容易进入防御',
+    body: '家长一提醒，孩子可能先听成“不被信任”。'
+  }
+];
+
+export default function FamilyProfilePage() {
+  const router = useRouter();
+  const [toast, setToast] = useState('');
+
+  return (
+    <AppShell>
+      <div className="page without-voice">
+        <TopProgressBar title="孩子档案" showProgress={false} />
+
+        <section className="module-hero-card">
+          <div className="module-kicker">
+            <Archive size={16} />
+            家庭支持看板
+          </div>
+          <h1>最近我们先关注一件事。</h1>
+          <p>把已确认的线索、待观察点和支持方向放在这里，避免每次都从头说起。</p>
+        </section>
+
+        <section className="profile-summary-grid">
+          <button type="button" onClick={() => setToast('当前已有 2 条演示线索。真实数据库接入后会自动更新。')}>
+            <strong>2</strong>
+            <span>近期线索</span>
+          </button>
+          <button type="button" onClick={() => setToast('当前没有稳定画像，单次事件不会直接定义孩子。')}>
+            <strong>0</strong>
+            <span>稳定画像</span>
+          </button>
+          <button type="button" onClick={() => setToast('建议继续观察 1 个关键点：拖延发生在开始前还是题目中。')}>
+            <strong>1</strong>
+            <span>观察重点</span>
+          </button>
+        </section>
+
+        <div className="stack">
+          <section className="result-card card">
+            <div className="result-title">近期变化</div>
+            {recentItems.map((item) => (
+              <button className="profile-row" type="button" key={item.title} onClick={() => setToast(item.body)}>
+                <span>
+                  <strong>{item.title}</strong>
+                  <small>{item.body}</small>
+                </span>
+                <ChevronRight size={18} />
+              </button>
+            ))}
+          </section>
+
+          <section className="result-card card">
+            <div className="result-title">当前支持重点</div>
+            <div className="section-body">先别急着围绕“手机”制定规则，优先观察孩子到底卡在开始前，还是卡在某一道题之后。</div>
+            <div className="button-row" style={{ marginTop: 14 }}>
+              <SecondaryButton onClick={() => router.push('/rehearsal/input?standalone=1')}>
+                <Mic size={16} />
+                试一句沟通
+              </SecondaryButton>
+              <SecondaryButton onClick={() => router.push('/record-child')}>
+                <BookOpenText size={16} />
+                补一条记录
+              </SecondaryButton>
+            </div>
+          </section>
+
+          <EntryCard icon={<CalendarDays size={22} />} title="本周回顾" description="查看这周出现过的亲子互动线索" onClick={() => setToast('本周回顾会在接入真实记忆库后生成。')} />
+          <EntryCard icon={<ShieldCheck size={22} />} title="隐私与授权" description="查看哪些内容会被存入长期档案" onClick={() => setToast('当前演示版只保存 mock 数据；真实上线前会补隐私授权页。')} />
+        </div>
+
+        {toast ? <div className="toast">{toast}</div> : null}
+
+        <div className="button-row" style={{ marginTop: 14 }}>
+          <PrimaryButton onClick={() => router.push('/home')}>
+            <MessageCircle size={16} />
+            继续对话
+          </PrimaryButton>
+          <SecondaryButton onClick={() => setToast('已刷新演示看板。真实数据库接入后会重新拉取最新档案。')}>
+            <RefreshCw size={16} />
+            刷新
+          </SecondaryButton>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <SecondaryButton onClick={() => router.push('/home')}>
+            <Home size={16} />
+            回到首页
+          </SecondaryButton>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
