@@ -22,31 +22,34 @@ function RehearsalInputPageContent() {
   const [toast, setToast] = useState('');
 
   async function submit(text: string, _: InputMode) {
-    setLoading(true);
-    setToast('');
-    let activeConversationId = conversationId;
-    let activeCardId = cardId || 'standalone_card';
+    if (loading) return;
+    try {
+      setLoading(true);
+      setToast('');
+      let activeConversationId = conversationId;
+      let activeCardId = cardId || 'standalone_card';
 
-    if (!activeConversationId) {
-      const started = await apiClient.startConversation();
-      if (!started.ok) {
-        setLoading(false);
-        setToast(started.error.message);
+      if (!activeConversationId) {
+        const started = await apiClient.startConversation();
+        if (!started.ok) {
+          setToast(started.error.message);
+          return;
+        }
+        activeConversationId = started.data.conversationId;
+        activeCardId = 'standalone_card';
+        setConversationId(activeConversationId);
+      }
+
+      const result = await apiClient.generateRehearsal({ conversationId: activeConversationId, cardId: activeCardId, parentText: text });
+      if (!result.ok) {
+        setToast(result.error.message);
         return;
       }
-      activeConversationId = started.data.conversationId;
-      activeCardId = 'standalone_card';
-      setConversationId(activeConversationId);
+      setRehearsalResult(result.data.result);
+      router.push(`/rehearsal/result?conversationId=${activeConversationId}&cardId=${activeCardId}&rehearsalId=${result.data.rehearsalId}&standalone=${standalone ? '1' : '0'}`);
+    } finally {
+      setLoading(false);
     }
-
-    const result = await apiClient.generateRehearsal({ conversationId: activeConversationId, cardId: activeCardId, parentText: text });
-    setLoading(false);
-    if (!result.ok) {
-      setToast(result.error.message);
-      return;
-    }
-    setRehearsalResult(result.data.result);
-    router.push(`/rehearsal/result?conversationId=${activeConversationId}&cardId=${activeCardId}&rehearsalId=${result.data.rehearsalId}&standalone=${standalone ? '1' : '0'}`);
   }
 
   return (

@@ -8,6 +8,7 @@ import { CardFeedbackPanel } from '@/components/feedback/CardFeedbackPanel';
 import { AppShell } from '@/components/layout/AppShell';
 import { TopProgressBar } from '@/components/layout/TopProgressBar';
 import { ErrorState } from '@/components/states/ErrorState';
+import { LoadingResult } from '@/components/states/LoadingResult';
 import { VoiceOverlay } from '@/components/voice/VoiceOverlay';
 import { apiClient } from '@/lib/api-client';
 import { useConversationStore } from '@/store/useConversationStore';
@@ -28,13 +29,20 @@ function UnderstandingCardPageContent() {
   const [card, setCard] = useState<UnderstandingCardData | undefined>(understandingCard);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(Boolean(conversationId) && !understandingCard);
   const [feedbackType, setFeedbackType] = useState<Exclude<CardFeedbackType, 'accurate'> | undefined>();
 
   useEffect(() => {
     if (!conversationId) return;
-    apiClient.getConversationState(conversationId).then((result) => {
+    if (card) return;
+    let mounted = true;
+    const controller = new AbortController();
+    setRestoring(true);
+    apiClient.getConversationState(conversationId, { signal: controller.signal }).then((result) => {
+      if (!mounted) return;
       if (!result.ok) {
         setError(result.error.message);
+        setRestoring(false);
         return;
       }
       if (result.data.understandingCard) {
@@ -42,40 +50,51 @@ function UnderstandingCardPageContent() {
         setUnderstandingCard(result.data.understandingCard);
         setCardId(result.data.understandingCard.cardId);
       }
+      setRestoring(false);
     });
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, [conversationId, setCardId, setUnderstandingCard]);
 
   async function accurate() {
-    if (!conversationId || !card) return;
-    setLoading(true);
-    const result = await apiClient.submitUnderstandingFeedback({ conversationId, cardId: card.cardId, feedbackType: 'accurate' });
-    setLoading(false);
-    if (!result.ok) {
-      setError(result.error.message);
-      return;
+    if (!conversationId || !card || loading) return;
+    try {
+      setLoading(true);
+      const result = await apiClient.submitUnderstandingFeedback({ conversationId, cardId: card.cardId, feedbackType: 'accurate' });
+      if (!result.ok) {
+        setError(result.error.message);
+        return;
+      }
+      router.push(`/next-step?conversationId=${conversationId}&cardId=${card.cardId}`);
+    } finally {
+      setLoading(false);
     }
-    router.push(`/next-step?conversationId=${conversationId}&cardId=${card.cardId}`);
   }
 
   async function updateCard(text: string) {
-    if (!conversationId || !card || !feedbackType) return;
-    setLoading(true);
-    const result = await apiClient.submitUnderstandingFeedback({ conversationId, cardId: card.cardId, feedbackType, text });
-    setLoading(false);
-    if (!result.ok) {
-      setError(result.error.message);
-      return;
+    if (!conversationId || !card || !feedbackType || loading) return;
+    try {
+      setLoading(true);
+      const result = await apiClient.submitUnderstandingFeedback({ conversationId, cardId: card.cardId, feedbackType, text });
+      if (!result.ok) {
+        setError(result.error.message);
+        return;
+      }
+      if (result.data.card) {
+        setCard(result.data.card);
+        setUnderstandingCard(result.data.card);
+        setCardId(result.data.cardId);
+        router.replace(`/understanding-card?conversationId=${conversationId}&cardId=${result.data.cardId}`);
+      }
+      setFeedbackType(undefined);
+    } finally {
+      setLoading(false);
     }
-    if (result.data.card) {
-      setCard(result.data.card);
-      setUnderstandingCard(result.data.card);
-      setCardId(result.data.cardId);
-      router.replace(`/understanding-card?conversationId=${conversationId}&cardId=${result.data.cardId}`);
-    }
-    setFeedbackType(undefined);
   }
 
-  if (!conversationId || error || !card) {
+  if (!conversationId || error || (!restoring && !card)) {
     return (
       <AppShell>
         <div className="page without-voice">
@@ -91,14 +110,20 @@ function UnderstandingCardPageContent() {
     <AppShell>
       <div className="page without-voice">
         <TopProgressBar title="孩子理解卡" showProgress={false} />
-        <UnderstandingCard card={card} />
-        <CardFeedbackPanel
-          loading={loading}
-          onAccurate={accurate}
-          onPartiallyInaccurate={() => setFeedbackType('partially_inaccurate')}
-          onEdit={() => setFeedbackType('edit')}
-          onAddDetail={() => setFeedbackType('add_detail')}
-        />
+        {restoring || !card ? (
+          <LoadingResult title="正在恢复孩子理解卡" messages={['我在找回刚刚生成的内容。']} />
+        ) : (
+          <>
+            <UnderstandingCard card={card} />
+            <CardFeedbackPanel
+              loading={loading}
+              onAccurate={accurate}
+              onPartiallyInaccurate={() => !loading && setFeedbackType('partially_inaccurate')}
+              onEdit={() => !loading && setFeedbackType('edit')}
+              onAddDetail={() => !loading && setFeedbackType('add_detail')}
+            />
+          </>
+        )}
       </div>
       <VoiceOverlay open={Boolean(feedbackType)} title={copy?.title || ''} description={copy?.description || ''} loading={loading} onCancel={() => setFeedbackType(undefined)} onFinish={updateCard} />
     </AppShell>

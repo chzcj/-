@@ -9,6 +9,7 @@ import { RawConversationDrawer } from '@/components/drawers/RawConversationDrawe
 import { AppShell } from '@/components/layout/AppShell';
 import { TopProgressBar } from '@/components/layout/TopProgressBar';
 import { ErrorState } from '@/components/states/ErrorState';
+import { LoadingResult } from '@/components/states/LoadingResult';
 import { apiClient } from '@/lib/api-client';
 import { useConversationStore } from '@/store/useConversationStore';
 import type { ArchiveDraft, ConversationRound } from '@/types/childos';
@@ -24,36 +25,51 @@ function ArchiveConfirmPageContent() {
   const [editable, setEditable] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(Boolean(conversationId) && !archiveDraft);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!conversationId) return;
-    apiClient.getConversationState(conversationId).then((stateResult) => {
-      if (stateResult.ok) setRounds(stateResult.data.rounds);
+    let mounted = true;
+    const controller = new AbortController();
+    setRestoring(!archive);
+    apiClient.getConversationState(conversationId, { signal: controller.signal }).then((stateResult) => {
+      if (mounted && stateResult.ok) setRounds(stateResult.data.rounds);
     });
     if (!archive) {
-      apiClient.getArchiveDraft({ conversationId, cardId }).then((result) => {
+      apiClient.getArchiveDraft({ conversationId, cardId }, { signal: controller.signal }).then((result) => {
+        if (!mounted) return;
         if (result.ok) {
           setArchive(result.data);
           setArchiveDraft(result.data);
         } else setError(result.error.message);
+        setRestoring(false);
       });
+    } else {
+      setRestoring(false);
     }
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, [archive, cardId, conversationId, setArchiveDraft]);
 
   async function confirm() {
-    if (!conversationId || !archive) return;
-    setLoading(true);
-    const result = await apiClient.confirmArchive(conversationId, archive);
-    setLoading(false);
-    if (!result.ok) {
-      setError(result.error.message);
-      return;
+    if (!conversationId || !archive || loading) return;
+    try {
+      setLoading(true);
+      const result = await apiClient.confirmArchive(conversationId, archive);
+      if (!result.ok) {
+        setError(result.error.message);
+        return;
+      }
+      router.push(`/done?archiveId=${result.data.archiveId}`);
+    } finally {
+      setLoading(false);
     }
-    router.push(`/done?archiveId=${result.data.archiveId}`);
   }
 
-  if (error || !archive) {
+  if (!conversationId || error || (!restoring && !archive)) {
     return (
       <AppShell>
         <div className="page without-voice">
@@ -67,23 +83,29 @@ function ArchiveConfirmPageContent() {
     <AppShell>
       <div className="page without-voice">
         <TopProgressBar title="确认存入档案" showProgress={false} />
-        <ArchiveCard
-          archive={archive}
-          editable={editable}
-          onChange={(next) => {
-            setArchive(next);
-            setArchiveDraft(next);
-          }}
-        />
-        <div className="button-row" style={{ marginTop: 14 }}>
-          <SecondaryButton onClick={() => setDrawerOpen(true)}>查看原始聊天记录</SecondaryButton>
-          <SecondaryButton onClick={() => setEditable((value) => !value)}>{editable ? '完成编辑' : '我要编辑'}</SecondaryButton>
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <PrimaryButton loading={loading} onClick={confirm}>
-            确认存入档案
-          </PrimaryButton>
-        </div>
+        {restoring || !archive ? (
+          <LoadingResult title="正在恢复档案草稿" messages={['我在找回刚刚整理好的内容。']} />
+        ) : (
+          <>
+            <ArchiveCard
+              archive={archive}
+              editable={editable}
+              onChange={(next) => {
+                setArchive(next);
+                setArchiveDraft(next);
+              }}
+            />
+            <div className="button-row" style={{ marginTop: 14 }}>
+              <SecondaryButton onClick={() => setDrawerOpen(true)} disabled={loading}>查看原始聊天记录</SecondaryButton>
+              <SecondaryButton onClick={() => setEditable((value) => !value)} disabled={loading}>{editable ? '完成编辑' : '我要编辑'}</SecondaryButton>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <PrimaryButton loading={loading} onClick={confirm}>
+                确认存入档案
+              </PrimaryButton>
+            </div>
+          </>
+        )}
       </div>
       <RawConversationDrawer open={drawerOpen} rounds={rounds} onClose={() => setDrawerOpen(false)} />
     </AppShell>

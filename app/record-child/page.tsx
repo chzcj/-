@@ -13,15 +13,21 @@ export default function RecordChildPage() {
   const [changeText, setChangeText] = useState('');
   const [worryText, setWorryText] = useState('');
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
 
   function save() {
+    if (saving) return;
     if (!eventText.trim() && !changeText.trim() && !worryText.trim()) {
       setToast('先写下一件小事、一个变化，或一个你想继续观察的点。');
       return;
     }
-    setSaved(true);
-    setToast('已保存为本地演示记录。接入真实数据库后，这里会写入孩子档案。');
+    setSaving(true);
+    window.setTimeout(() => {
+      setSaved(true);
+      setToast('已保存为本地演示记录。接入真实数据库后，这里会写入孩子档案。');
+      setSaving(false);
+    }, 260);
   }
 
   return (
@@ -40,15 +46,15 @@ export default function RecordChildPage() {
         <div className="stack">
           <label className="record-field">
             <span>今天发生了什么</span>
-            <textarea value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder="例如：今天孩子主动说了学校里一件事，虽然很短，但比前几天愿意开口。" />
+            <textarea value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder="例如：今天孩子主动说了学校里一件事，虽然很短，但比前几天愿意开口。" disabled={saving} />
           </label>
           <label className="record-field">
             <span>你看到的一个变化</span>
-            <textarea value={changeText} onChange={(event) => setChangeText(event.target.value)} placeholder="例如：写数学前还是有点拖，但今天没有马上顶嘴。" />
+            <textarea value={changeText} onChange={(event) => setChangeText(event.target.value)} placeholder="例如：写数学前还是有点拖，但今天没有马上顶嘴。" disabled={saving} />
           </label>
           <label className="record-field">
             <span>后面想继续观察什么</span>
-            <textarea value={worryText} onChange={(event) => setWorryText(event.target.value)} placeholder="例如：继续观察他是卡在开始前，还是卡在某一道题之后。" />
+            <textarea value={worryText} onChange={(event) => setWorryText(event.target.value)} placeholder="例如：继续观察他是卡在开始前，还是卡在某一道题之后。" disabled={saving} />
           </label>
         </div>
 
@@ -69,7 +75,7 @@ export default function RecordChildPage() {
             <Mic size={16} />
             语音记录
           </SecondaryButton>
-          <PrimaryButton onClick={save}>保存记录</PrimaryButton>
+          <PrimaryButton onClick={save} loading={saving}>保存记录</PrimaryButton>
         </div>
         <div className="button-row" style={{ marginTop: 10 }}>
           <SecondaryButton onClick={() => router.push('/home')}>

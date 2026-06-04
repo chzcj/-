@@ -7,10 +7,11 @@ interface QuestionCardProps {
   hint?: string;
   badge?: string;
   choices?: QuickChoice[];
+  disabled?: boolean;
   onChoiceClick?: (value: string) => void;
 }
 
-export function QuestionCard({ question, hint, badge, choices, onChoiceClick }: QuestionCardProps) {
+export function QuestionCard({ question, hint, badge, choices, disabled, onChoiceClick }: QuestionCardProps) {
   return (
     <section className="question-card card">
       {badge ? <div className="badge">{badge}</div> : null}
@@ -19,7 +20,7 @@ export function QuestionCard({ question, hint, badge, choices, onChoiceClick }: 
       {choices?.length ? (
         <div className="choice-row">
           {choices.map((choice) => (
-            <button className="chip" type="button" key={choice.value} onClick={() => onChoiceClick?.(choice.value)}>
+            <button className="chip" type="button" key={choice.value} disabled={disabled} onClick={() => onChoiceClick?.(choice.value)}>
               {choice.label}
             </button>
           ))}

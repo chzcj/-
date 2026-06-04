@@ -19,13 +19,13 @@ export function CardFeedbackPanel({ loading, onAccurate, onPartiallyInaccurate, 
         <PrimaryButton loading={loading} onClick={onAccurate}>
           很像我家孩子
         </PrimaryButton>
-        <SecondaryButton onClick={onPartiallyInaccurate}>
+        <SecondaryButton onClick={onPartiallyInaccurate} disabled={loading}>
           有一部分不太像 <Mic size={14} />
         </SecondaryButton>
-        <SecondaryButton onClick={onEdit}>
+        <SecondaryButton onClick={onEdit} disabled={loading}>
           我想改一下 <Mic size={14} />
         </SecondaryButton>
-        <SecondaryButton onClick={onAddDetail}>
+        <SecondaryButton onClick={onAddDetail} disabled={loading}>
           我想补充一个细节 <Mic size={14} />
         </SecondaryButton>
       </div>

@@ -2,7 +2,7 @@
 
 import { Archive, BookOpenText, Eye, MessageCircle, Mic, Shield, Square, Volume2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { apiClient } from '@/lib/api-client';
 import { useConversationStore } from '@/store/useConversationStore';
@@ -16,34 +16,44 @@ export default function HomePage() {
   const [recording, setRecording] = useState(false);
   const [text, setText] = useState('');
 
+  useEffect(() => {
+    router.prefetch('/problem/start');
+    router.prefetch('/rehearsal/input?standalone=1');
+    router.prefetch('/record-child');
+    router.prefetch('/family-profile');
+  }, [router]);
+
   async function submit(textValue: string, inputMode: InputMode = 'text') {
+    if (loading) return;
     const value = textValue.trim();
     if (!value) {
       setToast('你可以先说一件最挂心的小事，或者在输入框里打字。');
       return;
     }
-    setLoading(true);
-    setToast('');
-    const result = await apiClient.startConversation();
-    if (!result.ok) {
+    try {
+      setLoading(true);
+      setToast('');
+      const result = await apiClient.startConversation();
+      if (!result.ok) {
+        setToast(result.error.message);
+        return;
+      }
+      const answer = await apiClient.submitProblemAnswer({
+        conversationId: result.data.conversationId,
+        round: 1,
+        inputMode,
+        text: value
+      });
+      if (!answer.ok) {
+        setToast(answer.error.message);
+        return;
+      }
+      setConversationId(result.data.conversationId);
+      setCurrentRound(result.data.currentRound);
+      router.push(`/problem/follow-up?conversationId=${result.data.conversationId}&round=${answer.data.a1.progress.currentRound}`);
+    } finally {
       setLoading(false);
-      setToast(result.error.message);
-      return;
     }
-    const answer = await apiClient.submitProblemAnswer({
-      conversationId: result.data.conversationId,
-      round: 1,
-      inputMode,
-      text: value
-    });
-    setLoading(false);
-    if (!answer.ok) {
-      setToast(answer.error.message);
-      return;
-    }
-    setConversationId(result.data.conversationId);
-    setCurrentRound(result.data.currentRound);
-    router.push(`/problem/follow-up?conversationId=${result.data.conversationId}&round=${answer.data.a1.progress.currentRound}`);
   }
 
   return (
@@ -137,7 +147,7 @@ export default function HomePage() {
         </div>
 
         <div className="home-text-input">
-          <input value={text} onChange={(event) => setText(event.target.value)} placeholder="例如：孩子最近写数学前总玩手机，一催就烦" />
+          <input value={text} onChange={(event) => setText(event.target.value)} placeholder="例如：孩子最近写数学前总玩手机，一催就烦" disabled={loading} />
           <button type="button" disabled={loading || !text.trim()} onClick={() => submit(text, 'text')}>
             发送
           </button>

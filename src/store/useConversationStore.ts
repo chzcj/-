@@ -15,6 +15,7 @@ interface ConversationStore {
   rehearsalId?: string;
   adviceId?: string;
   currentRound: number;
+  lastHydratedConversationId?: string;
   state?: ConversationStateData;
   understandingCard?: UnderstandingCardData;
   rehearsalResult?: RehearsalResultData;
@@ -40,15 +41,32 @@ export const useConversationStore = create<ConversationStore>((set) => ({
   setAdviceId: (adviceId) => set({ adviceId }),
   setCurrentRound: (currentRound) => set({ currentRound }),
   hydrateState: (state) =>
-    set({
-      state,
-      conversationId: state.conversationId,
-      currentRound: state.currentRound,
-      understandingCard: state.understandingCard,
-      rehearsalResult: state.rehearsalResult,
-      adviceCard: state.adviceCard,
-      archiveDraft: state.archiveDraft,
-      cardId: state.understandingCard?.cardId
+    set((current) => {
+      const nextCardId = state.understandingCard?.cardId || current.cardId;
+      const nextRehearsalId = state.rehearsalResult?.rehearsalId || current.rehearsalId;
+      const nextAdviceId = state.adviceCard?.adviceId || current.adviceId;
+      if (
+        current.lastHydratedConversationId === state.conversationId &&
+        current.currentRound === state.currentRound &&
+        current.cardId === nextCardId &&
+        current.rehearsalId === nextRehearsalId &&
+        current.adviceId === nextAdviceId
+      ) {
+        return current;
+      }
+      return {
+        state,
+        conversationId: state.conversationId,
+        currentRound: state.currentRound,
+        understandingCard: state.understandingCard || current.understandingCard,
+        rehearsalResult: state.rehearsalResult || current.rehearsalResult,
+        adviceCard: state.adviceCard || current.adviceCard,
+        archiveDraft: state.archiveDraft || current.archiveDraft,
+        cardId: nextCardId,
+        rehearsalId: nextRehearsalId,
+        adviceId: nextAdviceId,
+        lastHydratedConversationId: state.conversationId
+      };
     }),
   setUnderstandingCard: (understandingCard) => set({ understandingCard, cardId: understandingCard?.cardId }),
   setRehearsalResult: (rehearsalResult) => set({ rehearsalResult, rehearsalId: rehearsalResult?.rehearsalId }),

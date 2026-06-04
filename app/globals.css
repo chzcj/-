@@ -32,6 +32,7 @@ html,
 body {
   min-height: 100%;
   margin: 0;
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -50,6 +51,13 @@ textarea {
 
 button {
   border: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+textarea,
+input {
+  outline: none;
 }
 
 a {
@@ -69,6 +77,7 @@ a {
   position: relative;
   overflow-x: hidden;
   isolation: isolate;
+  -webkit-overflow-scrolling: touch;
 }
 
 .shell::after {
@@ -86,10 +95,16 @@ a {
 .page {
   min-height: 100dvh;
   padding: max(34px, calc(env(safe-area-inset-top) + 14px)) var(--screen-pad) calc(142px + env(safe-area-inset-bottom));
+  scroll-behavior: smooth;
 }
 
 .page.without-voice {
   padding-bottom: calc(36px + env(safe-area-inset-bottom));
+}
+
+.page-transition {
+  min-height: 100dvh;
+  animation: page-enter 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 .topbar {
@@ -117,6 +132,16 @@ a {
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.55), 0 12px 22px rgba(85, 56, 32, 0.12);
   cursor: pointer;
   backdrop-filter: blur(14px);
+  transition: transform 150ms ease, background 150ms ease, opacity 150ms ease;
+}
+
+.icon-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
 }
 
 .progress-track {
@@ -180,6 +205,7 @@ a {
   text-align: left;
   width: 100%;
   color: var(--text-primary);
+  transition: transform 150ms ease, background 150ms ease, opacity 150ms ease;
 }
 
 .entry-card:disabled {
@@ -223,6 +249,7 @@ a {
   background:
     linear-gradient(135deg, rgba(255, 251, 226, 0.74), rgba(244, 221, 174, 0.45)),
     var(--glass-strong);
+  animation: card-rise 220ms ease both;
 }
 
 .badge {
@@ -260,6 +287,7 @@ a {
   background: rgba(255, 239, 198, 0.44);
   border: 1px solid rgba(255, 255, 255, 0.56);
   backdrop-filter: blur(14px);
+  animation: card-fade 220ms ease both;
 }
 
 .reflection-title {
@@ -292,6 +320,17 @@ a {
   border: 1px solid var(--border);
   font-size: 14px;
   cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, opacity 140ms ease;
+}
+
+.chip:active:not(:disabled) {
+  transform: scale(0.97);
+  background: rgba(255, 236, 191, 0.64);
+}
+
+.chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
 }
 
 .voice-bar {
@@ -307,6 +346,7 @@ a {
   box-shadow: var(--shadow-float);
   backdrop-filter: blur(18px);
   z-index: 10;
+  transition: min-height 210ms ease, padding 210ms ease, transform 180ms ease;
 }
 
 .voice-hint {
@@ -338,6 +378,11 @@ a {
   box-shadow: var(--shadow-button);
   cursor: pointer;
   position: relative;
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.mic-button:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .mic-button:disabled {
@@ -366,8 +411,25 @@ a {
 
 .text-input-panel {
   display: grid;
-  gap: 10px;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  margin-top: 0;
+  transition: grid-template-rows 220ms ease, opacity 180ms ease, margin-top 220ms ease;
+}
+
+.text-input-panel.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  pointer-events: auto;
   margin-top: 12px;
+}
+
+.text-input-panel-inner {
+  min-height: 0;
+  display: grid;
+  gap: 10px;
 }
 
 .text-input-panel textarea,
@@ -405,6 +467,14 @@ a {
   justify-content: center;
   gap: 6px;
   width: 100%;
+  min-width: 0;
+  position: relative;
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease, opacity 150ms ease;
+}
+
+.primary-button:active:not(:disabled),
+.secondary-button:active:not(:disabled) {
+  transform: scale(0.985);
 }
 
 .primary-button {
@@ -427,12 +497,31 @@ a {
   border: 1px solid var(--border);
 }
 
+.button-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 4.5em;
+}
+
+.button-content.is-loading {
+  padding-left: 20px;
+}
+
+.button-spinner {
+  position: absolute;
+  left: calc(50% - 46px);
+  animation: spin 1s linear infinite;
+}
+
 .result-card {
   border-radius: 28px;
   padding: 20px;
   background: rgba(255, 248, 225, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.68);
   backdrop-filter: blur(18px);
+  animation: card-rise 220ms ease both;
 }
 
 .result-title {
@@ -487,6 +576,7 @@ a {
   margin: 16px -16px -16px;
   padding: 16px;
   background: linear-gradient(to bottom, rgba(224, 201, 168, 0), rgba(222, 199, 164, 0.96) 20%);
+  transform: translateZ(0);
 }
 
 .feedback-title {
@@ -507,6 +597,11 @@ a {
   background: var(--overlay);
   backdrop-filter: blur(8px);
   padding: 16px;
+  animation: overlay-in 200ms ease both;
+}
+
+.overlay.is-closing {
+  animation: overlay-out 200ms ease both;
 }
 
 .overlay-card {
@@ -515,6 +610,11 @@ a {
   background: rgba(255, 248, 224, 0.94);
   padding: 24px;
   box-shadow: var(--shadow-float);
+  animation: sheet-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.overlay.is-closing .overlay-card {
+  animation: sheet-out 200ms ease both;
 }
 
 .drawer {
@@ -530,6 +630,17 @@ a {
   z-index: 32;
   box-shadow: var(--shadow-float);
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: drawer-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.drawer.is-closing {
+  animation: drawer-out 200ms ease both;
+}
+
+.drawer-overlay {
+  align-items: stretch;
+  padding: 0;
 }
 
 .round-item {
@@ -566,15 +677,17 @@ a {
   align-items: center;
   text-align: center;
   gap: 16px;
+  animation: card-fade 220ms ease both;
 }
 
 .loader {
   width: 72px;
   height: 72px;
   border-radius: 999px;
-  border: 6px solid rgba(255, 234, 184, 0.72);
+  border: 6px solid rgba(255, 234, 184, 0.58);
   border-top-color: var(--brand);
-  animation: spin 1s linear infinite;
+  animation: spin 1.25s linear infinite;
+  box-shadow: 0 0 0 10px rgba(255, 235, 188, 0.18);
 }
 
 .done-mark {
@@ -815,6 +928,28 @@ a {
   color: #fff7df;
   background: linear-gradient(145deg, #ffda65, #ffc038);
   box-shadow: 0 12px 22px rgba(217, 151, 43, 0.22);
+  transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.audio-play:active:not(:disabled),
+.record-orb:active:not(:disabled),
+.talk-tabs button:active:not(:disabled),
+.privacy-pill button:active:not(:disabled),
+.home-text-input button:active:not(:disabled),
+.profile-summary-grid button:active:not(:disabled),
+.profile-row:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.audio-play:disabled,
+.record-orb:disabled,
+.talk-tabs button:disabled,
+.privacy-pill button:disabled,
+.home-text-input button:disabled,
+.profile-summary-grid button:disabled,
+.profile-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
 }
 
 .audio-play.is-recording {
@@ -987,6 +1122,7 @@ a {
   font-size: 12px;
   line-height: 16px;
   font-weight: 700;
+  transition: transform 150ms ease, background 150ms ease, color 150ms ease;
 }
 
 .talk-tabs button.active {
@@ -1140,6 +1276,7 @@ a {
   color: #4f3d2e;
   background: transparent;
   border-top: 1px solid rgba(255, 255, 255, 0.52);
+  transition: transform 150ms ease, opacity 150ms ease;
 }
 
 .profile-row:first-of-type {
@@ -1272,6 +1409,102 @@ a {
 
 .spin-icon {
   animation: spin 1s linear infinite;
+}
+
+.empty-state {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 245, 212, 0.5);
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translate(-50%, 18px);
+  }
+  to {
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes drawer-out {
+  from {
+    transform: translate(-50%, 0);
+  }
+  to {
+    transform: translate(-50%, 18px);
+  }
 }
 
 @keyframes pulse {
