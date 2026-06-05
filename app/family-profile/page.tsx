@@ -2,11 +2,12 @@
 
 import { Archive, BookOpenText, CalendarDays, ChevronRight, Home, MessageCircle, Mic, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EntryCard } from '@/components/cards/EntryCard';
 import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
 import { AppShell } from '@/components/layout/AppShell';
 import { TopProgressBar } from '@/components/layout/TopProgressBar';
+import { apiClient } from '@/lib/api-client';
 
 const recentItems = [
   {
@@ -22,6 +23,27 @@ const recentItems = [
 export default function FamilyProfilePage() {
   const router = useRouter();
   const [toast, setToast] = useState('');
+  const [items, setItems] = useState(recentItems);
+  const [currentFocus, setCurrentFocus] = useState('先别急着围绕“手机”制定规则，优先观察孩子到底卡在开始前，还是卡在某一道题之后。');
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    refreshProfile(false);
+  }, []);
+
+  async function refreshProfile(showToast = true) {
+    if (refreshing) return;
+    setRefreshing(true);
+    const result = await apiClient.getProfileSnapshot();
+    if (result.ok) {
+      if (result.data.recentChanges?.length) setItems(result.data.recentChanges);
+      if (result.data.currentFocus) setCurrentFocus(result.data.currentFocus);
+      if (showToast) setToast('已刷新演示看板。真实数据库接入后会重新拉取最新档案。');
+    } else if (showToast) {
+      setToast(result.error.message);
+    }
+    setRefreshing(false);
+  }
 
   return (
     <AppShell>
@@ -55,7 +77,7 @@ export default function FamilyProfilePage() {
         <div className="stack">
           <section className="result-card card">
             <div className="result-title">近期变化</div>
-            {recentItems.map((item) => (
+            {items.map((item) => (
               <button className="profile-row" type="button" key={item.title} onClick={() => setToast(item.body)}>
                 <span>
                   <strong>{item.title}</strong>
@@ -68,7 +90,7 @@ export default function FamilyProfilePage() {
 
           <section className="result-card card">
             <div className="result-title">当前支持重点</div>
-            <div className="section-body">先别急着围绕“手机”制定规则，优先观察孩子到底卡在开始前，还是卡在某一道题之后。</div>
+            <div className="section-body">{currentFocus}</div>
             <div className="button-row" style={{ marginTop: 14 }}>
               <SecondaryButton onClick={() => router.push('/rehearsal/input?standalone=1')}>
                 <Mic size={16} />
@@ -92,7 +114,7 @@ export default function FamilyProfilePage() {
             <MessageCircle size={16} />
             继续对话
           </PrimaryButton>
-          <SecondaryButton onClick={() => setToast('已刷新演示看板。真实数据库接入后会重新拉取最新档案。')}>
+          <SecondaryButton loading={refreshing} onClick={() => refreshProfile(true)}>
             <RefreshCw size={16} />
             刷新
           </SecondaryButton>

@@ -1,10 +1,9 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useRef } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { QuestionCard } from '@/components/cards/QuestionCard';
-import { ReflectionCard } from '@/components/cards/ReflectionCard';
 import { AppShell } from '@/components/layout/AppShell';
 import { TopProgressBar } from '@/components/layout/TopProgressBar';
 import { ErrorState } from '@/components/states/ErrorState';
@@ -19,15 +18,19 @@ function FollowUpPageContent() {
   const router = useRouter();
   const conversationId = params.get('conversationId') || undefined;
   const roundParam = Number(params.get('round') || '2');
+  const shouldStream = params.get('stream') === '1';
   const { hydrateState } = useConversationStore();
   const [state, setState] = useState<ConversationStateData | undefined>();
   const [a1, setA1] = useState<A1Output | undefined>();
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(Boolean(conversationId));
   const [error, setError] = useState('');
+  const [streamText, setStreamText] = useState('');
+  const streamStartedRef = useRef(false);
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId || shouldStream) return;
     let mounted = true;
     const controller = new AbortController();
     setRestoring(true);
@@ -44,33 +47,67 @@ function FollowUpPageContent() {
       mounted = false;
       controller.abort();
     };
-  }, [conversationId, hydrateState]);
+  }, [conversationId, hydrateState, shouldStream]);
+
+  useEffect(() => {
+    if (!conversationId || !shouldStream || streamStartedRef.current) return;
+    streamStartedRef.current = true;
+    const raw = window.sessionStorage.getItem(`childos_pending_answer_${conversationId}`);
+    if (!raw) {
+      setError('这次输入没有整理成功，可以再试一次。');
+      setRestoring(false);
+      return;
+    }
+
+    let cancelled = false;
+    const pending = JSON.parse(raw) as { conversationId: string; round: number; inputMode: InputMode; text: string };
+    setRestoring(false);
+    setLoading(true);
+    setStreamText('');
+    setError('');
+
+    void apiClient.submitProblemAnswerStream(pending, {
+      onDelta: (delta) => {
+        if (!cancelled) setStreamText((current) => `${current}${delta}`);
+      },
+      onFinal: (data) => {
+        if (cancelled) return;
+        window.sessionStorage.removeItem(`childos_pending_answer_${conversationId}`);
+        setA1(data.a1);
+        setLoading(false);
+        if (data.nextAction === 'confirm_generate_card' || data.nextAction === 'generate_draft_card') {
+          router.push(`/problem/confirm?conversationId=${conversationId}`);
+          return;
+        }
+        router.replace(`/problem/follow-up?conversationId=${conversationId}&round=${data.a1.progress.currentRound}`);
+      },
+      onError: (message) => {
+        if (cancelled) return;
+        setError(message);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, router, shouldStream]);
 
   const currentA1 = useMemo(() => a1 || state?.latestA1, [a1, state]);
   const currentRound = currentA1?.progress.currentRound || roundParam;
 
   async function submit(text: string, inputMode: InputMode) {
-    if (!conversationId || loading) return;
-    try {
-      setLoading(true);
-      setError('');
-      const result = await apiClient.submitProblemAnswer({ conversationId, round: currentRound, inputMode, text });
-      if (!result.ok) {
-        setError(result.error.message);
-        return;
-      }
-      if (result.data.nextAction === 'confirm_generate_card' || result.data.nextAction === 'generate_draft_card') {
-        router.push(`/problem/confirm?conversationId=${conversationId}`);
-        return;
-      }
-      setA1(result.data.a1);
-      router.push(`/problem/follow-up?conversationId=${conversationId}&round=${result.data.a1.progress.currentRound}`);
-    } finally {
-      setLoading(false);
-    }
+    if (!conversationId || loading || submitLockRef.current) return;
+    submitLockRef.current = true;
+    setError('');
+    const nextRound = Math.min(currentRound + 1, 7);
+    window.sessionStorage.setItem(`childos_pending_answer_${conversationId}`, JSON.stringify({ conversationId, round: currentRound, inputMode, text }));
+    streamStartedRef.current = false;
+    setStreamText('');
+    router.push(`/problem/follow-up?conversationId=${conversationId}&round=${nextRound}&stream=1`);
   }
 
-  if (!conversationId || error || (!restoring && !currentA1)) {
+  if (!conversationId || error || (!shouldStream && !restoring && !currentA1)) {
     return (
       <AppShell>
         <div className="page without-voice">
@@ -84,24 +121,31 @@ function FollowUpPageContent() {
     <AppShell>
       <div className="page">
         <TopProgressBar progress={(currentRound / 8) * 100} status={`问题梳理中 · 第 ${currentRound} 轮`} />
-        {restoring || !currentA1 ? (
+        {shouldStream ? (
+          <div className="stack">
+            <QuestionCard
+              key="streaming-question"
+              badge="只问一个关键点"
+              question={streamText || ' '}
+              hint={streamText ? '你先看这一句，后面会继续出来。' : ' '}
+              disabled
+            />
+          </div>
+        ) : restoring || !currentA1 ? (
           <LoadingResult title="正在恢复这次整理" messages={['我在找回刚刚的上下文。']} />
         ) : (
           <div className="stack">
-            {currentA1.ui.showReflectionCard && currentA1.assistantMessage ? <ReflectionCard key={`reflection-${currentRound}`} title={currentRound === 3 ? '我先看到两个线索' : '我先理解一下'} text={currentA1.assistantMessage.text} /> : null}
             <QuestionCard
               key={`question-${currentRound}`}
               badge="只问一个关键点"
               question={currentA1.highlightQuestion.text}
               hint={currentA1.highlightQuestion.inputHint}
-              choices={currentA1.ui.quickChoices}
               disabled={loading}
-              onChoiceClick={(value) => submit(value, 'text')}
             />
           </div>
         )}
       </div>
-      <BottomVoiceBar state={loading ? 'transcribing' : 'idle'} hint={loading ? '正在整理...' : '你先说说最常发生的那一次就好'} disabled={loading} onSubmit={submit} />
+      <BottomVoiceBar state="idle" hint="你先说说最常发生的那一次就好" disabled={loading || shouldStream} onSubmit={submit} />
     </AppShell>
   );
 }

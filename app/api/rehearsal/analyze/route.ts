@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return fail('BAD_REQUEST', '这次输入没有整理成功，可以再试一次。', parsed.error.flatten());
 
   await waitMock(850);
-  const result = generateRehearsal(parsed.data.conversationId, parsed.data.parentText);
+  const result = await generateRehearsal(parsed.data.conversationId, parsed.data.parentText);
   if (!result) return fail('CONVERSATION_NOT_FOUND', '我找不到刚刚那次整理了。', undefined, 404);
 
   return ok({ rehearsalId: result.rehearsalId, result });

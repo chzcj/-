@@ -19,18 +19,18 @@ export function BottomVoiceBar({ state = 'idle', hint, disabled, onSubmit }: Bot
   const [text, setText] = useState('');
   const [failed, setFailed] = useState(false);
   const displayState: VoiceState = failed ? 'failed' : voice.isListening ? 'recording' : state;
-  const liveTranscript = [voice.transcript, voice.interimTranscript].filter(Boolean).join('');
+  const liveTranscript = voice.liveTranscript;
 
   const finishVoice = () => {
     if (disabled) return;
-    voice.stopListening();
-    const finalText = liveTranscript.trim();
+    const finalText = voice.stopListening() || liveTranscript.trim();
     if (!finalText) {
       setFailed(true);
       setKeyboardOpen(true);
       return;
     }
     setFailed(false);
+    setKeyboardOpen(false);
     onSubmit(finalText, 'voice');
     voice.reset();
   };
@@ -39,8 +39,9 @@ export function BottomVoiceBar({ state = 'idle', hint, disabled, onSubmit }: Bot
     if (disabled) return;
     const value = text.trim();
     if (!value) return;
-    onSubmit(value, 'text');
     setText('');
+    setKeyboardOpen(false);
+    onSubmit(value, 'text');
   };
 
   return (
@@ -63,7 +64,7 @@ export function BottomVoiceBar({ state = 'idle', hint, disabled, onSubmit }: Bot
         </button>
         <span />
       </div>
-      {liveTranscript ? <div className="toast">{liveTranscript}</div> : null}
+      {voice.error ? <div className="toast">{voice.error}</div> : liveTranscript ? <div className="toast">{liveTranscript}</div> : null}
       <div className={`text-input-panel ${keyboardOpen ? 'open' : ''}`} aria-hidden={!keyboardOpen}>
         <div className="text-input-panel-inner">
           <textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="也可以直接打字，把最真实的情况说出来。" disabled={disabled} />

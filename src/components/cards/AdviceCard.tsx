@@ -7,7 +7,7 @@ export function AdviceCard({ card }: { card: AdviceCardData }) {
       <p className="section-body" style={{ marginTop: 0 }}>
         {card.intro}
       </p>
-      {card.items.slice(0, 3).map((item) => (
+      {card.items.slice(0, 4).map((item) => (
         <div className="section" key={item.title}>
           <div className="section-title">{item.title}</div>
           {item.avoid ? <div className="section-body">先别这样说：{item.avoid}</div> : null}

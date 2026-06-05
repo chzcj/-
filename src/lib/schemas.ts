@@ -54,3 +54,23 @@ export const archiveConfirmSchema = z.object({
     observationNext: z.string().min(1).max(800)
   })
 });
+
+export const recordChildSchema = z.object({
+  familyId: z.string().min(1).default('f_demo'),
+  childId: z.string().min(1).default('c_demo'),
+  eventText: z.string().trim().max(2000).default(''),
+  changeText: z.string().trim().max(1200).default(''),
+  worryText: z.string().trim().max(1200).default('')
+}).refine((data) => Boolean(data.eventText || data.changeText || data.worryText), {
+  message: 'EMPTY_RECORD'
+});
+
+export const profileSnapshotQuerySchema = z.object({
+  familyId: z.string().min(1).default('f_demo'),
+  childId: z.string().min(1).default('c_demo')
+});
+
+export const authCredentialsSchema = z.object({
+  phone: z.string().trim().min(8).max(20),
+  password: z.string().min(8).max(72)
+});

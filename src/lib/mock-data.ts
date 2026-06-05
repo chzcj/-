@@ -283,18 +283,21 @@ export function makeAdvice(conversationId: string): AdviceCardData {
     ok: true,
     conversationId,
     adviceId: `adv_${Date.now()}`,
-    intro: '基于这次情况，我先给你 1-2 个更适合现在尝试的小建议。',
+    intro: '基于这次情况，我先给你几条更适合现在尝试的小建议。',
     items: [
       {
-        title: '先别急着围着手机说',
+        title: '先做的一件事',
+        body: '先别急着管手机。找一个轻松的时机问孩子：“数学里，最难开始的是哪一部分？”'
+      },
+      {
+        title: '建议一',
         avoid: '你怎么又玩手机？',
         tryThis: '我看到你还没开始。今天数学里，最难开始的是哪一部分？',
         body: '这能把注意力从指责转到具体卡点，让孩子更容易说出真正卡住的地方。'
       },
       {
-        title: '把启动门槛降到最低',
-        tryThis: '先读第一题，不用做，读完我们再看下一步。',
-        body: '对启动困难的孩子来说，“先开始一点点”比“马上写完”更容易进入状态。'
+        title: '建议二',
+        body: '把启动门槛降到最低。比如先读第一题，不用立刻做，读完再决定下一步。'
       },
       {
         title: '接下来先观察',

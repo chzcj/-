@@ -3,6 +3,7 @@
 import type {
   ApiResult,
   ArchiveDraft,
+  AuthUser,
   CardFeedbackType,
   ConfirmArchiveResponse,
   ConversationStateData,
@@ -10,6 +11,8 @@ import type {
   GenerateRehearsalResponse,
   GenerateUnderstandingResponse,
   InputMode,
+  ProfileSnapshotData,
+  RecordChildResponse,
   StartConversationResponse,
   SubmitProblemAnswerResponse,
   UnderstandingFeedbackResponse
@@ -53,7 +56,53 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<ApiResu
   }
 }
 
+function handleStreamLine(
+  line: string,
+  handlers: {
+    onStart?: (round: number) => void;
+    onDelta?: (delta: string) => void;
+    onFinal?: (data: SubmitProblemAnswerResponse) => void;
+    onError?: (message: string) => void;
+  }
+) {
+  const trimmed = line.trim();
+  if (!trimmed) return;
+  try {
+    const event = JSON.parse(trimmed) as { type?: string; round?: number; delta?: string; data?: SubmitProblemAnswerResponse; message?: string };
+    if (event.type === 'start' && typeof event.round === 'number') handlers.onStart?.(event.round);
+    if (event.type === 'delta' && typeof event.delta === 'string') handlers.onDelta?.(event.delta);
+    if (event.type === 'final' && event.data) handlers.onFinal?.(event.data);
+    if (event.type === 'error') handlers.onError?.(event.message || '这次输入没有整理成功，可以再试一次。');
+  } catch {
+    handlers.onError?.('这次输入没有整理成功，可以再试一次。');
+  }
+}
+
 export const apiClient = {
+  getMe(init?: RequestInit) {
+    return requestJson<{ user: AuthUser | null }>('/api/auth/me', init);
+  },
+  login(input: { phone: string; password: string }, init?: RequestInit) {
+    return requestJson<{ user: AuthUser }>('/api/auth/login', {
+      ...init,
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
+  },
+  register(input: { phone: string; password: string }, init?: RequestInit) {
+    return requestJson<{ user: AuthUser }>('/api/auth/register', {
+      ...init,
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
+  },
+  logout(init?: RequestInit) {
+    return requestJson<{ loggedOut: true }>('/api/auth/logout', {
+      ...init,
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+  },
   startConversation(familyId = 'f_demo', childId = 'c_demo', init?: RequestInit) {
     return requestJson<StartConversationResponse>('/api/conversations/start', {
       ...init,
@@ -70,6 +119,48 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify(input)
     });
+  },
+  async submitProblemAnswerStream(
+    input: { conversationId: string; round: number; inputMode: InputMode; text: string },
+    handlers: {
+      onStart?: (round: number) => void;
+      onDelta?: (delta: string) => void;
+      onFinal?: (data: SubmitProblemAnswerResponse) => void;
+      onError?: (message: string) => void;
+    },
+    init?: RequestInit
+  ) {
+    try {
+      const response = await fetch('/api/problem/answer/stream', {
+        ...init,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(init?.headers || {})
+        },
+        body: JSON.stringify(input)
+      });
+      if (!response.ok || !response.body) {
+        handlers.onError?.('这次输入没有整理成功，可以再试一次。');
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        lines.forEach((line) => handleStreamLine(line, handlers));
+      }
+      if (buffer) handleStreamLine(buffer, handlers);
+    } catch {
+      handlers.onError?.('这次输入没有整理成功，可以再试一次。');
+    }
   },
   generateUnderstandingCard(conversationId: string, init?: RequestInit) {
     return requestJson<GenerateUnderstandingResponse>('/api/understanding/generate', {
@@ -112,5 +203,19 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify({ conversationId, archive })
     });
+  },
+  recordChild(input: { familyId?: string; childId?: string; eventText: string; changeText: string; worryText: string }, init?: RequestInit) {
+    return requestJson<RecordChildResponse>('/api/record-child', {
+      ...init,
+      method: 'POST',
+      body: JSON.stringify({ familyId: 'f_demo', childId: 'c_demo', ...input })
+    });
+  },
+  getProfileSnapshot(input: { familyId?: string; childId?: string } = {}, init?: RequestInit) {
+    const params = new URLSearchParams({
+      familyId: input.familyId || 'f_demo',
+      childId: input.childId || 'c_demo'
+    });
+    return requestJson<ProfileSnapshotData>(`/api/profile/snapshot?${params.toString()}`, init);
   }
 };

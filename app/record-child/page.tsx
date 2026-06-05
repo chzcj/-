@@ -1,11 +1,13 @@
 'use client';
 
-import { Archive, CheckCircle2, Home, Mic, Sparkles } from 'lucide-react';
+import { Archive, CheckCircle2, Home, Mic, Sparkles, Square } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
 import { AppShell } from '@/components/layout/AppShell';
 import { TopProgressBar } from '@/components/layout/TopProgressBar';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { apiClient } from '@/lib/api-client';
 
 export default function RecordChildPage() {
   const router = useRouter();
@@ -15,19 +17,43 @@ export default function RecordChildPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
+  const voice = useVoiceInput();
 
-  function save() {
+  function toggleVoice() {
+    if (saving) return;
+    if (!voice.isSupported) {
+      setToast('当前浏览器暂不支持语音识别，可以先打字记录。');
+      return;
+    }
+    if (voice.isListening) {
+      const finalText = voice.stopListening();
+      if (finalText) {
+        setEventText((current) => [current, finalText].filter(Boolean).join('\n'));
+        setToast('已把语音整理到记录里。');
+      } else {
+        setToast(voice.error || '刚刚没有听清楚，可以再说一次。');
+      }
+      return;
+    }
+    voice.startListening();
+    setToast('正在听你说，点“语音记录”结束。');
+  }
+
+  async function save() {
     if (saving) return;
     if (!eventText.trim() && !changeText.trim() && !worryText.trim()) {
       setToast('先写下一件小事、一个变化，或一个你想继续观察的点。');
       return;
     }
     setSaving(true);
-    window.setTimeout(() => {
+    const result = await apiClient.recordChild({ eventText, changeText, worryText });
+    if (result.ok) {
       setSaved(true);
       setToast('已保存为本地演示记录。接入真实数据库后，这里会写入孩子档案。');
-      setSaving(false);
-    }, 260);
+    } else {
+      setToast(result.error.message);
+    }
+    setSaving(false);
   }
 
   return (
@@ -69,11 +95,12 @@ export default function RecordChildPage() {
         ) : null}
 
         {toast ? <div className="toast">{toast}</div> : null}
+        {voice.liveTranscript ? <div className="toast">{voice.liveTranscript}</div> : null}
 
         <div className="button-row" style={{ marginTop: 14 }}>
-          <SecondaryButton onClick={() => setToast('语音记录会在接入真实 ASR 后开放；现在可以先打字记录。')}>
-            <Mic size={16} />
-            语音记录
+          <SecondaryButton onClick={toggleVoice} disabled={saving || !voice.isSupported}>
+            {voice.isListening ? <Square size={16} /> : <Mic size={16} />}
+            {voice.isListening ? '结束录音' : '语音记录'}
           </SecondaryButton>
           <PrimaryButton onClick={save} loading={saving}>保存记录</PrimaryButton>
         </div>

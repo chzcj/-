@@ -1,12 +1,13 @@
 'use client';
 
-import { Archive, BookOpenText, Eye, MessageCircle, Mic, Shield, Square, Volume2 } from 'lucide-react';
+import { Archive, BookOpenText, Eye, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { apiClient } from '@/lib/api-client';
 import { useConversationStore } from '@/store/useConversationStore';
-import type { InputMode } from '@/types/childos';
+import type { AuthUser, InputMode } from '@/types/childos';
 
 export default function HomePage() {
   const router = useRouter();
@@ -15,13 +16,28 @@ export default function HomePage() {
   const [toast, setToast] = useState('');
   const [recording, setRecording] = useState(false);
   const [text, setText] = useState('');
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const voice = useVoiceInput();
+  const voiceText = voice.liveTranscript.trim();
 
   useEffect(() => {
     router.prefetch('/problem/start');
     router.prefetch('/rehearsal/input?standalone=1');
     router.prefetch('/record-child');
     router.prefetch('/family-profile');
+    router.prefetch('/login');
+    apiClient.getMe().then((result) => {
+      if (result.ok) setUser(result.data.user);
+    });
   }, [router]);
+
+  async function logout() {
+    const result = await apiClient.logout();
+    if (result.ok) {
+      setUser(null);
+      setToast('已退出登录。');
+    }
+  }
 
   async function submit(textValue: string, inputMode: InputMode = 'text') {
     if (loading) return;
@@ -38,27 +54,59 @@ export default function HomePage() {
         setToast(result.error.message);
         return;
       }
-      const answer = await apiClient.submitProblemAnswer({
-        conversationId: result.data.conversationId,
-        round: 1,
-        inputMode,
-        text: value
-      });
-      if (!answer.ok) {
-        setToast(answer.error.message);
-        return;
-      }
       setConversationId(result.data.conversationId);
       setCurrentRound(result.data.currentRound);
-      router.push(`/problem/follow-up?conversationId=${result.data.conversationId}&round=${answer.data.a1.progress.currentRound}`);
+      window.sessionStorage.setItem(
+        `childos_pending_answer_${result.data.conversationId}`,
+        JSON.stringify({ conversationId: result.data.conversationId, round: 1, inputMode, text: value })
+      );
+      router.push(`/problem/follow-up?conversationId=${result.data.conversationId}&round=2&stream=1`);
     } finally {
       setLoading(false);
     }
   }
 
+  function startVoice() {
+    if (loading) return;
+    if (!voice.isSupported) {
+      setToast('当前浏览器暂不支持语音识别，可以先打字。');
+      return;
+    }
+    const started = voice.startListening();
+    if (started) {
+      setRecording(true);
+      setToast('正在听你说，点击中间按钮可结束这一段。');
+    }
+  }
+
+  function finishVoice() {
+    if (loading) return;
+    const finalText = voice.stopListening() || voice.liveTranscript;
+    setRecording(false);
+    if (!finalText.trim()) {
+      setToast(voice.error || '刚刚没有听清楚，可以再说一次，或在输入框里打字。');
+      return;
+    }
+    setText(finalText.trim());
+    void submit(finalText.trim(), 'voice');
+    voice.reset();
+  }
+
   return (
     <AppShell>
       <div className="talk-page">
+        <button
+          className="auth-entry"
+          type="button"
+          onClick={() => {
+            if (user) void logout();
+            else router.push('/login');
+          }}
+        >
+          {user ? <LogOut size={14} /> : <UserRound size={14} />}
+          <span>{user ? `尾号 ${user.phone.slice(-4)}` : '登录'}</span>
+        </button>
+
         <div className="phone-status">
           <span>9:41</span>
           <span className="status-dots">•••</span>
@@ -74,22 +122,12 @@ export default function HomePage() {
           </div>
         </header>
 
-        <section className="privacy-pill" aria-label="语音提醒">
-          <span className="privacy-icon">
-            <Shield size={18} />
-          </span>
-          <span>语音提醒：聊天内容仅用于本次理解与陪伴，不会用于任何商业目的。</span>
-          <button type="button" aria-label="播放提醒" onClick={() => setToast('当前为演示版：语音内容只用于本次理解与陪伴。')}>
-            <Volume2 size={17} />
-          </button>
-        </section>
-
         <section className="talk-card">
           <div className="talk-card-top">
             <span><i />心镜语音捕捉</span>
             <span>00:00</span>
           </div>
-          <div className="talk-question">可以从今天最让你挂心的一个瞬间说起。</div>
+          <div className="talk-question">{voiceText || '可以从今天最让你挂心的一个瞬间说起。'}</div>
           <div className="audio-strip">
             <div className="bars" aria-hidden="true">
               {Array.from({ length: 24 }).map((_, index) => (
@@ -100,29 +138,13 @@ export default function HomePage() {
             <button
               className={`audio-play ${recording ? 'is-recording' : ''}`}
               type="button"
-              onClick={() => {
-                if (recording) {
-                  setRecording(false);
-                  void submit(text || '孩子最近写数学前总玩手机，一催就烦', 'voice');
-                } else {
-                  setRecording(true);
-                  setToast('正在听你说，点击中间按钮可结束这一段。');
-                }
-              }}
-              disabled={loading}
+              onClick={recording ? finishVoice : startVoice}
+              disabled={loading || (!voice.isSupported && !text.trim())}
               aria-label={recording ? '结束录音' : '开始录音'}
             >
               {recording ? <Square size={20} /> : <Mic size={21} />}
             </button>
           </div>
-        </section>
-
-        <section className="emerging-card">
-          <div>
-            <span className="soft-dot" />
-            <strong>家长画像正在浮现</strong>
-          </div>
-          <span>等待第一段描述</span>
         </section>
 
         <div className="record-area">
@@ -131,19 +153,11 @@ export default function HomePage() {
             className={`record-orb ${recording ? 'recording' : ''}`}
             type="button"
             disabled={loading}
-            onClick={() => {
-              if (recording) {
-                setRecording(false);
-                void submit(text || '孩子最近写数学前总玩手机，一催就烦', 'voice');
-              } else {
-                setRecording(true);
-                setToast('正在听你说，点击可结束这一段。');
-              }
-            }}
+            onClick={recording ? finishVoice : startVoice}
           >
             <span>{recording ? <Square size={28} /> : <Mic size={28} />}</span>
           </button>
-          <p>{loading ? '正在整理你的第一段描述...' : recording ? '正在听你说，点击可结束这一段' : '点击开始说，或在下方输入一句'}</p>
+          <p>{loading ? '正在整理你的第一段描述...' : recording ? '正在听你说，点击可结束这一段' : voice.error || '点击开始说，或在下方输入一句'}</p>
         </div>
 
         <div className="home-text-input">

@@ -12,7 +12,7 @@ interface SpeechRecognition extends EventTarget {
   stop: () => void;
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
 }
 
 interface SpeechRecognitionEvent {
@@ -35,7 +35,10 @@ export function useVoiceInput() {
   const [interimTranscript, setInterimTranscript] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
+  const [error, setError] = useState('');
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const transcriptRef = useRef('');
+  const interimRef = useRef('');
 
   useEffect(() => {
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -55,11 +58,21 @@ export function useVoiceInput() {
         if (event.results[i].isFinal) finalText += text;
         else interimText += text;
       }
-      if (finalText) setTranscript((current) => `${current}${finalText}`.trim());
+      if (finalText) {
+        setTranscript((current) => {
+          const next = `${current}${finalText}`.trim();
+          transcriptRef.current = next;
+          return next;
+        });
+      }
+      interimRef.current = interimText;
       setInterimTranscript(interimText);
     };
     recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      setError(mapSpeechError(event.error));
+    };
     recognitionRef.current = recognition;
   }, []);
 
@@ -67,24 +80,49 @@ export function useVoiceInput() {
     () => ({
       transcript,
       interimTranscript,
+      liveTranscript: [transcript, interimTranscript].filter(Boolean).join(''),
       isListening,
       isSupported,
+      error,
       startListening: () => {
-        if (!recognitionRef.current) return;
+        if (!recognitionRef.current || isListening) return false;
+        setError('');
         setTranscript('');
         setInterimTranscript('');
+        transcriptRef.current = '';
+        interimRef.current = '';
         setIsListening(true);
-        recognitionRef.current.start();
+        try {
+          recognitionRef.current.start();
+          return true;
+        } catch {
+          setIsListening(false);
+          setError('语音没有成功开始，可以再点一次，或先用文字输入。');
+          return false;
+        }
       },
       stopListening: () => {
         recognitionRef.current?.stop();
         setIsListening(false);
+        return [transcriptRef.current, interimRef.current].filter(Boolean).join('').trim();
       },
+      getTranscript: () => [transcriptRef.current, interimRef.current].filter(Boolean).join('').trim(),
       reset: () => {
         setTranscript('');
         setInterimTranscript('');
+        transcriptRef.current = '';
+        interimRef.current = '';
+        setError('');
       }
     }),
-    [interimTranscript, isListening, isSupported, transcript]
+    [error, interimTranscript, isListening, isSupported, transcript]
   );
+}
+
+function mapSpeechError(error?: string) {
+  if (error === 'not-allowed' || error === 'service-not-allowed') return '麦克风权限没有打开，可以允许权限后再试。';
+  if (error === 'no-speech') return '刚刚没有听到清楚的声音，可以再说一次。';
+  if (error === 'audio-capture') return '没有检测到可用麦克风，可以检查设备权限。';
+  if (error === 'network') return '语音识别网络暂时不稳定，可以再试一次。';
+  return '语音识别暂时不可用，可以先打字。';
 }

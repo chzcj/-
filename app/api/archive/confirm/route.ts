@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     conversationId: parsed.data.conversationId,
     ...parsed.data.archive
   };
-  const result = confirmArchive(parsed.data.conversationId, archive);
+  const result = await confirmArchive(parsed.data.conversationId, archive);
   if (!result) return fail('CONVERSATION_NOT_FOUND', '我找不到刚刚那次整理了。', undefined, 404);
 
   return ok(result);

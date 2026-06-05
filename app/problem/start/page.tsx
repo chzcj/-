@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { QuestionCard } from '@/components/cards/QuestionCard';
 import { AppShell } from '@/components/layout/AppShell';
 import { TopProgressBar } from '@/components/layout/TopProgressBar';
@@ -22,6 +22,7 @@ function ProblemStartPageContent() {
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(Boolean(conversationId));
   const [error, setError] = useState('');
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -43,18 +44,10 @@ function ProblemStartPageContent() {
   }, [conversationId, hydrateState]);
 
   async function submit(text: string, inputMode: InputMode) {
-    if (!conversationId || loading) return;
-    try {
-      setLoading(true);
-      const result = await apiClient.submitProblemAnswer({ conversationId, round: 1, inputMode, text });
-      if (!result.ok) {
-        setError(result.error.message);
-        return;
-      }
-      router.push(`/problem/follow-up?conversationId=${conversationId}&round=${result.data.a1.progress.currentRound}`);
-    } finally {
-      setLoading(false);
-    }
+    if (!conversationId || loading || submitLockRef.current) return;
+    submitLockRef.current = true;
+    window.sessionStorage.setItem(`childos_pending_answer_${conversationId}`, JSON.stringify({ conversationId, round: 1, inputMode, text }));
+    router.push(`/problem/follow-up?conversationId=${conversationId}&round=2&stream=1`);
   }
 
   if (!conversationId || error) {
@@ -77,7 +70,7 @@ function ProblemStartPageContent() {
           <QuestionCard badge="先从一件小事开始" question={state?.firstPrompt.question || '最近有没有一件让你有点挂心的小事，想先和我说说？'} hint={state?.firstPrompt.hint} />
         )}
       </div>
-      <BottomVoiceBar state={loading ? 'transcribing' : 'idle'} hint={loading ? '正在整理...' : '按住说，或者点键盘打字'} disabled={loading} onSubmit={submit} />
+      <BottomVoiceBar state="idle" hint="按住说，或者点键盘打字" disabled={loading} onSubmit={submit} />
     </AppShell>
   );
 }

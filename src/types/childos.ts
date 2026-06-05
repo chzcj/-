@@ -32,7 +32,7 @@ export interface A1Output {
   childId: string;
   conversationId: string;
   messageId: string;
-  messageType: 'opening_question' | 'followup_question' | 'reflection_question' | 'confirm_generate_card' | 'safety_stop';
+  messageType: 'opening_question' | 'followup_question' | 'reflection_question' | 'confirm_generate_card';
   scene: 'problem_solving';
   assistantMessage?: {
     text: string;
@@ -192,4 +192,29 @@ export interface GenerateAdviceResponse {
 export interface ConfirmArchiveResponse {
   archiveId: string;
   memoryWriteStatus: 'success' | 'failed';
+}
+
+export interface RecordChildResponse {
+  eventId: string;
+  draft: {
+    title?: string;
+    eventSummary?: string;
+    keyObservations?: string[];
+    observationNext?: string;
+  };
+}
+
+export interface ProfileSnapshotData {
+  recentChanges: Array<{ title: string; body: string }>;
+  currentFocus: string;
+  recentRecords: Array<{ title: string; body: string }>;
+  communicationTip: string;
+  hasUnreadUpdate: boolean;
+}
+
+export interface AuthUser {
+  userId: string;
+  phone: string;
+  familyId: string;
+  childId: string;
 }
