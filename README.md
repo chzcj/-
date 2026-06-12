@@ -1,184 +1,225 @@
-# ChildOS MVP
+# ChildOS 心镜
 
-这是 ChildOS「解决问题导向」第一版 MVP。当前重点是移动端前端界面和 BFF 后端接口，先用 mock 数据跑通完整流程，不依赖真实 AI key。
+帮助家长理解青春期孩子的 AI 产品。通过多入口信息采集和结构化追问，把家庭片段转化为更深的孩子理解。
 
-## 怎么启动
+## 代码仓库
+
+远程仓库托管在 **Gitee**（不是 GitHub）：
+
+| 项 | 值 |
+|---|---|
+| 地址 | https://gitee.com/heartlab/yujian |
+| 默认分支 | `master` |
+| 线上站点 | https://yujian.yihe.site |
+
+克隆与同步：
+
+```bash
+git clone https://gitee.com/heartlab/yujian.git
+cd yujian
+git checkout master
+git pull origin master
+```
+
+多人协作（Cursor / Trae / Codex）以 **Gitee + `git pull` / `git push`** 为同步方式；任务跟踪用 Gitee Issues，不用 GitHub Issues / `gh` CLI。部署走 `deploy.sh`（rsync 本地代码到服务器），不依赖远程 `git pull`。
+
+### 多 Agent 协作（开工前必跑）
+
+三个编程工具统一在动手前扫描 Gitee 远程变化：
+
+```bash
+npm run sync:gitee
+```
+
+会 `git fetch origin master`、对比本地/远程提交、并打印 `.agents/HANDOFF.md` 最新留言。详见 [AGENTS.md](AGENTS.md) 与 [.agents/README.md](.agents/README.md)。
+
+收工后：更新 `HANDOFF.md` → commit（建议前缀 `[cursor]` / `[trae]` / `[codex]`）→ `git push origin master`。
+
+若本机 `git fetch` 无凭据，在 `.env.local` 设置 `GITEE_PRIVATE_TOKEN`（勿提交 Git）。
+
+## 当前产品结构
+
+### 底部导航（四大模块）
+
+| 导航 | 页面 | 功能 |
+|---|---|---|
+| 对话 | `/home` | 首页：语音/文字输入一段小事 → 多轮追问 → 生成孩子理解卡 |
+| 沟通预演 | `/rehearsal` | 输入想对孩子说的话 → 分析孩子可能怎么听 → 更建议的说法 |
+| 记录孩子 | `/record-child` | 表单记录日常事件、变化、想观察的点 |
+| 档案 | `/family-profile` | 家庭看板：近期线索、稳定画像、观察重点、本周回顾 |
+
+### 新增五入口画像流程
+
+- `/profile/build` — 五入口入口页（学习作业 / 日常节奏 / 亲子沟通 / 情绪压力 / 关系环境）
+- `/profile/build/{type}` — 各入口输入页（语音输入 + AI 追问）
+- `/profile/build/{type}/follow-up` — AI 追问页
+- `/profile/build/{type}/summary` — 阶段总结页
+- `/profile/build/final-follow-up` — 最终确认
+- `/profile/generating` — 调用 /api/synthesis + /api/diagnosis 生成画像
+- `/profile/result` — 画像结果展示
+
+### 旧流程（保留，不走底部导航）
+
+- `/problem/start` → `/problem/follow-up` → `/problem/confirm` → `/problem/generating`
+- `/understanding-card` / `/advice-card` / `/next-step`
+- `/rehearsal/input` — 旧流式对话式预演（从 `/next-step` 进入）
+
+### 其他页面
+
+- `/login` — 登录/注册/演示模式
+- `/observation` — 每日观察（语音输入 → AI 解读）
+- `/conflict` / `/conflict/result` — 冲突复盘
+- `/child-voice` — 孩子自己说
+- `/weekly-report` — 本周周报
+- `/profile/evidence` / `/profile/deep` / `/profile/verify` — 画像证据/深层/验证页
+
+## 本地开发
+
+运行环境以项目根目录的 `.env.local` 为准（已在 `.gitignore` 中，**不要提交到 Git**）。当前仓库本地已有完整运行变量，可直接开发，无需每次重新补 `DATABASE_URL` 或 `NEXT_PUBLIC_USE_MOCK`。
 
 ```bash
 npm install
 npm run dev
 ```
 
-打开：
+打开 `http://localhost:3000/home`
 
-```txt
-http://localhost:3000/home
+本地健康检查：
+
+```bash
+curl -s http://localhost:3000/api/readiness | jq
 ```
 
-## 已实现什么
+## 环境配置
 
-- 首页四入口，其中「我遇到一个问题」可进入流程。
-- 第一轮温和首问。
-- 3-7 轮问题梳理，包含轻量回应和单问题追问。
-- 收束确认页。
-- 孩子理解卡生成页。
-- 理解卡四种反馈：很像、部分不像、想改、补充细节。
-- 沟通预演。
-- 建议卡，最多 3 条建议。
-- 孩子档案草稿、查看原始聊天摘要、编辑、确认存档。
-- 完成页。
-- BFF API：会话、追问、理解卡、反馈、预演、建议、档案、健康检查。
-- mock 记忆写入：archive、rawEvent、pendingHypothesis、familyMemorySummary、supportBoardSnapshot。
+环境变量分两类，不要混用。
 
-## 当前哪些是 mock
+### 1. 应用运行变量（`.env.local`）
 
-当前 AI、数据库、登录、家庭成员权限、真实语音转文字后端都是 mock 或轻量浏览器能力。
+写在 `.env.local`，供 Next.js、API、数据库、AI、ASR 使用。参考 `.env.example` 了解字段含义；**实际值以本地已有的 `.env.local` 为准**。
 
-这不是问题。它的目的就是先让产品流程能被真实点击、演示、评审，然后再接真实后端。
+| 变量 | 说明 |
+|---|---|
+| `DATABASE_URL` | PostgreSQL：用户、会话、对话记录、记忆库 |
+| `NEXT_PUBLIC_USE_MOCK` | 当前项目为 `false`（走真实后端） |
+| `FAST_AI_API_KEY` | DeepSeek / Fast AI：追问、总结、诊断 agent |
+| `FAST_AI_MODEL` | 模型名（默认 `deepseek-v4-flash`） |
+| `INTERNAL_API_TOKEN` | 内部 API 鉴权 |
+| `TENCENT_APPID` | 腾讯云实时语音识别 |
+| `TENCENT_SECRET_ID` | 腾讯云 ASR |
+| `TENCENT_SECRET_KEY` | 腾讯云 ASR |
 
-## 小白版：你现在还需要给我什么
+**不要把 `.env.local`、API Key、数据库密码提交到 Git。**
 
-如果只是看 MVP，你什么都不用给。当前版本可以直接跑。
+### 2. 部署脚本变量（仅执行 `deploy.sh` 时临时设置）
 
-如果要进入真实可用版本，你需要准备这些资料：
+这些变量**不是**应用运行必需项，只在执行部署脚本的 shell 里 `export`，不会写入 `.env.local`：
 
-1. AI 服务选择
+| 变量 | 说明 |
+|---|---|
+| `SSH_HOST` | 服务器地址，例如 `ubuntu@81.70.228.8` |
+| `SSH_PASS` | 服务器 SSH 密码 |
+| `AUTH_TOKEN` | 与 `INTERNAL_API_TOKEN` 相同，供部署后 API 验证 |
 
-   你要决定用哪一种 AI：OpenAI、Coze、国内大模型，或者你已有的智能体平台。
+```bash
+export SSH_HOST="ubuntu@81.70.228.8"
+export SSH_PASS="你的服务器密码"
+export AUTH_TOKEN="与 INTERNAL_API_TOKEN 相同的值"
+./deploy.sh
+```
 
-   你需要提供：
-   - API 地址
-   - API key
-   - 如果用 Coze，还需要 A1/A2/A3 三个 bot id
-   - 每个智能体的大概 prompt
+## 线上部署
 
-2. 自建后端放在哪里
+服务器使用 PM2 管理，启动入口是 `server-ws.js`（支持 WebSocket ASR 语音识别代理）。
 
-   第一版可以继续用 Next.js 项目里的 BFF。真正上线时可以拆成独立后端。
+`deploy.sh` 会依次：同步代码 → 上传 `.env.local` → `npm install` → `npm run build` → 重启 PM2 → 调用 `/api/readiness` 验证。
 
-   你需要决定：
-   - 后端部署在哪里：阿里云、腾讯云、火山、Railway、Vercel、自己的服务器
-   - 是否需要国内访问
-   - 是否需要备案
+### 部署后必须确认
 
-3. 数据库
+部署完成后检查 `/api/readiness`，须满足：
 
-   当前只是内存 mock，刷新开发服务后数据会消失。真实版本需要数据库。
+- `ready: true`
+- `databaseConfigured: true`
+- `mockMode: false`
+- `fastConfigured: true`
 
-   你需要决定：
-   - 用 Supabase、Neon、阿里云数据库、腾讯云数据库，还是 Coze Database
-   - 是否要保存完整原文
-   - 是否要保存语音文件
+```bash
+curl -s https://yujian.yihe.site/api/readiness
+```
 
-4. 用户和孩子信息
+## 依赖关系
 
-   真实版本需要知道一个家庭里有哪些孩子。
+### 数据存储
 
-   你需要提供：
-   - 孩子称呼示例
-   - 年龄段
-   - 是否支持多个孩子
-   - 是否需要家长登录
+- **PostgreSQL**：用户、会话、记忆记录、家庭画像摘要、周报
+- **localStorage**：五入口画像构建过程的草稿缓存（同步写入后端 memory API）
 
-5. 隐私规则
+### API 分层
 
-   家庭教育对话很敏感，这部分不能随便做。
+| 路径 | 用途 |
+|---|---|
+| `/api/auth/*` | 登录/注册/登出/当前用户/演示模式 |
+| `/api/conversations/*` | 对话创建和状态 |
+| `/api/problem/*` | 问题追问和流式响应 |
+| `/api/understanding/*` | 理解卡生成和反馈 |
+| `/api/rehearsal/*` | 预演分析和流式预演 |
+| `/api/entry/analyze` | 入口 AI 分析 |
+| `/api/memory/write` | 记忆写入 |
+| `/api/memory/retrieve` | 记忆检索 |
+| `/api/synthesis` | 跨入口综合建模 |
+| `/api/diagnosis` | 深层诊断 |
+| `/api/profile/*` | 画像快照和周报 |
+| `/api/daily` | 每日观察 |
+| `/api/asr/token` | ASR 鉴权 token |
+| `/api/asr/stream` | ASR WebSocket 代理（server-ws.js 处理） |
+| `/api/readiness` | 健康检查 |
 
-   你需要决定：
-   - 是否长期保存原始对话
-   - 家长能不能删除档案
-   - 是否允许客服或运营查看内容
-   - 是否需要隐私政策文案
+## 项目目录结构
 
-6. AI 输出规则
-
-   当前 mock 已经按产品文档做了结构。真实 AI 接入时，需要把你的 prompt 整理成稳定 JSON 输出。
-
-   你需要提供：
-   - A1：前台追问和轻量判断 prompt
-   - A2：记忆整理 prompt
-   - A3：家庭看板 prompt
-   - 禁止输出规则，比如不要心理诊断、不要贴标签、不要吓唬家长
-
-7. 视觉确认
-
-   当前 UI 按交付包做了移动端柔和风格。
-
-   你需要确认：
-   - 品牌色是否沿用紫色
-   - 产品名是否就叫 ChildOS
-   - 是否有 logo
-   - 是否要适配小程序
-
-## 离“完美使用”还差什么
-
-当前已经是可演示 MVP，但还不是可商业上线版本。
-
-还差：
-
-- 真实 AI 接入
-- 数据库持久化
-- 登录和家庭隔离
-- 后台管理和日志
-- 删除/编辑长期档案
-- 安全风险兜底
-- 更完整的移动端浏览器测试
-- 真实语音识别方案
-- 上线部署
-- 隐私政策和用户授权
-
-## 自建后端怎么完成
-
-推荐分三步，不要一上来做复杂。
-
-第一步：继续用当前 BFF
-
-当前项目里的 `/app/api/*` 就是第一版自建后端。它已经把前端和 AI/数据库隔开了。
-
-第二步：接真实 AI 和数据库
-
-保留前端不动，只替换：
-
-- `src/lib/server/store.ts`
-- `src/lib/mock-data.ts`
-- 后续新增 AI 调用文件，比如 `src/lib/server/ai.ts`
-- 后续新增数据库文件，比如 `src/lib/server/repository.ts`
-
-第三步：拆成独立后端
-
-当用户量、权限、日志、成本控制变复杂时，再把 BFF 拆成独立服务。前端仍然调用同样的接口路径。
-
-## 验收路径
-
-建议按这个顺序点击：
-
-1. `/home`
-2. 点击「我遇到一个问题」
-3. 输入：孩子最近写数学前总玩手机，一催就烦
-4. 按提示回答几轮
-5. 生成孩子理解卡
-6. 点击「我想补充一个细节」，输入：最近数学老师换了
-7. 点击「很像我家孩子」
-8. 选择沟通预演或建议卡
-9. 进入档案页，编辑一处内容
-10. 确认存入档案
-
-## 主要目录
-
-```txt
-app/
-  api/                     BFF API
-  home/                    首页
-  problem/                 问题梳理流程
-  understanding-card/      孩子理解卡
-  next-step/               下一步选择
-  rehearsal/               沟通预演
-  advice-card/             建议卡
-  archive/                 档案确认
+```
+app/                    # Next.js App Router 页面
+  api/                  # BFF API 路由
+  home/                 # 首页
+  login/                # 登录
+  problem/              # 问题梳理流程（旧）
+  rehearsal/            # 沟通预演
+  profile/build/        # 五入口画像构建
+  ...
 src/
-  components/              UI 组件
-  hooks/                   语音输入 hook
-  lib/                     API client、mock 数据、校验
-  store/                   前端状态
-  types/                   类型
+  components/           # UI 组件
+    ai/                 # AI 输出卡片
+    cards/              # 功能卡片
+    controls/           # 按钮
+    layout/             # AppShell、导航、进度条
+    states/             # 空状态、错误、加载
+    ui/                 # 页头、品牌
+    voice/              # 语音输入条
+  hooks/                # 语音输入 hook
+  lib/
+    api-client.ts       # 前端 API 客户端
+    server/             # 后端
+      auth.ts           # 鉴权
+      db.ts             # PostgreSQL
+      ark-agents.ts     # Fast AI agent 调用
+      auth-guard.ts     # 内部 API 鉴权
+      diagnosis/        # 深层诊断 pipeline
+      synthesis/        # 综合建模 pipeline
+      memory/           # 记忆写入/检索
+      context/          # 上下文检索
+    storage/            # localStorage 存储（五入口草稿）
+  store/                # Zustand 状态管理
+  types/                # TypeScript 类型
+  data/                 # 入口配置和 mock 数据
+server-ws.js            # PM2 进程入口（Next.js + ASR WebSocket）
+ecosystem.config.js     # PM2 配置
 ```
+
+## 当前状态
+
+- 产品在 `https://yujian.yihe.site` 线上运行
+- 所有页面已部署并通过 HTTP 200 验证
+- PostgreSQL 数据库已接入（用户、会话、记忆）
+- Fast AI (豆包) 已接入
+- 腾讯云 ASR WebSocket 语音识别已配置
+- 五入口画像流程已实现（localStorage 草稿 + 后端 memory 同步）
+- 旧问题梳理流程保留并可用

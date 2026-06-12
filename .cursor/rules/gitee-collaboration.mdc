@@ -1,0 +1,27 @@
+---
+description: Gitee 多 Agent 协作 — 开工前同步远程、读 HANDOFF、收工后留言
+alwaysApply: true
+---
+
+# Gitee 协作（Cursor / Trae / Codex）
+
+远程仓库：https://gitee.com/heartlab/yujian ，分支 `master`。
+
+## 开工前
+
+在开始实现、审查或回答「当前代码状态」类问题前：
+
+1. 运行 `npm run sync:gitee`（或 `node .agents/scripts/sync-gitee.mjs`）
+2. 若远程领先本地，先 `git pull origin master` 再继续
+3. 阅读 `.agents/HANDOFF.md` 最新一条，避免与其他 Agent 冲突
+
+## 收工后
+
+1. 在 `.agents/HANDOFF.md` 追加：做了什么、为什么、验证、下一步、风险
+2. Commit 使用 `[cursor]` 前缀；push 到 `origin master`
+
+## 参考
+
+- 流程：`.agents/README.md`
+- 产品：`PRODUCT.md`；UI：`DESIGN.md` + Impeccable skill
+- 环境/部署：`README.md`（`.env.local` 已配齐，勿再提示缺 DATABASE_URL）

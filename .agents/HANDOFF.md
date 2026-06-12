@@ -74,6 +74,26 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ---
 
+## 2026-06-12 | Cursor | gitee-collaboration-ship
+
+**做了什么**
+- 落地 `npm run sync:gitee`、`.agents/ONBOARDING-CODEX.md`、`.agents/ONBOARDING-TRAE.md`
+- 新增 `AGENTS.md`、`.cursor/rules/gitee-collaboration.mdc`
+- README 补充 Gitee 仓库与多 Agent 协作说明
+
+**为什么**
+- Trae/Codex 开工前能扫远程变化 + 读 HANDOFF
+
+**验证**
+- `node .agents/scripts/sync-gitee.mjs` 可 fetch 并打印 HANDOFF
+
+**下一步**
+- Trae/Codex 把 ONBOARDING 文档里的指令贴进各自项目说明
+- 三方收工后 push `master`
+
+**风险/冲突**
+- 仓库仍有大量本地未提交功能改动，与本 commit 无关
+
 ## 2026-06-12 | Cursor | collaboration-bootstrap
 
 **做了什么**
