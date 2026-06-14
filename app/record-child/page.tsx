@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
 import { AppShell } from '@/components/layout/AppShell';
 import { TopProgressBar } from '@/components/layout/TopProgressBar';
-import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { useTencentAsrInput } from '@/hooks/useTencentAsrInput';
 import { apiClient } from '@/lib/api-client';
 
 export default function RecordChildPage() {
@@ -17,14 +17,10 @@ export default function RecordChildPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
-  const voice = useVoiceInput();
+  const voice = useTencentAsrInput();
 
   function toggleVoice() {
     if (saving) return;
-    if (!voice.isSupported) {
-      setToast('当前浏览器暂不支持语音识别，可以先打字记录。');
-      return;
-    }
     if (voice.isListening) {
       const finalText = voice.stopListening();
       if (finalText) {
@@ -36,7 +32,7 @@ export default function RecordChildPage() {
       return;
     }
     voice.startListening();
-    setToast('正在听你说，点“语音记录”结束。');
+    setToast('正在听你说，点"语音记录"结束。');
   }
 
   async function save() {
@@ -98,7 +94,7 @@ export default function RecordChildPage() {
         {voice.liveTranscript ? <div className="toast">{voice.liveTranscript}</div> : null}
 
         <div className="button-row" style={{ marginTop: 14 }}>
-          <SecondaryButton onClick={toggleVoice} disabled={saving || !voice.isSupported}>
+          <SecondaryButton onClick={toggleVoice} disabled={saving}>
             {voice.isListening ? <Square size={16} /> : <Mic size={16} />}
             {voice.isListening ? '结束录音' : '语音记录'}
           </SecondaryButton>

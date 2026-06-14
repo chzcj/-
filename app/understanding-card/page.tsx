@@ -30,7 +30,9 @@ function UnderstandingCardPageContent() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(Boolean(conversationId) && !understandingCard);
+  const [toast, setToast] = useState('');
   const [feedbackType, setFeedbackType] = useState<Exclude<CardFeedbackType, 'accurate'> | undefined>();
+  const [cardUpdating, setCardUpdating] = useState(false);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -58,6 +60,12 @@ function UnderstandingCardPageContent() {
     };
   }, [conversationId, setCardId, setUnderstandingCard]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(''), 2200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
   async function accurate() {
     if (!conversationId || !card || loading) return;
     try {
@@ -77,18 +85,22 @@ function UnderstandingCardPageContent() {
     if (!conversationId || !card || !feedbackType || loading) return;
     try {
       setLoading(true);
+      setCardUpdating(true);
       const result = await apiClient.submitUnderstandingFeedback({ conversationId, cardId: card.cardId, feedbackType, text });
       if (!result.ok) {
+        setCardUpdating(false);
         setError(result.error.message);
         return;
       }
       if (result.data.card) {
+        setCardUpdating(false);
         setCard(result.data.card);
         setUnderstandingCard(result.data.card);
         setCardId(result.data.cardId);
         router.replace(`/understanding-card?conversationId=${conversationId}&cardId=${result.data.cardId}`);
       }
       setFeedbackType(undefined);
+      setToast('理解卡已更新。');
     } finally {
       setLoading(false);
     }
@@ -109,12 +121,15 @@ function UnderstandingCardPageContent() {
   return (
     <AppShell>
       <div className="page without-voice">
-        <TopProgressBar title="孩子理解卡" showProgress={false} />
+        <TopProgressBar title="孩子理解卡" showProgress={false} onLeftClick={() => router.push('/home')} />
         {restoring || !card ? (
           <LoadingResult title="正在恢复孩子理解卡" messages={['我在找回刚刚生成的内容。']} />
         ) : (
           <>
-            <UnderstandingCard card={card} />
+            <div className={cardUpdating ? 'card-updating' : ''}>
+              <UnderstandingCard card={card} />
+            </div>
+            {toast ? <div className="toast">{toast}</div> : null}
             <CardFeedbackPanel
               loading={loading}
               onAccurate={accurate}

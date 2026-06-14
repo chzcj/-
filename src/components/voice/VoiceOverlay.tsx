@@ -4,7 +4,7 @@ import { Mic, Square } from 'lucide-react';
 import { useState } from 'react';
 import { useEffect } from 'react';
 import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
-import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { useTencentAsrInput } from '@/hooks/useTencentAsrInput';
 
 interface VoiceOverlayProps {
   open: boolean;
@@ -18,13 +18,10 @@ interface VoiceOverlayProps {
 export function VoiceOverlay({ open, title, description, loading, onCancel, onFinish }: VoiceOverlayProps) {
   const [text, setText] = useState('');
   const [rendered, setRendered] = useState(open);
-  const voice = useVoiceInput();
+  const voice = useTencentAsrInput();
 
   useEffect(() => {
-    if (open) {
-      setRendered(true);
-      return;
-    }
+    if (open) { setRendered(true); return; }
     const timer = window.setTimeout(() => setRendered(false), 210);
     return () => window.clearTimeout(timer);
   }, [open]);
@@ -49,22 +46,20 @@ export function VoiceOverlay({ open, title, description, loading, onCancel, onFi
     <div className={`overlay ${open ? 'is-open' : 'is-closing'}`}>
       <div className="overlay-card">
         <div className="result-title">{title}</div>
-        <p className="section-body" style={{ marginTop: 0 }}>
-          {description}
-        </p>
-        <textarea className="text-field" value={text} onChange={(event) => setText(event.target.value)} placeholder={voice.isSupported ? '可以直接说修正内容，也可以打字。' : '当前浏览器暂不支持语音识别，可以先打字。'} disabled={loading} />
+        <p className="section-body" style={{ marginTop: 0 }}>{description}</p>
+        <textarea className="text-field" value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder={'可以直接说修正内容，也可以打字。'}
+          disabled={loading} />
         {voice.error ? <div className="toast">{voice.error}</div> : null}
         <div className="button-row" style={{ marginTop: 12 }}>
-          <SecondaryButton onClick={toggleVoice} disabled={loading || !voice.isSupported}>
+          <SecondaryButton onClick={toggleVoice} disabled={loading}>
             {voice.isListening ? <Square size={16} /> : <Mic size={16} />}
             {voice.isListening ? '结束录音' : '语音输入'}
           </SecondaryButton>
-          <SecondaryButton onClick={onCancel} disabled={loading}>
-            取消
-          </SecondaryButton>
-          <PrimaryButton onClick={() => !loading && onFinish(text.trim())} disabled={!text.trim() || loading} loading={loading}>
-            结束并更新
-          </PrimaryButton>
+          <SecondaryButton onClick={onCancel} disabled={loading}>取消</SecondaryButton>
+          <PrimaryButton onClick={() => !loading && onFinish(text.trim())}
+            disabled={!text.trim() || loading} loading={loading}>结束并更新</PrimaryButton>
         </div>
       </div>
     </div>

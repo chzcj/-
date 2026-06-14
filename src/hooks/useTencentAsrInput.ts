@@ -68,14 +68,24 @@ export function useTencentAsrInput() {
 
       ws.onopen = async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              channelCount: { ideal: 1 },
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            },
-          });
+          let stream: MediaStream;
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                channelCount: { ideal: 1 },
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              },
+            });
+          } catch (firstErr: unknown) {
+            const firstName = firstErr instanceof DOMException ? firstErr.name : '';
+            if (firstName === 'NotFoundError' || firstName === 'DevicesNotFoundError' || firstName === 'OverconstrainedError') {
+              stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } else {
+              throw firstErr;
+            }
+          }
           streamRef.current = stream;
 
           const audioCtx = new AudioContext();
@@ -86,7 +96,8 @@ export function useTencentAsrInput() {
 
           const source = audioCtx.createMediaStreamSource(stream);
 
-          const bufferSize = 3200;
+          // Safari expects a power-of-two ScriptProcessor buffer size.
+          const bufferSize = 4096;
           const processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
           processorRef.current = processor;
 

@@ -89,6 +89,13 @@ export const apiClient = {
       body: JSON.stringify(input)
     });
   },
+  demoLogin(init?: RequestInit) {
+    return requestJson<{ user: AuthUser }>('/api/auth/demo', {
+      ...init,
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+  },
   register(input: { phone: string; password: string }, init?: RequestInit) {
     return requestJson<{ user: AuthUser }>('/api/auth/register', {
       ...init,
@@ -183,6 +190,66 @@ export const apiClient = {
       body: JSON.stringify(input)
     });
   },
+  async submitRehearsalStream(
+    input: { conversationId: string; text: string },
+    handlers: {
+      onDelta?: (delta: string) => void;
+      onFinal?: (text: string) => void;
+      onError?: (message: string) => void;
+    },
+    init?: RequestInit
+  ) {
+    try {
+      const response = await fetch('/api/rehearsal/stream', {
+        ...init,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(init?.headers || {})
+        },
+        body: JSON.stringify(input)
+      });
+      if (!response.ok || !response.body) {
+        handlers.onError?.('这次输入没有整理成功，可以再试一次。');
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const event = JSON.parse(trimmed) as { type?: string; delta?: string; text?: string; message?: string };
+            if (event.type === 'delta' && typeof event.delta === 'string') handlers.onDelta?.(event.delta);
+            if (event.type === 'final' && typeof event.text === 'string') handlers.onFinal?.(event.text);
+            if (event.type === 'error') handlers.onError?.(event.message || '这次输入没有整理成功，可以再试一次。');
+          } catch {
+            handlers.onError?.('这次输入没有整理成功，可以再试一次。');
+          }
+        }
+      }
+      if (buffer) {
+        const trimmed = buffer.trim();
+        if (trimmed) {
+          try {
+            const event = JSON.parse(trimmed) as { type?: string; delta?: string; text?: string; message?: string };
+            if (event.type === 'final' && typeof event.text === 'string') handlers.onFinal?.(event.text);
+          } catch { /* ignore trailing incomplete line */ }
+        }
+      }
+    } catch {
+      handlers.onError?.('这次输入没有整理成功，可以再试一次。');
+    }
+  },
   generateAdvice(input: { conversationId: string; cardId: string }, init?: RequestInit) {
     return requestJson<GenerateAdviceResponse>('/api/advice/generate', {
       ...init,
@@ -217,5 +284,17 @@ export const apiClient = {
       childId: input.childId || 'c_demo'
     });
     return requestJson<ProfileSnapshotData>(`/api/profile/snapshot?${params.toString()}`, init);
+  },
+  getWeeklyReview(input: { familyId?: string; childId?: string } = {}, init?: RequestInit) {
+    const params = new URLSearchParams({
+      familyId: input.familyId || 'f_demo',
+      childId: input.childId || 'c_demo'
+    });
+    return requestJson<{
+      sessionCount: number;
+      recentClues: Array<{ type: string; title: string; content: string; createdAt?: string }>;
+      childEvents: Array<{ title: string; eventText: string; createdAt?: string }>;
+      weeklySummary: string;
+    }>(`/api/profile/weekly-review?${params.toString()}`, init);
   }
 };

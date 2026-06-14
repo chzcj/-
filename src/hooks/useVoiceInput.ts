@@ -41,9 +41,15 @@ export function useVoiceInput() {
   const interimRef = useRef('');
 
   useEffect(() => {
+    if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      setIsSupported(false);
+      setError('语音输入需要 HTTPS 环境，可以先用文字输入。');
+      return;
+    }
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
       setIsSupported(false);
+      setError('当前浏览器暂不支持语音识别，可以先打字。');
       return;
     }
     const recognition = new Recognition();

@@ -2,21 +2,6 @@ import 'server-only';
 
 import { agentPrompts, type AgentPromptKey } from '@/lib/server/agent-prompts';
 
-interface ArkResponse {
-  output_text?: string;
-  output?: Array<{
-    content?: Array<{
-      text?: string;
-      type?: string;
-    }>;
-  }>;
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-}
-
 type ArkAgentsGlobal = typeof globalThis & {
   __childosFastWarmupTimer?: ReturnType<typeof setInterval>;
   __childosFastWarmupPromise?: Promise<void>;
@@ -25,12 +10,13 @@ type ArkAgentsGlobal = typeof globalThis & {
 
 const agentGlobal = globalThis as ArkAgentsGlobal;
 
-export function isArkEnabled() {
-  return process.env.AI_PROVIDER === 'ark' && Boolean(process.env.ARK_API_KEY && process.env.ARK_MODEL);
-}
+const FAST_API_KEY = process.env.FAST_AI_API_KEY || '';
+const FAST_MODEL = process.env.FAST_AI_MODEL || 'deepseek-v4-flash';
+const FAST_BASE = (process.env.FAST_AI_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
+const FAST_TEMP = Number(process.env.FAST_AI_TEMPERATURE || 0.25);
 
 export function isFastAIEnabled() {
-  return Boolean(process.env.FAST_AI_API_KEY && process.env.FAST_AI_MODEL);
+  return Boolean(FAST_API_KEY && FAST_MODEL);
 }
 
 export function startFastAIWarmupLoop() {
@@ -51,18 +37,17 @@ export async function warmFastAI() {
   if (agentGlobal.__childosFastWarmupAt && Date.now() - agentGlobal.__childosFastWarmupAt < minGap) return;
   if (agentGlobal.__childosFastWarmupPromise) return agentGlobal.__childosFastWarmupPromise;
 
-  const baseUrl = (process.env.FAST_AI_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), Number(process.env.FAST_AI_WARMUP_TIMEOUT_MS || 8000));
-  agentGlobal.__childosFastWarmupPromise = fetch(`${baseUrl}/chat/completions`, {
+  agentGlobal.__childosFastWarmupPromise = fetch(`${FAST_BASE}/chat/completions`, {
     method: 'POST',
     signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.FAST_AI_API_KEY}`
+      Authorization: `Bearer ${FAST_API_KEY}`
     },
     body: JSON.stringify({
-      model: process.env.FAST_AI_MODEL,
+      model: FAST_MODEL,
       messages: [{ role: 'user', content: 'ping' }],
       max_tokens: 1,
       temperature: 0
@@ -87,16 +72,16 @@ export async function warmFastAI() {
 }
 
 export async function callAgentJson<T>(agent: AgentPromptKey, task: string, payload: unknown): Promise<T | undefined> {
-  if (!isArkEnabled()) return undefined;
-  return callArkJson<T>({
+  if (!isFastAIEnabled()) return undefined;
+  return callOpenAICompatibleJson<T>({
     system: agentPrompts[agent],
     user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`
   });
 }
 
 export async function callAgentTextStream(agent: AgentPromptKey, task: string, payload: unknown, onDelta: (delta: string) => void): Promise<string | undefined> {
-  if (!isArkEnabled()) return undefined;
-  return callArkTextStream(
+  if (!isFastAIEnabled()) return undefined;
+  return callOpenAICompatibleTextStream(
     {
       system: agentPrompts[agent],
       user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`
@@ -106,16 +91,16 @@ export async function callAgentTextStream(agent: AgentPromptKey, task: string, p
 }
 
 export async function callSupportJson<T>(system: string, payload: unknown): Promise<T | undefined> {
-  if (!isArkEnabled()) return undefined;
-  return callArkJson<T>({
+  if (!isFastAIEnabled()) return undefined;
+  return callOpenAICompatibleJson<T>({
     system,
     user: `只输出 JSON，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`
   });
 }
 
 export async function callSupportTextStream(system: string, payload: unknown, onDelta: (delta: string) => void): Promise<string | undefined> {
-  if (!isArkEnabled()) return undefined;
-  return callArkTextStream(
+  if (!isFastAIEnabled()) return undefined;
+  return callOpenAICompatibleTextStream(
     {
       system,
       user: `只输出要展示给用户的一段中文文本，不输出 JSON、Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`
@@ -144,20 +129,19 @@ export async function callFastTextStream(system: string, payload: unknown, onDel
 }
 
 async function callOpenAICompatibleJson<T>({ system, user }: { system: string; user: string }): Promise<T | undefined> {
-  const baseUrl = (process.env.FAST_AI_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const response = await fetch(`${FAST_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.FAST_AI_API_KEY}`
+      Authorization: `Bearer ${FAST_API_KEY}`
     },
     body: JSON.stringify({
-      model: process.env.FAST_AI_MODEL,
+      model: FAST_MODEL,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user }
       ],
-      temperature: Number(process.env.FAST_AI_TEMPERATURE || 0.25),
+      temperature: FAST_TEMP,
       response_format: { type: 'json_object' }
     })
   });
@@ -174,21 +158,20 @@ async function callOpenAICompatibleJson<T>({ system, user }: { system: string; u
 }
 
 async function callOpenAICompatibleTextStream({ system, user }: { system: string; user: string }, onDelta: (delta: string) => void): Promise<string | undefined> {
-  const baseUrl = (process.env.FAST_AI_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const response = await fetch(`${FAST_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.FAST_AI_API_KEY}`
+      Authorization: `Bearer ${FAST_API_KEY}`
     },
     body: JSON.stringify({
-      model: process.env.FAST_AI_MODEL,
+      model: FAST_MODEL,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user }
       ],
       stream: true,
-      temperature: Number(process.env.FAST_AI_TEMPERATURE || 0.25)
+      temperature: FAST_TEMP
     })
   });
 
@@ -238,139 +221,6 @@ function parseOpenAIStreamLine(line: string) {
   }
 }
 
-async function callArkJson<T>({ system, user }: { system: string; user: string }): Promise<T | undefined> {
-  const baseUrl = (process.env.ARK_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3').replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/responses`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.ARK_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: process.env.ARK_MODEL,
-      input: [
-        {
-          role: 'system',
-          content: [{ type: 'input_text', text: system }]
-        },
-        {
-          role: 'user',
-          content: [{ type: 'input_text', text: user }]
-        }
-      ],
-      temperature: Number(process.env.ARK_TEMPERATURE || 0.35)
-    })
-  });
-
-  if (!response.ok) {
-    const message = await response.text().catch(() => '');
-    throw new Error(`ARK_REQUEST_FAILED:${response.status}:${message.slice(0, 300)}`);
-  }
-
-  const data = (await response.json()) as ArkResponse;
-  const text = extractText(data);
-  if (!text) throw new Error('ARK_EMPTY_OUTPUT');
-  return parseJson<T>(text);
-}
-
-async function callArkTextStream({ system, user }: { system: string; user: string }, onDelta: (delta: string) => void): Promise<string | undefined> {
-  const baseUrl = (process.env.ARK_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3').replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/responses`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.ARK_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: process.env.ARK_MODEL,
-      input: [
-        {
-          role: 'system',
-          content: [{ type: 'input_text', text: system }]
-        },
-        {
-          role: 'user',
-          content: [{ type: 'input_text', text: user }]
-        }
-      ],
-      stream: true,
-      temperature: Number(process.env.ARK_TEMPERATURE || 0.35)
-    })
-  });
-
-  if (!response.ok) {
-    const message = await response.text().catch(() => '');
-    throw new Error(`ARK_REQUEST_FAILED:${response.status}:${message.slice(0, 300)}`);
-  }
-
-  if (!response.body) {
-    const data = (await response.json()) as ArkResponse;
-    const text = extractText(data);
-    if (text) onDelta(text);
-    return text;
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let fullText = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      const delta = parseStreamLine(line);
-      if (!delta) continue;
-      fullText += delta;
-      onDelta(delta);
-    }
-  }
-
-  const tail = parseStreamLine(buffer);
-  if (tail) {
-    fullText += tail;
-    onDelta(tail);
-  }
-
-  return fullText.trim() || undefined;
-}
-
-function parseStreamLine(line: string) {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed === 'data: [DONE]') return '';
-  const data = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : trimmed;
-  if (!data || data === '[DONE]') return '';
-  try {
-    return extractDelta(JSON.parse(data));
-  } catch {
-    return '';
-  }
-}
-
-function extractDelta(event: unknown): string {
-  if (!event || typeof event !== 'object') return '';
-  const data = event as Record<string, unknown>;
-  if (typeof data.delta === 'string') return data.delta;
-  if (typeof data.output_text === 'string') return data.output_text;
-  const choices = data.choices as Array<{ delta?: { content?: string }; message?: { content?: string } }> | undefined;
-  return choices?.[0]?.delta?.content || choices?.[0]?.message?.content || '';
-}
-
-function extractText(data: ArkResponse) {
-  if (typeof data.output_text === 'string') return data.output_text;
-  const outputText = data.output
-    ?.flatMap((item) => item.content || [])
-    .map((content) => content.text)
-    .filter(Boolean)
-    .join('\n');
-  if (outputText) return outputText;
-  return data.choices?.[0]?.message?.content || '';
-}
-
 function parseJson<T>(text: string): T | undefined {
   const cleaned = text
     .trim()
@@ -386,6 +236,6 @@ function parseJson<T>(text: string): T | undefined {
     if (start >= 0 && end > start) {
       return JSON.parse(cleaned.slice(start, end + 1)) as T;
     }
-    throw new Error('ARK_JSON_PARSE_FAILED');
+    throw new Error('FAST_AI_JSON_PARSE_FAILED');
   }
 }

@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>校园帮本地预览</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="overview">
+        <div class="badge">Campus Helper Preview</div>
+        <h1>校园帮</h1>
+        <p class="lead">
+          面向校园内即时互助交易的本地预览界面，覆盖抢单、私聊、匿名、拍照留证、打赏和同楼筛选等核心体验。
+        </p>
+
+        <section class="panel">
+          <h2>产品定位</h2>
+          <ul class="list">
+            <li>先付款先得，支付成功后订单立即从大厅屏蔽</li>
+            <li>支持代取快递、送饭上楼、复习资料、快递送货</li>
+            <li>支持匿名发单、站内私聊、打赏、拉黑与交接证据</li>
+          </ul>
+        </section>
+
+        <section class="panel metrics">
+          <div>
+            <span>当前预览页</span>
+            <strong id="current-view-label">大厅</strong>
+          </div>
+          <div>
+            <span>订单状态</span>
+            <strong>待接单 12</strong>
+          </div>
+          <div>
+            <span>抽成规则</span>
+            <strong>平台 1%</strong>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>关键体验</h2>
+          <div class="chips">
+            <span>先付款先得</span>
+            <span>同楼筛选</span>
+            <span>匿名发单</span>
+            <span>送达拍照</span>
+            <span>收货拍照</span>
+            <span>站内红点</span>
+            <span>一键打赏</span>
+          </div>
+        </section>
+      </aside>
+
+      <main class="preview-area">
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <button class="toolbar-button active" data-view="hall">大厅</button>
+            <button class="toolbar-button" data-view="publish">发布</button>
+            <button class="toolbar-button" data-view="detail">详情</button>
+            <button class="toolbar-button" data-view="chat">私聊</button>
+            <button class="toolbar-button" data-view="profile">我的</button>
+          </div>
+          <div class="toolbar-note">预览尺寸按 iPhone 13 视口优化</div>
+        </div>
+
+        <div class="phone-frame">
+          <div class="phone-status">
+            <span>9:41</span>
+            <span>5G</span>
+          </div>
+
+          <section class="screen active" data-screen="hall">
+            <header class="screen-header">
+              <div>
+                <p class="eyebrow">订单大厅</p>
+                <h3>今天顺手做点小单</h3>
+              </div>
+                <button class="ghost-button" data-jump="hall">筛选</button>
+            </header>
+
+            <div class="segment-row">
+              <button class="segment active">全部</button>
+              <button class="segment">同宿舍楼</button>
+              <button class="segment">跨楼</button>
+            </div>
+
+            <div class="tag-row">
+              <span class="tag active">代取快递</span>
+              <span class="tag">送饭上楼</span>
+              <span class="tag">复习资料</span>
+              <span class="tag">快递送货</span>
+            </div>
+
+            <article class="order-card featured">
+              <div class="card-top">
+                <span class="order-type">代取快递</span>
+                <span class="price">¥6.00</span>
+              </div>
+              <h4>北 7 楼快递柜取件，送到 431 寝室门口</h4>
+              <p>
+                匿名发布，菜鸟柜 3-12 号门，包裹较轻。支持到门口拍照，晚上 9 点前都可以。
+              </p>
+              <div class="meta-row">
+                <span>同楼优先</span>
+                <span>匿名</span>
+                <span>23 分钟前</span>
+              </div>
+              <div class="card-actions">
+                <button class="secondary-button" data-jump="detail">查看详情</button>
+                <button class="primary-button" data-jump="chat">立即抢单</button>
+              </div>
+            </article>
+
+            <article class="order-card">
+              <div class="card-top">
+                <span class="order-type">外卖捎上楼</span>
+                <span class="price">¥3.50</span>
+              </div>
+              <h4>东区 2 号楼楼下奶茶顺手带到 608</h4>
+              <p>骑手预计 6 分钟到，楼下拿到后直接带上来即可，备注少冰少糖。</p>
+              <div class="meta-row">
+                <span>同楼</span>
+                <span>非匿名</span>
+                <span>刚刚</span>
+              </div>
+            </article>
+
+            <article class="order-card dimmed">
+              <div class="card-top">
+                <span class="order-type">复习资料</span>
+                <span class="locked">已被抢</span>
+              </div>
+              <h4>高数 A 期末笔记电子版 + 打印件</h4>
+              <p>付款成功后已自动屏蔽，本卡片用于展示锁单后的视觉状态。</p>
+            </article>
+
+            <nav class="bottom-nav">
+                <button class="nav-item active" data-jump="hall">大厅</button>
+                <button class="nav-item" data-jump="publish">发布</button>
+                <button class="nav-item" data-jump="chat">消息</button>
+                <button class="nav-item" data-jump="profile">我的</button>
+            </nav>
+          </section>
+
+          <section class="screen" data-screen="publish">
+            <header class="screen-header">
+              <div>
+                <p class="eyebrow">发布订单</p>
+                <h3>发个小单，马上有人接</h3>
+              </div>
+              <button class="ghost-button">草稿</button>
+            </header>
+
+            <div class="form-card">
+              <label>订单类型</label>
+              <div class="grid-options">
+                <span class="grid-option active">代取快递</span>
+                <span class="grid-option">送饭上楼</span>
+                <span class="grid-option">复习资料</span>
+                <span class="grid-option">快递送货</span>
+              </div>
+
+              <label>订单标题</label>
+              <div class="input-like">北 7 楼快递柜取件送到 431</div>
+
+              <label>宿舍楼</label>
+              <div class="input-like">北区 7 号楼</div>
+
+              <label>补充说明</label>
+              <div class="textarea-like">
+                包裹不大，拿出柜子后拍一张照片，到寝室门口再拍一张，我收到后也会补拍确认。
+              </div>
+
+              <div class="split-row">
+                <div>
+                  <label>跑腿费</label>
+                  <div class="input-like">6.00 元</div>
+                </div>
+                <div>
+                  <label>有效期</label>
+                  <div class="input-like">24 小时</div>
+                </div>
+              </div>
+
+              <div class="switch-row">
+                <div>
+                  <strong>匿名发布</strong>
+                  <p>大厅只显示匿名身份，付款后通过私聊提供必要信息</p>
+                </div>
+                <div class="switch active">
+                  <span></span>
+                </div>
+              </div>
+
+              <div class="switch-row">
+                <div>
+                  <strong>仅同楼可见</strong>
+                  <p>适合顺手上楼或寝室楼内部互助</p>
+                </div>
+                <div class="switch">
+                  <span></span>
+                </div>
+              </div>
+
+              <button class="primary-button full" data-jump="hall">确认发布</button>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="detail">
+            <header class="screen-header">
+              <div>
+                <p class="eyebrow">订单详情</p>
+                <h3>代取快递</h3>
+              </div>
+              <button class="ghost-button" data-jump="detail">匿名中</button>
+            </header>
+
+            <article class="detail-hero">
+              <div class="detail-top">
+                <span>北区 7 号楼</span>
+                <strong>¥6.00</strong>
+              </div>
+              <h4>北 7 楼快递柜取件，送到 431 寝室门口</h4>
+              <p>
+                支持先拍快递柜取件图，再拍门口送达图。若到寝室时我不在，可暂放门边鞋柜上方。
+              </p>
+              <div class="meta-row">
+                <span>平台抽成 1%</span>
+                <span>仅限今晚 21:00 前</span>
+              </div>
+            </article>
+
+            <section class="timeline-card">
+              <h5>交接凭证流程</h5>
+              <div class="timeline-item done">
+                <span></span>
+                <div>
+                  <strong>步骤 1：抢单并付款</strong>
+                  <p>支付成功后订单即锁定，其他同学不可见</p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <span></span>
+                <div>
+                  <strong>步骤 2：取件拍照</strong>
+                  <p>接单人上传快递柜取出照片，防止空手谎报</p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <span></span>
+                <div>
+                  <strong>步骤 3：送达拍照</strong>
+                  <p>放置位置需拍清楚，发单人收到后补拍确认</p>
+                </div>
+              </div>
+            </section>
+
+            <div class="card-actions sticky-actions">
+              <button class="secondary-button" data-jump="chat">私聊问问</button>
+              <button class="primary-button" data-jump="chat">支付并抢单</button>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="chat">
+            <header class="screen-header compact">
+              <div>
+                <p class="eyebrow">交易私聊</p>
+                <h3>北 7 楼快递单</h3>
+              </div>
+              <div class="status-pill">在线</div>
+            </header>
+
+            <div class="notice-card">
+              你已成功抢单，订单已从大厅隐藏。对方已开启匿名，必要信息会在本聊天中逐步展示。
+            </div>
+
+            <div class="chat-list">
+              <div class="bubble left">
+                <p>你好，我现在下楼去取。麻烦确认一下放门口还是当面交？</p>
+                <span>19:24</span>
+              </div>
+              <div class="bubble right">
+                <p>放 431 门口就行，门边鞋柜上方，辛苦你拍清楚一点。</p>
+                <span>已读</span>
+              </div>
+              <div class="bubble left photo">
+                <strong>送达照片</strong>
+                <p>已上传：快递柜取出图 + 门口摆放图</p>
+                <span>19:37</span>
+              </div>
+              <div class="bubble right">
+                <p>收到啦，我现在回寝室确认，再给你补个打赏。</p>
+                <span>已读</span>
+              </div>
+            </div>
+
+            <div class="tip-card">
+              <div>
+                <strong>完成后可打赏</strong>
+                <p>建议金额 1-3 元，提高优质跑腿者留存</p>
+              </div>
+              <button class="ghost-button" data-jump="profile">去打赏</button>
+            </div>
+
+            <div class="chat-input">
+              <button class="input-tool">+</button>
+              <div class="input-bar">输入消息 / 发送图片 / 分享订单卡片</div>
+              <button class="primary-button small">发送</button>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="profile">
+            <header class="screen-header">
+              <div>
+                <p class="eyebrow">我的</p>
+                <h3>效率型校园跑腿档案</h3>
+              </div>
+              <button class="ghost-button red-dot">3</button>
+            </header>
+
+            <article class="profile-card">
+              <div class="avatar">YJ</div>
+              <div>
+                <strong>匿名偏好已开启</strong>
+                <p>本周完成 8 单，收到 14 个好评，成交额 ¥62.50</p>
+              </div>
+            </article>
+
+            <section class="menu-card">
+              <div class="menu-item">
+                <span>我发布的订单</span>
+                <strong>4</strong>
+              </div>
+              <div class="menu-item">
+                <span>我接的订单</span>
+                <strong>8</strong>
+              </div>
+              <div class="menu-item">
+                <span>拉黑管理</span>
+                <strong>2</strong>
+              </div>
+              <div class="menu-item">
+                <span>站内通知</span>
+                <strong>3</strong>
+              </div>
+            </section>
+
+            <section class="panel inline-panel">
+              <h2>近期提醒</h2>
+              <ul class="list">
+                <li>有 1 笔订单将在 2 小时后自动过期</li>
+                <li>你有 1 个待补拍的收货确认照片</li>
+                <li>今日新增 2 条未读私聊</li>
+              </ul>
+            </section>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

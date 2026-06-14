@@ -27,7 +27,11 @@ npm run sync:gitee
 
 - 产品边界：[PRODUCT.md](PRODUCT.md)
 - 设计系统：[DESIGN.md](DESIGN.md)
-- UI 改动：使用 `.agents/skills/impeccable/`，先跑 `node .agents/skills/impeccable/scripts/context.mjs`
+- **Impeccable（UI）**：已安装于 `.agents/skills/impeccable/`（Cursor 入口：`.cursor/skills/impeccable`）
+  - 开工：`node .agents/skills/impeccable/scripts/context.mjs`
+  - 更新：`npx impeccable skills update`
+  - 审计：`npx impeccable detect app/ src/`
+  - Cursor 聊天可用 `/impeccable` 子命令（如 `audit`、`polish`、`craft`）
 
 ## 环境与部署
 

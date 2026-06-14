@@ -1,7 +1,8 @@
 import 'server-only';
 
 import pg from 'pg';
-import type { ArchiveDraft, ConversationStateData, ProfileSnapshotData } from '@/types/childos';
+import { formatBeijingDate } from '@/lib/beijing-time';
+import type { ArchiveDraft, ConversationStateData, ProfileSnapshotCardLink, ProfileSnapshotData, UnderstandingCardData } from '@/types/childos';
 
 const { Pool } = pg;
 
@@ -104,6 +105,20 @@ export async function ensureDbSchema() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         PRIMARY KEY (family_id, child_id)
       );
+
+      CREATE TABLE IF NOT EXISTS memory_layer_items (
+        layer_name TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        family_id TEXT NOT NULL DEFAULT 'family_demo',
+        child_id TEXT NOT NULL DEFAULT 'child_demo',
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (layer_name, item_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_memory_layer_items_family_child
+        ON memory_layer_items (family_id, child_id, layer_name, updated_at DESC);
     `).then(() => undefined);
   }
   await globalDb.__childosPgSchemaReady;
@@ -356,9 +371,9 @@ export async function loadFamilyBriefMemory(familyId = 'f_demo', childId = 'c_de
 
 export async function loadProfileSnapshotContext(familyId = 'f_demo', childId = 'c_demo') {
   const pool = getPool();
-  if (!pool) return { digest: undefined, memories: [], events: [] };
+  if (!pool) return { digest: undefined, memories: [], events: [], latestUnderstandingCard: undefined };
   await ensureDbSchema();
-  const [digest, memories, events] = await Promise.all([
+  const [digest, memories, events, latestConversation] = await Promise.all([
     pool.query<{ profile_board: ProfileBoardDigest }>(
       `SELECT profile_board
        FROM family_memory_digests
@@ -380,13 +395,28 @@ export async function loadProfileSnapshotContext(familyId = 'f_demo', childId = 
        ORDER BY created_at DESC
        LIMIT 5`,
       [familyId, childId]
+    ),
+    pool.query<{
+      conversation_id: string;
+      updated_at: Date;
+      understanding_card: UnderstandingCardData | null;
+    }>(
+      `SELECT conversation_id, updated_at, state -> 'understandingCard' AS understanding_card
+       FROM conversations
+       WHERE family_id = $1
+         AND child_id = $2
+         AND state ? 'understandingCard'
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+      [familyId, childId]
     )
   ]);
   const profileBoard = sanitizeProfileBoardDigest(digest.rows[0]?.profile_board);
   return {
     digest: profileBoard && Object.keys(profileBoard).length > 0 ? profileBoard : undefined,
     memories: memories.rows,
-    events: events.rows
+    events: events.rows,
+    latestUnderstandingCard: mapLatestUnderstandingCard(latestConversation.rows[0])
   };
 }
 
@@ -426,7 +456,7 @@ export async function rebuildFamilyMemoryDigest(familyId = 'f_demo', childId = '
     )
   ]);
 
-  const now = new Date().toISOString();
+  const now = formatBeijingDate();
   const memoryRows = memories.rows;
   const eventRows = events.rows;
   const pendingRows = memoryRows.filter((row) => /pending|hypothesis|线索/i.test(row.type));
@@ -481,16 +511,119 @@ export async function rebuildFamilyMemoryDigest(familyId = 'f_demo', childId = '
   return { familyBrief, profileBoard };
 }
 
+export async function loadMemoryLayerItems<T>(layerName: string, familyId = 'family_demo', childId = 'child_demo'): Promise<T[] | undefined> {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const result = await pool.query<{ data: T }>(
+    `SELECT data
+     FROM memory_layer_items
+     WHERE layer_name = $1 AND family_id = $2 AND child_id = $3
+     ORDER BY updated_at ASC`,
+    [layerName, familyId, childId]
+  );
+  return result.rows.map(row => row.data);
+}
+
+export async function replaceMemoryLayerItems<T>(
+  layerName: string,
+  items: Array<{ itemId: string; familyId?: string; childId?: string; data: T }>,
+  familyId = 'family_demo',
+  childId = 'child_demo'
+) {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `DELETE FROM memory_layer_items
+       WHERE layer_name = $1 AND family_id = $2 AND child_id = $3`,
+      [layerName, familyId, childId]
+    );
+    for (const item of items) {
+      await client.query(
+        `INSERT INTO memory_layer_items (layer_name, item_id, family_id, child_id, data)
+         VALUES ($1, $2, $3, $4, $5::jsonb)
+         ON CONFLICT (layer_name, item_id)
+         DO UPDATE SET family_id = EXCLUDED.family_id,
+                       child_id = EXCLUDED.child_id,
+                       data = EXCLUDED.data,
+                       updated_at = NOW()`,
+        [
+          layerName,
+          item.itemId,
+          item.familyId || familyId,
+          item.childId || childId,
+          JSON.stringify(item.data)
+        ]
+      );
+    }
+    await client.query('COMMIT');
+    return items.length;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function upsertMemoryLayerItems<T>(
+  layerName: string,
+  items: Array<{ itemId: string; familyId?: string; childId?: string; data: T }>,
+  familyId = 'family_demo',
+  childId = 'child_demo'
+) {
+  const pool = getPool();
+  if (!pool) return undefined;
+  if (items.length === 0) return 0;
+  await ensureDbSchema();
+  for (const item of items) {
+    await pool.query(
+      `INSERT INTO memory_layer_items (layer_name, item_id, family_id, child_id, data)
+       VALUES ($1, $2, $3, $4, $5::jsonb)
+       ON CONFLICT (layer_name, item_id)
+       DO UPDATE SET family_id = EXCLUDED.family_id,
+                     child_id = EXCLUDED.child_id,
+                     data = EXCLUDED.data,
+                     updated_at = NOW()`,
+      [
+        layerName,
+        item.itemId,
+        item.familyId || familyId,
+        item.childId || childId,
+        JSON.stringify(item.data)
+      ]
+    );
+  }
+  return items.length;
+}
+
+export async function debugMemoryLayerItemCounts() {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const result = await pool.query<{ layer_name: string; count: number }>(
+    `SELECT layer_name, COUNT(*)::int AS count
+     FROM memory_layer_items
+     GROUP BY layer_name`
+  );
+  return Object.fromEntries(result.rows.map(row => [row.layer_name, row.count]));
+}
+
 export async function debugDatabase() {
   const pool = getPool();
   if (!pool) return { enabled: false };
   await ensureDbSchema();
-  const [conversations, archives, memories, events, digests] = await Promise.all([
+  const [conversations, archives, memories, events, digests, layerItems] = await Promise.all([
     pool.query('SELECT COUNT(*)::int AS count FROM conversations'),
     pool.query('SELECT COUNT(*)::int AS count FROM archives'),
     pool.query('SELECT COUNT(*)::int AS count FROM memory_records'),
     pool.query('SELECT COUNT(*)::int AS count FROM child_events'),
-    pool.query('SELECT COUNT(*)::int AS count FROM family_memory_digests')
+    pool.query('SELECT COUNT(*)::int AS count FROM family_memory_digests'),
+    pool.query('SELECT COUNT(*)::int AS count FROM memory_layer_items')
   ]);
   const users = await pool.query('SELECT COUNT(*)::int AS count FROM users');
   return {
@@ -500,7 +633,8 @@ export async function debugDatabase() {
     archives: archives.rows[0]?.count || 0,
     memoryRecords: memories.rows[0]?.count || 0,
     childEvents: events.rows[0]?.count || 0,
-    familyMemoryDigests: digests.rows[0]?.count || 0
+    familyMemoryDigests: digests.rows[0]?.count || 0,
+    memoryLayerItems: layerItems.rows[0]?.count || 0
   };
 }
 
@@ -560,6 +694,25 @@ function sanitizeProfileBoardDigest(digest?: ProfileBoardDigest) {
       : [],
     communicationTip: frontText(digest.communicationTip || '', 90),
     hasUnreadUpdate: Boolean(digest.hasUnreadUpdate)
+  };
+}
+
+function mapLatestUnderstandingCard(row?: {
+  conversation_id: string;
+  updated_at: Date;
+  understanding_card: UnderstandingCardData | null;
+}): ProfileSnapshotCardLink | undefined {
+  const card = row?.understanding_card;
+  if (!row || !card?.cardId) return undefined;
+  const firstSection = card.sections.find((section) => Boolean(section.body))?.body;
+  const preview = Array.isArray(firstSection) ? firstSection.join('；') : firstSection || '';
+  return {
+    conversationId: row.conversation_id,
+    cardId: card.cardId,
+    title: card.title || '最近理解卡',
+    version: card.version || 'v1',
+    preview: frontText(preview, 88),
+    updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : undefined
   };
 }
 

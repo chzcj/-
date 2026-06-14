@@ -17,7 +17,7 @@ export async function POST(request: Request) {
         };
 
         try {
-          send({ type: 'start', round: Math.min(parsed.data.round + 1, 7) });
+          send({ type: 'start', round: parsed.data.round + 1 });
           const a1 = await submitAnswerStreaming(parsed.data.conversationId, parsed.data.round, parsed.data.inputMode, parsed.data.text, (delta) => {
             send({ type: 'delta', delta });
           });

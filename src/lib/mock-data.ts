@@ -1,3 +1,5 @@
+import { formatBeijingDate } from '@/lib/beijing-time';
+import { DEFAULT_MAX_ROUND, MIN_UNDERSTANDING_ROUND } from '@/lib/conversation-config';
 import type {
   A1Output,
   AdviceCardData,
@@ -197,13 +199,43 @@ const prompts: Record<number, Omit<A1Output, 'familyId' | 'childId' | 'conversat
 };
 
 export function makeA1(round: number, familyId: string, childId: string, conversationId: string): A1Output {
-  const base = prompts[Math.min(Math.max(round, 2), 7)] ?? prompts[7];
+  const clampedRound = Math.max(round, 2);
+  const base = prompts[Math.min(clampedRound, 6)] ?? prompts[6];
+  const shouldConfirmBySoftLimit = clampedRound >= DEFAULT_MAX_ROUND;
   return {
     ...base,
     familyId,
     childId,
     conversationId,
     messageId: `msg_${String(round).padStart(3, '0')}`,
+    messageType: shouldConfirmBySoftLimit ? 'confirm_generate_card' : 'followup_question',
+    assistantMessage: shouldConfirmBySoftLimit
+      ? {
+          text: '我已经把关键线索整理得差不多了，可以先形成一张阶段性的孩子理解卡。',
+          tone: 'warm'
+        }
+      : base.assistantMessage,
+    highlightQuestion: shouldConfirmBySoftLimit
+      ? {
+          text: '生成孩子理解卡前，你还有想补充的吗？',
+          inputHint: '如果差不多了，也可以直接先看看我怎么理解这件事。'
+        }
+      : base.highlightQuestion,
+    progress: {
+      ...base.progress,
+      currentRound: clampedRound,
+      maxRound: DEFAULT_MAX_ROUND,
+      enoughForUnderstandingCard: clampedRound >= MIN_UNDERSTANDING_ROUND,
+      shouldStopAsking: shouldConfirmBySoftLimit
+    },
+    clientActions: shouldConfirmBySoftLimit
+      ? { nextAction: 'confirm_generate_card', nextRoute: '/problem/confirm' }
+      : { nextAction: 'continue_question', nextRoute: '/problem/follow-up' },
+    ui: {
+      ...base.ui,
+      showQuickChoices: false,
+      quickChoices: []
+    },
     memoryCandidates: [
       {
         type: 'raw_event_candidate',
@@ -321,7 +353,7 @@ export function makeArchive(conversation: ConversationStateData): ArchiveDraft {
     ok: true,
     conversationId: conversation.conversationId,
     archiveId: `arch_${conversation.conversationId}`,
-    date: new Date().toISOString().slice(0, 10),
+    date: formatBeijingDate(),
     eventSummary: '孩子最近在写数学作业前经常先玩手机，家长一提醒，他就容易不耐烦，甚至拖延开始写作业。',
     conflictPoint: '表面上看，冲突集中在“玩手机”和“写作业拖拉”；更核心的冲突可能是：家长希望孩子尽快开始，孩子却在开始前感到压力，双方进入催促和抵触的循环。',
     currentClues: '孩子可能不是单纯想玩手机，而是在写作业开始前，尤其是面对数学任务时，有明显的压力和回避感。',

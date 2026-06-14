@@ -8,8 +8,10 @@ import {
   makeRehearsal,
   makeUnderstandingCard
 } from '@/lib/mock-data';
+import { formatBeijingDate } from '@/lib/beijing-time';
+import { DEFAULT_MAX_ROUND, MIN_UNDERSTANDING_ROUND } from '@/lib/conversation-config';
 import { agentPrompts } from '@/lib/server/agent-prompts';
-import { callAgentJson, callFastJson, callFastTextStream, callSupportJson, callSupportTextStream, isArkEnabled } from '@/lib/server/ark-agents';
+import { callAgentJson, callFastJson, callFastTextStream, callSupportJson, callSupportTextStream, isFastAIEnabled } from '@/lib/server/ark-agents';
 import { buildDiagnosticA1JsonPrompt, buildDiagnosticStreamPrompt, buildUnderstandingSectionPrompt } from '@/lib/server/diagnostic-runtime';
 import {
   debugDatabase,
@@ -37,6 +39,7 @@ interface MockStore {
   archives: Map<string, ArchiveDraft>;
   correctionLogs: Array<{ conversationId: string; cardId: string; feedbackType: CardFeedbackType; text: string }>;
   memoryRecords: Array<{ archiveId: string; kind: string; summary: string }>;
+  rehearsalMessages: Map<string, Array<{ role: 'user' | 'assistant'; text: string }>>;
 }
 
 const globalStore = globalThis as typeof globalThis & { __childosMockStore?: MockStore };
@@ -46,11 +49,12 @@ const store =
   (globalStore.__childosMockStore = {
     conversations: new Map<string, ConversationStateData>(),
     archives: new Map<string, ArchiveDraft>(),
-    correctionLogs: [],
-    memoryRecords: []
+    correctionLogs: [] as Array<{ conversationId: string; cardId: string; feedbackType: CardFeedbackType; text: string }>,
+    memoryRecords: [] as Array<{ archiveId: string; kind: string; summary: string }>,
+    rehearsalMessages: new Map() as Map<string, Array<{ role: 'user' | 'assistant'; text: string }>>
   });
 
-const { conversations, archives, correctionLogs, memoryRecords } = store;
+const { conversations, archives, correctionLogs, memoryRecords, rehearsalMessages } = store;
 
 function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -63,7 +67,7 @@ export async function startConversation(familyId: string, childId: string) {
     childId,
     conversationId,
     currentRound: 1,
-    maxRound: 8,
+    maxRound: DEFAULT_MAX_ROUND,
     status: 'active',
     firstPrompt,
     rounds: []
@@ -88,7 +92,7 @@ export async function submitAnswer(conversationId: string, round: number, inputM
     summary: summarize(text, round)
   });
 
-  const nextRound = Math.min(round + 1, 7);
+  const nextRound = round + 1;
   const fallbackA1 = makeA1(nextRound, conversation.familyId, conversation.childId, conversationId);
   const familyBrief = await safeLoadFamilyBriefMemory(conversation.familyId, conversation.childId);
   const agentA1 = await tryFastJson<A1Output>(buildDiagnosticA1JsonPrompt({ conversation, latestText: text, familyBrief }), {
@@ -122,7 +126,7 @@ export async function submitAnswerStreaming(
     summary: summarize(text, round)
   });
 
-  const nextRound = Math.min(round + 1, 7);
+  const nextRound = round + 1;
   const fallbackA1 = makeTextOnlyA1(makeA1(nextRound, conversation.familyId, conversation.childId, conversationId), nextRound);
   const familyBrief = await safeLoadFamilyBriefMemory(conversation.familyId, conversation.childId);
   const streamedText = await tryFastTextStream(
@@ -137,6 +141,39 @@ export async function submitAnswerStreaming(
   );
 
   if (!streamedText) await emitFallbackText(fallbackA1.highlightQuestion.text, onDelta);
+
+  const cardIndex = streamedText?.indexOf('<!--CARD_JSON-->') ?? -1;
+  const hasCard = cardIndex !== -1;
+  let cardData: { coreInsight?: string; evidenceQuotes?: string[]; whatChildProtects?: string } | undefined;
+
+  if (hasCard && streamedText) {
+    const displayText = streamedText.slice(0, cardIndex).trim();
+    const jsonText = streamedText.slice(cardIndex + '<!--CARD_JSON-->'.length).trim();
+    try { cardData = JSON.parse(jsonText); } catch { /* ignore parse errors */ }
+    if (!streamedText) await emitFallbackText(fallbackA1.highlightQuestion.text, onDelta);
+    const finalText = (displayText || fallbackA1.highlightQuestion.text).trim();
+    const a1: A1Output = {
+      ...fallbackA1,
+      clientActions: hasCard ? { nextAction: 'confirm_generate_card', nextRoute: '/problem/confirm' } : fallbackA1.clientActions,
+      highlightQuestion: {
+        ...fallbackA1.highlightQuestion,
+        text: finalText
+      }
+    };
+    if (hasCard && cardData?.coreInsight) {
+      conversation.cardInsight = {
+        coreInsight: cardData.coreInsight,
+        evidenceQuotes: cardData.evidenceQuotes || [],
+        whatChildProtects: cardData.whatChildProtects
+      };
+    }
+    conversation.currentRound = nextRound;
+    conversation.latestA1 = a1;
+    conversations.set(conversationId, conversation);
+    await persistConversation(conversation);
+    return a1;
+  }
+
   const finalText = (streamedText || fallbackA1.highlightQuestion.text).trim();
   const a1: A1Output = {
     ...fallbackA1,
@@ -176,7 +213,10 @@ export async function submitFeedback(conversationId: string, cardId: string, fee
   correctionLogs.push({ conversationId, cardId, feedbackType, text });
   const nextRevision = (conversation.understandingCard?.version.match(/\d+/)?.[0] ? Number(conversation.understandingCard.version.match(/\d+/)?.[0]) : 1) + 1;
   const fallbackCard = makeUnderstandingCard(conversation, nextRevision, text);
-  const agentCard = await tryAgent<UnderstandingCardData>('problemJudgment', '根据家长反馈修正理解卡，保持原有 UnderstandingCardData 字段和当前前端文案风格。', {
+  const addDetailBoost = feedbackType === 'add_detail'
+    ? `\n重要：家长补充的细节"${text}"是家长认为最需要加入理解卡的信息，必须在卡片的 current_state 和 basis 区块中明确体现这段补充内容，不能略过。`
+    : '';
+  const agentCard = await tryFastJson<UnderstandingCardData>(agentPrompts.deepDiagnosis + `\n根据家长反馈修正理解卡，保持原有 UnderstandingCardData 字段和当前前端文案风格。${addDetailBoost}`, {
     conversation: compactConversation(conversation),
     currentCard: compactUnderstandingCard(conversation.understandingCard),
     feedback: { feedbackType, text }
@@ -217,6 +257,41 @@ export async function generateRehearsal(conversationId: string, parentText: stri
   conversations.set(conversationId, conversation);
   await persistConversation(conversation);
   return result;
+}
+
+export async function submitRehearsalStreaming(
+  conversationId: string,
+  text: string,
+  onDelta: (delta: string) => void
+) {
+  const history = rehearsalMessages.get(conversationId) || [];
+  history.push({ role: 'user' as const, text });
+  rehearsalMessages.set(conversationId, history);
+
+  const context = history
+    .slice(-12)
+    .map((m: { role: string; text: string }) => (m.role === 'user' ? `家长：${m.text}` : `AI：${m.text}`))
+    .join('\n');
+
+  const fullText = await callFastTextStream(
+    agentPrompts.communicationRehearsal,
+    { history: context, latestMessage: text },
+    onDelta
+  ).catch((error) => {
+    console.error('[childos] rehearsal stream failed', error);
+    return undefined;
+  });
+
+  if (fullText) {
+    history.push({ role: 'assistant' as const, text: fullText.trim() });
+    rehearsalMessages.set(conversationId, history);
+  }
+
+  return fullText?.trim() || undefined;
+}
+
+export async function getRehearsalHistory(conversationId: string) {
+  return rehearsalMessages.get(conversationId) || [];
 }
 
 export async function generateAdvice(conversationId: string): Promise<AdviceCardData | undefined> {
@@ -283,7 +358,7 @@ export async function getOrCreateArchive(conversationId: string): Promise<Archiv
     ok: true,
     conversationId,
     archiveId: agentArchive?.archiveId || fallback.archiveId,
-    date: textOr(agentArchive?.date, fallback.date),
+    date: formatBeijingDate(),
     eventSummary: textOr(agentArchive?.eventSummary, fallback.eventSummary),
     conflictPoint: textOr(agentArchive?.conflictPoint, fallback.conflictPoint),
     currentClues: textOr(agentArchive?.currentClues, fallback.currentClues),
@@ -307,11 +382,6 @@ export async function confirmArchive(conversationId: string, archive: ArchiveDra
   await persistConversation(conversation);
   await safeSaveArchiveDraft(archive);
 
-  const memoryPlan = await tryAgent<{
-    shouldWrite?: boolean;
-    records?: Array<{ type?: string; title?: string; content?: string; evidence?: string; confidence?: string; tags?: string[] }>;
-  }>('memoryWrite', '根据本次归档草稿生成后台记忆写入计划。', { conversation: compactConversation(conversation), archive });
-
   const fallbackRecords = [
     { archiveId: archive.archiveId, kind: 'rawEvent', summary: archive.eventSummary },
     { archiveId: archive.archiveId, kind: 'pendingHypothesis', summary: archive.currentClues },
@@ -319,33 +389,20 @@ export async function confirmArchive(conversationId: string, archive: ArchiveDra
     { archiveId: archive.archiveId, kind: 'supportBoardSnapshot', summary: '支持重点：先观察启动点，不急于规则化管控手机。' }
   ];
   memoryRecords.push(...fallbackRecords);
-  const dbRecords =
-    memoryPlan?.shouldWrite !== false && Array.isArray(memoryPlan?.records) && memoryPlan.records.length > 0
-      ? memoryPlan.records.map((record) => ({
-          familyId: conversation.familyId,
-          childId: conversation.childId,
-          conversationId,
-          archiveId: archive.archiveId,
-          type: record.type || 'pending_hypothesis',
-          title: record.title || '本次亲子沟通线索',
-          content: record.content || archive.currentClues,
-          evidence: record.evidence || archive.eventSummary,
-          confidence: record.confidence || 'low',
-          tags: record.tags || []
-        }))
-      : fallbackRecords.map((record) => ({
-          familyId: conversation.familyId,
-          childId: conversation.childId,
-          conversationId,
-          archiveId: archive.archiveId,
-          type: record.kind,
-          title: record.kind,
-          content: record.summary,
-          evidence: archive.eventSummary,
-          confidence: 'low',
-          tags: []
-        }));
+  const dbRecords = fallbackRecords.map((record) => ({
+    familyId: conversation.familyId,
+    childId: conversation.childId,
+    conversationId,
+    archiveId: archive.archiveId,
+    type: record.kind,
+    title: record.kind,
+    content: record.summary,
+    evidence: archive.eventSummary,
+    confidence: 'low',
+    tags: []
+  }));
   await safeInsertMemoryRecords(dbRecords);
+  void enrichArchiveMemoryInBackground(conversationId, archive);
   return { archiveId: archive.archiveId, memoryWriteStatus: 'success' as const };
 }
 
@@ -353,7 +410,7 @@ export async function debugStore() {
   return {
     mode: {
       database: isDatabaseEnabled(),
-      ark: isArkEnabled()
+      fastai: isFastAIEnabled()
     },
     conversations: conversations.size,
     archives: archives.size,
@@ -361,6 +418,34 @@ export async function debugStore() {
     memoryRecords: memoryRecords.length,
     database: await safeDebugDatabase()
   };
+}
+
+async function enrichArchiveMemoryInBackground(conversationId: string, archive: ArchiveDraft) {
+  try {
+    const conversation = await getCachedOrPersistedConversation(conversationId);
+    if (!conversation) return;
+    const memoryPlan = await tryAgent<{
+      shouldWrite?: boolean;
+      records?: Array<{ type?: string; title?: string; content?: string; evidence?: string; confidence?: string; tags?: string[] }>;
+    }>('memoryWrite', '根据本次归档草稿生成后台记忆写入计划。', { conversation: compactConversation(conversation), archive });
+    if (memoryPlan?.shouldWrite === false || !Array.isArray(memoryPlan?.records) || memoryPlan.records.length === 0) return;
+    await safeInsertMemoryRecords(
+      memoryPlan.records.map((record) => ({
+        familyId: conversation.familyId,
+        childId: conversation.childId,
+        conversationId,
+        archiveId: archive.archiveId,
+        type: record.type || 'pending_hypothesis',
+        title: record.title || '本次亲子沟通线索',
+        content: record.content || archive.currentClues,
+        evidence: record.evidence || archive.eventSummary,
+        confidence: record.confidence || 'low',
+        tags: record.tags || []
+      }))
+    );
+  } catch (error) {
+    console.error('[childos] background memory enrichment failed', error);
+  }
 }
 
 function summarize(text: string, round: number) {
@@ -486,6 +571,11 @@ async function trySupport<T>(system: string, payload: unknown) {
 async function generateUnderstandingFast(conversation: ConversationStateData, fallback: UnderstandingCardData, revision: number): Promise<UnderstandingCardData | undefined> {
   const compact = compactConversation(conversation);
   const familyBrief = await safeLoadFamilyBriefMemory(conversation.familyId, conversation.childId);
+  const cardInsight = conversation.cardInsight;
+  const insightContext = cardInsight
+    ? `\n核心洞察："${cardInsight.coreInsight}"\n证据原话：${cardInsight.evidenceQuotes.map((q) => `"${q}"`).join('、')}${cardInsight.whatChildProtects ? `\n孩子在保护：${cardInsight.whatChildProtects}` : ''}`
+    : '';
+
   const specs = [
     {
       id: 'current_state',
@@ -522,14 +612,15 @@ async function generateUnderstandingFast(conversation: ConversationStateData, fa
   const sections = await Promise.all(
     specs.map(async (spec, index) => {
       const fallbackSection = fallback.sections.find((section) => section.id === spec.id) || fallback.sections[index];
+      const sectionTask = insightContext ? `${spec.task}${insightContext}` : spec.task;
       const result = await tryFastJson<{ body?: string | string[] }>(
         buildUnderstandingSectionPrompt({
           sectionTitle: spec.title,
-          sectionTask: spec.task,
+          sectionTask,
           conversation,
           familyBrief
         }),
-        { conversation: compact, familyBrief, latestRounds: compact.rounds.slice(-4), section: spec.id }
+        { conversation: compact, familyBrief, latestRounds: compact.rounds.slice(-4), section: spec.id, cardInsight }
       );
       return {
         id: spec.id,
@@ -558,6 +649,8 @@ async function generateUnderstandingFast(conversation: ConversationStateData, fa
 
 function normalizeA1(agentA1: A1Output | undefined, fallback: A1Output, conversation: ConversationStateData, round: number): A1Output {
   if (!agentA1 || agentA1.schemaVersion !== 'childos.a1.output.v1') return fallback;
+  const nextAction = agentA1.clientActions?.nextAction || fallback.clientActions.nextAction;
+  const shouldStopAsking = nextAction === 'confirm_generate_card' || nextAction === 'generate_draft_card' || round >= conversation.maxRound;
   return {
     ...fallback,
     ...agentA1,
@@ -572,7 +665,11 @@ function normalizeA1(agentA1: A1Output | undefined, fallback: A1Output, conversa
     progress: {
       ...fallback.progress,
       ...agentA1.progress,
-      currentRound: round
+      currentRound: round,
+      minRound: MIN_UNDERSTANDING_ROUND,
+      maxRound: conversation.maxRound,
+      enoughForUnderstandingCard: Boolean(agentA1.progress?.enoughForUnderstandingCard || round >= MIN_UNDERSTANDING_ROUND),
+      shouldStopAsking
     },
     ui: {
       ...fallback.ui,
@@ -590,10 +687,15 @@ function normalizeA1(agentA1: A1Output | undefined, fallback: A1Output, conversa
 }
 
 function makeTextOnlyA1(a1: A1Output, round: number): A1Output {
+  const shouldStopAsking = a1.clientActions.nextAction === 'confirm_generate_card' || a1.clientActions.nextAction === 'generate_draft_card';
   return {
     ...a1,
-    messageType: round >= 7 ? 'confirm_generate_card' : 'followup_question',
+    messageType: shouldStopAsking ? 'confirm_generate_card' : 'followup_question',
     assistantMessage: undefined,
+    progress: {
+      ...a1.progress,
+      currentRound: round
+    },
     ui: {
       showReflectionCard: false,
       showQuestionCard: true,

@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const identity = await getRequestIdentity({ familyId: parsed.data.familyId, childId: parsed.data.childId });
   const context = await loadProfileSnapshotContext(identity.familyId, identity.childId).catch((error) => {
     console.error('[childos] load profile context failed', error);
-    return { digest: undefined, memories: [], events: [] };
+    return { digest: undefined, memories: [], events: [], latestUnderstandingCard: undefined };
   });
   if (context.digest?.recentChanges?.length || context.digest?.currentFocus || context.digest?.recentRecords?.length) {
     return ok({
@@ -21,7 +21,8 @@ export async function GET(request: Request) {
       currentFocus: context.digest.currentFocus || '',
       recentRecords: context.digest.recentRecords || [],
       communicationTip: context.digest.communicationTip || '',
-      hasUnreadUpdate: Boolean(context.digest.hasUnreadUpdate)
+      hasUnreadUpdate: Boolean(context.digest.hasUnreadUpdate),
+      latestUnderstandingCard: context.latestUnderstandingCard
     });
   }
   const snapshot = await callAgentJson<{
@@ -30,6 +31,14 @@ export async function GET(request: Request) {
     recentRecords?: Array<{ title: string; body: string }>;
     communicationTip?: string;
     hasUnreadUpdate?: boolean;
+    latestUnderstandingCard?: {
+      conversationId?: string;
+      cardId?: string;
+      title?: string;
+      version?: string;
+      preview?: string;
+      updatedAt?: string;
+    };
   }>('profileSnapshot', '根据近期记忆和孩子记录，生成孩子档案页面可用的轻量数据。', {
     familyId: identity.familyId,
     childId: identity.childId,
@@ -54,7 +63,8 @@ export async function GET(request: Request) {
       currentFocus: '先别急着围绕“手机”制定规则，优先观察孩子到底卡在开始前，还是卡在某一道题之后。',
       recentRecords: [],
       communicationTip: '',
-      hasUnreadUpdate: false
+      hasUnreadUpdate: false,
+      latestUnderstandingCard: context.latestUnderstandingCard
     }
   );
 }

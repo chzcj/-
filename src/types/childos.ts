@@ -154,6 +154,7 @@ export interface ConversationStateData {
   rehearsalResult?: RehearsalResultData;
   adviceCard?: AdviceCardData;
   archiveDraft?: ArchiveDraft;
+  cardInsight?: { coreInsight: string; evidenceQuotes: string[]; whatChildProtects?: string };
   rounds: ConversationRound[];
 }
 
@@ -204,12 +205,22 @@ export interface RecordChildResponse {
   };
 }
 
+export interface ProfileSnapshotCardLink {
+  conversationId: string;
+  cardId: string;
+  title: string;
+  version: string;
+  preview: string;
+  updatedAt?: string;
+}
+
 export interface ProfileSnapshotData {
   recentChanges: Array<{ title: string; body: string }>;
   currentFocus: string;
   recentRecords: Array<{ title: string; body: string }>;
   communicationTip: string;
   hasUnreadUpdate: boolean;
+  latestUnderstandingCard?: ProfileSnapshotCardLink;
 }
 
 export interface AuthUser {

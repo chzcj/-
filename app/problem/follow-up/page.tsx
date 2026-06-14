@@ -6,10 +6,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { QuestionCard } from '@/components/cards/QuestionCard';
 import { AppShell } from '@/components/layout/AppShell';
 import { TopProgressBar } from '@/components/layout/TopProgressBar';
+import { SecondaryButton } from '@/components/controls/Buttons';
 import { ErrorState } from '@/components/states/ErrorState';
 import { LoadingResult } from '@/components/states/LoadingResult';
 import { BottomVoiceBar } from '@/components/voice/BottomVoiceBar';
 import { apiClient } from '@/lib/api-client';
+import { DEFAULT_MAX_ROUND } from '@/lib/conversation-config';
 import { useConversationStore } from '@/store/useConversationStore';
 import type { A1Output, ConversationStateData, InputMode } from '@/types/childos';
 
@@ -26,6 +28,7 @@ function FollowUpPageContent() {
   const [restoring, setRestoring] = useState(Boolean(conversationId));
   const [error, setError] = useState('');
   const [streamText, setStreamText] = useState('');
+  const [streamRound, setStreamRound] = useState<number | undefined>();
   const streamStartedRef = useRef(false);
   const submitLockRef = useRef(false);
 
@@ -64,9 +67,13 @@ function FollowUpPageContent() {
     setRestoring(false);
     setLoading(true);
     setStreamText('');
+    setStreamRound(undefined);
     setError('');
 
     void apiClient.submitProblemAnswerStream(pending, {
+      onStart: (nextRound) => {
+        if (!cancelled) setStreamRound(nextRound);
+      },
       onDelta: (delta) => {
         if (!cancelled) setStreamText((current) => `${current}${delta}`);
       },
@@ -75,6 +82,7 @@ function FollowUpPageContent() {
         window.sessionStorage.removeItem(`childos_pending_answer_${conversationId}`);
         setA1(data.a1);
         setLoading(false);
+        submitLockRef.current = false;
         if (data.nextAction === 'confirm_generate_card' || data.nextAction === 'generate_draft_card') {
           router.push(`/problem/confirm?conversationId=${conversationId}`);
           return;
@@ -85,6 +93,7 @@ function FollowUpPageContent() {
         if (cancelled) return;
         setError(message);
         setLoading(false);
+        submitLockRef.current = false;
       }
     });
 
@@ -95,12 +104,13 @@ function FollowUpPageContent() {
 
   const currentA1 = useMemo(() => a1 || state?.latestA1, [a1, state]);
   const currentRound = currentA1?.progress.currentRound || roundParam;
+  const maxRound = currentA1?.progress.maxRound || state?.maxRound || DEFAULT_MAX_ROUND;
 
   async function submit(text: string, inputMode: InputMode) {
     if (!conversationId || loading || submitLockRef.current) return;
     submitLockRef.current = true;
     setError('');
-    const nextRound = Math.min(currentRound + 1, 7);
+    const nextRound = currentRound + 1;
     window.sessionStorage.setItem(`childos_pending_answer_${conversationId}`, JSON.stringify({ conversationId, round: currentRound, inputMode, text }));
     streamStartedRef.current = false;
     setStreamText('');
@@ -120,17 +130,24 @@ function FollowUpPageContent() {
   return (
     <AppShell>
       <div className="page">
-        <TopProgressBar progress={(currentRound / 8) * 100} status={`问题梳理中 · 第 ${currentRound} 轮`} />
+        <TopProgressBar progress={Math.min((currentRound / maxRound) * 100, 100)} status={`问题梳理中 · 第 ${currentRound} 轮`} onLeftClick={() => router.push('/home')} />
         {shouldStream ? (
-          <div className="stack">
-            <QuestionCard
-              key="streaming-question"
-              badge="只问一个关键点"
-              question={streamText || ' '}
-              hint={streamText ? '你先看这一句，后面会继续出来。' : ' '}
-              disabled
+          streamText ? (
+            <div className="stack">
+              <QuestionCard
+                key="streaming-question"
+                badge="只问一个关键点"
+                question={streamText}
+                hint="你先看这一句，后面会继续出来。"
+                disabled
+              />
+            </div>
+          ) : (
+            <LoadingResult
+              title={`正在整理第 ${streamRound || currentRound} 轮问题`}
+              messages={['我在把你刚刚说的内容收成一个更关键的问题。']}
             />
-          </div>
+          )
         ) : restoring || !currentA1 ? (
           <LoadingResult title="正在恢复这次整理" messages={['我在找回刚刚的上下文。']} />
         ) : (
@@ -142,6 +159,11 @@ function FollowUpPageContent() {
               hint={currentA1.highlightQuestion.inputHint}
               disabled={loading}
             />
+            <div style={{ marginTop: 14 }}>
+              <SecondaryButton onClick={() => router.push(`/problem/confirm?conversationId=${conversationId}`)} disabled={loading}>
+                我觉得已经说完了，帮我整理
+              </SecondaryButton>
+            </div>
           </div>
         )}
       </div>

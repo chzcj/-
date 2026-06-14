@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <title>校园帮登录</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <div class="phone-device">
+      <div class="phone-body">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+    <div class="login-root">
+      <div class="login-header">
+        <h1>校园帮</h1>
+        <p>校园即时互助，手机号登录就能发单。</p>
+      </div>
+
+      <div class="login-demo-info">
+        <div class="login-demo-row">演示账号 <span>13800138000</span></div>
+        <div class="login-demo-row">演示密码 <span>123456</span></div>
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button class="ghost-button tab active" data-auth-tab="login">登录</button>
+          <button class="ghost-button tab" data-auth-tab="register">注册</button>
+        </div>
+
+        <form class="auth-form active" id="login-form">
+          <label for="login-phone">手机号</label>
+          <input id="login-phone" name="phone" class="real-input" maxlength="11" placeholder="请输入 11 位手机号" inputmode="numeric" autocomplete="tel" />
+
+          <label for="login-password">密码</label>
+          <input id="login-password" name="password" class="real-input" type="password" placeholder="请输入密码" autocomplete="current-password" />
+
+          <button class="primary-button full" type="submit">登录进入试用版</button>
+        </form>
+
+        <form class="auth-form" id="register-form">
+          <label for="register-phone">手机号</label>
+          <input id="register-phone" name="phone" class="real-input" maxlength="11" placeholder="请输入 11 位手机号" inputmode="numeric" autocomplete="tel" />
+
+          <label for="register-password">密码</label>
+          <input id="register-password" name="password" class="real-input" type="password" placeholder="至少 6 位" autocomplete="new-password" />
+
+          <label for="register-nickname">昵称</label>
+          <input id="register-nickname" name="nickname" class="real-input" maxlength="20" placeholder="不填则自动生成" autocomplete="off" />
+
+          <button class="primary-button full" type="submit">注册并创建账号</button>
+        </form>
+
+        <p class="auth-message" id="auth-message">请先登录后进入大厅。</p>
+      </div>
+    </div>
+
+    <script>
+      const tabButtons = Array.from(document.querySelectorAll("[data-auth-tab]"));
+      const forms = {
+        login: document.getElementById("login-form"),
+        register: document.getElementById("register-form"),
+      };
+      const message = document.getElementById("auth-message");
+
+      function switchTab(tab) {
+        tabButtons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.authTab === tab);
+        });
+        Object.entries(forms).forEach(([key, form]) => {
+          form.classList.toggle("active", key === tab);
+        });
+        message.textContent = tab === "login" ? "请先登录后进入大厅。" : "注册完成后可直接切回登录。";
+      }
+
+      async function submitForm(url, payload) {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "操作失败");
+        }
+        return data;
+      }
+
+      tabButtons.forEach((button) => {
+        button.addEventListener("click", () => switchTab(button.dataset.authTab));
+      });
+
+      forms.login.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const formData = new FormData(forms.login);
+        const submitButton = forms.login.querySelector("button");
+        submitButton.disabled = true;
+        submitButton.textContent = "登录中...";
+        try {
+          await submitForm("/api/auth/login", {
+            phone: formData.get("phone"),
+            password: formData.get("password"),
+          });
+          window.location.href = "/app";
+        } catch (error) {
+          message.textContent = error.message;
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = "登录进入试用版";
+        }
+      });
+
+      forms.register.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const formData = new FormData(forms.register);
+        const submitButton = forms.register.querySelector("button");
+        submitButton.disabled = true;
+        submitButton.textContent = "注册中...";
+        try {
+          const data = await submitForm("/api/auth/register", {
+            phone: formData.get("phone"),
+            password: formData.get("password"),
+            nickname: formData.get("nickname"),
+          });
+          message.textContent = data.message;
+          switchTab("login");
+          document.getElementById("login-phone").value = formData.get("phone");
+        } catch (error) {
+          message.textContent = error.message;
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = "注册并创建账号";
+        }
+      });
+    </script>
+      </div>
+    </div>
+  </div>
+  </body>
+</html>

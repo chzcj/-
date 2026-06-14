@@ -75,7 +75,7 @@ function AdviceCardPageContent() {
           <>
             <AdviceCard card={card} />
             <div className="button-row" style={{ marginTop: 14 }}>
-              <SecondaryButton onClick={() => router.push(`/problem/confirm?conversationId=${conversationId}`)}>说一说</SecondaryButton>
+              <SecondaryButton onClick={() => router.push(`/rehearsal/input?conversationId=${conversationId}&cardId=${cardId}`)}>说一说</SecondaryButton>
               <PrimaryButton loading={loadingArchive} onClick={archive}>
                 我明白了，我去试试看
               </PrimaryButton>

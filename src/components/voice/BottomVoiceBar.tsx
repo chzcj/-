@@ -2,7 +2,7 @@
 
 import { Keyboard, Mic, Square } from 'lucide-react';
 import { useState } from 'react';
-import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { useTencentAsrInput } from '@/hooks/useTencentAsrInput';
 import type { VoiceState } from '@/types/childos';
 import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
 
@@ -10,12 +10,13 @@ interface BottomVoiceBarProps {
   state?: VoiceState;
   hint: string;
   disabled?: boolean;
+  elevated?: boolean;
   onSubmit: (text: string, mode: 'voice' | 'text') => void;
 }
 
-export function BottomVoiceBar({ state = 'idle', hint, disabled, onSubmit }: BottomVoiceBarProps) {
-  const voice = useVoiceInput();
-  const [keyboardOpen, setKeyboardOpen] = useState(!voice.isSupported);
+export function BottomVoiceBar({ state = 'idle', hint, disabled, elevated = false, onSubmit }: BottomVoiceBarProps) {
+  const voice = useTencentAsrInput();
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [text, setText] = useState('');
   const [failed, setFailed] = useState(false);
   const displayState: VoiceState = failed ? 'failed' : voice.isListening ? 'recording' : state;
@@ -45,35 +46,53 @@ export function BottomVoiceBar({ state = 'idle', hint, disabled, onSubmit }: Bot
   };
 
   return (
-    <div className="voice-bar">
+    <div className={`voice-bar ${elevated ? 'elevated' : ''}`}>
       <div className="voice-hint">
-        {!voice.isSupported ? '当前浏览器暂不支持语音输入，可以先打字' : displayState === 'failed' ? '刚刚没有完全听清，可以再说一次' : hint}
+        {displayState === 'failed' ? '刚刚没有听清，可以直接打字或再说一次' : hint}
       </div>
-      <div className="voice-actions">
-        <button className="icon-button" type="button" onClick={() => setKeyboardOpen((open) => !open)} disabled={disabled} aria-label="切换文字输入">
+      <div className="voice-dock-main">
+        <button
+          className="voice-dock-side-button"
+          type="button"
+          onClick={() => setKeyboardOpen((open) => !open)}
+          disabled={disabled}
+          aria-label="切换文字输入"
+        >
           <Keyboard size={18} />
         </button>
         <button
-          className={`mic-button ${displayState === 'recording' ? 'recording' : ''}`}
+          className={`mic-button voice-dock-mic ${displayState === 'recording' ? 'recording' : ''}`}
           type="button"
-          disabled={disabled || !voice.isSupported}
+          disabled={disabled}
           onClick={voice.isListening ? finishVoice : disabled ? undefined : voice.startListening}
           aria-label={voice.isListening ? '结束录音' : '开始录音'}
         >
           {voice.isListening ? <Square size={22} /> : <Mic size={26} />}
         </button>
-        <span />
+        <div className="voice-dock-side-button ghost" aria-hidden="true" />
       </div>
-      {voice.error ? <div className="toast">{voice.error}</div> : liveTranscript ? <div className="toast">{liveTranscript}</div> : null}
+      {voice.error ? <div className="voice-dock-status">{voice.error}</div> : null}
+      {!voice.error && liveTranscript ? <div className="voice-dock-status">{liveTranscript}</div> : null}
       <div className={`text-input-panel ${keyboardOpen ? 'open' : ''}`} aria-hidden={!keyboardOpen}>
         <div className="text-input-panel-inner">
-          <textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="也可以直接打字，把最真实的情况说出来。" disabled={disabled} />
-          <div className="button-row">
+          <textarea
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                submitText();
+              }
+            }}
+            placeholder="也可以直接打字，把最真实的情况说出来。"
+            disabled={disabled}
+          />
+          <div className="voice-dock-submit-row">
             <SecondaryButton onClick={() => setText('')} disabled={!text.trim()}>
               清空
             </SecondaryButton>
             <PrimaryButton onClick={submitText} disabled={!text.trim() || disabled}>
-              说完了
+              发送
             </PrimaryButton>
           </div>
         </div>

@@ -1,101 +1,82 @@
-'use client';
+'use client'
+import { RefreshCw } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { AppShell } from '@/components/layout/AppShell'
+import { BottomNavTabs } from '@/components/layout/BottomNavTabs'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { mockRehearsalResult } from '@/data/mockOutputs'
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
-import { useEffect, useState } from 'react';
-import { RehearsalResultCard } from '@/components/cards/RehearsalResultCard';
-import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
-import { AppShell } from '@/components/layout/AppShell';
-import { TopProgressBar } from '@/components/layout/TopProgressBar';
-import { ErrorState } from '@/components/states/ErrorState';
-import { LoadingResult } from '@/components/states/LoadingResult';
-import { apiClient } from '@/lib/api-client';
-import { useConversationStore } from '@/store/useConversationStore';
-import type { RehearsalResultData } from '@/types/childos';
-
-function RehearsalResultPageContent() {
-  const params = useSearchParams();
-  const router = useRouter();
-  const conversationId = params.get('conversationId') || undefined;
-  const cardId = params.get('cardId') || undefined;
-  const rehearsalId = params.get('rehearsalId') || undefined;
-  const standalone = params.get('standalone') === '1';
-  const { rehearsalResult, setArchiveDraft } = useConversationStore();
-  const [result, setResult] = useState<RehearsalResultData | undefined>(rehearsalResult);
-  const [error, setError] = useState('');
-  const [restoring, setRestoring] = useState(Boolean(conversationId) && !rehearsalResult);
-  const [loading, setLoading] = useState(false);
+function RehearsalResultInner() {
+  const router = useRouter()
+  const params = useSearchParams()
+  const parentText = params.get('text') || '(未输入内容)'
+  const [r, setR] = useState(mockRehearsalResult)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!conversationId) return;
-    if (result) return;
-    let mounted = true;
-    const controller = new AbortController();
-    setRestoring(true);
-    apiClient.getConversationState(conversationId, { signal: controller.signal }).then((response) => {
-      if (!mounted) return;
-      if (response.ok) setResult(response.data.rehearsalResult);
-      else setError(response.error.message);
-      setRestoring(false);
-    });
-    return () => {
-      mounted = false;
-      controller.abort();
-    };
-  }, [conversationId]);
-
-  async function goArchive() {
-    if (!conversationId || !cardId || loading) return;
-    try {
-      setLoading(true);
-      const response = await apiClient.getArchiveDraft({ conversationId, cardId, rehearsalId });
-      if (!response.ok) {
-        setError(response.error.message);
-        return;
-      }
-      setArchiveDraft(response.data);
-      router.push(`/archive/confirm?conversationId=${conversationId}&cardId=${cardId}&rehearsalId=${rehearsalId || ''}`);
-    } finally {
-      setLoading(false);
+    let cancelled = false
+    async function load() {
+      try {
+        const res = await fetch('/api/rehearsal/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parentText: params.get('text') || '' }),
+        })
+        const json = await res.json()
+        if (!cancelled && json.ok && json.data?.headline) setR(json.data)
+      } catch {} finally { if (!cancelled) setLoading(false) }
     }
-  }
-
-  if (!conversationId || error || (!restoring && !result)) {
-    return (
-      <AppShell>
-        <div className="page without-voice">
-          <ErrorState title="预演结果没有恢复成功" description={error || '可以回到上一页重新试说。'} primaryLabel="回到上一页" onPrimary={() => router.back()} />
-        </div>
-      </AppShell>
-    );
-  }
+    load()
+    return () => { cancelled = true }
+  }, [params])
 
   return (
-    <AppShell>
-      <div className="page without-voice">
-        <TopProgressBar title="沟通预演" showProgress={false} />
-        {restoring || !result ? <LoadingResult title="正在恢复预演结果" messages={['我在找回刚刚的分析。']} /> : <RehearsalResultCard result={result} />}
-        <div className="button-row" style={{ marginTop: 14 }}>
-          <SecondaryButton disabled={restoring || loading} onClick={() => router.push(`/rehearsal/input?conversationId=${conversationId}&cardId=${cardId}&standalone=${standalone ? '1' : '0'}`)}>我想再换一句试试</SecondaryButton>
-          <PrimaryButton loading={loading} onClick={goArchive}>
-            这样就可以，进入孩子档案
-          </PrimaryButton>
-        </div>
+    <div className="page without-voice with-bottom-tabs">
+      <PageHeader title="沟通预演" showBack onBack={() => router.push('/rehearsal')} />
+
+      <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)', marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#A1A1A6', marginBottom: 4 }}>你原本想说</div>
+        <div style={{ fontSize: 15, lineHeight: 1.5, color: '#1D1D1F', whiteSpace: 'pre-wrap' }}>{parentText}</div>
       </div>
-    </AppShell>
-  );
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#A1A1A6', fontSize: 14 }}>正在分析沟通方式…</div>
+      ) : (
+        <div className="card" style={{ padding: 22, borderRadius: 28, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)', marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#1D1D1F', marginBottom: 10, lineHeight: 1.4 }}>{r.headline}</div>
+          <div style={{ fontSize: 15, lineHeight: 1.6, color: '#6E6E73', marginBottom: 18 }}>{r.explanation}</div>
+
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>孩子可能先听成</div>
+            {r.childMayHear.map((h, i) => (
+              <div key={i} style={{ fontSize: 15, color: '#1D1D1F', padding: '6px 0', borderTop: i > 0 ? '1px solid rgba(29,29,31,0.04)' : 'none' }}>{h}</div>
+            ))}
+          </div>
+
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>更容易卡住的地方</div>
+            <div style={{ fontSize: 15, lineHeight: 1.55, color: '#6E6E73' }}>{r.stuckPoint}</div>
+          </div>
+
+          <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.05)', border: '1px solid rgba(110,106,248,0.10)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>更建议这样开口</div>
+            <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{r.suggestedWording}</div>
+          </div>
+        </div>
+      )}
+
+      <button type="button" className="secondary-button"
+        onClick={() => router.push('/rehearsal')}
+        style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600 }}>
+        <RefreshCw size={18} style={{ marginRight: 6 }} />换一种说法继续预演
+      </button>
+
+      <BottomNavTabs active="rehearsal" />
+    </div>
+  )
 }
 
 export default function RehearsalResultPage() {
-  return (
-    <Suspense
-      fallback={
-        <AppShell>
-          <div className="page without-voice" />
-        </AppShell>
-      }
-    >
-      <RehearsalResultPageContent />
-    </Suspense>
-  );
+  return (<AppShell><Suspense><RehearsalResultInner /></Suspense></AppShell>)
 }

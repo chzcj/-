@@ -55,7 +55,7 @@ function NextStepPageContent() {
   return (
     <AppShell>
       <div className="page without-voice">
-        <TopProgressBar title="下一步" showProgress={false} />
+        <TopProgressBar title="下一步" showProgress={false} onLeftClick={() => router.push('/home')} />
         <h1 className="page-title">接下来你想怎么做？</h1>
         <p className="page-subtitle">基于这张孩子理解卡，你可以选择一个最适合现在的方向。</p>
         <div className="stack">

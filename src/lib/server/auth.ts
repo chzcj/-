@@ -14,6 +14,7 @@ import {
 
 const COOKIE_NAME = 'childos_session';
 const SESSION_DAYS = 30;
+const DEMO_SESSION_TOKEN = 'childos_demo_session';
 
 export interface AuthUser {
   userId: string;
@@ -50,7 +51,7 @@ export async function loginWithPhonePassword(phoneInput: string, password: strin
 
 export async function logoutCurrentUser() {
   const token = cookies().get(COOKIE_NAME)?.value;
-  if (token) {
+  if (token && token !== DEMO_SESSION_TOKEN) {
     await deleteAuthSession(hashToken(token)).catch((error) => {
       console.error('[childos] delete auth session failed', error);
     });
@@ -61,11 +62,24 @@ export async function logoutCurrentUser() {
 export async function getCurrentUser(): Promise<AuthUser | undefined> {
   const token = cookies().get(COOKIE_NAME)?.value;
   if (!token) return undefined;
+  if (token === DEMO_SESSION_TOKEN) return demoUser();
   const user = await findUserBySessionTokenHash(hashToken(token)).catch((error) => {
     console.error('[childos] get current user failed', error);
     return undefined;
   });
   return user ? publicUser(user) : undefined;
+}
+
+export async function loginAsDemoUser() {
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  cookies().set(COOKIE_NAME, DEMO_SESSION_TOKEN, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.AUTH_COOKIE_SECURE === 'true',
+    path: '/',
+    expires: expiresAt
+  });
+  return demoUser();
 }
 
 export async function getRequestIdentity(defaults = { familyId: 'f_demo', childId: 'c_demo' }) {
@@ -101,10 +115,13 @@ async function setLoginSession(user: UserRecord) {
   const token = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
   await createAuthSession(user.userId, hashToken(token), expiresAt);
+  const secureCookie =
+    process.env.AUTH_COOKIE_SECURE === 'true' ||
+    (process.env.NODE_ENV === 'production' && process.env.AUTH_COOKIE_SECURE !== 'false');
   cookies().set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.AUTH_COOKIE_SECURE === 'true',
+    secure: secureCookie,
     path: '/',
     expires: expiresAt
   });
@@ -120,5 +137,14 @@ function publicUser(user: UserRecord): AuthUser {
     phone: user.phone,
     familyId: user.familyId,
     childId: user.childId
+  };
+}
+
+function demoUser(): AuthUser {
+  return {
+    userId: 'demo_user',
+    phone: '13800002641',
+    familyId: 'f_demo',
+    childId: 'c_demo'
   };
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_MAX_ROUND } from '@/lib/conversation-config';
 
 export const startConversationSchema = z.object({
   familyId: z.string().min(1).default('f_demo'),
@@ -8,7 +9,7 @@ export const startConversationSchema = z.object({
 
 export const problemAnswerSchema = z.object({
   conversationId: z.string().min(1),
-  round: z.number().int().min(1).max(8),
+  round: z.number().int().min(1).max(DEFAULT_MAX_ROUND),
   inputMode: z.enum(['voice', 'text']).default('text'),
   text: z.string().trim().min(1).max(2000)
 });

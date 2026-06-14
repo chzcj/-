@@ -8,6 +8,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
 import { AppShell } from '@/components/layout/AppShell';
 import { TopProgressBar } from '@/components/layout/TopProgressBar';
 import { apiClient } from '@/lib/api-client';
+import type { ProfileSnapshotCardLink } from '@/types/childos';
 
 const recentItems = [
   {
@@ -23,9 +24,18 @@ const recentItems = [
 export default function FamilyProfilePage() {
   const router = useRouter();
   const [toast, setToast] = useState('');
+  const [activePanel, setActivePanel] = useState<'recent' | 'stable' | 'observe' | 'weekly' | undefined>();
   const [items, setItems] = useState(recentItems);
   const [currentFocus, setCurrentFocus] = useState('先别急着围绕“手机”制定规则，优先观察孩子到底卡在开始前，还是卡在某一道题之后。');
+  const [latestUnderstandingCard, setLatestUnderstandingCard] = useState<ProfileSnapshotCardLink | undefined>();
   const [refreshing, setRefreshing] = useState(false);
+  const [weeklyData, setWeeklyData] = useState<{
+    sessionCount: number;
+    recentClues: Array<{ type: string; title: string; content: string; createdAt?: string }>;
+    childEvents: Array<{ title: string; eventText: string; createdAt?: string }>;
+    weeklySummary: string;
+  } | null>(null);
+  const [loadingWeekly, setLoadingWeekly] = useState(false);
 
   useEffect(() => {
     refreshProfile(false);
@@ -38,11 +48,28 @@ export default function FamilyProfilePage() {
     if (result.ok) {
       if (result.data.recentChanges?.length) setItems(result.data.recentChanges);
       if (result.data.currentFocus) setCurrentFocus(result.data.currentFocus);
+      setLatestUnderstandingCard(result.data.latestUnderstandingCard);
       if (showToast) setToast('已刷新演示看板。真实数据库接入后会重新拉取最新档案。');
     } else if (showToast) {
       setToast(result.error.message);
     }
     setRefreshing(false);
+  }
+
+  async function openWeeklyReview() {
+    if (activePanel === 'weekly') {
+      setActivePanel(undefined);
+      return;
+    }
+    setLoadingWeekly(true);
+    setActivePanel('weekly');
+    const result = await apiClient.getWeeklyReview();
+    if (result.ok) {
+      setWeeklyData(result.data);
+    } else {
+      setWeeklyData({ sessionCount: 0, recentClues: [], childEvents: [], weeklySummary: '本周回顾暂时加载失败，可以稍后再试。' });
+    }
+    setLoadingWeekly(false);
   }
 
   return (
@@ -60,21 +87,104 @@ export default function FamilyProfilePage() {
         </section>
 
         <section className="profile-summary-grid">
-          <button type="button" onClick={() => setToast('当前已有 2 条演示线索。真实数据库接入后会自动更新。')}>
-            <strong>2</strong>
+          <button type="button" className={activePanel === 'recent' ? 'active' : ''} onClick={() => setActivePanel(activePanel === 'recent' ? undefined : 'recent')}>
+            <strong>{items.length}</strong>
             <span>近期线索</span>
           </button>
-          <button type="button" onClick={() => setToast('当前没有稳定画像，单次事件不会直接定义孩子。')}>
+          <button type="button" className={activePanel === 'stable' ? 'active' : ''} onClick={() => setActivePanel(activePanel === 'stable' ? undefined : 'stable')}>
             <strong>0</strong>
             <span>稳定画像</span>
           </button>
-          <button type="button" onClick={() => setToast('建议继续观察 1 个关键点：拖延发生在开始前还是题目中。')}>
-            <strong>1</strong>
+          <button type="button" className={activePanel === 'observe' ? 'active' : ''} onClick={() => setActivePanel(activePanel === 'observe' ? undefined : 'observe')}>
+            <strong>{currentFocus ? 1 : 0}</strong>
             <span>观察重点</span>
           </button>
         </section>
 
+        {activePanel ? (
+          <section className="profile-panel card">
+            {activePanel === 'recent' ? (
+              <>
+                <div className="result-title">近期线索</div>
+                {items.map((item) => (
+                  <div className="profile-panel-item" key={item.title}>
+                    <strong>{item.title}</strong>
+                    <p>{item.body}</p>
+                  </div>
+                ))}
+              </>
+            ) : null}
+            {activePanel === 'stable' ? (
+              <>
+                <div className="result-title">稳定画像</div>
+                <div className="section-body">当前还没有稳定画像。单次事件只会作为待验证线索，不会直接定义孩子。</div>
+              </>
+            ) : null}
+            {activePanel === 'observe' ? (
+              <>
+                <div className="result-title">观察重点</div>
+                <div className="section-body">{currentFocus}</div>
+              </>
+            ) : null}
+            {activePanel === 'weekly' ? (
+              <>
+                <div className="result-title">本周回顾</div>
+                {loadingWeekly ? (
+                  <div className="section-body" style={{ color: 'var(--text-tertiary)' }}>正在加载本周数据...</div>
+                ) : weeklyData ? (
+                  <>
+                    <div className="section-body" style={{ marginBottom: 14 }}>{weeklyData.weeklySummary}</div>
+                    {weeklyData.recentClues.length > 0 ? (
+                      <div style={{ marginTop: 8 }}>
+                        <div className="section-title">本周线索</div>
+                        {weeklyData.recentClues.slice(0, 6).map((clue, index) => (
+                          <div className="profile-panel-item" key={`${clue.type}-${index}`}>
+                            <strong>{clue.title}</strong>
+                            <p>{clue.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    {weeklyData.childEvents.length > 0 ? (
+                      <div style={{ marginTop: 8 }}>
+                        <div className="section-title">孩子记录</div>
+                        {weeklyData.childEvents.map((event, index) => (
+                          <div className="profile-panel-item" key={`event-${index}`}>
+                            <strong>{event.title}</strong>
+                            <p>{event.eventText}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+              </>
+            ) : null}
+          </section>
+        ) : null}
+
         <div className="stack">
+          {latestUnderstandingCard ? (
+            <section className="result-card card">
+              <div className="result-title">最近理解卡</div>
+              <button
+                className="profile-row"
+                type="button"
+                onClick={() =>
+                  router.push(
+                    `/understanding-card?conversationId=${latestUnderstandingCard.conversationId}&cardId=${latestUnderstandingCard.cardId}`
+                  )
+                }
+              >
+                <span>
+                  <strong>{latestUnderstandingCard.title}</strong>
+                  <small>{latestUnderstandingCard.preview || `版本 ${latestUnderstandingCard.version}`}</small>
+                </span>
+                <ChevronRight size={18} />
+              </button>
+            </section>
+          ) : null}
+
           <section className="result-card card">
             <div className="result-title">近期变化</div>
             {items.map((item) => (
@@ -103,7 +213,7 @@ export default function FamilyProfilePage() {
             </div>
           </section>
 
-          <EntryCard icon={<CalendarDays size={22} />} title="本周回顾" description="查看这周出现过的亲子互动线索" onClick={() => setToast('本周回顾会在接入真实记忆库后生成。')} />
+          <EntryCard icon={<CalendarDays size={22} />} title="本周回顾" description="查看这周出现过的亲子互动线索" onClick={openWeeklyReview} />
           <EntryCard icon={<ShieldCheck size={22} />} title="隐私与授权" description="查看哪些内容会被存入长期档案" onClick={() => setToast('当前演示版只保存 mock 数据；真实上线前会补隐私授权页。')} />
         </div>
 

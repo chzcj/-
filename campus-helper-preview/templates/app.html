@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <title>校园帮</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <div class="phone-device">
+      <div class="phone-body">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+    <div class="app-root">
+
+      <section class="screen active" data-screen="hall">
+        <header class="screen-header">
+          <div>
+            <p class="eyebrow">订单大厅</p>
+            <h3>校园帮</h3>
+          </div>
+          <button class="ghost-button" data-jump="hall">刷新</button>
+        </header>
+
+        <div class="segment-row">
+          <button class="segment active">全部</button>
+          <button class="segment">同宿舍楼</button>
+          <button class="segment">跨楼</button>
+        </div>
+
+        <div class="tag-row">
+          <span class="tag active">代取快递</span>
+          <span class="tag">送饭上楼</span>
+          <span class="tag">复习资料</span>
+          <span class="tag">快递送货</span>
+        </div>
+
+        <div id="order-list"></div>
+      </section>
+
+      <section class="screen" data-screen="publish">
+        <header class="screen-header">
+          <div>
+            <p class="eyebrow">发布订单</p>
+            <h3>发个小单</h3>
+          </div>
+          <button class="ghost-button" id="fill-demo">示例</button>
+        </header>
+
+        <form class="card" id="publish-form">
+          <label for="publish-type">订单类型</label>
+          <select class="real-input" id="publish-type" name="type">
+            <option value="代取快递">代取快递</option>
+            <option value="送饭上楼">送饭上楼</option>
+            <option value="复习资料">复习资料</option>
+            <option value="快递送货">快递送货</option>
+          </select>
+
+          <label for="publish-title">订单标题</label>
+          <input class="real-input" id="publish-title" name="title" maxlength="60" placeholder="例如：北 7 楼快递柜取件送到 431" />
+
+          <label for="publish-building">宿舍楼</label>
+          <input class="real-input" id="publish-building" name="building" maxlength="30" placeholder="例如：北区 7 号楼" />
+
+          <label for="publish-description">补充说明</label>
+          <textarea class="real-input textarea-input" id="publish-description" name="description" placeholder="补充快递位置、送达方式、留证要求等"></textarea>
+
+          <label for="publish-price">跑腿费</label>
+          <input class="real-input" id="publish-price" name="price" type="number" min="0.1" step="0.1" placeholder="例如：6" />
+
+          <div class="switch-row">
+            <div>
+              <strong>匿名发布</strong>
+              <p>大厅只显示匿名身份，付款后通过私聊提供信息</p>
+            </div>
+            <label class="switch active">
+              <input type="checkbox" id="publish-anonymous" name="isAnonymous" checked hidden />
+              <span></span>
+            </label>
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <strong>仅同楼可见</strong>
+              <p>适合顺手上楼或寝室楼内部互助</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="publish-same-building" name="sameBuilding" hidden />
+              <span></span>
+            </label>
+          </div>
+
+          <button class="primary-button full" id="publish-submit" type="submit">确认发布</button>
+        </form>
+      </section>
+
+      <section class="screen" data-screen="detail">
+        <header class="screen-header">
+          <div>
+            <p class="eyebrow">订单详情</p>
+            <h3 id="detail-type">选择订单</h3>
+          </div>
+        </header>
+
+        <div class="card">
+          <div class="detail-top">
+            <span id="detail-building">未选择</span>
+            <strong id="detail-price">¥0.00</strong>
+          </div>
+          <h4 id="detail-title" style="margin:10px 0 8px;font-size:17px;font-weight:600;">请先在大厅点击"查看详情"</h4>
+          <p id="detail-description" style="margin:0;font-size:14px;color:var(--muted);">这里会展示订单说明和楼栋信息。</p>
+          <div class="meta-row">
+            <span id="detail-owner">发布者：-</span>
+            <span id="detail-status">状态：-</span>
+          </div>
+        </div>
+
+        <div class="card" style="padding-top:20px;">
+          <p class="section-title">交接凭证流程</p>
+          <div class="timeline-item done">
+            <span class="dot"></span>
+            <div>
+              <strong>抢单并付款</strong>
+              <p>支付成功后订单即锁定，其他同学不可见</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <span class="dot"></span>
+            <div>
+              <strong>取件拍照</strong>
+              <p>接单人上传快递柜取出照片</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <span class="dot"></span>
+            <div>
+              <strong>送达拍照</strong>
+              <p>发单人收到后补拍确认</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-actions sticky-actions">
+          <button class="secondary-button" data-jump="chat">私聊问问</button>
+          <button class="primary-button" data-jump="chat">支付并抢单</button>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="chat">
+        <header class="screen-header compact">
+          <div>
+            <p class="eyebrow">交易私聊</p>
+            <h3 id="chat-title">未选择订单</h3>
+          </div>
+        </header>
+
+        <div class="card" style="font-size:14px;color:var(--muted);" id="chat-notice">
+          真实私聊将在下一步接入。当前用于验证登录与发布流程。
+        </div>
+
+        <div class="chat-list">
+          <div class="bubble left">
+            <p>你好，我现在下楼去取。放门口还是当面交？</p>
+            <span>19:24</span>
+          </div>
+          <div class="bubble right">
+            <p>放门口就行，辛苦拍清楚一点。</p>
+            <span>已读</span>
+          </div>
+          <div class="bubble left photo">
+            <strong>送达照片</strong>
+            <p>已上传：快递柜取出图 + 门口摆放图</p>
+            <span>19:37</span>
+          </div>
+        </div>
+
+        <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div>
+            <strong style="font-size:14px;">完成后可打赏</strong>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--muted);">建议 1-3 元，提高优质跑腿者留存</p>
+          </div>
+          <button class="ghost-button" data-jump="profile">去我的</button>
+        </div>
+
+        <div class="chat-input">
+          <button class="input-tool">+</button>
+          <div class="input-bar">输入消息 / 发送图片</div>
+          <button class="primary-button small" type="button">发送</button>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="profile">
+        <header class="screen-header">
+          <div>
+            <p class="eyebrow">我的</p>
+            <h3 id="mine-nickname">{{ user_nickname }}</h3>
+          </div>
+          <button class="ghost-button red-dot" id="notice-count">1</button>
+        </header>
+
+        <div class="card profile-row" style="margin-bottom:14px;">
+          <div class="avatar" id="mine-avatar">{{ user_nickname[:2] }}</div>
+          <div>
+            <strong class="compact-title">校园帮账户</strong>
+            <p class="status-text" id="mine-summary">本轮试用优先验证登录、发布和大厅刷新。</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div class="menu-row">
+            <span>我发布的订单</span>
+            <strong id="mine-orders">0</strong>
+          </div>
+          <div class="menu-row">
+            <span>大厅订单总数</span>
+            <strong id="total-orders">0</strong>
+          </div>
+          <div class="menu-row">
+            <span>登录方式</span>
+            <strong>手机号 + 密码</strong>
+          </div>
+          <div class="menu-row">
+            <span>数据存储</span>
+            <strong>SQLite</strong>
+          </div>
+        </div>
+
+        <div class="section">
+          <p class="section-title">近期提醒</p>
+          <ul class="reminder-list" id="recent-reminders">
+            <li>注册登录已接入真实后端</li>
+            <li>发布订单后大厅会立即刷新</li>
+            <li>下一步再接抢单、聊天和留证状态机</li>
+          </ul>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <button class="ghost-button wide-button" id="logout-button">退出登录</button>
+          <p class="status-text" id="app-message" style="margin-top: 12px; text-align: center;">已登录。</p>
+        </div>
+      </section>
+
+      <nav class="bottom-nav">
+        <button class="nav-item active" data-jump="hall">大厅</button>
+        <button class="nav-item" data-jump="publish">发布</button>
+        <button class="nav-item" data-jump="chat">消息</button>
+        <button class="nav-item" data-jump="profile">我的</button>
+      </nav>
+    </div>
+
+    <script>
+      window.APP_BOOTSTRAP = {
+        nickname: "{{ user_nickname }}"
+      };
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

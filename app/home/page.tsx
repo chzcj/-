@@ -1,11 +1,12 @@
 'use client';
 
-import { Archive, BookOpenText, Eye, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
+import { Archive, BookOpenText, ChevronRight, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { useTencentAsrInput } from '@/hooks/useTencentAsrInput';
 import { apiClient } from '@/lib/api-client';
+import { formatBeijingTime, formatDuration } from '@/lib/beijing-time';
 import { useConversationStore } from '@/store/useConversationStore';
 import type { AuthUser, InputMode } from '@/types/childos';
 
@@ -15,14 +16,17 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState('');
   const [recording, setRecording] = useState(false);
+  const [recordStartedAt, setRecordStartedAt] = useState<number | undefined>();
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [beijingTime, setBeijingTime] = useState('');
   const [text, setText] = useState('');
   const [user, setUser] = useState<AuthUser | null>(null);
-  const voice = useVoiceInput();
+  const voice = useTencentAsrInput();
   const voiceText = voice.liveTranscript.trim();
 
   useEffect(() => {
     router.prefetch('/problem/start');
-    router.prefetch('/rehearsal/input?standalone=1');
+    router.prefetch('/rehearsal');
     router.prefetch('/record-child');
     router.prefetch('/family-profile');
     router.prefetch('/login');
@@ -30,6 +34,30 @@ export default function HomePage() {
       if (result.ok) setUser(result.data.user);
     });
   }, [router]);
+
+  useEffect(() => {
+    setBeijingTime(formatBeijingTime());
+    const timer = window.setInterval(() => setBeijingTime(formatBeijingTime()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!recording || !recordStartedAt) {
+      setRecordSeconds(0);
+      return;
+    }
+    const tick = () => setRecordSeconds((Date.now() - recordStartedAt) / 1000);
+    tick();
+    const timer = window.setInterval(tick, 250);
+    return () => window.clearInterval(timer);
+  }, [recordStartedAt, recording]);
+
+  useEffect(() => {
+    if (recording && !voice.isListening) {
+      setRecording(false);
+      setRecordStartedAt(undefined);
+    }
+  }, [recording, voice.isListening]);
 
   async function logout() {
     const result = await apiClient.logout();
@@ -68,21 +96,18 @@ export default function HomePage() {
 
   function startVoice() {
     if (loading) return;
-    if (!voice.isSupported) {
-      setToast('当前浏览器暂不支持语音识别，可以先打字。');
-      return;
-    }
-    const started = voice.startListening();
-    if (started) {
-      setRecording(true);
-      setToast('正在听你说，点击中间按钮可结束这一段。');
-    }
+    voice.startListening();
+    setRecordStartedAt(Date.now());
+    setRecordSeconds(0);
+    setRecording(true);
+    setToast('正在听你说，点击中间按钮可结束这一段。');
   }
 
   function finishVoice() {
     if (loading) return;
     const finalText = voice.stopListening() || voice.liveTranscript;
     setRecording(false);
+    setRecordStartedAt(undefined);
     if (!finalText.trim()) {
       setToast(voice.error || '刚刚没有听清楚，可以再说一次，或在输入框里打字。');
       return;
@@ -94,7 +119,7 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <div className="talk-page">
+      <div className="talk-page home-page">
         <button
           className="auth-entry"
           type="button"
@@ -108,19 +133,23 @@ export default function HomePage() {
         </button>
 
         <div className="phone-status">
-          <span>9:41</span>
+          <span>{beijingTime}</span>
           <span className="status-dots">•••</span>
         </div>
 
-        <header className="talk-hero">
-          <div className="app-mark">
-            <Eye size={22} />
+        <div className="entry-card home-profile-entry" onClick={() => router.push('/profile/build')}>
+          <div className="icon-box">
+            <UserRound size={22} />
           </div>
-          <div>
-            <h1>心镜</h1>
-            <p>给家长一面温柔的回声</p>
-          </div>
-        </header>
+          <span className="home-profile-copy">
+            <span className="entry-title">建立孩子画像</span>
+            <span className="entry-desc">先认识孩子，再判断怎么支持</span>
+          </span>
+          <span className="entry-action">
+            去建立
+            <ChevronRight size={16} style={{ marginLeft: 4 }} />
+          </span>
+        </div>
 
         <section className="talk-card">
           <div className="talk-card-top">
@@ -139,7 +168,7 @@ export default function HomePage() {
               className={`audio-play ${recording ? 'is-recording' : ''}`}
               type="button"
               onClick={recording ? finishVoice : startVoice}
-              disabled={loading || (!voice.isSupported && !text.trim())}
+              disabled={loading}
               aria-label={recording ? '结束录音' : '开始录音'}
             >
               {recording ? <Square size={20} /> : <Mic size={21} />}
@@ -148,7 +177,7 @@ export default function HomePage() {
         </section>
 
         <div className="record-area">
-          <div className="record-time">{recording ? '00:04' : '00:00'}</div>
+          <div className="record-time">{formatDuration(recording ? recordSeconds : 0)}</div>
           <button
             className={`record-orb ${recording ? 'recording' : ''}`}
             type="button"
@@ -169,11 +198,11 @@ export default function HomePage() {
 
         {toast ? <div className="toast">{toast}</div> : null}
         <nav className="talk-tabs" aria-label="底部模块">
-          <button type="button" className="active" onClick={() => setToast('你已经在对话入口，可以直接说一件挂心的小事。')}>
+          <button type="button" className="active" onClick={() => setToast('你已经在对话页，可以直接说一件挂心的小事。')}>
             <MessageCircle size={20} />
             <span>对话</span>
           </button>
-          <button type="button" onClick={() => router.push('/rehearsal/input?standalone=1')}>
+          <button type="button" onClick={() => router.push('/rehearsal')}>
             <Mic size={20} />
             <span>沟通预演</span>
           </button>

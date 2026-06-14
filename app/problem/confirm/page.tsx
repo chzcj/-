@@ -45,7 +45,7 @@ function ConfirmPageContent() {
     if (!conversationId || !state || loading) return;
     try {
       setLoading(true);
-      const result = await apiClient.submitProblemAnswer({ conversationId, round: Math.min(state.currentRound, 7), inputMode, text });
+      const result = await apiClient.submitProblemAnswer({ conversationId, round: state.currentRound, inputMode, text });
       if (!result.ok) {
         setError(result.error.message);
         return;

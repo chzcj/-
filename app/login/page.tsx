@@ -32,6 +32,19 @@ export default function LoginPage() {
     setLoading(false);
   }
 
+  async function enterDemoMode() {
+    if (loading) return;
+    setLoading(true);
+    setToast('');
+    const result = await apiClient.demoLogin();
+    if (result.ok) {
+      router.replace('/home');
+    } else {
+      setToast(result.error.message);
+    }
+    setLoading(false);
+  }
+
   return (
     <AppShell>
       <div className="page without-voice auth-page">
@@ -69,7 +82,7 @@ export default function LoginPage() {
             <UserPlus size={16} />
             {mode === 'login' ? '还没有账号，去注册' : '已有账号，去登录'}
           </SecondaryButton>
-          <SecondaryButton disabled={loading} onClick={() => router.replace('/home')}>先用演示模式进入</SecondaryButton>
+          <SecondaryButton disabled={loading} onClick={enterDemoMode}>先用演示模式进入</SecondaryButton>
         </section>
       </div>
     </AppShell>
