@@ -35,6 +35,10 @@ type MemoryItem<T> = { itemId: string; familyId?: string; childId?: string; data
 function getServerMemoryStore(): ServerMemoryStore {
   const globalStore = globalThis as typeof globalThis & { __childosServerMemoryStore?: ServerMemoryStore }
   if (!globalStore.__childosServerMemoryStore) {
+    // 首次降级到进程内存时显式告警一次，避免静默掩盖「数据未持久化」（交付文档 10.4）。
+    if (!isDatabaseEnabled()) {
+      console.warn('[childos] ⚠️ 数据库未启用（DATABASE_URL 未配置或 NEXT_PUBLIC_USE_MOCK!=false），记忆数据写入进程内存，进程重启后将丢失。生产环境请配置持久化数据库。')
+    }
     globalStore.__childosServerMemoryStore = {}
   }
   return globalStore.__childosServerMemoryStore
