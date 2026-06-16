@@ -112,13 +112,16 @@ export async function POST(request: Request) {
       }
     })
 
-    const writeResult = await runMemoryWritePipeline(writePlan)
+    // 后台记忆写入异步执行，不阻塞画像生成返回（交付文档 6.3）。
+    // 输出 diagnosis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
+    void runMemoryWritePipeline(writePlan).catch((err) => {
+      console.error('[diagnosis] 后台记忆写入失败:', err)
+    })
 
     return NextResponse.json({
       ok: true,
       data: {
-        diagnosis: output,
-        memoryWrite: writeResult
+        diagnosis: output
       }
     })
   } catch (error) {
