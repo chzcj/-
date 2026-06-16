@@ -46,7 +46,8 @@ export async function POST(request: Request) {
         userText,
         output.relationshipToExistingModel.type,
         output.retrievedContext.relevantEntryEvidencePacks,
-        tenant
+        tenant,
+        traceId
       )],
       rationale: {
         whyUpdate: '日常对话调度完成',
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
     })
 
     // 后台记忆写入入队（可靠重试，文档 14.3）。plan 内 itemId 已固定 → executeWritePlan 幂等，无需去重键。
-    void enqueueJob('memory_write', { plan: writePlan, tenant })
+    void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
 
     return NextResponse.json({
       ok: true,

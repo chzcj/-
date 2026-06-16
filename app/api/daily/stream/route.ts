@@ -59,7 +59,7 @@ export async function POST(request: Request) {
             // 尝试 LLM 流式生成 visibleReply；无 key 或失败时降级为规则文案
             const streamed = await callAgentTextStream(
               'dailyDialogueOrchestration',
-              '基于已掌握的家庭理解，对家长本轮输入生成一段自然、简洁、有上下文感的前台回复。只输出这段回复本身，不要输出 JSON、字段名或内部分类。',
+              '基于已掌握的家庭理解，对家长本轮输入生成一段自然、简洁、有上下文感的前台回复。只输出这段回复本身，不要输出 JSON、字段名或内部分类。如果需要提关键追问，必须先用一句话说明"这里想区分 X 还是 Y"再问，每轮最多一个问题。',
               {
                 userText: text,
                 maturityLevel: output.contextMaturityLevel,
@@ -93,7 +93,8 @@ export async function POST(request: Request) {
               text,
               output.relationshipToExistingModel.type,
               output.retrievedContext.relevantEntryEvidencePacks,
-              tenant
+              tenant,
+              traceId
             )],
             rationale: {
               whyUpdate: '日常对话调度完成',
@@ -102,14 +103,14 @@ export async function POST(request: Request) {
               nextVerificationNeed: output.routingDecision.needFollowup ? output.routingDecision.followupQuestion : ''
             }
           })
-          void enqueueJob('memory_write', { plan: writePlan, tenant })
+          void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
 
           // Episode 抽取入队：episodeId 按 (tenant + sha(text)) 派生作幂等键，去重双提交 + 重试不重复建。
           const episodeId = deriveEpisodeId(text, { familyId: tenant.familyId, childId: tenant.childId })
           void enqueueJob('episode_ingest', {
             text,
             ctx: { sourceEventId: traceId, familyId: tenant.familyId, childId: tenant.childId, episodeId }
-          }, episodeId)
+          }, episodeId, traceId)
 
           controller.close()
         } catch (error) {

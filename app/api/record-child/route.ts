@@ -69,7 +69,7 @@ export async function POST(request: Request) {
   void enqueueJob('episode_ingest', {
     text: recordText,
     ctx: { sourceEventId: eventId || undefined, familyId: identity.familyId, childId: identity.childId, episodeId }
-  }, episodeId);
+  }, episodeId, eventId || undefined);
 
   return ok({
     eventId: eventId || `local_${Date.now()}`,

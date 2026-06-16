@@ -244,7 +244,7 @@ export async function executeWritePlan(plan: MemoryWritePlan, tenant: TenantId) 
   }
 }
 
-export function createDailyUpdate(input: string, classification: InputClassification, matchedMechanisms: string[], tenant: TenantId): DailyInteractionUpdate {
+export function createDailyUpdate(input: string, classification: InputClassification, matchedMechanisms: string[], tenant: TenantId, sourceEventId?: string): DailyInteractionUpdate {
   return {
     updateId: createId('update'),
     familyId: tenant.familyId,
@@ -257,6 +257,7 @@ export function createDailyUpdate(input: string, classification: InputClassifica
     memoryImpact: classification === 'counter_evidence' ? 'decrease_strength' : 'increase_strength',
     updatedTargets: [],
     timestamp: new Date().toISOString(),
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    sourceEventId
   }
 }

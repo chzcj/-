@@ -50,6 +50,7 @@ const SCHEMA_SQL = `
     payload         JSONB NOT NULL,
     status          TEXT NOT NULL DEFAULT 'pending',
     idempotency_key TEXT,
+    trace_id        TEXT,
     attempts        INT  NOT NULL DEFAULT 0,
     max_attempts    INT  NOT NULL DEFAULT 5,
     run_after       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -60,6 +61,7 @@ const SCHEMA_SQL = `
   CREATE UNIQUE INDEX IF NOT EXISTS uq_job_idem ON job_queue (idempotency_key) WHERE idempotency_key IS NOT NULL;
   CREATE INDEX IF NOT EXISTS idx_job_claim ON job_queue (status, run_after) WHERE status IN ('pending','retrying');
   CREATE INDEX IF NOT EXISTS idx_job_running ON job_queue (status, updated_at) WHERE status = 'running';
+  CREATE INDEX IF NOT EXISTS idx_job_trace ON job_queue (trace_id) WHERE trace_id IS NOT NULL;
 `
 
 // 独立 ready 标记；失败清空以便下次重试，绝不掺迁移，不污染主 schema。
@@ -94,7 +96,8 @@ function runJobInline(jobType: JobType, payload: unknown): Promise<void> {
 }
 
 // 入队。统一 JSON 往返让两条路径 handler 只见纯数据；DB 关→inline；入队失败→回退 inline（不丢数据）。
-export async function enqueueJob(jobType: JobType, payload: unknown, idemKey?: string | null): Promise<void> {
+// traceId 写入 trace_id 列，使一次用户对话产生的 memory_write + episode_ingest 两个 job 可按 traceId 关联追溯。
+export async function enqueueJob(jobType: JobType, payload: unknown, idemKey?: string | null, traceId?: string | null): Promise<void> {
   const normalized = JSON.parse(JSON.stringify(payload))
 
   if (!isDatabaseEnabled()) {
@@ -110,10 +113,10 @@ export async function enqueueJob(jobType: JobType, payload: unknown, idemKey?: s
   try {
     await ensureJobSchema(pool)
     await pool.query(
-      `INSERT INTO job_queue (job_type, payload, idempotency_key)
-       VALUES ($1, $2::jsonb, $3)
+      `INSERT INTO job_queue (job_type, payload, idempotency_key, trace_id)
+       VALUES ($1, $2::jsonb, $3, $4)
        ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING`,
-      [jobType, JSON.stringify(normalized), idemKey ?? null]
+      [jobType, JSON.stringify(normalized), idemKey ?? null, traceId ?? null]
     )
   } catch (err) {
     console.error('[jobs] enqueue 失败，回退 inline:', jobType, err)

@@ -4,6 +4,7 @@ import { buildSynthesisRetrievalPacket } from '@/lib/server/memory/retrieval/rou
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
+import { createId } from '@/lib/storage/storageIds'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import type { EntryEvidencePack, EntryName } from '@/types/database'
 
@@ -163,7 +164,7 @@ export async function POST(request: Request) {
     })
 
     // 后台记忆写入入队（可靠重试）。输出 synthesis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
-    void enqueueJob('memory_write', { plan: writePlan, tenant })
+    void enqueueJob('memory_write', { plan: writePlan, tenant }, null, createId('trace'))
 
     return NextResponse.json({
       ok: true,

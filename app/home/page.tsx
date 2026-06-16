@@ -26,6 +26,7 @@ export default function HomePage() {
 
   useEffect(() => {
     router.prefetch('/problem/start');
+    router.prefetch('/daily');
     router.prefetch('/rehearsal');
     router.prefetch('/record-child');
     router.prefetch('/family-planner');
@@ -76,24 +77,9 @@ export default function HomePage() {
       setToast('你可以先说一件最挂心的小事，或者在输入框里打字。');
       return;
     }
-    try {
-      setLoading(true);
-      setToast('');
-      const result = await apiClient.startConversation();
-      if (!result.ok) {
-        setToast(result.error.message);
-        return;
-      }
-      setConversationId(result.data.conversationId);
-      setCurrentRound(result.data.currentRound);
-      window.sessionStorage.setItem(
-        `childos_pending_answer_${result.data.conversationId}`,
-        JSON.stringify({ conversationId: result.data.conversationId, round: 1, inputMode, text: value })
-      );
-      router.push(`/problem/follow-up?conversationId=${result.data.conversationId}&round=2&stream=1`);
-    } finally {
-      setLoading(false);
-    }
+    // 主入口进入新版日常对话（合并深度复盘，交付文档 4）：首条输入暂存后跳转 /daily 流式开聊。
+    window.sessionStorage.setItem('childos_daily_pending', JSON.stringify({ text: value, inputMode }));
+    router.push('/daily');
   }
 
   function startVoice() {

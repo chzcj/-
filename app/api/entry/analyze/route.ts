@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       void enqueueJob('episode_ingest', {
         text: rawText,
         ctx: { sourceEventId: `entry_${entryType}`, familyId: tenant.familyId, childId: tenant.childId, episodeId }
-      }, null)
+      }, null, `entry_${entryType}`)
 
       return NextResponse.json({ ok: true, data: result })
     }

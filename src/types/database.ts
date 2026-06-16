@@ -400,6 +400,7 @@ export interface DailyInteractionUpdate {
   updatedTargets: string[]
   timestamp: string
   createdAt: string
+  sourceEventId?: string  // traceId：贯穿 userMessage→memory write→episode→job 的可追溯链路
 }
 
 /* ================================================================
