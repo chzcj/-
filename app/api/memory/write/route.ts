@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate, classifyInputForMemory } from '@/lib/server/memory/write/decision-engine'
+import { resolveTenant } from '@/lib/server/memory/tenant'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 
 export async function POST(request: Request) {
@@ -15,10 +16,16 @@ export async function POST(request: Request) {
       newInput = ''
     } = body
 
+    const tenant = await resolveTenant({
+      familyId: (body as { familyId?: string }).familyId || 'f_demo',
+      childId: (body as { childId?: string }).childId || 'c_demo'
+    })
+
     const classification = classifyInputForMemory(newInput, [], false)
-    const dailyUpdate = createDailyUpdate(newInput, classification, [])
+    const dailyUpdate = createDailyUpdate(newInput, classification, [], tenant)
 
     const writePlan = buildMemoryWritePlan({
+      tenant,
       rawMaterials,
       cleanedFacts,
       entryEvidencePacks,
@@ -31,7 +38,7 @@ export async function POST(request: Request) {
       }
     })
 
-    const result = await runMemoryWritePipeline(writePlan)
+    const result = await runMemoryWritePipeline(writePlan, tenant)
 
     return NextResponse.json({
       ok: result.ok,

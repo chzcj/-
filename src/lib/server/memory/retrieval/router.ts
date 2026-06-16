@@ -8,6 +8,7 @@ import type {
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
 import { isEmbeddingEnabled, rankByRelevance } from '../embedding'
 import { retrieveContextPack } from './episode-retriever'
+import type { TenantId } from '../tenant'
 import {
   getEntryEvidencePacks,
   getEntryEvidencePack,
@@ -32,15 +33,15 @@ function promoteMaturity(
   return currentLevel
 }
 
-export async function buildDailyDialogueRetrievalPacket(query?: string): Promise<DailyDialogueRetrievalPacket> {
-  const maturity = getCurrentMaturityState()
+export async function buildDailyDialogueRetrievalPacket(query: string | undefined, tenant: TenantId): Promise<DailyDialogueRetrievalPacket> {
+  const maturity = getCurrentMaturityState(tenant)
   const [profiles, packs, updates, hypotheses, network, model] = await Promise.all([
-    getConditionalProfiles(),
-    getEntryEvidencePacks(),
-    getDailyInteractionUpdates(),
-    getPendingHypotheses(),
-    getLatestEvidenceNetwork(),
-    getLatestChildStructureModel()
+    getConditionalProfiles(tenant),
+    getEntryEvidencePacks(tenant),
+    getDailyInteractionUpdates(tenant),
+    getPendingHypotheses(tenant),
+    getLatestEvidenceNetwork(tenant),
+    getLatestChildStructureModel(tenant)
   ])
   const effectiveLevel = promoteMaturity(maturity.level, {
     profiles: profiles.length,
@@ -55,7 +56,7 @@ export async function buildDailyDialogueRetrievalPacket(query?: string): Promise
   // 三级降级链：① 三层语义检索(Episode场景包) → ② 应用层 rankByRelevance → ③ 取最近。
   let recentEvents: string[]
   let supportingEvidence: string[]
-  const pack = query ? await retrieveContextPack(query) : undefined
+  const pack = query ? await retrieveContextPack(query, { familyId: tenant.familyId, childId: tenant.childId }) : undefined
   if (pack) {
     // ① Episode 召回：summary 作为支撑证据，叠加高价值 Atom（孩子原话/反证等）
     const episodeTexts = pack.episodes.map(e => e.summary)
@@ -106,15 +107,15 @@ export async function buildDailyDialogueRetrievalPacket(query?: string): Promise
   }
 }
 
-export async function buildDiagnosisRetrievalPacket(): Promise<DiagnosisRetrievalPacket> {
-  const maturity = getCurrentMaturityState()
+export async function buildDiagnosisRetrievalPacket(tenant: TenantId): Promise<DiagnosisRetrievalPacket> {
+  const maturity = getCurrentMaturityState(tenant)
   const [packs, profiles, network, hypotheses, cycles, model] = await Promise.all([
-    getEntryEvidencePacks(),
-    getConditionalProfiles(),
-    getLatestEvidenceNetwork(),
-    getPendingHypotheses(),
-    getFamilyInteractionCycles(),
-    getLatestChildStructureModel()
+    getEntryEvidencePacks(tenant),
+    getConditionalProfiles(tenant),
+    getLatestEvidenceNetwork(tenant),
+    getPendingHypotheses(tenant),
+    getFamilyInteractionCycles(tenant),
+    getLatestChildStructureModel(tenant)
   ])
   const effectiveLevel = promoteMaturity(maturity.level, {
     profiles: profiles.length,
@@ -140,8 +141,8 @@ export async function buildDiagnosisRetrievalPacket(): Promise<DiagnosisRetrieva
   }
 }
 
-export async function buildEntryCollectionRetrievalPacket(targetEntry: EntryName): Promise<EntryCollectionRetrievalPacket> {
-  const existingPack = await getEntryEvidencePack(targetEntry)
+export async function buildEntryCollectionRetrievalPacket(targetEntry: EntryName, tenant: TenantId): Promise<EntryCollectionRetrievalPacket> {
+  const existingPack = await getEntryEvidencePack(targetEntry, tenant)
 
   return {
     retrievalPurpose: 'entry_collection',
@@ -162,15 +163,15 @@ export async function buildEntryCollectionRetrievalPacket(targetEntry: EntryName
   }
 }
 
-export async function buildSynthesisRetrievalPacket(): Promise<SynthesisRetrievalPacket> {
-  const maturity = getCurrentMaturityState()
+export async function buildSynthesisRetrievalPacket(tenant: TenantId): Promise<SynthesisRetrievalPacket> {
+  const maturity = getCurrentMaturityState(tenant)
   const [packs, profiles, hypotheses, updates, network, model] = await Promise.all([
-    getEntryEvidencePacks(),
-    getConditionalProfiles(),
-    getPendingHypotheses(),
-    getDailyInteractionUpdates(),
-    getLatestEvidenceNetwork(),
-    getLatestChildStructureModel()
+    getEntryEvidencePacks(tenant),
+    getConditionalProfiles(tenant),
+    getPendingHypotheses(tenant),
+    getDailyInteractionUpdates(tenant),
+    getLatestEvidenceNetwork(tenant),
+    getLatestChildStructureModel(tenant)
   ])
   const effectiveLevel = promoteMaturity(maturity.level, {
     profiles: profiles.length,

@@ -110,17 +110,32 @@ export async function ensureDbSchema() {
       CREATE TABLE IF NOT EXISTS memory_layer_items (
         layer_name TEXT NOT NULL,
         item_id TEXT NOT NULL,
-        family_id TEXT NOT NULL DEFAULT 'family_demo',
-        child_id TEXT NOT NULL DEFAULT 'child_demo',
+        family_id TEXT NOT NULL DEFAULT 'f_demo',
+        child_id TEXT NOT NULL DEFAULT 'c_demo',
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (layer_name, item_id)
+        PRIMARY KEY (family_id, child_id, layer_name, item_id)
       );
 
       CREATE INDEX IF NOT EXISTS idx_memory_layer_items_family_child
         ON memory_layer_items (family_id, child_id, layer_name, updated_at DESC);
-    `).then(() => undefined);
+    `).then(() => pool.query(`
+      DO $$ BEGIN
+        -- 存量 demo 数据统一到 f_demo/c_demo（记忆域旧值 family_demo/child_demo）
+        UPDATE memory_layer_items SET family_id='f_demo' WHERE family_id='family_demo';
+        UPDATE memory_layer_items SET child_id='c_demo'  WHERE child_id='child_demo';
+        -- entry_evidence_packs 存量裸 itemId 补租户前缀（避免改 PK 后与新写入冲突）
+        UPDATE memory_layer_items SET item_id = family_id||':'||child_id||':'||item_id
+          WHERE layer_name='entry_evidence_packs' AND item_id LIKE 'entry:%';
+        -- 改 PK 加租户（CREATE TABLE IF NOT EXISTS 不会改既有表）
+        IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname='memory_layer_items_pkey') THEN
+          ALTER TABLE memory_layer_items DROP CONSTRAINT memory_layer_items_pkey;
+        END IF;
+        ALTER TABLE memory_layer_items ADD PRIMARY KEY (family_id, child_id, layer_name, item_id);
+      EXCEPTION WHEN others THEN RAISE NOTICE 'memory_layer_items migration skipped: %', SQLERRM;
+      END $$;
+    `)).then(() => undefined);
   }
   await globalDb.__childosPgSchemaReady;
 }
@@ -146,8 +161,8 @@ async function ensureVectorSchema(): Promise<boolean> {
         await pool.query(`
           CREATE TABLE IF NOT EXISTS evidence_episodes (
             episode_id TEXT PRIMARY KEY,
-            family_id TEXT NOT NULL DEFAULT 'family_demo',
-            child_id TEXT NOT NULL DEFAULT 'child_demo',
+            family_id TEXT NOT NULL DEFAULT 'f_demo',
+            child_id TEXT NOT NULL DEFAULT 'c_demo',
             source_event_id TEXT,
             summary TEXT NOT NULL,
             parent_interpretation TEXT,
@@ -162,8 +177,8 @@ async function ensureVectorSchema(): Promise<boolean> {
           CREATE TABLE IF NOT EXISTS fact_atoms (
             atom_id TEXT PRIMARY KEY,
             episode_id TEXT NOT NULL,
-            family_id TEXT NOT NULL DEFAULT 'family_demo',
-            child_id TEXT NOT NULL DEFAULT 'child_demo',
+            family_id TEXT NOT NULL DEFAULT 'f_demo',
+            child_id TEXT NOT NULL DEFAULT 'c_demo',
             content TEXT NOT NULL,
             source_type TEXT NOT NULL,
             fact_type TEXT,
@@ -230,7 +245,7 @@ export async function upsertEpisodes(rows: EpisodeRow[]): Promise<number | undef
          mechanism_tags=EXCLUDED.mechanism_tags, embedding=EXCLUDED.embedding,
          source_created_at=EXCLUDED.source_created_at, updated_at=NOW()`,
       [
-        r.episodeId, r.familyId || 'family_demo', r.childId || 'child_demo',
+        r.episodeId, r.familyId || 'f_demo', r.childId || 'c_demo',
         r.sourceEventId || null, r.summary, r.parentInterpretation || null,
         r.missingInfo || [], r.sceneTags || [], r.mechanismTags || [],
         toVectorLiteral(r.embedding), r.sourceCreatedAt || null
@@ -269,7 +284,7 @@ export async function upsertAtoms(rows: AtomRow[]): Promise<number | undefined> 
          is_high_value=EXCLUDED.is_high_value, evidence_strength=EXCLUDED.evidence_strength,
          embedding=EXCLUDED.embedding`,
       [
-        r.atomId, r.episodeId, r.familyId || 'family_demo', r.childId || 'child_demo',
+        r.atomId, r.episodeId, r.familyId || 'f_demo', r.childId || 'c_demo',
         r.content, r.sourceType, r.factType || null, r.isHighValue,
         r.evidenceStrength || 'medium', toVectorLiteral(r.embedding)
       ]
@@ -290,8 +305,8 @@ export interface FactAtomRecord {
 
 export async function getAtomsByEpisodeIds(
   episodeIds: string[],
-  familyId = 'family_demo',
-  childId = 'child_demo'
+  familyId = 'f_demo',
+  childId = 'c_demo'
 ): Promise<FactAtomRecord[] | undefined> {
   if (episodeIds.length === 0) return [];
   if (!(await ensureVectorSchema())) return undefined;
@@ -340,7 +355,7 @@ export async function searchEpisodes(
   if (!(await ensureVectorSchema())) return undefined;
   const pool = getPool();
   if (!pool) return undefined;
-  const params: unknown[] = [toVectorLiteral(queryEmbedding), opts.familyId || 'family_demo', opts.childId || 'child_demo'];
+  const params: unknown[] = [toVectorLiteral(queryEmbedding), opts.familyId || 'f_demo', opts.childId || 'c_demo'];
   const scene = opts.sceneTags || [];
   const mech = opts.mechanismTags || [];
   let tagClause = '';
@@ -399,7 +414,7 @@ export async function searchHighValueAtoms(
      WHERE family_id = $2 AND child_id = $3 AND is_high_value = TRUE AND embedding IS NOT NULL
      ORDER BY embedding <=> $1::vector
      LIMIT $4`,
-    [toVectorLiteral(queryEmbedding), opts.familyId || 'family_demo', opts.childId || 'child_demo', opts.topK || 5]
+    [toVectorLiteral(queryEmbedding), opts.familyId || 'f_demo', opts.childId || 'c_demo', opts.topK || 5]
   );
   return result.rows.map(row => ({
     atomId: row.atom_id, episodeId: row.episode_id, content: row.content,
@@ -795,7 +810,7 @@ export async function rebuildFamilyMemoryDigest(familyId = 'f_demo', childId = '
   return { familyBrief, profileBoard };
 }
 
-export async function loadMemoryLayerItems<T>(layerName: string, familyId = 'family_demo', childId = 'child_demo'): Promise<T[] | undefined> {
+export async function loadMemoryLayerItems<T>(layerName: string, familyId = 'f_demo', childId = 'c_demo'): Promise<T[] | undefined> {
   const pool = getPool();
   if (!pool) return undefined;
   await ensureDbSchema();
@@ -812,8 +827,8 @@ export async function loadMemoryLayerItems<T>(layerName: string, familyId = 'fam
 export async function replaceMemoryLayerItems<T>(
   layerName: string,
   items: Array<{ itemId: string; familyId?: string; childId?: string; data: T }>,
-  familyId = 'family_demo',
-  childId = 'child_demo'
+  familyId = 'f_demo',
+  childId = 'c_demo'
 ) {
   const pool = getPool();
   if (!pool) return undefined;
@@ -830,7 +845,7 @@ export async function replaceMemoryLayerItems<T>(
       await client.query(
         `INSERT INTO memory_layer_items (layer_name, item_id, family_id, child_id, data)
          VALUES ($1, $2, $3, $4, $5::jsonb)
-         ON CONFLICT (layer_name, item_id)
+         ON CONFLICT (family_id, child_id, layer_name, item_id)
          DO UPDATE SET family_id = EXCLUDED.family_id,
                        child_id = EXCLUDED.child_id,
                        data = EXCLUDED.data,
@@ -857,8 +872,8 @@ export async function replaceMemoryLayerItems<T>(
 export async function upsertMemoryLayerItems<T>(
   layerName: string,
   items: Array<{ itemId: string; familyId?: string; childId?: string; data: T }>,
-  familyId = 'family_demo',
-  childId = 'child_demo'
+  familyId = 'f_demo',
+  childId = 'c_demo'
 ) {
   const pool = getPool();
   if (!pool) return undefined;
@@ -868,7 +883,7 @@ export async function upsertMemoryLayerItems<T>(
     await pool.query(
       `INSERT INTO memory_layer_items (layer_name, item_id, family_id, child_id, data)
        VALUES ($1, $2, $3, $4, $5::jsonb)
-       ON CONFLICT (layer_name, item_id)
+       ON CONFLICT (family_id, child_id, layer_name, item_id)
        DO UPDATE SET family_id = EXCLUDED.family_id,
                      child_id = EXCLUDED.child_id,
                      data = EXCLUDED.data,

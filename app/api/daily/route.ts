@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { runOrchestrationPipeline } from '@/lib/server/orchestration/pipeline'
 import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
+import { resolveTenant } from '@/lib/server/memory/tenant'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 
@@ -21,10 +22,12 @@ export async function POST(request: Request) {
 
     const userText = text.trim()
     const traceId = createId('trace')
+    const tenant = await resolveTenant()
 
     const output = await runOrchestrationPipeline({
       userText,
-      maturityLevel
+      maturityLevel,
+      tenant
     })
 
     // 前台只暴露家长可见信息：回复正文 + 关联领域名。
@@ -37,10 +40,12 @@ export async function POST(request: Request) {
     // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）。
     // 写入失败只记录日志、不影响前台返回；重试机制由后续 job_queue 改进承接。
     const writePlan = buildMemoryWritePlan({
+      tenant,
       dailyUpdates: [createDailyUpdate(
         userText,
         output.relationshipToExistingModel.type,
-        output.retrievedContext.relevantEntryEvidencePacks
+        output.retrievedContext.relevantEntryEvidencePacks,
+        tenant
       )],
       rationale: {
         whyUpdate: '日常对话调度完成',
@@ -50,7 +55,7 @@ export async function POST(request: Request) {
       }
     })
 
-    void runMemoryWritePipeline(writePlan).catch((err) => {
+    void runMemoryWritePipeline(writePlan, tenant).catch((err) => {
       console.error(`[daily] 后台记忆写入失败 traceId=${traceId}:`, err)
     })
 

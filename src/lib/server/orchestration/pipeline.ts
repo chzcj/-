@@ -12,6 +12,7 @@ import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
 import { createId } from '@/lib/storage/storageIds'
 import { FORBIDDEN_PARENT_LABELS, SAFETY_KEYWORDS } from '@/lib/server/constitution'
+import type { TenantId } from '@/lib/server/memory/tenant'
 
 /* ================================================================
    Orchestration Pipeline — 日常对话调度 Agent 编排
@@ -21,11 +22,12 @@ import { FORBIDDEN_PARENT_LABELS, SAFETY_KEYWORDS } from '@/lib/server/constitut
 export interface OrchestrationInput {
   userText: string
   maturityLevel?: MaturityLevel
+  tenant: TenantId
 }
 
 export async function runOrchestrationPipeline(input: OrchestrationInput): Promise<OrchestrationOutput> {
-  const maturity = input.maturityLevel ? { level: input.maturityLevel } : getCurrentMaturityState()
-  const retrievalPacket = await buildDailyDialogueRetrievalPacket(input.userText)
+  const maturity = input.maturityLevel ? { level: input.maturityLevel } : getCurrentMaturityState(input.tenant)
+  const retrievalPacket = await buildDailyDialogueRetrievalPacket(input.userText, input.tenant)
   const effectiveMaturity = retrievalPacket.contextMaturityLevel || maturity.level
 
   const inputType = classifyInputType(input.userText)

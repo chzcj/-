@@ -35,8 +35,8 @@ function getMaturity(): ContextMaturityState {
     return getCurrentMaturityState()
   } catch {
     return {
-      familyId: 'family_demo',
-      childId: 'child_demo',
+      familyId: 'f_demo',
+      childId: 'c_demo',
       level: 'L0',
       entryCompletion: {
         learning_homework: false,

@@ -1,7 +1,7 @@
 import type { ChildOSLocalStorageV1 } from '@/types/storage'
 
-export const DEFAULT_FAMILY_ID = process.env.NEXT_PUBLIC_FAMILY_ID || 'family_demo'
-export const DEFAULT_CHILD_ID = process.env.NEXT_PUBLIC_CHILD_ID || 'child_demo'
+export const DEFAULT_FAMILY_ID = process.env.NEXT_PUBLIC_FAMILY_ID || 'f_demo'
+export const DEFAULT_CHILD_ID = process.env.NEXT_PUBLIC_CHILD_ID || 'c_demo'
 
 export function createInitialStorage(): ChildOSLocalStorageV1 {
   const now = new Date().toISOString()

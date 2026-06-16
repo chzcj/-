@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { runMemoryRetrievePipeline } from '@/lib/server/memory/pipeline'
+import { resolveTenant } from '@/lib/server/memory/tenant'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import type { EntryName } from '@/types/database'
 
@@ -16,7 +17,12 @@ export async function GET(request: Request) {
       ? purpose as typeof validPurposes[number]
       : 'daily_dialogue'
 
-    const result = await runMemoryRetrievePipeline(safePurpose as 'daily_dialogue' | 'deep_diagnosis' | 'entry_collection' | 'multi_entry_synthesis', targetEntry || undefined)
+    const tenant = await resolveTenant({
+      familyId: url.searchParams.get('familyId') || 'f_demo',
+      childId: url.searchParams.get('childId') || 'c_demo'
+    })
+
+    const result = await runMemoryRetrievePipeline(safePurpose as 'daily_dialogue' | 'deep_diagnosis' | 'entry_collection' | 'multi_entry_synthesis', tenant, targetEntry || undefined)
 
     return NextResponse.json({
       ok: true,

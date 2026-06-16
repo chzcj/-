@@ -7,6 +7,7 @@ import type {
   DailyInteractionUpdate
 } from '@/types/database'
 import { createId } from '@/lib/storage/storageIds'
+import type { TenantId } from './tenant'
 
 /* ================================================================
    Index Tag Engine — 四维标签引擎（场景/机制/证据/时间）
@@ -66,12 +67,13 @@ export function buildRetrievalIndex(
   sceneTags: string[],
   mechanismTags: string[],
   evidenceStrength: EvidenceStrength,
-  timeTags: string[]
+  timeTags: string[],
+  tenant: TenantId
 ): RetrievalIndex {
   return {
     indexId: createId('idx'),
-    familyId: 'family_demo',
-    childId: 'child_demo',
+    familyId: tenant.familyId,
+    childId: tenant.childId,
     linkedItemId,
     linkedItemLayer,
     sceneTags,
@@ -82,7 +84,7 @@ export function buildRetrievalIndex(
   }
 }
 
-export function buildIndexesForMaterial(material: RawMaterial): RetrievalIndex {
+export function buildIndexesForMaterial(material: RawMaterial, tenant: TenantId): RetrievalIndex {
   const sceneTags = autoTagMaterial(material)
   return buildRetrievalIndex(
     material.materialId,
@@ -90,11 +92,12 @@ export function buildIndexesForMaterial(material: RawMaterial): RetrievalIndex {
     sceneTags,
     [],
     'medium',
-    [new Date(material.createdAt).getTime() > Date.now() - 7 * 86400000 ? '最近7天' : '最近30天']
+    [new Date(material.createdAt).getTime() > Date.now() - 7 * 86400000 ? '最近7天' : '最近30天'],
+    tenant
   )
 }
 
-export function buildIndexesForEvidencePack(pack: EntryEvidencePack): RetrievalIndex {
+export function buildIndexesForEvidencePack(pack: EntryEvidencePack, tenant: TenantId): RetrievalIndex {
   const mechanismTags = pack.candidateMechanisms.map(m => m.mechanismName)
   return buildRetrievalIndex(
     pack.packId,
@@ -102,18 +105,20 @@ export function buildIndexesForEvidencePack(pack: EntryEvidencePack): RetrievalI
     pack.decomposedInput.verifiableFacts.slice(0, 3),
     mechanismTags,
     'medium',
-    ['首次五入口']
+    ['首次五入口'],
+    tenant
   )
 }
 
-export function buildIndexesForDailyUpdate(update: DailyInteractionUpdate): RetrievalIndex {
+export function buildIndexesForDailyUpdate(update: DailyInteractionUpdate, tenant: TenantId): RetrievalIndex {
   return buildRetrievalIndex(
     update.updateId,
     'daily_interaction_update',
     [],
     update.matchedMechanisms,
     'medium',
-    ['最近7天']
+    ['最近7天'],
+    tenant
   )
 }
 

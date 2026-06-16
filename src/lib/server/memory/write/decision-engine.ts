@@ -30,6 +30,7 @@ import {
   buildIndexesForEvidencePack,
   buildIndexesForDailyUpdate
 } from '../index-tag-engine'
+import type { TenantId } from '../tenant'
 import { createId } from '@/lib/storage/storageIds'
 
 /* ================================================================
@@ -61,6 +62,7 @@ export function classifyInputForMemory(
 }
 
 export function buildMemoryWritePlan(options: {
+  tenant: TenantId
   rawMaterials?: RawMaterial[]
   cleanedFacts?: CleanedFact[]
   entryEvidencePacks?: EntryEvidencePack[]
@@ -89,8 +91,8 @@ export function buildMemoryWritePlan(options: {
   const diagnosisPrimaryProfile: ConditionalProfile | null = diagnosisProfileText
     ? {
         profileId: createId('prof'),
-        familyId: 'family_demo',
-        childId: 'child_demo',
+        familyId: options.tenant.familyId,
+        childId: options.tenant.childId,
         status: 'stage_judgment',
         triggerScene: diagnosis?.surfaceProblem || '',
         childTendency: diagnosisProfileText,
@@ -110,8 +112,8 @@ export function buildMemoryWritePlan(options: {
   const diagnosisInteractionCycles: FamilyInteractionCycle[] = diagnosisCycle?.patternName
     ? [{
         cycleId: createId('cycle'),
-        familyId: 'family_demo',
-        childId: 'child_demo',
+        familyId: options.tenant.familyId,
+        childId: options.tenant.childId,
         cycleName: diagnosisCycle.patternName,
         parentTriggerAction: diagnosis?.primaryMechanismChain?.parentAction || '',
         parentReasonableGoal: '帮助孩子进步',
@@ -132,8 +134,8 @@ export function buildMemoryWritePlan(options: {
   const diagnosisModel: ChildStructureModel | undefined = diagnosis && diagnosisPrimaryProfile
     ? {
         modelId: createId('model'),
-        familyId: 'family_demo',
-        childId: 'child_demo',
+        familyId: options.tenant.familyId,
+        childId: options.tenant.childId,
         maturityLevel: diagnosis.contextMaturityLevel,
         primaryConditionalProfile: diagnosisPrimaryProfile,
         secondaryConditionalProfiles: [],
@@ -158,8 +160,8 @@ export function buildMemoryWritePlan(options: {
     crossEntryNetworksToUpdate: synthesis
       ? [{
           networkId: createId('net'),
-          familyId: 'family_demo',
-          childId: 'child_demo',
+          familyId: options.tenant.familyId,
+          childId: options.tenant.childId,
           maturityLevel: synthesis.contextMaturityLevel,
           inputCoverage: synthesis.inputCoverage || {
             learning_homework: 'sufficient',
@@ -194,59 +196,59 @@ export function buildMemoryWritePlan(options: {
   }
 }
 
-export async function executeWritePlan(plan: MemoryWritePlan) {
+export async function executeWritePlan(plan: MemoryWritePlan, tenant: TenantId) {
   if (plan.rawMaterialsToWrite.length > 0) {
-    await saveRawMaterials(plan.rawMaterialsToWrite)
-    const materialIndexes = plan.rawMaterialsToWrite.map(m => buildIndexesForMaterial(m))
-    await saveRetrievalIndexes(materialIndexes)
+    await saveRawMaterials(plan.rawMaterialsToWrite, tenant)
+    const materialIndexes = plan.rawMaterialsToWrite.map(m => buildIndexesForMaterial(m, tenant))
+    await saveRetrievalIndexes(materialIndexes, tenant)
   }
 
   if (plan.cleanedFactsToWrite.length > 0) {
-    await saveCleanedFacts(plan.cleanedFactsToWrite)
+    await saveCleanedFacts(plan.cleanedFactsToWrite, tenant)
   }
 
   for (const pack of plan.entryEvidencePacksToUpdate) {
-    await saveEntryEvidencePack(pack)
-    await saveRetrievalIndexes([buildIndexesForEvidencePack(pack)])
+    await saveEntryEvidencePack(pack, tenant)
+    await saveRetrievalIndexes([buildIndexesForEvidencePack(pack, tenant)], tenant)
   }
 
   for (const network of plan.crossEntryNetworksToUpdate) {
-    await saveEvidenceNetwork(network)
+    await saveEvidenceNetwork(network, tenant)
   }
 
   for (const model of plan.childStructureModelsToCreateOrUpdate) {
-    await saveChildStructureModel(model)
+    await saveChildStructureModel(model, tenant)
     if (model.primaryConditionalProfile) {
-      await saveConditionalProfile(model.primaryConditionalProfile)
+      await saveConditionalProfile(model.primaryConditionalProfile, tenant)
     }
     for (const profile of model.secondaryConditionalProfiles) {
-      await saveConditionalProfile(profile)
+      await saveConditionalProfile(profile, tenant)
     }
   }
 
   if (plan.pendingHypothesesToCreateOrUpdate.length > 0) {
-    await savePendingHypotheses(plan.pendingHypothesesToCreateOrUpdate)
+    await savePendingHypotheses(plan.pendingHypothesesToCreateOrUpdate, tenant)
   }
 
   if (plan.familyInteractionCyclesToCreateOrUpdate.length > 0) {
-    await saveFamilyInteractionCycles(plan.familyInteractionCyclesToCreateOrUpdate)
+    await saveFamilyInteractionCycles(plan.familyInteractionCyclesToCreateOrUpdate, tenant)
   }
 
   for (const update of plan.dailyInteractionUpdatesToWrite) {
-    await saveDailyInteractionUpdate(update)
-    await saveRetrievalIndexes([buildIndexesForDailyUpdate(update)])
+    await saveDailyInteractionUpdate(update, tenant)
+    await saveRetrievalIndexes([buildIndexesForDailyUpdate(update, tenant)], tenant)
   }
 
   if (plan.retrievalTagsToAdd.length > 0) {
-    await saveRetrievalIndexes(plan.retrievalTagsToAdd)
+    await saveRetrievalIndexes(plan.retrievalTagsToAdd, tenant)
   }
 }
 
-export function createDailyUpdate(input: string, classification: InputClassification, matchedMechanisms: string[]): DailyInteractionUpdate {
+export function createDailyUpdate(input: string, classification: InputClassification, matchedMechanisms: string[], tenant: TenantId): DailyInteractionUpdate {
   return {
     updateId: createId('update'),
-    familyId: 'family_demo',
-    childId: 'child_demo',
+    familyId: tenant.familyId,
+    childId: tenant.childId,
     newInput: input,
     classification,
     matchedMechanisms,

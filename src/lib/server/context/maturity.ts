@@ -1,16 +1,19 @@
 import type { MaturityLevel, EntryName, ContextMaturityState } from '@/types/database'
 import { determineMaturityLevel } from '@/lib/server/constitution'
+import type { TenantId } from '@/lib/server/memory/tenant'
 
-const DEFAULT_FAMILY_ID = 'family_demo'
-const DEFAULT_CHILD_ID = 'child_demo'
+const DEFAULT_FAMILY_ID = 'f_demo'
+const DEFAULT_CHILD_ID = 'c_demo'
 
-export function getCurrentMaturityState(): ContextMaturityState {
+export function getCurrentMaturityState(tenant?: TenantId): ContextMaturityState {
   const now = new Date().toISOString()
+  const familyId = tenant?.familyId || DEFAULT_FAMILY_ID
+  const childId = tenant?.childId || DEFAULT_CHILD_ID
 
   if (typeof window === 'undefined') {
     return {
-      familyId: DEFAULT_FAMILY_ID,
-      childId: DEFAULT_CHILD_ID,
+      familyId,
+      childId,
       level: 'L0',
       entryCompletion: {
         learning_homework: false,

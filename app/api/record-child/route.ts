@@ -62,11 +62,10 @@ export async function POST(request: Request) {
   }
 
   // 后台抽取 EvidenceEpisode + FactAtom 并向量化（异步，不阻塞返回；内部已 try/catch）。
-  // 暂不传 familyId/childId，统一用 memory 层默认租户，保证与 daily 检索同租户、可跨入口召回；
-  // 真实多租户隔离留待「质量-1」统一从 identity 注入到写入+检索两端。
+  // 用登录用户的真实租户（identity），与 daily 检索 resolveTenant() 同源，可跨入口召回。
   void ingestEpisode(
     [input.eventText, input.changeText, input.worryText].filter(Boolean).join('。'),
-    { sourceEventId: eventId || undefined }
+    { sourceEventId: eventId || undefined, familyId: identity.familyId, childId: identity.childId }
   );
 
   return ok({

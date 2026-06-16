@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { callFastJson } from '@/lib/server/ark-agents'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { ingestEpisode } from '@/lib/server/memory/episode/pipeline'
+import { resolveTenant } from '@/lib/server/memory/tenant'
 
 const TITLE_MAP: Record<string, string> = {
   study: '学习作业', routine: '手机与日常节奏',
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
       ).catch(() => undefined)
 
       // 入口采集完成时抽取 Episode（首次建模的真实生活片段，异步不阻塞）
-      void ingestEpisode(rawText, { sourceEventId: `entry_${entryType}` })
+      const tenant = await resolveTenant()
+      void ingestEpisode(rawText, { sourceEventId: `entry_${entryType}`, familyId: tenant.familyId, childId: tenant.childId })
 
       return NextResponse.json({ ok: true, data: result })
     }

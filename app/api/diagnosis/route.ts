@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { runDiagnosisPipeline } from '@/lib/server/diagnosis/pipeline'
 import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { buildDiagnosisRetrievalPacket } from '@/lib/server/memory/retrieval/router'
+import { resolveTenant } from '@/lib/server/memory/tenant'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import type { DiagnosisTaskType, MaturityLevel, SynthesisOutput } from '@/types/database'
 
@@ -30,8 +31,6 @@ export async function POST(request: Request) {
       pendingHypotheses = [],
       maturityLevel,
       synthesisOutput,
-      familyId = 'family_demo',
-      childId = 'child_demo',
     } = body as {
       taskType?: DiagnosisTaskType
       surfaceProblem?: string
@@ -46,7 +45,13 @@ export async function POST(request: Request) {
       childId?: string
     }
 
-    const retrievalPacket = await buildDiagnosisRetrievalPacket()
+    const tenant = await resolveTenant({
+      familyId: (body as { familyId?: string }).familyId || 'f_demo',
+      childId: (body as { childId?: string }).childId || 'c_demo'
+    })
+    const { familyId, childId } = tenant
+
+    const retrievalPacket = await buildDiagnosisRetrievalPacket(tenant)
     const incomingFacts = asStringArray(facts)
     const incomingChildQuotes = asStringArray(childQuotes)
     const incomingParentQuotes = asStringArray(parentQuotes)
@@ -68,6 +73,7 @@ export async function POST(request: Request) {
     })
 
     const writePlan = buildMemoryWritePlan({
+      tenant,
       diagnosisOutput: output,
       conditionalProfiles: output.secondMeConditionalProfile.map((cp, i) => ({
         profileId: `prof-${Date.now()}-${i}`,
@@ -114,7 +120,7 @@ export async function POST(request: Request) {
 
     // 后台记忆写入异步执行，不阻塞画像生成返回（交付文档 6.3）。
     // 输出 diagnosis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
-    void runMemoryWritePipeline(writePlan).catch((err) => {
+    void runMemoryWritePipeline(writePlan, tenant).catch((err) => {
       console.error('[diagnosis] 后台记忆写入失败:', err)
     })
 

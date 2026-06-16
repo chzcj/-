@@ -2,6 +2,7 @@ import { runOrchestrationPipeline } from '@/lib/server/orchestration/pipeline'
 import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { ingestEpisode } from '@/lib/server/memory/episode/pipeline'
+import { resolveTenant } from '@/lib/server/memory/tenant'
 import { callAgentTextStream } from '@/lib/server/ark-agents'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
@@ -29,6 +30,8 @@ export async function POST(request: Request) {
 
   const traceId = createId('trace')
   const encoder = new TextEncoder()
+  // 在 POST 同步上下文解析租户（cookies() 合法），得到纯值供 stream 内与后台任务按值捕获。
+  const tenant = await resolveTenant()
 
   return new Response(
     new ReadableStream({
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
           send({ type: 'start', traceId })
 
           // 规则引擎：检索 + 分类 + 安全检测 + 结构化判断 + 降级文案
-          const output = await runOrchestrationPipeline({ userText: text, maturityLevel: maturityLevel as never })
+          const output = await runOrchestrationPipeline({ userText: text, maturityLevel: maturityLevel as never, tenant })
 
           const linkedAreas = output.retrievedContext.relevantEntryEvidencePacks
             .map((pack) => (pack as { entryName?: string }).entryName)
@@ -84,10 +87,12 @@ export async function POST(request: Request) {
 
           // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）
           const writePlan = buildMemoryWritePlan({
+            tenant,
             dailyUpdates: [createDailyUpdate(
               text,
               output.relationshipToExistingModel.type,
-              output.retrievedContext.relevantEntryEvidencePacks
+              output.retrievedContext.relevantEntryEvidencePacks,
+              tenant
             )],
             rationale: {
               whyUpdate: '日常对话调度完成',
@@ -96,12 +101,12 @@ export async function POST(request: Request) {
               nextVerificationNeed: output.routingDecision.needFollowup ? output.routingDecision.followupQuestion : ''
             }
           })
-          void runMemoryWritePipeline(writePlan).catch((err) => {
+          void runMemoryWritePipeline(writePlan, tenant).catch((err) => {
             console.error(`[daily/stream] 后台记忆写入失败 traceId=${traceId}:`, err)
           })
 
           // 后台抽取 EvidenceEpisode + FactAtom 并向量化（异步，不阻塞前台；内部已 try/catch）
-          void ingestEpisode(text, { sourceEventId: traceId })
+          void ingestEpisode(text, { sourceEventId: traceId, familyId: tenant.familyId, childId: tenant.childId })
 
           controller.close()
         } catch (error) {
