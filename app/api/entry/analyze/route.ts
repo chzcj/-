@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { callFastJson } from '@/lib/server/ark-agents'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
-import { ingestEpisode } from '@/lib/server/memory/episode/pipeline'
 import { resolveTenant } from '@/lib/server/memory/tenant'
+import { enqueueJob } from '@/lib/server/jobs/queue'
+import { createId } from '@/lib/storage/storageIds'
 
 const TITLE_MAP: Record<string, string> = {
   study: '学习作业', routine: '手机与日常节奏',
@@ -31,9 +32,14 @@ export async function POST(request: Request) {
         { entryType, rawText }
       ).catch(() => undefined)
 
-      // 入口采集完成时抽取 Episode（首次建模的真实生活片段，异步不阻塞）
+      // 入口采集 Episode 抽取入队。episodeId 随机（同入口允许重复提交各成一篇）；
+      // key=null 不去重；job 重试用 payload 内固定 episodeId 保证幂等。
       const tenant = await resolveTenant()
-      void ingestEpisode(rawText, { sourceEventId: `entry_${entryType}`, familyId: tenant.familyId, childId: tenant.childId })
+      const episodeId = createId('ep')
+      void enqueueJob('episode_ingest', {
+        text: rawText,
+        ctx: { sourceEventId: `entry_${entryType}`, familyId: tenant.familyId, childId: tenant.childId, episodeId }
+      }, null)
 
       return NextResponse.json({ ok: true, data: result })
     }

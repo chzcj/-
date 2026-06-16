@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { runSynthesisPipeline } from '@/lib/server/synthesis/pipeline'
 import { buildSynthesisRetrievalPacket } from '@/lib/server/memory/retrieval/router'
-import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
+import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { resolveTenant } from '@/lib/server/memory/tenant'
+import { enqueueJob } from '@/lib/server/jobs/queue'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import type { EntryEvidencePack, EntryName } from '@/types/database'
 
@@ -161,11 +162,8 @@ export async function POST(request: Request) {
       }
     })
 
-    // 后台记忆写入异步执行，不阻塞画像生成返回（交付文档 6.3）。
-    // 输出 synthesis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
-    void runMemoryWritePipeline(writePlan, tenant).catch((err) => {
-      console.error('[synthesis] 后台记忆写入失败:', err)
-    })
+    // 后台记忆写入入队（可靠重试）。输出 synthesis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
+    void enqueueJob('memory_write', { plan: writePlan, tenant })
 
     return NextResponse.json({
       ok: true,

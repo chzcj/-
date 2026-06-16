@@ -3,7 +3,8 @@ import { recordChildSchema } from '@/lib/schemas';
 import { callAgentJson } from '@/lib/server/ark-agents';
 import { getRequestIdentity } from '@/lib/server/auth';
 import { insertMemoryRecords, rebuildFamilyMemoryDigest, saveChildEvent } from '@/lib/server/db';
-import { ingestEpisode } from '@/lib/server/memory/episode/pipeline';
+import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline';
+import { enqueueJob } from '@/lib/server/jobs/queue';
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -61,12 +62,14 @@ export async function POST(request: Request) {
     }
   }
 
-  // 后台抽取 EvidenceEpisode + FactAtom 并向量化（异步，不阻塞返回；内部已 try/catch）。
-  // 用登录用户的真实租户（identity），与 daily 检索 resolveTenant() 同源，可跨入口召回。
-  void ingestEpisode(
-    [input.eventText, input.changeText, input.worryText].filter(Boolean).join('。'),
-    { sourceEventId: eventId || undefined, familyId: identity.familyId, childId: identity.childId }
-  );
+  // Episode 抽取入队（可靠重试 + 去重）。用登录用户真实租户，与 daily 检索同源；
+  // episodeId 按 (tenant + sha(text)) 派生作幂等键，eventId 仅写溯源不进键。
+  const recordText = [input.eventText, input.changeText, input.worryText].filter(Boolean).join('。');
+  const episodeId = deriveEpisodeId(recordText, { familyId: identity.familyId, childId: identity.childId });
+  void enqueueJob('episode_ingest', {
+    text: recordText,
+    ctx: { sourceEventId: eventId || undefined, familyId: identity.familyId, childId: identity.childId, episodeId }
+  }, episodeId);
 
   return ok({
     eventId: eventId || `local_${Date.now()}`,

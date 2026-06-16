@@ -6,7 +6,6 @@ import type {
   EvidenceStrength,
   DailyInteractionUpdate
 } from '@/types/database'
-import { createId } from '@/lib/storage/storageIds'
 import type { TenantId } from './tenant'
 
 /* ================================================================
@@ -71,7 +70,7 @@ export function buildRetrievalIndex(
   tenant: TenantId
 ): RetrievalIndex {
   return {
-    indexId: createId('idx'),
+    indexId: `idx_${linkedItemLayer}_${linkedItemId}`,
     familyId: tenant.familyId,
     childId: tenant.childId,
     linkedItemId,

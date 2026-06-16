@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { runOrchestrationPipeline } from '@/lib/server/orchestration/pipeline'
-import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
+import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
+import { enqueueJob } from '@/lib/server/jobs/queue'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 
@@ -55,9 +56,8 @@ export async function POST(request: Request) {
       }
     })
 
-    void runMemoryWritePipeline(writePlan, tenant).catch((err) => {
-      console.error(`[daily] 后台记忆写入失败 traceId=${traceId}:`, err)
-    })
+    // 后台记忆写入入队（可靠重试，文档 14.3）。plan 内 itemId 已固定 → executeWritePlan 幂等，无需去重键。
+    void enqueueJob('memory_write', { plan: writePlan, tenant })
 
     return NextResponse.json({
       ok: true,

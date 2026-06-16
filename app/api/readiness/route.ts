@@ -1,11 +1,13 @@
 import { ok } from '@/lib/api-response';
 import { isFastAIEnabled, startFastAIWarmupLoop } from '@/lib/server/ark-agents';
+import { startJobPoller } from '@/lib/server/jobs/queue';
 import { debugDatabase, isDatabaseEnabled } from '@/lib/server/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   startFastAIWarmupLoop();
+  startJobPoller();
   const databaseConfigured = isDatabaseEnabled();
   const fastConfigured = isFastAIEnabled();
   const database = await debugDatabase().catch((error) => ({

@@ -1,11 +1,13 @@
 import { ok } from '@/lib/api-response';
 import { startFastAIWarmupLoop } from '@/lib/server/ark-agents';
+import { startJobPoller } from '@/lib/server/jobs/queue';
 import { debugStore } from '@/lib/server/store';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   startFastAIWarmupLoop();
+  startJobPoller();
   return ok({
     status: 'ok',
     app: 'childos-mvp',

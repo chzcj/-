@@ -1,8 +1,9 @@
 import { runOrchestrationPipeline } from '@/lib/server/orchestration/pipeline'
-import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
+import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
-import { ingestEpisode } from '@/lib/server/memory/episode/pipeline'
+import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { resolveTenant } from '@/lib/server/memory/tenant'
+import { enqueueJob } from '@/lib/server/jobs/queue'
 import { callAgentTextStream } from '@/lib/server/ark-agents'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
@@ -101,12 +102,14 @@ export async function POST(request: Request) {
               nextVerificationNeed: output.routingDecision.needFollowup ? output.routingDecision.followupQuestion : ''
             }
           })
-          void runMemoryWritePipeline(writePlan, tenant).catch((err) => {
-            console.error(`[daily/stream] 后台记忆写入失败 traceId=${traceId}:`, err)
-          })
+          void enqueueJob('memory_write', { plan: writePlan, tenant })
 
-          // 后台抽取 EvidenceEpisode + FactAtom 并向量化（异步，不阻塞前台；内部已 try/catch）
-          void ingestEpisode(text, { sourceEventId: traceId, familyId: tenant.familyId, childId: tenant.childId })
+          // Episode 抽取入队：episodeId 按 (tenant + sha(text)) 派生作幂等键，去重双提交 + 重试不重复建。
+          const episodeId = deriveEpisodeId(text, { familyId: tenant.familyId, childId: tenant.childId })
+          void enqueueJob('episode_ingest', {
+            text,
+            ctx: { sourceEventId: traceId, familyId: tenant.familyId, childId: tenant.childId, episodeId }
+          }, episodeId)
 
           controller.close()
         } catch (error) {

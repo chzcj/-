@@ -303,6 +303,14 @@ export interface FactAtomRecord {
   evidenceStrength: string;
 }
 
+// 删除某 Episode 的全部 Atom（Episode 重抽取时先删后插，避免重试留孤儿/重复）。
+export async function deleteAtomsByEpisode(episodeId: string): Promise<void> {
+  if (!(await ensureVectorSchema())) return;
+  const pool = getPool();
+  if (!pool) return;
+  await pool.query('DELETE FROM fact_atoms WHERE episode_id = $1', [episodeId]);
+}
+
 export async function getAtomsByEpisodeIds(
   episodeIds: string[],
   familyId = 'f_demo',
