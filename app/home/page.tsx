@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, BookOpenText, CalendarRange, ChevronRight, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
+import { Archive, BookOpenText, CalendarRange, ChevronRight, LayoutDashboard, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
@@ -29,6 +29,7 @@ export default function HomePage() {
     router.prefetch('/rehearsal');
     router.prefetch('/record-child');
     router.prefetch('/family-planner');
+    router.prefetch('/board');
     router.prefetch('/family-profile');
     router.prefetch('/login');
     apiClient.getMe().then((result) => {
@@ -151,6 +152,21 @@ export default function HomePage() {
             <ChevronRight size={16} style={{ marginLeft: 4 }} />
           </span>
         </div>
+
+        <button
+          type="button"
+          onClick={() => router.push('/board')}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px', marginBottom: 12, background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 18, cursor: 'pointer', textAlign: 'left' }}
+        >
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(110,106,248,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6E6AF8', flexShrink: 0 }}>
+            <LayoutDashboard size={20} />
+          </span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: '#1D1D1F' }}>家庭支持看板</span>
+            <span style={{ display: 'block', fontSize: 13, color: '#6E6E73', marginTop: 2 }}>当前状态、稳定理解、下一步</span>
+          </span>
+          <ChevronRight size={18} style={{ color: '#C7C7CC', flexShrink: 0 }} />
+        </button>
 
         <section className="talk-card">
           <div className="talk-card-top">
