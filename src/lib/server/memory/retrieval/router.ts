@@ -6,6 +6,7 @@ import type {
   EntryName
 } from '@/types/database'
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
+import { isEmbeddingEnabled, rankByRelevance } from '../embedding'
 import {
   getEntryEvidencePacks,
   getEntryEvidencePack,
@@ -30,7 +31,7 @@ function promoteMaturity(
   return currentLevel
 }
 
-export async function buildDailyDialogueRetrievalPacket(): Promise<DailyDialogueRetrievalPacket> {
+export async function buildDailyDialogueRetrievalPacket(query?: string): Promise<DailyDialogueRetrievalPacket> {
   const maturity = getCurrentMaturityState()
   const [profiles, packs, updates, hypotheses, network, model] = await Promise.all([
     getConditionalProfiles(),
@@ -47,9 +48,23 @@ export async function buildDailyDialogueRetrievalPacket(): Promise<DailyDialogue
     packs: packs.length
   })
 
-  const recentEvents = updates.slice(-10).map(u => u.newInput)
+  // 候选事实池：全部历史日常事件。
+  const allEvents = updates.map(u => u.newInput).filter((t): t is string => Boolean(t))
+
+  // 向量精排：当有当前输入且 embedding 可用时，从全部历史中按语义相关性挑选，
+  // 而非简单「取最近」（交付文档要求基于当前输入检索相关事实）。降级保留原「取最近」行为。
+  let recentEvents: string[]
+  let supportingEvidence: string[]
+  if (query && isEmbeddingEnabled() && allEvents.length > 0) {
+    const ranked = await rankByRelevance(query, allEvents, (e) => e, 10)
+    recentEvents = ranked.map(r => r.item)
+    supportingEvidence = ranked.slice(0, 5).map(r => r.item)
+  } else {
+    recentEvents = allEvents.slice(-10)
+    supportingEvidence = allEvents.slice(-5)
+  }
+
   const profileTexts = profiles.map(p => p.childTendency)
-  const packRefs = packs.map(p => `${p.entryName}: ${p.rawInputSummary}`)
 
   const matchingProfile = model?.primaryConditionalProfile?.childTendency || null
 
@@ -59,7 +74,7 @@ export async function buildDailyDialogueRetrievalPacket(): Promise<DailyDialogue
     currentInputClassification: 'insufficient',
     relevantChildStructureModels: profileTexts.length > 0 ? profileTexts : (matchingProfile ? [matchingProfile] : []),
     matchedMechanisms: network?.candidateMechanismMatrix?.filter(m => m.overallStrength === 'high').map(m => m.mechanismName) || [],
-    supportingEvidence: recentEvents.slice(-5),
+    supportingEvidence,
     recentRelatedEvents: recentEvents,
     pendingHypotheses: hypotheses.map(h => h.hypothesis),
     possibleCounterEvidence: [],

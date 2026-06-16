@@ -25,7 +25,7 @@ export interface OrchestrationInput {
 
 export async function runOrchestrationPipeline(input: OrchestrationInput): Promise<OrchestrationOutput> {
   const maturity = input.maturityLevel ? { level: input.maturityLevel } : getCurrentMaturityState()
-  const retrievalPacket = await buildDailyDialogueRetrievalPacket()
+  const retrievalPacket = await buildDailyDialogueRetrievalPacket(input.userText)
   const effectiveMaturity = retrievalPacket.contextMaturityLevel || maturity.level
 
   const inputType = classifyInputType(input.userText)
