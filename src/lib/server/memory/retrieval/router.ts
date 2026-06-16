@@ -7,6 +7,7 @@ import type {
 } from '@/types/database'
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
 import { isEmbeddingEnabled, rankByRelevance } from '../embedding'
+import { retrieveContextPack } from './episode-retriever'
 import {
   getEntryEvidencePacks,
   getEntryEvidencePack,
@@ -51,15 +52,26 @@ export async function buildDailyDialogueRetrievalPacket(query?: string): Promise
   // 候选事实池：全部历史日常事件。
   const allEvents = updates.map(u => u.newInput).filter((t): t is string => Boolean(t))
 
-  // 向量精排：当有当前输入且 embedding 可用时，从全部历史中按语义相关性挑选，
-  // 而非简单「取最近」（交付文档要求基于当前输入检索相关事实）。降级保留原「取最近」行为。
+  // 三级降级链：① 三层语义检索(Episode场景包) → ② 应用层 rankByRelevance → ③ 取最近。
   let recentEvents: string[]
   let supportingEvidence: string[]
-  if (query && isEmbeddingEnabled() && allEvents.length > 0) {
+  const pack = query ? await retrieveContextPack(query) : undefined
+  if (pack) {
+    // ① Episode 召回：summary 作为支撑证据，叠加高价值 Atom（孩子原话/反证等）
+    const episodeTexts = pack.episodes.map(e => e.summary)
+    const highValueAtomTexts = pack.episodes
+      .flatMap(e => e.atoms.filter(a => a.isHighValue).map(a => a.content))
+      .concat(pack.extraHighValueAtoms.map(a => a.content))
+    recentEvents = episodeTexts.length > 0 ? episodeTexts : allEvents.slice(-10)
+    supportingEvidence = [...episodeTexts.slice(0, 3), ...highValueAtomTexts.slice(0, 2)].slice(0, 5)
+    if (supportingEvidence.length === 0) supportingEvidence = allEvents.slice(-5)
+  } else if (query && isEmbeddingEnabled() && allEvents.length > 0) {
+    // ② 应用层向量精排（对 DailyUpdate.newInput）
     const ranked = await rankByRelevance(query, allEvents, (e) => e, 10)
     recentEvents = ranked.map(r => r.item)
     supportingEvidence = ranked.slice(0, 5).map(r => r.item)
   } else {
+    // ③ 取最近
     recentEvents = allEvents.slice(-10)
     supportingEvidence = allEvents.slice(-5)
   }

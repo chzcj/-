@@ -34,21 +34,30 @@ const TIME_TAGS = [
   '本周变化', '长期稳定', '突然变化', '旧模式重复'
 ]
 
-export function autoTagMaterial(material: RawMaterial): string[] {
+function sceneTagsFromText(text: string): string[] {
   const tags: string[] = []
-  const text = (material.rawText || '').toLowerCase()
-  if (text.includes('作业') || text.includes('写') || text.includes('拖')) tags.push('作业拖延')
-  if (text.includes('手机') || text.includes('玩')) tags.push('手机冲突')
-  if (text.includes('检查') || text.includes('看')) tags.push('家长检查')
-  if (text.includes('背') || text.includes('默写')) tags.push('背诵抗拒')
-  if (text.includes('说知道') || text.includes('答应') || text.includes('马上')) tags.push('表面答应')
-  if (text.includes('撒谎') || text.includes('骗') || text.includes('没写')) tags.push('撒谎/隐瞒进度')
-  if (text.includes('加') || text.includes('继续') || text.includes('还有')) tags.push('加任务')
-  if (text.includes('烦') || text.includes('吵') || text.includes('顶嘴')) tags.push('顶嘴')
-  if (text.includes('关') || text.includes('走开') || text.includes('回房间')) tags.push('关门/走开')
-  if (text.includes('考') || text.includes('成绩') || text.includes('分数')) tags.push('考试失利')
-  if (text.includes('无') || text.includes('随便') || text.includes('摆烂')) tags.push('失败退路保护')
+  const t = (text || '').toLowerCase()
+  if (t.includes('作业') || t.includes('写') || t.includes('拖')) tags.push('作业拖延')
+  if (t.includes('手机') || t.includes('玩')) tags.push('手机冲突')
+  if (t.includes('检查') || t.includes('看')) tags.push('家长检查')
+  if (t.includes('背') || t.includes('默写')) tags.push('背诵抗拒')
+  if (t.includes('说知道') || t.includes('答应') || t.includes('马上')) tags.push('表面答应')
+  if (t.includes('撒谎') || t.includes('骗') || t.includes('没写')) tags.push('撒谎/隐瞒进度')
+  if (t.includes('加') || t.includes('继续') || t.includes('还有')) tags.push('加任务')
+  if (t.includes('烦') || t.includes('吵') || t.includes('顶嘴')) tags.push('顶嘴')
+  if (t.includes('关') || t.includes('走开') || t.includes('回房间')) tags.push('关门/走开')
+  if (t.includes('考') || t.includes('成绩') || t.includes('分数')) tags.push('考试失利')
+  if (t.includes('无') || t.includes('随便') || t.includes('摆烂')) tags.push('失败退路保护')
   return tags
+}
+
+export function autoTagMaterial(material: RawMaterial): string[] {
+  return sceneTagsFromText(material.rawText || '')
+}
+
+// 检索时从家长本轮 query 提取标签，用于向量检索前的标签软过滤（OR）。
+export function autoTagQuery(query: string): { sceneTags: string[]; mechanismTags: string[] } {
+  return { sceneTags: sceneTagsFromText(query), mechanismTags: [] }
 }
 
 export function buildRetrievalIndex(

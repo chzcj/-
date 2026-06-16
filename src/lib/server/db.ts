@@ -9,6 +9,7 @@ const { Pool } = pg;
 type DbGlobal = typeof globalThis & {
   __childosPgPool?: pg.Pool;
   __childosPgSchemaReady?: Promise<void>;
+  __childosVectorSchemaReady?: Promise<boolean>;
 };
 
 const globalDb = globalThis as DbGlobal;
@@ -122,6 +123,289 @@ export async function ensureDbSchema() {
     `).then(() => undefined);
   }
   await globalDb.__childosPgSchemaReady;
+}
+
+/* ================================================================
+   向量检索 schema（pgvector）— EvidenceEpisode + FactAtom 两层
+   独立 ready 标记，extension/向量列/索引失败时整体降级（resolve false），
+   不拖垮主 schema。算子统一余弦（<=> + vector_cosine_ops）。
+   ================================================================ */
+
+function toVectorLiteral(v: number[] | null | undefined): string | null {
+  return v && v.length > 0 ? `[${v.join(',')}]` : null;
+}
+
+async function ensureVectorSchema(): Promise<boolean> {
+  const pool = getPool();
+  if (!pool) return false;
+  await ensureDbSchema();
+  if (!globalDb.__childosVectorSchemaReady) {
+    globalDb.__childosVectorSchemaReady = (async () => {
+      try {
+        await pool.query('CREATE EXTENSION IF NOT EXISTS vector');
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS evidence_episodes (
+            episode_id TEXT PRIMARY KEY,
+            family_id TEXT NOT NULL DEFAULT 'family_demo',
+            child_id TEXT NOT NULL DEFAULT 'child_demo',
+            source_event_id TEXT,
+            summary TEXT NOT NULL,
+            parent_interpretation TEXT,
+            missing_info TEXT[] NOT NULL DEFAULT '{}',
+            scene_tags TEXT[] NOT NULL DEFAULT '{}',
+            mechanism_tags TEXT[] NOT NULL DEFAULT '{}',
+            embedding vector(1024),
+            source_created_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+          CREATE TABLE IF NOT EXISTS fact_atoms (
+            atom_id TEXT PRIMARY KEY,
+            episode_id TEXT NOT NULL,
+            family_id TEXT NOT NULL DEFAULT 'family_demo',
+            child_id TEXT NOT NULL DEFAULT 'child_demo',
+            content TEXT NOT NULL,
+            source_type TEXT NOT NULL,
+            fact_type TEXT,
+            is_high_value BOOLEAN NOT NULL DEFAULT FALSE,
+            evidence_strength TEXT NOT NULL DEFAULT 'medium',
+            embedding vector(1024),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+          CREATE INDEX IF NOT EXISTS idx_episodes_embedding
+            ON evidence_episodes USING hnsw (embedding vector_cosine_ops);
+          CREATE INDEX IF NOT EXISTS idx_atoms_embedding
+            ON fact_atoms USING hnsw (embedding vector_cosine_ops);
+          CREATE INDEX IF NOT EXISTS idx_episodes_scene_gin
+            ON evidence_episodes USING gin (scene_tags);
+          CREATE INDEX IF NOT EXISTS idx_episodes_mech_gin
+            ON evidence_episodes USING gin (mechanism_tags);
+          CREATE INDEX IF NOT EXISTS idx_atoms_episode ON fact_atoms (episode_id);
+          CREATE INDEX IF NOT EXISTS idx_episodes_tenant
+            ON evidence_episodes (family_id, child_id);
+        `);
+        return true;
+      } catch (error) {
+        console.error('[pgvector] schema 初始化失败，向量检索降级到应用层:', error);
+        return false;
+      }
+    })();
+  }
+  return globalDb.__childosVectorSchemaReady;
+}
+
+export async function isPgVectorEnabled(): Promise<boolean> {
+  if (!isDatabaseEnabled()) return false;
+  return ensureVectorSchema();
+}
+
+export interface EpisodeRow {
+  episodeId: string;
+  familyId?: string;
+  childId?: string;
+  sourceEventId?: string;
+  summary: string;
+  parentInterpretation?: string;
+  missingInfo?: string[];
+  sceneTags?: string[];
+  mechanismTags?: string[];
+  embedding: number[] | null;
+  sourceCreatedAt?: string;
+}
+
+export async function upsertEpisodes(rows: EpisodeRow[]): Promise<number | undefined> {
+  if (rows.length === 0) return 0;
+  if (!(await ensureVectorSchema())) return undefined;
+  const pool = getPool();
+  if (!pool) return undefined;
+  for (const r of rows) {
+    await pool.query(
+      `INSERT INTO evidence_episodes
+         (episode_id, family_id, child_id, source_event_id, summary, parent_interpretation,
+          missing_info, scene_tags, mechanism_tags, embedding, source_created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::text[],$8::text[],$9::text[],$10::vector,$11,NOW())
+       ON CONFLICT (episode_id) DO UPDATE SET
+         summary=EXCLUDED.summary, parent_interpretation=EXCLUDED.parent_interpretation,
+         missing_info=EXCLUDED.missing_info, scene_tags=EXCLUDED.scene_tags,
+         mechanism_tags=EXCLUDED.mechanism_tags, embedding=EXCLUDED.embedding,
+         source_created_at=EXCLUDED.source_created_at, updated_at=NOW()`,
+      [
+        r.episodeId, r.familyId || 'family_demo', r.childId || 'child_demo',
+        r.sourceEventId || null, r.summary, r.parentInterpretation || null,
+        r.missingInfo || [], r.sceneTags || [], r.mechanismTags || [],
+        toVectorLiteral(r.embedding), r.sourceCreatedAt || null
+      ]
+    );
+  }
+  return rows.length;
+}
+
+export interface AtomRow {
+  atomId: string;
+  episodeId: string;
+  familyId?: string;
+  childId?: string;
+  content: string;
+  sourceType: string;
+  factType?: string;
+  isHighValue: boolean;
+  evidenceStrength?: string;
+  embedding: number[] | null;
+}
+
+export async function upsertAtoms(rows: AtomRow[]): Promise<number | undefined> {
+  if (rows.length === 0) return 0;
+  if (!(await ensureVectorSchema())) return undefined;
+  const pool = getPool();
+  if (!pool) return undefined;
+  for (const r of rows) {
+    await pool.query(
+      `INSERT INTO fact_atoms
+         (atom_id, episode_id, family_id, child_id, content, source_type, fact_type,
+          is_high_value, evidence_strength, embedding)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::vector)
+       ON CONFLICT (atom_id) DO UPDATE SET
+         content=EXCLUDED.content, source_type=EXCLUDED.source_type, fact_type=EXCLUDED.fact_type,
+         is_high_value=EXCLUDED.is_high_value, evidence_strength=EXCLUDED.evidence_strength,
+         embedding=EXCLUDED.embedding`,
+      [
+        r.atomId, r.episodeId, r.familyId || 'family_demo', r.childId || 'child_demo',
+        r.content, r.sourceType, r.factType || null, r.isHighValue,
+        r.evidenceStrength || 'medium', toVectorLiteral(r.embedding)
+      ]
+    );
+  }
+  return rows.length;
+}
+
+export interface FactAtomRecord {
+  atomId: string;
+  episodeId: string;
+  content: string;
+  sourceType: string;
+  factType?: string;
+  isHighValue: boolean;
+  evidenceStrength: string;
+}
+
+export async function getAtomsByEpisodeIds(
+  episodeIds: string[],
+  familyId = 'family_demo',
+  childId = 'child_demo'
+): Promise<FactAtomRecord[] | undefined> {
+  if (episodeIds.length === 0) return [];
+  if (!(await ensureVectorSchema())) return undefined;
+  const pool = getPool();
+  if (!pool) return undefined;
+  const result = await pool.query<{
+    atom_id: string; episode_id: string; content: string;
+    source_type: string; fact_type: string | null; is_high_value: boolean; evidence_strength: string;
+  }>(
+    `SELECT atom_id, episode_id, content, source_type, fact_type, is_high_value, evidence_strength
+     FROM fact_atoms
+     WHERE episode_id = ANY($1::text[]) AND family_id = $2 AND child_id = $3`,
+    [episodeIds, familyId, childId]
+  );
+  return result.rows.map(row => ({
+    atomId: row.atom_id, episodeId: row.episode_id, content: row.content,
+    sourceType: row.source_type, factType: row.fact_type || undefined,
+    isHighValue: row.is_high_value, evidenceStrength: row.evidence_strength
+  }));
+}
+
+export interface VectorSearchOpts {
+  familyId?: string;
+  childId?: string;
+  sceneTags?: string[];
+  mechanismTags?: string[];
+  topK?: number;
+}
+
+export interface EpisodeHit {
+  episodeId: string;
+  summary: string;
+  parentInterpretation?: string;
+  missingInfo: string[];
+  sceneTags: string[];
+  mechanismTags: string[];
+  sourceCreatedAt?: string;
+  distance: number;
+}
+
+export async function searchEpisodes(
+  queryEmbedding: number[],
+  opts: VectorSearchOpts = {}
+): Promise<EpisodeHit[] | undefined> {
+  if (!queryEmbedding?.length) return undefined;
+  if (!(await ensureVectorSchema())) return undefined;
+  const pool = getPool();
+  if (!pool) return undefined;
+  const params: unknown[] = [toVectorLiteral(queryEmbedding), opts.familyId || 'family_demo', opts.childId || 'child_demo'];
+  const scene = opts.sceneTags || [];
+  const mech = opts.mechanismTags || [];
+  let tagClause = '';
+  if (scene.length > 0 || mech.length > 0) {
+    params.push(scene, mech);
+    tagClause = `AND (scene_tags && $${params.length - 1}::text[] OR mechanism_tags && $${params.length}::text[])`;
+  }
+  params.push(opts.topK || 20);
+  const result = await pool.query<{
+    episode_id: string; summary: string; parent_interpretation: string | null;
+    missing_info: string[]; scene_tags: string[]; mechanism_tags: string[];
+    source_created_at: string | null; distance: number;
+  }>(
+    `SELECT episode_id, summary, parent_interpretation, missing_info, scene_tags, mechanism_tags,
+            source_created_at, embedding <=> $1::vector AS distance
+     FROM evidence_episodes
+     WHERE family_id = $2 AND child_id = $3 AND embedding IS NOT NULL ${tagClause}
+     ORDER BY embedding <=> $1::vector
+     LIMIT $${params.length}`,
+    params
+  );
+  return result.rows.map(row => ({
+    episodeId: row.episode_id, summary: row.summary,
+    parentInterpretation: row.parent_interpretation || undefined,
+    missingInfo: row.missing_info || [], sceneTags: row.scene_tags || [],
+    mechanismTags: row.mechanism_tags || [], sourceCreatedAt: row.source_created_at || undefined,
+    distance: Number(row.distance)
+  }));
+}
+
+export interface AtomHit {
+  atomId: string;
+  episodeId: string;
+  content: string;
+  sourceType: string;
+  factType?: string;
+  evidenceStrength: string;
+  distance: number;
+}
+
+export async function searchHighValueAtoms(
+  queryEmbedding: number[],
+  opts: VectorSearchOpts = {}
+): Promise<AtomHit[] | undefined> {
+  if (!queryEmbedding?.length) return undefined;
+  if (!(await ensureVectorSchema())) return undefined;
+  const pool = getPool();
+  if (!pool) return undefined;
+  const result = await pool.query<{
+    atom_id: string; episode_id: string; content: string; source_type: string;
+    fact_type: string | null; evidence_strength: string; distance: number;
+  }>(
+    `SELECT atom_id, episode_id, content, source_type, fact_type, evidence_strength,
+            embedding <=> $1::vector AS distance
+     FROM fact_atoms
+     WHERE family_id = $2 AND child_id = $3 AND is_high_value = TRUE AND embedding IS NOT NULL
+     ORDER BY embedding <=> $1::vector
+     LIMIT $4`,
+    [toVectorLiteral(queryEmbedding), opts.familyId || 'family_demo', opts.childId || 'child_demo', opts.topK || 5]
+  );
+  return result.rows.map(row => ({
+    atomId: row.atom_id, episodeId: row.episode_id, content: row.content,
+    sourceType: row.source_type, factType: row.fact_type || undefined,
+    evidenceStrength: row.evidence_strength, distance: Number(row.distance)
+  }));
 }
 
 export interface UserRecord {
