@@ -3,6 +3,7 @@ import { recordChildSchema } from '@/lib/schemas';
 import { callAgentJson } from '@/lib/server/ark-agents';
 import { getRequestIdentity } from '@/lib/server/auth';
 import { insertMemoryRecords, rebuildFamilyMemoryDigest, saveChildEvent } from '@/lib/server/db';
+import { ingestEpisode } from '@/lib/server/memory/episode/pipeline';
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -59,6 +60,14 @@ export async function POST(request: Request) {
       });
     }
   }
+
+  // 后台抽取 EvidenceEpisode + FactAtom 并向量化（异步，不阻塞返回；内部已 try/catch）。
+  // 暂不传 familyId/childId，统一用 memory 层默认租户，保证与 daily 检索同租户、可跨入口召回；
+  // 真实多租户隔离留待「质量-1」统一从 identity 注入到写入+检索两端。
+  void ingestEpisode(
+    [input.eventText, input.changeText, input.worryText].filter(Boolean).join('。'),
+    { sourceEventId: eventId || undefined }
+  );
 
   return ok({
     eventId: eventId || `local_${Date.now()}`,
