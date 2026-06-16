@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, BookOpenText, ChevronRight, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
+import { Archive, BookOpenText, CalendarRange, ChevronRight, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
@@ -28,6 +28,7 @@ export default function HomePage() {
     router.prefetch('/problem/start');
     router.prefetch('/rehearsal');
     router.prefetch('/record-child');
+    router.prefetch('/family-planner');
     router.prefetch('/family-profile');
     router.prefetch('/login');
     apiClient.getMe().then((result) => {
@@ -209,6 +210,10 @@ export default function HomePage() {
           <button type="button" onClick={() => router.push('/record-child')}>
             <BookOpenText size={20} />
             <span>记录孩子</span>
+          </button>
+          <button type="button" onClick={() => router.push('/family-planner')}>
+            <CalendarRange size={20} />
+            <span>家庭规划</span>
           </button>
           <button type="button" onClick={() => router.push('/family-profile')}>
             <Archive size={20} />
