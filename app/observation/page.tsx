@@ -25,15 +25,15 @@ export default function ObservationPage() {
         body: JSON.stringify({ text: text.trim() }),
       })
       const json = await res.json()
-      const aiInsight = json.ok && json.data?.orchestration?.frontResponse
-        ? json.data.orchestration.frontResponse
+      const aiInsight = json.ok && json.data?.visibleReply
+        ? json.data.visibleReply
         : ''
       const insightText = aiInsight || mockDailyObservationInsight.insight
 
       createDailyObservation({
         rawText: text.trim(),
         insight: insightText,
-        linkedAreas: aiInsight ? json.data?.orchestration?.retrievedContext?.relevantEntryEvidencePacks?.map((p: any) => p.entryName) || [] : mockDailyObservationInsight.linkedAreas,
+        linkedAreas: aiInsight ? (json.data?.linkedAreas || []) : mockDailyObservationInsight.linkedAreas,
         note: mockDailyObservationInsight.note,
       })
       setInsight({ ...mockDailyObservationInsight, insight: insightText })

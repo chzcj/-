@@ -3,6 +3,7 @@ import { runOrchestrationPipeline } from '@/lib/server/orchestration/pipeline'
 import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
+import { createId } from '@/lib/storage/storageIds'
 
 export async function POST(request: Request) {
   if (!verifyInternalApi(request)) return authError()
@@ -18,14 +19,26 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
+    const userText = text.trim()
+    const traceId = createId('trace')
+
     const output = await runOrchestrationPipeline({
-      userText: text.trim(),
+      userText,
       maturityLevel
     })
 
+    // 前台只暴露家长可见信息：回复正文 + 关联领域名。
+    // 内部判断字段（decomposedInput / routingDecision / memoryAction 等）不出前台（交付文档 6.5 / 11.2 / 13.3 P0）。
+    const visibleReply = output.frontResponseDraft
+    const linkedAreas = output.retrievedContext.relevantEntryEvidencePacks
+      .map((pack) => (pack as { entryName?: string }).entryName)
+      .filter((name): name is string => Boolean(name))
+
+    // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）。
+    // 写入失败只记录日志、不影响前台返回；重试机制由后续 job_queue 改进承接。
     const writePlan = buildMemoryWritePlan({
       dailyUpdates: [createDailyUpdate(
-        text.trim(),
+        userText,
         output.relationshipToExistingModel.type,
         output.retrievedContext.relevantEntryEvidencePacks
       )],
@@ -37,13 +50,16 @@ export async function POST(request: Request) {
       }
     })
 
-    const writeResult = await runMemoryWritePipeline(writePlan)
+    void runMemoryWritePipeline(writePlan).catch((err) => {
+      console.error(`[daily] 后台记忆写入失败 traceId=${traceId}:`, err)
+    })
 
     return NextResponse.json({
       ok: true,
       data: {
-        orchestration: output,
-        memoryWrite: writeResult
+        traceId,
+        visibleReply,
+        linkedAreas
       }
     })
   } catch (error) {
