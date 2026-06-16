@@ -13,33 +13,65 @@ export default function ObservationPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [streaming, setStreaming] = useState('')
   const [insight, setInsight] = useState<typeof mockDailyObservationInsight | null>(null)
 
   async function handleSubmit(text: string, _mode: InputMode) {
     if (!text.trim() || loading) return
     setLoading(true)
+    setStreaming('')
+    setSaved(false)
     try {
-      const res = await fetch('/api/daily', {
+      const res = await fetch('/api/daily/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text.trim() }),
       })
-      const json = await res.json()
-      const aiInsight = json.ok && json.data?.visibleReply
-        ? json.data.visibleReply
-        : ''
-      const insightText = aiInsight || mockDailyObservationInsight.insight
+
+      // 逐行读取 NDJSON 流：delta 累积展示，final 定稿
+      let acc = ''
+      let linkedAreas: string[] = []
+      if (res.body) {
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+          for (const line of lines) {
+            if (!line.trim()) continue
+            try {
+              const evt = JSON.parse(line)
+              if (evt.type === 'delta') {
+                acc += evt.delta
+                setStreaming(acc)
+              } else if (evt.type === 'final') {
+                if (evt.text) acc = evt.text
+                if (Array.isArray(evt.linkedAreas)) linkedAreas = evt.linkedAreas
+              }
+            } catch {}
+          }
+        }
+      }
+
+      const usedAi = acc.trim().length > 0
+      const insightText = usedAi ? acc.trim() : mockDailyObservationInsight.insight
+      const resolvedAreas = usedAi ? linkedAreas : mockDailyObservationInsight.linkedAreas
 
       createDailyObservation({
         rawText: text.trim(),
         insight: insightText,
-        linkedAreas: aiInsight ? (json.data?.linkedAreas || []) : mockDailyObservationInsight.linkedAreas,
+        linkedAreas: resolvedAreas,
         note: mockDailyObservationInsight.note,
       })
-      setInsight({ ...mockDailyObservationInsight, insight: insightText })
+      setInsight({ ...mockDailyObservationInsight, insight: insightText, linkedAreas: resolvedAreas })
       setSaved(true)
     } catch {} finally {
       setLoading(false)
+      setStreaming('')
     }
   }
 
@@ -58,6 +90,13 @@ export default function ObservationPage() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
           {['放学后', '说到学习时', '开始前反应'].map((c) => <span key={c} className="chip" style={{ fontSize: 13, cursor: 'default' }}>{c}</span>)}
         </div>
+
+        {loading && streaming ? (
+          <div className="card" style={{ padding: 18, borderRadius: 22, marginTop: 16, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>系统解读中…</div>
+            <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{streaming}</div>
+          </div>
+        ) : null}
 
         {saved && insight ? (
           <div className="card" style={{ padding: 18, borderRadius: 22, marginTop: 16, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
