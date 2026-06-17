@@ -83,6 +83,12 @@ export function sha(s: string): string {
   return createHash('sha256').update(s).digest('hex').slice(0, 32)
 }
 
+// 定期重评限流键：按 10 分钟时间桶 + 租户。每桶至多触发一次 model_review（unique idem 去重）。
+// runModelReview 无活跃假设时 no-op（不空跑 LLM），故安全可超发。
+export function modelReviewBucketKey(tenant: TenantId): string {
+  return `model_review:${tenant.familyId}:${tenant.childId}:${Math.floor(Date.now() / 600_000)}`
+}
+
 // 两个 handler。executeWritePlan/ingestEpisodeStrict 内绝不吞异常，异常上抛驱动重试。
 async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   if (jobType === 'memory_write') {

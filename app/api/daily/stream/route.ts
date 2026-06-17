@@ -3,7 +3,7 @@ import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { resolveTenant } from '@/lib/server/memory/tenant'
-import { enqueueJob } from '@/lib/server/jobs/queue'
+import { enqueueJob, modelReviewBucketKey } from '@/lib/server/jobs/queue'
 import { callAgentTextStream } from '@/lib/server/ark-agents'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
@@ -117,6 +117,10 @@ export async function POST(request: Request) {
             text,
             ctx: { sourceEventId: traceId, familyId: tenant.familyId, childId: tenant.childId, episodeId }
           }, episodeId, traceId)
+
+          // 定期重评（P2 异步循环）：日常新证据落库后按 10 分钟桶触发模型复核，让待验证假设随使用持续被反证/加权。
+          // 桶幂等键限流，无活跃假设时 runModelReview 提前 no-op，不空跑 LLM。
+          void enqueueJob('model_review', { tenant }, modelReviewBucketKey(tenant), traceId)
 
           controller.close()
         } catch (error) {
