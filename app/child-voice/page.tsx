@@ -13,6 +13,8 @@ export default function ChildVoicePage() {
 
   function handleSubmit() {
     if (!text.trim()) return
+    // 孩子原话不再丢弃：暂存给多视角页（即时用），多视角 API 会写回记忆（child_quote）。
+    try { sessionStorage.setItem('childos_child_voice', text.trim()) } catch {}
     setSaved(true)
     setTimeout(() => router.push('/multi-view'), 800)
   }

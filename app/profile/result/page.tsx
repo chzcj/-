@@ -76,8 +76,13 @@ export default function ProfileResultPage() {
         </button>
         <button type="button" className="secondary-button"
           onClick={() => router.push('/rehearsal')}
-          style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600 }}>
+          style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
           进入沟通预演
+        </button>
+        <button type="button" className="secondary-button"
+          onClick={() => router.push('/child-voice')}
+          style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600 }}>
+          听听孩子自己怎么说
         </button>
         <NavTabs />
       </div>
