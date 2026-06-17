@@ -6,6 +6,7 @@ import { executeWritePlan } from '@/lib/server/memory/write/decision-engine'
 import { ingestEpisodeStrict, type IngestContext } from '@/lib/server/memory/episode/pipeline'
 import { rebuildBriefAndBoard } from '@/lib/server/memory/digest/updaters'
 import { runEntryEvidenceBuild, type EntryEvidencePayload } from '@/lib/server/memory/entry-evidence/builder'
+import { runModelReview } from '@/lib/server/memory/model-review/reviewer'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { MemoryWritePlan } from '@/types/database'
 
@@ -15,7 +16,7 @@ import type { MemoryWritePlan } from '@/types/database'
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
 interface DigestUpdatePayload { tenant: TenantId }
@@ -90,6 +91,11 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     // 链式触发 Brief/Board 更新（文档 12.1：后台写入→Brief→看板）。
     // null 键强制入队；真正去重靠 rebuildBriefAndBoard 内 content_hash 短路（同证据集空跑）。
     await enqueueJob('digest_update', { tenant: p.tenant }, null, null)
+    // 写了待验证假设（综合/诊断后）→ 链式触发模型复核（反证收集+置信度，P2 后台深）。
+    // 仅在有假设时触发，避免在 daily 等普通写入上空跑 LLM。
+    if ((p.plan.pendingHypothesesToCreateOrUpdate?.length || 0) > 0) {
+      await enqueueJob('model_review', { tenant: p.tenant }, null, null)
+    }
   } else if (jobType === 'episode_ingest') {
     const p = payload as EpisodeIngestPayload
     await ingestEpisodeStrict(p.text, p.ctx)
@@ -99,6 +105,9 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   } else if (jobType === 'entry_evidence') {
     const p = payload as EntryEvidencePayload
     await runEntryEvidenceBuild(p) // 后台深度拆解入口证据包，不吞异常驱动重试
+  } else if (jobType === 'model_review') {
+    const p = payload as DigestUpdatePayload
+    await runModelReview(p.tenant) // 复核待验证假设：反证+置信度，幂等可重跑
   }
 }
 
