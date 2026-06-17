@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prompts": "node scripts/build-prompts.mjs",
+    "predev": "node scripts/build-prompts.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/build-prompts.mjs",
     "build": "next build",
     "start": "next start",
+    "pretypecheck": "node scripts/build-prompts.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "sync:gitee": "node .agents/scripts/sync-gitee.mjs"
