@@ -38,15 +38,18 @@ export default function EducationDiagnosisPage() {
   const [mode, setMode] = useState<FeatureUiMode>('special_collection')
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<EduDiagData | null>(null)
+  const [turns, setTurns] = useState<string[]>([]) // 本会话已讲过的轮次，随提交透传给后端
 
   async function submit(text: string) {
     if (!text || loading) return
     setLoading(true)
+    const priorTurns = turns
+    setTurns([...turns, text])
     try {
       const res = await fetch('/api/education-diagnosis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, priorTurns }),
       })
       const json = await res.json()
       if (json.ok && json.data) {

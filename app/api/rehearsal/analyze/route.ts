@@ -6,7 +6,7 @@ import { resolveTenant } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { enqueueJob } from '@/lib/server/jobs/queue'
-import { ingestEpisode } from '@/lib/server/memory/episode/pipeline'
+import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { createId } from '@/lib/storage/storageIds'
 
 type ProfileAwareRehearsal = {
@@ -82,6 +82,7 @@ ${profileSummary}
 请判断家长这句话在这个孩子画像里会被怎样接收，并给一句更稳妥的可直接说出口版本。
 
 规则：
+- 家长发来的就是一段完整自述：他这次真正想达成什么、最担心孩子怎么反应、谈话前发生了什么，可能都内联在这段话里——请主动从中识别并使用，不要因为没有单独字段就忽略。
 - 必须结合家长这次真正想达成的目标，以及过往类似沟通的结果——避免重复已经失败过的说法。
 - 必须使用画像中的机制、保护策略或家庭循环。
 - 不要泛泛说"多鼓励少批评"。
@@ -173,12 +174,12 @@ async function writeBackRehearsal(parentText: string): Promise<void> {
       }
     })
     void enqueueJob('memory_write', { plan, tenant }, null, traceId)
-    void ingestEpisode(parentText, {
-      sourceEventId: traceId,
-      familyId: tenant.familyId,
-      childId: tenant.childId,
-      recentContext: '沟通预演采集'
-    })
+    // Episode 抽取统一走队列（对齐 daily / 其它专项）：可追踪、可重试、幂等。
+    const episodeId = deriveEpisodeId(parentText, { familyId: tenant.familyId, childId: tenant.childId })
+    void enqueueJob('episode_ingest', {
+      text: parentText,
+      ctx: { sourceEventId: traceId, familyId: tenant.familyId, childId: tenant.childId, episodeId }
+    }, episodeId, traceId)
   } catch (e) {
     console.error('[rehearsal] 写回失败（不影响前台）:', e)
   }

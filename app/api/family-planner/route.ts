@@ -4,6 +4,7 @@ import { resolveTenant } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { enqueueJob } from '@/lib/server/jobs/queue'
+import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { decideFeatureUI } from '@/lib/server/features/feature-ui-router'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
@@ -72,9 +73,9 @@ export async function POST(request: Request) {
       return undefined
     })
 
-    // 充分性门槛（文档 5.4.3）：明确判定"过去失败节点不清楚"时只追问、不出计划。
-    // 无 key/LLM 失败 → ai 为 undefined → enoughToPlan 非 false → 放行到 FALLBACK，不卡死。
-    const insufficient = ai?.enoughToPlan === false
+    // 充分性门槛（文档 5.4.3 + 红线"信息不足不硬生成"）：失败节点不清 → 只追问、不出计划。
+    // LLM 不可用(ai 为 undefined)时无法判断充分度，也视为不足 → 走轻追问，绝不用 FALLBACK 拼一个泛泛计划。
+    const insufficient = !ai || ai.enoughToPlan === false
     const plan: FamilyPlanOutput = insufficient
       ? {
           enoughToPlan: false,
@@ -110,6 +111,12 @@ export async function POST(request: Request) {
       }
     })
     void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
+    // Episode 抽取统一走队列（对齐 daily / 其它专项）：让规划叙述的家庭事实可被下一轮检索、job 可追踪。
+    const episodeId = deriveEpisodeId(userText, { familyId: tenant.familyId, childId: tenant.childId })
+    void enqueueJob('episode_ingest', {
+      text: userText,
+      ctx: { sourceEventId: traceId, familyId: tenant.familyId, childId: tenant.childId, episodeId }
+    }, episodeId, traceId)
 
     // 5.3 UI 切换：失败节点不清(insufficient)→轻追问；出计划→结果展示。前台不暴露 readiness。
     const router = decideFeatureUI({

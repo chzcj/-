@@ -84,8 +84,8 @@ export default function RecordChildPage() {
           <section className="saved-card">
             <CheckCircle2 size={20} />
             <div>
-              <strong>记录已暂存</strong>
-              <p>当前是 MVP 演示版，真实数据库接入后会写入长期档案。</p>
+              <strong>记录已收到</strong>
+              <p>这条会进入长期记忆，参与对孩子的持续理解；后续在看板和画像里会用到。</p>
             </div>
           </section>
         ) : null}
