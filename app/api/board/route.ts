@@ -22,6 +22,7 @@ type BoardSnapshot = {
   version?: number
   evidenceRefs?: EvidenceRef[]
   updatedAt?: string
+  pending?: boolean // 无持久化快照、正实时回退 + 已入队 digest_update：前台据此显示"正在整理"并轮询
 }
 
 // 证据不足或 LLM 未启用时的温和空态，不硬编画像。
@@ -65,7 +66,8 @@ export async function GET() {
   // 3) 自愈入队（null 键，每次 miss 都入队，靠 content_hash 短路防重复），让下次走快照。
   void enqueueJob('digest_update', { tenant: { familyId: identity.familyId, childId: identity.childId } }, null, null)
 
-  return ok<BoardSnapshot>(normalizeBoard(board || {}))
+  // pending:true → 还没持久化快照（digest_update 正在后台建）；前台据此显示"正在整理"并轮询。
+  return ok<BoardSnapshot>({ ...normalizeBoard(board || {}), pending: true })
 }
 
 // 逐字段兜底 + FALLBACK；快照命中与实时回退共用。

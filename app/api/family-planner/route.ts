@@ -75,10 +75,10 @@ export async function POST(request: Request) {
 
     // 充分性门槛（文档 5.4.3 + 红线"信息不足不硬生成"）：失败节点不清 → 只追问、不出计划。
     // LLM 不可用(ai 为 undefined)时无法判断充分度，也视为不足 → 走轻追问，绝不用 FALLBACK 拼一个泛泛计划。
+    // insufficient 仅供后台 decideFeatureUI 判定，不进前台响应（uiMode 已表达，enoughToPlan 属后台字段，红线不外泄）。
     const insufficient = !ai || ai.enoughToPlan === false
     const plan: FamilyPlanOutput = insufficient
       ? {
-          enoughToPlan: false,
           acknowledgement: textOr(ai?.acknowledgement, '我先不急着给你排计划——想先弄清一个点，免得又定一个坚持不下来的安排。'),
           boundaryFirst: '',
           actions: [],

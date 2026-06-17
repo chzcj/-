@@ -11,6 +11,8 @@ type BoardSnapshot = {
   recentChanges: string[]
   pendingQuestions: string[]
   currentBestNextStep: string
+  pending?: boolean
+  updatedAt?: string
 }
 
 export default function BoardPage() {
@@ -20,13 +22,35 @@ export default function BoardPage() {
 
   useEffect(() => {
     let alive = true
-    fetch('/api/board')
-      .then((r) => r.json())
-      .then((json) => { if (alive && json.ok) setBoard(json.data) })
-      .catch(() => {})
-      .finally(() => { if (alive) setLoading(false) })
+    let tries = 0
+    const MAX_TRIES = 5 // 刚建模后 digest_update 需几秒写好快照，期间轮询重试，避免空态
+    async function load() {
+      try {
+        const r = await fetch('/api/board')
+        const json = await r.json()
+        if (!alive) return
+        if (json.ok && json.data) {
+          const d = json.data as BoardSnapshot
+          const thin = d.stableUnderstanding.length === 0 && d.familyInteractionPatterns.length === 0 && d.recentChanges.length === 0
+          if (d.pending && thin && tries < MAX_TRIES) {
+            tries += 1
+            setTimeout(() => { if (alive) void load() }, 2500) // 等后台 digest 写好快照再读
+            return // 保持 loading 态
+          }
+          setBoard(d)
+        }
+        setLoading(false)
+      } catch {
+        if (alive) setLoading(false)
+      }
+    }
+    void load()
     return () => { alive = false }
   }, [])
+
+  const updatedLabel = board?.updatedAt
+    ? new Date(board.updatedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : ''
 
   return (
     <AppShell>
@@ -34,7 +58,7 @@ export default function BoardPage() {
         <PageHeader title="家庭支持看板" showBack onBack={() => router.push('/home')} />
 
         {loading ? (
-          <div style={{ fontSize: 14, color: '#6E6E73', padding: '24px 0' }}>正在整理看板…</div>
+          <div style={{ fontSize: 14, color: '#6E6E73', padding: '24px 0' }}>正在整理看板…（刚建模时可能需要几秒）</div>
         ) : board ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <Section title="当前状态" accent>
@@ -47,6 +71,9 @@ export default function BoardPage() {
             <Section title="下一步" accent>
               <p style={{ fontSize: 15, lineHeight: 1.6, color: '#1D1D1F', margin: 0 }}>{board.currentBestNextStep}</p>
             </Section>
+            {updatedLabel ? (
+              <div style={{ fontSize: 12, color: '#A1A1A6', textAlign: 'center', marginTop: 2 }}>看板已于 {updatedLabel} 更新</div>
+            ) : null}
           </div>
         ) : (
           <div style={{ fontSize: 14, color: '#6E6E73', padding: '24px 0' }}>看板暂时没有加载出来，可以稍后再看。</div>

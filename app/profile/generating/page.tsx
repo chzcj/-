@@ -118,6 +118,8 @@ export default function GeneratingPage() {
             facts: (syn.candidateMechanismMatrix || []).flatMap((m: any) => m.supportingEvidence || []),
             childQuotes: [] as string[],
             parentQuotes: [] as string[],
+            // 把综合输出整包交给诊断：机制矩阵/跨入口证据/handoff 都靠它，否则诊断结构字段会空。
+            synthesisOutput: syn,
           }),
         })
         const diagnosisJson = await diagnosisRes.json()

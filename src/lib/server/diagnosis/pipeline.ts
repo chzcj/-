@@ -99,6 +99,10 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
   const facts = input.facts || synOutput?.memoryWriteSuggestions?.factsToStore || []
   const handoff = synOutput?.diagnosisHandoffPackage
 
+  // 暴露薄输入（不静默）：无 synthesisOutput → 机制/跨入口证据为空，诊断结构字段会偏薄。
+  if (!hasSynthesis) console.warn('[diagnosis] 未收到 synthesisOutput：候选机制/跨入口证据为空，诊断深度受限')
+  if (facts.length === 0) console.warn('[diagnosis] facts 为空：lowMisjudgmentFacts/crossSceneEvidencePaths 将为空')
+
   const mechanismSummaries = synOutput?.candidateMechanismMatrix?.map(m => ({
     name: m.mechanismName,
     strength: m.overallStrength,
@@ -187,21 +191,26 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
     immatureButFunctionalStrategy: '用表面配合维持和平，用拖延保留可控空间'
   }
 
-  const loops: DiagnosisInteractionLoop[] = aiLoops.length > 0
-    ? aiLoops.map(l => ({
-        patternName: l.patternName || '',
-        loopSteps: l.loopSteps || [],
-        sceneScope: l.sceneScope || '家庭学习系统',
-        evidence: facts.slice(0, 3),
-        status: maturityLevel >= 'L4' ? 'stable' as const : 'stage' as const
-      }))
-    : [{
-        patternName: interactionPatterns[0] || '检查—暴露—回避循环',
-        loopSteps: ['家长检查进度', '孩子预期暴露未完成或不会', '孩子敷衍、隐瞒或烦躁', '家长认为态度差并加强检查', '孩子更强烈回避'],
-        sceneScope: '学习任务系统',
-        evidence: facts.slice(0, 3),
-        status: maturityLevel >= 'L4' ? 'stable' as const : 'stage' as const
-      }]
+  const loops: DiagnosisInteractionLoop[] = (() => {
+    // 只保留有实质内容的 AI 循环（有名字或有步骤）；LLM 返回空条目时回退到兜底循环，避免 familyInteractionLoop 空。
+    const substantive = aiLoops.filter(l => (typeof l.patternName === 'string' && l.patternName.trim()) || (Array.isArray(l.loopSteps) && l.loopSteps.length > 0))
+    if (substantive.length === 0) console.warn('[diagnosis] familyInteractionLoops 为空或字段缺失，使用兜底循环')
+    return substantive.length > 0
+      ? substantive.map(l => ({
+          patternName: l.patternName || interactionPatterns[0] || '检查—暴露—回避循环',
+          loopSteps: l.loopSteps && l.loopSteps.length > 0 ? l.loopSteps : ['家长检查进度', '孩子预期暴露未完成或不会', '孩子敷衍、隐瞒或烦躁', '家长认为态度差并加强检查', '孩子更强烈回避'],
+          sceneScope: l.sceneScope || '家庭学习系统',
+          evidence: facts.slice(0, 3),
+          status: maturityLevel >= 'L4' ? 'stable' as const : 'stage' as const
+        }))
+      : [{
+          patternName: interactionPatterns[0] || '检查—暴露—回避循环',
+          loopSteps: ['家长检查进度', '孩子预期暴露未完成或不会', '孩子敷衍、隐瞒或烦躁', '家长认为态度差并加强检查', '孩子更强烈回避'],
+          sceneScope: '学习任务系统',
+          evidence: facts.slice(0, 3),
+          status: maturityLevel >= 'L4' ? 'stable' as const : 'stage' as const
+        }]
+  })()
 
   const mainLoop = loops[0]
 

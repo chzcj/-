@@ -196,6 +196,14 @@ ${input.crossCuttingSupplement}` : ''}`;
       })
     : [buildFallbackCrossEntry(packs, completedCount)]
 
+  // 质量守卫：核心字段全空的跨入口条目过滤掉并告警（暴露 LLM 稀疏输出，不静默塞空记录）。
+  const substantiveCrossEntry = crossEntryEvidence.filter(e =>
+    e.surfaceBehaviors.length > 0 || e.triggerPoints.length > 0 || e.parentActions.length > 0 || e.childReactions.length > 0 || Boolean(e.possibleSharedFunction))
+  if (substantiveCrossEntry.length < crossEntryEvidence.length) {
+    console.warn(`[synthesis] crossEntryEvidenceMap 过滤空条目: ${crossEntryEvidence.length - substantiveCrossEntry.length}/${crossEntryEvidence.length} 条核心字段全空`)
+  }
+  const crossEntryEvidenceMap = substantiveCrossEntry.length > 0 ? substantiveCrossEntry : [buildFallbackCrossEntry(packs, completedCount)]
+
   const defaultScores: MechanismScore = {
     evidenceSpecificity: completedCount >= 5 ? 4 : 3,
     crossEntryRepetition: completedCount >= 3 ? 4 : 2,
@@ -255,7 +263,7 @@ ${input.crossCuttingSupplement}` : ''}`;
     agent: 'multi_entry_synthesis_modeling_agent',
     contextMaturityLevel: input.maturityLevel,
     inputCoverage,
-    crossEntryEvidenceMap: crossEntryEvidence,
+    crossEntryEvidenceMap: crossEntryEvidenceMap,
     candidateMechanismMatrix: mechanismMatrix,
     childStructureModelDraft: {
       primaryConditionalProfile: aiProfile?.primaryConditionalProfile || (
