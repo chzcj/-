@@ -28,6 +28,11 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
   const { parentText, mode, profileContext, rehearsalContext } = body
 
+  // 缺原话不预演（交付文档 5.2.3）：先要原话，给引导而非 BAD_REQUEST。
+  if (typeof parentText !== 'string' || !parentText.trim()) {
+    return fail('NEED_PARENT_WORDS', '先把您准备对孩子说的原话写进来，我才能预演。不用润色，按平时会说的发就行。', undefined, 400)
+  }
+
   /* profile-aware 路径：有前端画像 或 有家长采集的预演上下文（目标/担心/背景）即进入。
      画像优先用前端传入，缺失则从服务端记忆检索；并检索过往类似沟通。 */
   const rc = (rehearsalContext || {}) as { parentGoal?: string; parentWorry?: string; whatHappenedBeforeTalk?: string }

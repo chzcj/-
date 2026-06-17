@@ -7,6 +7,7 @@ import { enqueueJob } from '@/lib/server/jobs/queue'
 import { callAgentTextStream } from '@/lib/server/ark-agents'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
+import type { KnowledgeContext } from '@/types/database'
 
 /* ================================================================
    日常对话流式输出（交付文档 6.3 / 14.3）
@@ -68,7 +69,9 @@ export async function POST(request: Request) {
                 pastEvents: output.retrievedContext.relevantPastEvents,
                 pendingHypotheses: output.retrievedContext.relevantPendingHypotheses,
                 suggestedResponseType: output.routingDecision.frontResponseType,
-                suggestedFollowup: output.routingDecision.followupQuestion
+                suggestedFollowup: output.routingDecision.followupQuestion,
+                // 知识库预留（交付文档 9.2）：P0 恒空，字段预留供后续挂载，不替代家庭事实。
+                knowledgeContext: undefined as KnowledgeContext | undefined
               },
               (delta) => send({ type: 'delta', delta })
             ).catch((err) => {
@@ -92,7 +95,7 @@ export async function POST(request: Request) {
             dailyUpdates: [createDailyUpdate(
               text,
               output.relationshipToExistingModel.type,
-              output.retrievedContext.relevantEntryEvidencePacks,
+              output.retrievedContext.matchedMechanisms,
               tenant,
               traceId
             )],

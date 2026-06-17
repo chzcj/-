@@ -14,6 +14,7 @@ import { createId } from '@/lib/storage/storageIds'
 
 type FamilyPlanAction = { title: string; detail: string }
 type FamilyPlanOutput = {
+  enoughToPlan?: boolean
   acknowledgement: string
   boundaryFirst: string
   actions: FamilyPlanAction[]
@@ -70,14 +71,25 @@ export async function POST(request: Request) {
       return undefined
     })
 
-    // LLM 字段逐项兜底，actions 强制收敛到 1-3 个（交付文档 5.4.3）。
-    const plan: FamilyPlanOutput = {
-      acknowledgement: textOr(ai?.acknowledgement, FALLBACK.acknowledgement),
-      boundaryFirst: textOr(ai?.boundaryFirst, FALLBACK.boundaryFirst),
-      actions: normalizeActions(ai?.actions),
-      missingInfo: typeof ai?.missingInfo === 'string' ? ai.missingInfo.trim() : '',
-      note: textOr(ai?.note, FALLBACK.note)
-    }
+    // 充分性门槛（文档 5.4.3）：明确判定"过去失败节点不清楚"时只追问、不出计划。
+    // 无 key/LLM 失败 → ai 为 undefined → enoughToPlan 非 false → 放行到 FALLBACK，不卡死。
+    const insufficient = ai?.enoughToPlan === false
+    const plan: FamilyPlanOutput = insufficient
+      ? {
+          enoughToPlan: false,
+          acknowledgement: textOr(ai?.acknowledgement, '我先不急着给你排计划——想先弄清一个点，免得又定一个坚持不下来的安排。'),
+          boundaryFirst: '',
+          actions: [],
+          missingInfo: textOr(ai?.missingInfo, FALLBACK.missingInfo),
+          note: '把这一点说清楚，我们就能定一两个你真能坚持的动作。'
+        }
+      : {
+          acknowledgement: textOr(ai?.acknowledgement, FALLBACK.acknowledgement),
+          boundaryFirst: textOr(ai?.boundaryFirst, FALLBACK.boundaryFirst),
+          actions: normalizeActions(ai?.actions),
+          missingInfo: typeof ai?.missingInfo === 'string' ? ai.missingInfo.trim() : '',
+          note: textOr(ai?.note, FALLBACK.note)
+        }
 
     // 把本次规划输入与产出写回记忆（异步，不阻塞）；下次规划可检索本次产出，memory_write 链式触发 digest_update。
     const writePlan = buildMemoryWritePlan({

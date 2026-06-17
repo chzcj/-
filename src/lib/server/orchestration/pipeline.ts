@@ -75,6 +75,7 @@ export async function runOrchestrationPipeline(input: OrchestrationInput): Promi
       relevantPastEvents: retrievalPacket.recentRelatedEvents,
       relevantPendingHypotheses: retrievalPacket.pendingHypotheses,
       relevantFamilyInteractionPatterns: [],
+      matchedMechanisms: retrievalPacket.matchedMechanisms,
       recentDiagnosis: [],
       parentNarrativePattern: []
     },
@@ -183,7 +184,7 @@ function buildSafetyResponse(
       relevantChildStructureModel: retrieval.relevantChildStructureModels,
       relevantEntryEvidencePacks: [],
       relevantPastEvents: [], relevantPendingHypotheses: [],
-      relevantFamilyInteractionPatterns: [], recentDiagnosis: [], parentNarrativePattern: []
+      relevantFamilyInteractionPatterns: [], matchedMechanisms: [], recentDiagnosis: [], parentNarrativePattern: []
     },
     relationshipToExistingModel: { type: 'safety', explanation: '安全风险，停止常规分析', confidence: 'high' },
     routingDecision: {

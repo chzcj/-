@@ -565,8 +565,39 @@ export interface RetrievedContext {
   relevantPastEvents: string[]
   relevantPendingHypotheses: string[]
   relevantFamilyInteractionPatterns: string[]
+  matchedMechanisms: string[]
   recentDiagnosis: string[]
   parentNarrativePattern: string[]
+}
+
+/* ================================================================
+   知识库预留（交付文档 9.2）。当前 P0 不接逻辑，仅预留 schema：
+   knowledgeContext 在前台输入里恒为空，但字段必须存在，便于后续挂载。
+   知识库只辅助候选解释/追问策略/表达库/规划/风险边界，不替代 FamilyModel 与家庭事实。
+   ================================================================ */
+export type KnowledgeCardType =
+  | 'behavior_candidate'
+  | 'interaction_cycle'
+  | 'question_policy'
+  | 'communication_expression'
+  | 'education_diagnosis'
+  | 'family_planning'
+  | 'risk_boundary'
+
+export interface KnowledgeCard {
+  id: string
+  cardType: KnowledgeCardType
+  title: string
+  applicableScenes: string[]
+  triggerFacts: string[]
+  counterEvidence: string[]
+  parentFacingLanguage: string
+  internalNotes?: string
+}
+
+export interface KnowledgeContext {
+  enabled: boolean
+  cards: KnowledgeCard[]
 }
 
 export interface RoutingDecision {

@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       dailyUpdates: [createDailyUpdate(
         userText,
         output.relationshipToExistingModel.type,
-        output.retrievedContext.relevantEntryEvidencePacks,
+        output.retrievedContext.matchedMechanisms,
         tenant,
         traceId
       )],
