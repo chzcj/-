@@ -5,6 +5,7 @@ import { isDatabaseEnabled } from '@/lib/server/db'
 import { executeWritePlan } from '@/lib/server/memory/write/decision-engine'
 import { ingestEpisodeStrict, type IngestContext } from '@/lib/server/memory/episode/pipeline'
 import { rebuildBriefAndBoard } from '@/lib/server/memory/digest/updaters'
+import { runEntryEvidenceBuild, type EntryEvidencePayload } from '@/lib/server/memory/entry-evidence/builder'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { MemoryWritePlan } from '@/types/database'
 
@@ -14,7 +15,7 @@ import type { MemoryWritePlan } from '@/types/database'
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest' | 'digest_update'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
 interface DigestUpdatePayload { tenant: TenantId }
@@ -95,6 +96,9 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   } else if (jobType === 'digest_update') {
     const p = payload as DigestUpdatePayload
     await rebuildBriefAndBoard(p.tenant) // 幂等，重跑安全
+  } else if (jobType === 'entry_evidence') {
+    const p = payload as EntryEvidencePayload
+    await runEntryEvidenceBuild(p) // 后台深度拆解入口证据包，不吞异常驱动重试
   }
 }
 

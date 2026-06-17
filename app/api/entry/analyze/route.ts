@@ -4,8 +4,6 @@ import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { createId } from '@/lib/storage/storageIds'
-import { buildEntryPack } from '@/lib/server/memory/entry-builder'
-import { buildMemoryWritePlan } from '@/lib/server/memory/write/decision-engine'
 
 const TITLE_MAP: Record<string, string> = {
   study: '学习作业', routine: '手机与日常节奏',
@@ -44,33 +42,17 @@ export async function POST(request: Request) {
         ctx: { sourceEventId: `entry_${entryType}`, familyId: tenant.familyId, childId: tenant.childId, episodeId }
       }, null, `entry_${entryType}`)
 
-      // 采集即写 EntryEvidencePack(L3)：本入口的证据包当场落库，闭环不再等到 synthesis 才有 L3。
-      // 仅在真有 AI 结果时写（无 key → result undefined → 跳过，前台走 loading/重试）。
+      // EntryEvidencePack(L3) 由后台「入口证据建造 Agent」深度生成（测评反馈：前台只返阶段反馈，证据包后台深拆）。
+      // 仅在真有 AI 结果时入队（前台快总结作 hint，深拆/写库在 entry_evidence job 异步完成；LLM 失败 job 内回退规则版）。
       if (result?.mainJudgment && TITLE_MAP[entryType] && entryType !== 'final') {
-        const pack = buildEntryPack(
+        void enqueueJob('entry_evidence', {
           entryType,
-          {
-            rawTexts: [rawText],
-            stageSummary: result.mainJudgment,
-            followUps: [],
-            aiFacts: Array.isArray(result.facts) ? result.facts : [],
-            aiHypotheses: Array.isArray(result.pendingHypotheses) ? result.pendingHypotheses : [],
-          },
-          tenant.familyId,
-          tenant.childId,
-          0,
-        )
-        const plan = buildMemoryWritePlan({
+          rawText,
+          frontSummary: result.mainJudgment,
+          facts: Array.isArray(result.facts) ? result.facts : [],
+          hypotheses: Array.isArray(result.pendingHypotheses) ? result.pendingHypotheses : [],
           tenant,
-          entryEvidencePacks: [pack],
-          rationale: {
-            whyUpdate: `${topic}入口阶段总结完成，写入入口证据包`,
-            whyNotPromoteSomeItems: '单入口证据，待跨入口综合再升级',
-            riskOfOvergeneralization: '',
-            nextVerificationNeed: (result.pendingHypotheses || []).join('；'),
-          },
-        })
-        void enqueueJob('memory_write', { plan, tenant }, null, `entry_pack_${entryType}`)
+        }, null, `entry_evd_${entryType}`)
       }
 
       // 无 AI 结果（无 key / LLM 失败）→ 503 明确告知，而非 ok:true/data 空（前台据此显示重试）。
