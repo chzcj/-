@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, BookOpenText, CalendarRange, ChevronRight, LayoutDashboard, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
+import { Archive, BookOpenText, CalendarRange, ChevronRight, GraduationCap, LayoutDashboard, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
@@ -30,6 +30,7 @@ export default function HomePage() {
     router.prefetch('/rehearsal');
     router.prefetch('/record-child');
     router.prefetch('/family-planner');
+    router.prefetch('/education-diagnosis');
     router.prefetch('/board');
     router.prefetch('/family-profile');
     router.prefetch('/login');
@@ -154,6 +155,25 @@ export default function HomePage() {
           <ChevronRight size={18} style={{ color: '#C7C7CC', flexShrink: 0 }} />
         </button>
 
+        {/* 三个并列专项功能（交付文档 5.3，对齐原型）：按需进入专项采集 / 轻追问 */}
+        <div className="feature-trio">
+          <button type="button" onClick={() => router.push('/rehearsal')}>
+            <span className="ft-icon"><Mic size={18} /></span>
+            <span className="ft-name">沟通预演</span>
+            <span className="ft-desc">想好怎么说，先预演一遍</span>
+          </button>
+          <button type="button" onClick={() => router.push('/education-diagnosis')}>
+            <span className="ft-icon"><GraduationCap size={18} /></span>
+            <span className="ft-name">教育模式诊断</span>
+            <span className="ft-desc">看清这个家每天怎么运转</span>
+          </button>
+          <button type="button" onClick={() => router.push('/family-planner')}>
+            <span className="ft-icon"><CalendarRange size={18} /></span>
+            <span className="ft-name">家庭规划</span>
+            <span className="ft-desc">按家庭承受力定下一步</span>
+          </button>
+        </div>
+
         <section className="talk-card">
           <div className="talk-card-top">
             <span><i />心镜语音捕捉</span>
@@ -200,7 +220,7 @@ export default function HomePage() {
         </div>
 
         {toast ? <div className="toast">{toast}</div> : null}
-        <nav className="talk-tabs" aria-label="底部模块">
+        <nav className="talk-tabs talk-tabs-six" aria-label="底部模块">
           <button type="button" className="active" onClick={() => setToast('你已经在对话页，可以直接说一件挂心的小事。')}>
             <MessageCircle size={20} />
             <span>对话</span>
@@ -208,6 +228,10 @@ export default function HomePage() {
           <button type="button" onClick={() => router.push('/rehearsal')}>
             <Mic size={20} />
             <span>沟通预演</span>
+          </button>
+          <button type="button" onClick={() => router.push('/education-diagnosis')}>
+            <GraduationCap size={20} />
+            <span>教育诊断</span>
           </button>
           <button type="button" onClick={() => router.push('/record-child')}>
             <BookOpenText size={20} />

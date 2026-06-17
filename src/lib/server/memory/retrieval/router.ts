@@ -202,3 +202,55 @@ export async function buildSynthesisRetrievalPacket(tenant: TenantId): Promise<S
     suggestedSynthesisFocus: effectiveLevel === 'L0' ? [] : ['基于现有结构模型继续交叉验证']
   }
 }
+
+/* ================================================================
+   教育模式诊断专项检索（交付文档 5.3）。轻量复用三层语义检索：
+   带出既往已采集的生活流水事实 + [教育诊断] 历史，供 LLM 判 readiness。
+   不落新表，已采集事实由 Episode/dailyUpdate 层累积。
+   ================================================================ */
+export interface EducationDiagnosisRetrievalPacket {
+  knownFacts: string[]          // 语义召回的相关家庭事实（Episode summary + 高价值原话）
+  recentEducationEvents: string[] // 既往 [教育诊断] 采集历史
+  childUnderstanding: string[]  // 已有孩子画像倾向
+  maturityLevel: ReturnType<typeof getCurrentMaturityState>['level']
+}
+
+export async function buildEducationDiagnosisRetrievalPacket(
+  query: string | undefined,
+  tenant: TenantId
+): Promise<EducationDiagnosisRetrievalPacket> {
+  const maturity = getCurrentMaturityState(tenant)
+  const [profiles, model, updates] = await Promise.all([
+    getConditionalProfiles(tenant),
+    getLatestChildStructureModel(tenant),
+    getDailyInteractionUpdates(tenant)
+  ])
+
+  // 既往本功能采集历史（按 [教育诊断] 前缀过滤）。
+  const recentEducationEvents = updates
+    .map(u => u.newInput)
+    .filter((t): t is string => Boolean(t) && t.includes('[教育诊断]'))
+    .slice(-6)
+
+  // 语义召回相关家庭事实（三层检索；不可用则空，由 LLM 仅据本轮输入判 readiness）。
+  let knownFacts: string[] = []
+  const pack = query ? await retrieveContextPack(query, { familyId: tenant.familyId, childId: tenant.childId }) : undefined
+  if (pack) {
+    const episodeTexts = pack.episodes.map(e => e.summary)
+    const highValueAtomTexts = pack.episodes
+      .flatMap(e => e.atoms.filter(a => a.isHighValue).map(a => a.content))
+      .concat(pack.extraHighValueAtoms.map(a => a.content))
+    knownFacts = [...episodeTexts.slice(0, 5), ...highValueAtomTexts.slice(0, 3)]
+  }
+
+  const childUnderstanding = profiles.length > 0
+    ? profiles.map(p => p.childTendency).slice(0, 3)
+    : (model?.primaryConditionalProfile?.childTendency ? [model.primaryConditionalProfile.childTendency] : [])
+
+  return {
+    knownFacts,
+    recentEducationEvents,
+    childUnderstanding,
+    maturityLevel: maturity.level
+  }
+}
