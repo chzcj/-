@@ -89,7 +89,10 @@ export async function POST(request: Request) {
 
           send({ type: 'final', text: finalText, linkedAreas, traceId })
 
-          // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）
+          // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）。
+          // 注意：daily 流只写 L9 dailyUpdate，不写 L1(RawMaterial)/L2(CleanedFact)——这是已决策的架构演进：
+          // 事实权威层由下方 ingestEpisode 的 EvidenceEpisode + FactAtom 承担（FactAtom 的 sourceType 已把"事实 vs 评价"分层，
+          // 等价并细化了 L2，且向量化可语义检索）。不双写 L1/L2，避免事实冗余与检索去重负担。
           const writePlan = buildMemoryWritePlan({
             tenant,
             dailyUpdates: [createDailyUpdate(
