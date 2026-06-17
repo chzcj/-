@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import { isDatabaseEnabled } from '@/lib/server/db'
 import { executeWritePlan } from '@/lib/server/memory/write/decision-engine'
 import { ingestEpisodeStrict, type IngestContext } from '@/lib/server/memory/episode/pipeline'
+import { rebuildBriefAndBoard } from '@/lib/server/memory/digest/updaters'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { MemoryWritePlan } from '@/types/database'
 
@@ -13,9 +14,10 @@ import type { MemoryWritePlan } from '@/types/database'
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
+interface DigestUpdatePayload { tenant: TenantId }
 
 const BATCH = Number(process.env.JOB_BATCH || 2)            // 每轮最多取几条，配合小连接池
 const ZOMBIE_MIN = Number(process.env.JOB_ZOMBIE_MIN || 15) // running 超时回收阈值（>> handler p99）
@@ -84,9 +86,15 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   if (jobType === 'memory_write') {
     const p = payload as MemoryWritePayload
     await executeWritePlan(p.plan, p.tenant)
+    // 链式触发 Brief/Board 更新（文档 12.1：后台写入→Brief→看板）。
+    // null 键强制入队；真正去重靠 rebuildBriefAndBoard 内 content_hash 短路（同证据集空跑）。
+    await enqueueJob('digest_update', { tenant: p.tenant }, null, null)
   } else if (jobType === 'episode_ingest') {
     const p = payload as EpisodeIngestPayload
     await ingestEpisodeStrict(p.text, p.ctx)
+  } else if (jobType === 'digest_update') {
+    const p = payload as DigestUpdatePayload
+    await rebuildBriefAndBoard(p.tenant) // 幂等，重跑安全
   }
 }
 

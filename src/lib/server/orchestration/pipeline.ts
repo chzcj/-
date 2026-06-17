@@ -141,7 +141,7 @@ function buildRoutingDecision(
     frontResponseType: responseType,
     needFollowup: relationship !== 'old_mechanism_repetition',
     followupQuestion: maturity === 'L0'
-      ? '能不能先用语音说30秒以上，把最近最让你头疼的一个场景讲一讲？不要求说得多清楚，照当时发生的原话说就行。'
+      ? '先不用说得多准。我想先把场景听清楚，好区分他是"对这件事整体在回避"，还是"只对某个具体的点（某个人/某次事）敏感"——这两种后面处理不一样。能不能用语音说30秒以上，照当时发生的原话讲一个最近最头疼的场景？'
       : '',
     needMemoryWrite: true,
     needDeepDiagnosis: relationship === 'counter_evidence' || (relationship === 'new_mechanism_signal' && maturity >= 'L3'),
@@ -227,7 +227,7 @@ function buildFrontResponse(
       return '结合之前的材料看，这次更像之前那个模式又出现了。我会把它记进观察记录里。'
     case 'one_key_followup':
       if (maturity === 'L0') {
-        return '现在这条信息还不足以判断孩子为什么这样，我不建议只靠这一句话下结论。我们先把几个关键场景补起来：能不能用语音说30秒以上，把最近最让你头疼的一个场景，照当时发生的原话讲一讲？'
+        return '现在这一句还不够判断他为什么这样，我不想只靠这句下结论。我们先把场景讲清楚——我想先区分他是"对这件事整体在回避"，还是"只是某个具体的点（某位老师/某次考试/某个同学）变敏感了"，这两个方向后面不一样。能不能用语音说30秒以上，照当时发生的原话，讲一个最近最让你头疼的场景？'
       }
       if ((userText.includes('学校') || userText.includes('老师') || userText.includes('同学')) && (userText.includes('不愿意说') || userText.includes('不提') || userText.includes('关门'))) {
         return '这里不是要判断对错，而是想先区分两种可能：他是对"学校这件事"整体在回避，还是只是对某个具体的人或事（某位老师、某次考试、某个同学）变敏感了——这两个方向后面处理不一样。您凭印象说就行：最近是从哪一天或哪件事之后，他开始不太提学校的？'

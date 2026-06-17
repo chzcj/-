@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { callAgentJson } from '@/lib/server/ark-agents'
+import { resolveTenant } from '@/lib/server/memory/tenant'
+import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
+import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
+import { enqueueJob } from '@/lib/server/jobs/queue'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 
@@ -46,10 +50,21 @@ export async function POST(request: Request) {
     const userText = text.trim()
     const traceId = createId('trace')
 
+    // 读 FamilyModel/记忆上下文（既往尝试、家庭承受力边界），喂给 LLM。
+    const tenant = await resolveTenant()
+    const packet = await buildDailyDialogueRetrievalPacket(userText, tenant)
+    const familyContext = {
+      childUnderstanding: packet.relevantChildStructureModels.slice(0, 3),
+      pastPlansAndEvents: packet.recentRelatedEvents.slice(0, 6), // 既往尝试/失败线索
+      supportingEvidence: packet.supportingEvidence.slice(0, 5),
+      pendingHypotheses: packet.pendingHypotheses.slice(0, 3),     // 家庭资源/承受力待验证点
+      matchedMechanisms: packet.matchedMechanisms.slice(0, 4)
+    }
+
     const ai = await callAgentJson<Partial<FamilyPlanOutput>>(
       'familyPlanner',
-      '基于家长讲述的家庭情况，给出少量、可承受的下一步动作。',
-      { userText }
+      '基于家长讲述的家庭情况与已掌握的家庭理解（familyContext），给出少量、可承受的下一步动作。必须参考既往尝试过的安排与家庭承受力边界，不重复已失败的安排、不超出家庭资源。',
+      { userText, familyContext }
     ).catch((err) => {
       console.error(`[family-planner] LLM 调用失败 traceId=${traceId}:`, err)
       return undefined
@@ -63,6 +78,25 @@ export async function POST(request: Request) {
       missingInfo: typeof ai?.missingInfo === 'string' ? ai.missingInfo.trim() : '',
       note: textOr(ai?.note, FALLBACK.note)
     }
+
+    // 把本次规划输入与产出写回记忆（异步，不阻塞）；下次规划可检索本次产出，memory_write 链式触发 digest_update。
+    const writePlan = buildMemoryWritePlan({
+      tenant,
+      dailyUpdates: [createDailyUpdate(
+        `[家庭规划] 家长输入：${userText}｜先稳边界：${plan.boundaryFirst}｜动作：${plan.actions.map(a => a.title).join('、')}`,
+        'insufficient', // 规划属操作建议，不误增稳定画像权重
+        packet.matchedMechanisms,
+        tenant,
+        traceId
+      )],
+      rationale: {
+        whyUpdate: '家庭综合规划完成，记录本次输入与产出动作',
+        whyNotPromoteSomeItems: '规划属操作建议，暂不升级为长期判断',
+        riskOfOvergeneralization: '',
+        nextVerificationNeed: plan.missingInfo || ''
+      }
+    })
+    void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
 
     return NextResponse.json({ ok: true, data: { traceId, plan } })
   } catch (error) {

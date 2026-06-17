@@ -103,9 +103,27 @@ export async function ensureDbSchema() {
         child_id TEXT NOT NULL,
         family_brief JSONB NOT NULL DEFAULT '{}'::jsonb,
         profile_board JSONB NOT NULL DEFAULT '{}'::jsonb,
+        brief_version INT NOT NULL DEFAULT 0,
+        brief_evidence_refs JSONB NOT NULL DEFAULT '[]'::jsonb,
+        brief_hash TEXT NOT NULL DEFAULT '',
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         PRIMARY KEY (family_id, child_id)
       );
+
+      CREATE TABLE IF NOT EXISTS board_snapshots (
+        id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        family_id     TEXT NOT NULL,
+        child_id      TEXT NOT NULL,
+        version       INT  NOT NULL,
+        snapshot      JSONB NOT NULL,
+        evidence_refs JSONB NOT NULL DEFAULT '[]'::jsonb,
+        content_hash  TEXT NOT NULL,
+        updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (family_id, child_id, version),
+        UNIQUE (family_id, child_id, content_hash)
+      );
+      CREATE INDEX IF NOT EXISTS idx_board_latest
+        ON board_snapshots (family_id, child_id, version DESC);
 
       CREATE TABLE IF NOT EXISTS memory_layer_items (
         layer_name TEXT NOT NULL,
@@ -133,6 +151,10 @@ export async function ensureDbSchema() {
           ALTER TABLE memory_layer_items DROP CONSTRAINT memory_layer_items_pkey;
         END IF;
         ALTER TABLE memory_layer_items ADD PRIMARY KEY (family_id, child_id, layer_name, item_id);
+        -- family_memory_digests 补 brief 版本/指纹/证据列（既有库；CREATE IF NOT EXISTS 不改既有表）
+        ALTER TABLE family_memory_digests ADD COLUMN IF NOT EXISTS brief_version INT NOT NULL DEFAULT 0;
+        ALTER TABLE family_memory_digests ADD COLUMN IF NOT EXISTS brief_evidence_refs JSONB NOT NULL DEFAULT '[]'::jsonb;
+        ALTER TABLE family_memory_digests ADD COLUMN IF NOT EXISTS brief_hash TEXT NOT NULL DEFAULT '';
       EXCEPTION WHEN others THEN RAISE NOTICE 'memory_layer_items migration skipped: %', SQLERRM;
       END $$;
     `)).then(() => undefined);
@@ -309,6 +331,103 @@ export async function deleteAtomsByEpisode(episodeId: string): Promise<void> {
   const pool = getPool();
   if (!pool) return;
   await pool.query('DELETE FROM fact_atoms WHERE episode_id = $1', [episodeId]);
+}
+
+/* ================================================================
+   FamilyBrief / BoardSnapshot 持久化（文档 7.5 / 7.6）
+   content_hash 驱动幂等：同证据集重跑 → 同 hash → 不增版本。
+   ================================================================ */
+
+// 幂等短路用：取最新 board 的 content_hash。
+export async function getLatestBoardHash(familyId = 'f_demo', childId = 'c_demo'): Promise<string | undefined> {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const r = await pool.query<{ content_hash: string }>(
+    `SELECT content_hash FROM board_snapshots WHERE family_id=$1 AND child_id=$2 ORDER BY version DESC LIMIT 1`,
+    [familyId, childId]
+  );
+  return r.rows[0]?.content_hash;
+}
+
+export interface PersistedBoard {
+  snapshot: Record<string, unknown>;
+  version: number;
+  evidenceRefs: unknown[];
+  updatedAt: string;
+}
+
+export async function loadLatestBoardSnapshot(familyId = 'f_demo', childId = 'c_demo'): Promise<PersistedBoard | undefined> {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const r = await pool.query<{ snapshot: Record<string, unknown>; version: number; evidence_refs: unknown[]; updated_at: string | Date }>(
+    `SELECT snapshot, version, evidence_refs, updated_at FROM board_snapshots WHERE family_id=$1 AND child_id=$2 ORDER BY version DESC LIMIT 1`,
+    [familyId, childId]
+  );
+  const row = r.rows[0];
+  if (!row) return undefined;
+  return {
+    snapshot: row.snapshot,
+    version: row.version,
+    evidenceRefs: row.evidence_refs || [],
+    updatedAt: typeof row.updated_at === 'string' ? row.updated_at : new Date(row.updated_at).toISOString()
+  };
+}
+
+// version DB 端 max+1；content_hash 命中则 DO NOTHING 不增版本（重试幂等）。
+export async function insertBoardSnapshot(familyId: string, childId: string, snapshot: unknown, evidenceRefs: unknown, contentHash: string): Promise<number | undefined> {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const r = await pool.query<{ version: number }>(
+    `INSERT INTO board_snapshots (family_id, child_id, version, snapshot, evidence_refs, content_hash)
+     SELECT $1,$2, COALESCE((SELECT max(version) FROM board_snapshots WHERE family_id=$1 AND child_id=$2),0)+1, $3::jsonb,$4::jsonb,$5
+     ON CONFLICT (family_id, child_id, content_hash) DO NOTHING
+     RETURNING version`,
+    [familyId, childId, JSON.stringify(snapshot), JSON.stringify(evidenceRefs), contentHash]
+  );
+  if (r.rows[0]) return r.rows[0].version;
+  const cur = await pool.query<{ version: number }>(
+    `SELECT version FROM board_snapshots WHERE family_id=$1 AND child_id=$2 AND content_hash=$3`,
+    [familyId, childId, contentHash]
+  );
+  return cur.rows[0]?.version;
+}
+
+// brief_hash 守卫：仅指纹变化才 +1（重试同内容不增版本）。
+export async function upsertFamilyBrief(familyId: string, childId: string, brief: unknown, evidenceRefs: unknown, briefHash: string): Promise<number | undefined> {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const r = await pool.query<{ brief_version: number }>(
+    `INSERT INTO family_memory_digests (family_id,child_id,family_brief,brief_version,brief_evidence_refs,brief_hash)
+     VALUES ($1,$2,$3::jsonb,1,$4::jsonb,$5)
+     ON CONFLICT (family_id,child_id) DO UPDATE
+       SET family_brief=EXCLUDED.family_brief,
+           brief_evidence_refs=EXCLUDED.brief_evidence_refs,
+           brief_hash=EXCLUDED.brief_hash,
+           brief_version=family_memory_digests.brief_version+1,
+           updated_at=NOW()
+       WHERE family_memory_digests.brief_hash IS DISTINCT FROM EXCLUDED.brief_hash
+     RETURNING brief_version`,
+    [familyId, childId, JSON.stringify(brief), JSON.stringify(evidenceRefs), briefHash]
+  );
+  if (r.rows[0]) return r.rows[0].brief_version;
+  const cur = await pool.query<{ brief_version: number }>(
+    `SELECT brief_version FROM family_memory_digests WHERE family_id=$1 AND child_id=$2`,
+    [familyId, childId]
+  );
+  return cur.rows[0]?.brief_version;
+}
+
+export async function getCurrentVersions(familyId = 'f_demo', childId = 'c_demo'): Promise<{ briefVersion: number; boardVersion: number }> {
+  const pool = getPool();
+  if (!pool) return { briefVersion: 0, boardVersion: 0 };
+  await ensureDbSchema();
+  const b = await pool.query<{ brief_version: number }>(`SELECT brief_version FROM family_memory_digests WHERE family_id=$1 AND child_id=$2`, [familyId, childId]);
+  const bd = await pool.query<{ version: number | null }>(`SELECT max(version) AS version FROM board_snapshots WHERE family_id=$1 AND child_id=$2`, [familyId, childId]);
+  return { briefVersion: b.rows[0]?.brief_version || 0, boardVersion: bd.rows[0]?.version || 0 };
 }
 
 export async function getAtomsByEpisodeIds(

@@ -2,6 +2,8 @@ import { fail, ok } from '@/lib/api-response'
 import { callFastJson } from '@/lib/server/ark-agents'
 import { generateRehearsal } from '@/lib/server/store'
 import { rehearsalAnalyzeSchema } from '@/lib/schemas'
+import { resolveTenant } from '@/lib/server/memory/tenant'
+import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 
 type ProfileAwareRehearsal = {
   childLikelyHearing: string
@@ -24,28 +26,45 @@ type RehearsalProfileContext = {
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
-  const { parentText, mode, profileContext } = body
+  const { parentText, mode, profileContext, rehearsalContext } = body
 
-  /* profile-aware 路径：传入了画像上下文 */
-  if (profileContext && parentText) {
+  /* profile-aware 路径：有前端画像 或 有家长采集的预演上下文（目标/担心/背景）即进入。
+     画像优先用前端传入，缺失则从服务端记忆检索；并检索过往类似沟通。 */
+  const rc = (rehearsalContext || {}) as { parentGoal?: string; parentWorry?: string; whatHappenedBeforeTalk?: string }
+  const hasRehearsalCtx = Boolean(rc.parentGoal || rc.parentWorry || rc.whatHappenedBeforeTalk)
+  if (parentText && mode !== 'conflict' && (profileContext || hasRehearsalCtx)) {
     try {
-      const ctx = profileContext as RehearsalProfileContext
+      const ctx = (profileContext || {}) as RehearsalProfileContext
+      const tenant = await resolveTenant()
+      const packet = await buildDailyDialogueRetrievalPacket(parentText, tenant).catch(() => undefined)
+      const pastSimilarTalks = (packet?.recentRelatedEvents || []).slice(0, 3)
+      const memHypotheses = ctx.pendingHypotheses?.length ? ctx.pendingHypotheses : (packet?.pendingHypotheses || [])
 
       const profileSummary = [
-         ctx.primaryConditionalProfile ? `画像：${ctx.primaryConditionalProfile.slice(0, 360)}` : '',
-         ctx.dominantProtectiveStrategies?.length ? `保护策略：${ctx.dominantProtectiveStrategies.slice(0, 4).join('；')}` : '',
-         ctx.familyInteractionCycles?.length ? `家庭循环：${ctx.familyInteractionCycles.slice(0, 4).map(c => c.patternName).join('；')}` : '',
-         ctx.pendingHypotheses?.length ? `待验证：${ctx.pendingHypotheses.slice(0, 3).join('；')}` : '',
-       ].filter(Boolean).join('\n')
+        ctx.primaryConditionalProfile
+          ? `画像：${ctx.primaryConditionalProfile.slice(0, 360)}`
+          : (packet?.relevantChildStructureModels?.length ? `画像：${packet.relevantChildStructureModels.join('；').slice(0, 360)}` : ''),
+        ctx.dominantProtectiveStrategies?.length ? `保护策略：${ctx.dominantProtectiveStrategies.slice(0, 4).join('；')}` : '',
+        ctx.familyInteractionCycles?.length
+          ? `家庭循环：${ctx.familyInteractionCycles.slice(0, 4).map(c => c.patternName).join('；')}`
+          : (packet?.matchedMechanisms?.length ? `家庭机制：${packet.matchedMechanisms.slice(0, 4).join('；')}` : ''),
+        memHypotheses.length ? `待验证：${memHypotheses.slice(0, 3).join('；')}` : '',
+        rc.parentGoal ? `家长这次真正想达成：${rc.parentGoal}` : '',
+        rc.parentWorry ? `家长最担心孩子的反应：${rc.parentWorry}` : '',
+        rc.whatHappenedBeforeTalk ? `沟通前置背景：${rc.whatHappenedBeforeTalk}` : '',
+        pastSimilarTalks.length ? `过往类似沟通：${pastSimilarTalks.join('；')}` : ''
+      ].filter(Boolean).join('\n')
 
-       const aiResult = await callFastJson<Partial<ProfileAwareRehearsal>>(
-         `你是 ChildOS 的沟通预演 Agent。你只做画像感知的亲子沟通预演。
+      if (profileSummary.trim()) {
+        const aiResult = await callFastJson<Partial<ProfileAwareRehearsal>>(
+          `你是 ChildOS 的沟通预演 Agent。你只做画像感知的亲子沟通预演。
 
 ${profileSummary}
 
 请判断家长这句话在这个孩子画像里会被怎样接收，并给一句更稳妥的可直接说出口版本。
 
 规则：
+- 必须结合家长这次真正想达成的目标，以及过往类似沟通的结果——避免重复已经失败过的说法。
 - 必须使用画像中的机制、保护策略或家庭循环。
 - 不要泛泛说"多鼓励少批评"。
 - 不要说家长控制欲强、孩子就是懒。
@@ -60,15 +79,16 @@ saferVersion: string
 whyThisIsSafer: string
 avoidPhrases: string[]
 usedProfileEvidence: string[]`,
-         { parentMessage: parentText, profileContext: profileSummary.slice(0, 1200) }
-       ).catch(() => undefined)
+          { parentMessage: parentText, profileContext: profileSummary.slice(0, 1500) }
+        ).catch(() => undefined)
 
-      const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx)
-      return ok({
+        const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx)
+        return ok({
           ...normalized,
           profileAware: true,
-          schemaVersion: 'childos.rehearsal.profile-aware.v1',
-      })
+          schemaVersion: 'childos.rehearsal.profile-aware.v1'
+        })
+      }
     } catch {}
   }
 
