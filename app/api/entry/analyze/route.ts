@@ -73,6 +73,10 @@ export async function POST(request: Request) {
         void enqueueJob('memory_write', { plan, tenant }, null, `entry_pack_${entryType}`)
       }
 
+      // 无 AI 结果（无 key / LLM 失败）→ 503 明确告知，而非 ok:true/data 空（前台据此显示重试）。
+      if (!result?.mainJudgment) {
+        return NextResponse.json({ ok: false, error: { code: 'ENTRY_SUMMARY_UNAVAILABLE', message: '这一步暂时没有整理成功，可以稍后再试。' } }, { status: 503 })
+      }
       return NextResponse.json({ ok: true, data: result })
     }
 
@@ -85,6 +89,9 @@ export async function POST(request: Request) {
       { entryType, rawText }
     ).catch(() => undefined)
 
+    if (!followUp?.purpose) {
+      return NextResponse.json({ ok: false, error: { code: 'ENTRY_FOLLOWUP_UNAVAILABLE', message: '这一步暂时没有整理成功，可以稍后再试。' } }, { status: 503 })
+    }
     return NextResponse.json({ ok: true, data: followUp })
   } catch (error) {
     return NextResponse.json({ ok: false, error: { code: 'ENTRY_ERROR', message: String(error) } }, { status: 500 })

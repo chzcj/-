@@ -57,25 +57,25 @@ export default function LoginPage() {
           <p>{mode === 'login' ? '登录后，你的对话、记录和孩子档案会保存在自己的账号下。' : '先用手机号和密码创建账号，后面可以继续补充孩子信息。'}</p>
         </section>
 
-        <section className="auth-card">
+        <form className="auth-card" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           <label className="auth-field">
             <span>手机号</span>
             <div>
               <Phone size={18} />
-              <input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="请输入手机号" disabled={loading} />
+              <input inputMode="tel" autoComplete="username" name="phone" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="请输入手机号" disabled={loading} />
             </div>
           </label>
           <label className="auth-field">
             <span>密码</span>
             <div>
               <LockKeyhole size={18} />
-              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="至少 8 位" disabled={loading} />
+              <input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} name="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="至少 8 位" disabled={loading} />
             </div>
           </label>
 
           {toast ? <div className="toast">{toast}</div> : null}
 
-          <PrimaryButton onClick={submit} loading={loading}>
+          <PrimaryButton type="submit" loading={loading}>
             {mode === 'login' ? '登录' : '注册并进入'}
           </PrimaryButton>
           <SecondaryButton disabled={loading} onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
@@ -83,7 +83,7 @@ export default function LoginPage() {
             {mode === 'login' ? '还没有账号，去注册' : '已有账号，去登录'}
           </SecondaryButton>
           <SecondaryButton disabled={loading} onClick={enterDemoMode}>先用演示模式进入</SecondaryButton>
-        </section>
+        </form>
       </div>
     </AppShell>
   );
