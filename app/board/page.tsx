@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/ui/PageHeader'
 
+type EvidenceRef = { kind?: string; id?: string; at?: string; snippet?: string }
 type BoardSnapshot = {
   childCurrentState: string
   stableUnderstanding: string[]
@@ -13,6 +14,7 @@ type BoardSnapshot = {
   currentBestNextStep: string
   pending?: boolean
   updatedAt?: string
+  evidenceRefs?: EvidenceRef[]
 }
 
 export default function BoardPage() {
@@ -71,6 +73,16 @@ export default function BoardPage() {
             <Section title="下一步" accent>
               <p style={{ fontSize: 15, lineHeight: 1.6, color: '#1D1D1F', margin: 0 }}>{board.currentBestNextStep}</p>
             </Section>
+            {board.evidenceRefs && board.evidenceRefs.length > 0 ? (
+              <details style={{ marginTop: 2 }}>
+                <summary style={{ fontSize: 12, color: '#6E6AF8', cursor: 'pointer', listStyle: 'none' }}>这些判断的依据（{board.evidenceRefs.length}）</summary>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                  {board.evidenceRefs.filter(e => e.snippet).slice(0, 8).map((e, i) => (
+                    <div key={i} style={{ fontSize: 12, lineHeight: 1.5, color: '#6E6E73', background: 'rgba(110,106,248,0.04)', borderLeft: '2px solid rgba(110,106,248,0.3)', borderRadius: 6, padding: '6px 10px' }}>{e.snippet}</div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
             {updatedLabel ? (
               <div style={{ fontSize: 12, color: '#A1A1A6', textAlign: 'center', marginTop: 2 }}>看板已于 {updatedLabel} 更新</div>
             ) : null}

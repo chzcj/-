@@ -151,6 +151,50 @@ export async function enqueueJob(jobType: JobType, payload: unknown, idemKey?: s
   }
 }
 
+/* 闭环可观测（测评反馈 P2-④）：按租户查后台 job 健康度，让"生成→写入→检索→使用"可验证、失败可见。
+   tenant 在 memory_write/digest/entry_evidence/model_review 的 payload.tenant，episode_ingest 在 payload.ctx，故 COALESCE。 */
+export interface JobHealth {
+  byType: Record<string, Record<string, number>>
+  totals: { pending: number; running: number; retrying: number; succeeded: number; failed: number }
+  recentFailures: Array<{ jobType: string; attempts: number; maxAttempts: number; lastError: string; at: string }>
+}
+
+export async function getJobHealth(tenant: TenantId): Promise<JobHealth | undefined> {
+  const pool = jobPool()
+  if (!pool) return undefined
+  await ensureJobSchema(pool)
+  const fam = tenant.familyId
+  const FILTER = `COALESCE(payload->'tenant'->>'familyId', payload->'ctx'->>'familyId') = $1`
+
+  const counts = await pool.query<{ job_type: string; status: string; n: number }>(
+    `SELECT job_type, status, count(*)::int AS n FROM job_queue WHERE ${FILTER} GROUP BY job_type, status`,
+    [fam]
+  )
+  const fails = await pool.query<{ job_type: string; attempts: number; max_attempts: number; last_error: string | null; updated_at: Date | string }>(
+    `SELECT job_type, attempts, max_attempts, last_error, updated_at FROM job_queue
+     WHERE status = 'failed' AND ${FILTER} ORDER BY updated_at DESC LIMIT 5`,
+    [fam]
+  )
+
+  const byType: Record<string, Record<string, number>> = {}
+  const totals = { pending: 0, running: 0, retrying: 0, succeeded: 0, failed: 0 }
+  for (const r of counts.rows) {
+    ;(byType[r.job_type] ||= {})[r.status] = r.n
+    if (r.status in totals) (totals as Record<string, number>)[r.status] += r.n
+  }
+  return {
+    byType,
+    totals,
+    recentFailures: fails.rows.map(f => ({
+      jobType: f.job_type,
+      attempts: f.attempts,
+      maxAttempts: f.max_attempts,
+      lastError: (f.last_error || '').slice(0, 200),
+      at: f.updated_at instanceof Date ? f.updated_at.toISOString() : String(f.updated_at),
+    })),
+  }
+}
+
 // 认领一条并执行。claim 用 FOR UPDATE SKIP LOCKED；running 提前 COMMIT 后再跑 AI；终态用 CAS 守卫。
 async function claimAndRunOne(pool: pg.Pool): Promise<boolean> {
   const client = await pool.connect()
