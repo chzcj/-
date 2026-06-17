@@ -4,10 +4,13 @@ import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { createId } from '@/lib/storage/storageIds'
+import { buildEntryPack } from '@/lib/server/memory/entry-builder'
+import { buildMemoryWritePlan } from '@/lib/server/memory/write/decision-engine'
 
 const TITLE_MAP: Record<string, string> = {
   study: '学习作业', routine: '手机与日常节奏',
   communication: '亲子沟通', emotion: '情绪压力', environment: '关系环境',
+  final: '五入口综合',
 }
 
 export async function POST(request: Request) {
@@ -40,6 +43,35 @@ export async function POST(request: Request) {
         text: rawText,
         ctx: { sourceEventId: `entry_${entryType}`, familyId: tenant.familyId, childId: tenant.childId, episodeId }
       }, null, `entry_${entryType}`)
+
+      // 采集即写 EntryEvidencePack(L3)：本入口的证据包当场落库，闭环不再等到 synthesis 才有 L3。
+      // 仅在真有 AI 结果时写（无 key → result undefined → 跳过，前台走 loading/重试）。
+      if (result?.mainJudgment && TITLE_MAP[entryType] && entryType !== 'final') {
+        const pack = buildEntryPack(
+          entryType,
+          {
+            rawTexts: [rawText],
+            stageSummary: result.mainJudgment,
+            followUps: [],
+            aiFacts: Array.isArray(result.facts) ? result.facts : [],
+            aiHypotheses: Array.isArray(result.pendingHypotheses) ? result.pendingHypotheses : [],
+          },
+          tenant.familyId,
+          tenant.childId,
+          0,
+        )
+        const plan = buildMemoryWritePlan({
+          tenant,
+          entryEvidencePacks: [pack],
+          rationale: {
+            whyUpdate: `${topic}入口阶段总结完成，写入入口证据包`,
+            whyNotPromoteSomeItems: '单入口证据，待跨入口综合再升级',
+            riskOfOvergeneralization: '',
+            nextVerificationNeed: (result.pendingHypotheses || []).join('；'),
+          },
+        })
+        void enqueueJob('memory_write', { plan, tenant }, null, `entry_pack_${entryType}`)
+      }
 
       return NextResponse.json({ ok: true, data: result })
     }

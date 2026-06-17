@@ -22,6 +22,7 @@ export interface SynthesisInput {
   entryPacks: EntryEvidencePack[]
   existingNetwork?: unknown | null
   existingProfiles?: string[]
+  crossCuttingSupplement?: string // final-follow-up 的综合补充（跨入口关键点）
 }
 
 interface AiSynthesisOutput {
@@ -144,7 +145,10 @@ export async function runSynthesisPipeline(input: SynthesisInput): Promise<Synth
 - 每个跨入口关联必须有具体证据来源和入口出处
 - candidateMechanismMatrix 里至少要有 5 条，每条必须有 mechanismName、supportingEvidence、overallStrength
 - crossEntryEvidenceMap 里至少要有 6 条跨入口关联
-- 输出完整 JSON，不要省略字段`;
+- 输出完整 JSON，不要省略字段${input.crossCuttingSupplement ? `
+
+家长在五入口之后补充的一个综合关键点（请在综合判断时重点纳入，但同样不能当成既定结论）：
+${input.crossCuttingSupplement}` : ''}`;
 
   const aiResult = await callFastJson<AiSynthesisOutput>(
     agentPrompts.multiEntrySynthesis,

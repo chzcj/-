@@ -50,6 +50,12 @@ export default function GeneratingPage() {
           if (e && f.userAnswer) e.followUps.push(f.userAnswer)
         }
 
+        // final-follow-up 的综合补充答案：作为 crossCuttingSupplement 纳入综合（不属五入口之一）。
+        const crossCuttingSupplement = followUpRecords
+          .filter(f => f.entryType === 'final' && f.userAnswer)
+          .map(f => f.userAnswer)
+          .join('\n')
+
         const completedEntries = Object.entries(entryMap).filter(([, v]) => v.rawTexts.length > 0).length
 
         const synthesisRes = await fetch('/api/synthesis', {
@@ -57,6 +63,7 @@ export default function GeneratingPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             entryMap,
+            crossCuttingSupplement,
             maturityLevel: completedEntries >= 5 ? 'L2' : completedEntries >= 3 ? 'L1' : 'L0',
             familyId: buildSession?.familyId || DEFAULT_FAMILY_ID,
             childId: buildSession?.childId || DEFAULT_CHILD_ID,
