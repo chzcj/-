@@ -202,6 +202,26 @@ export async function getLatestChildStructureModel(tenant: TenantId): Promise<Ch
   return (await readLayer<ChildStructureModel>('child_structure_models', tenant)).slice(-1)[0] || null
 }
 
+/* 首次建模生成的孩子画像快照（前台 /profile/result 渲染用）。
+   持久化到 DB（按租户隔离），让画像跨设备/重装不丢——前台 localStorage 仅作本机缓存。 */
+export type BuiltProfileSnapshot = {
+  completeness: number
+  coreJudgment: string
+  deepMechanism: string
+  supportFocus?: string
+  evidence: Array<{ sourceLabel: string; evidenceText: string; explanation: string; strength: 'weak' | 'medium' | 'strong' }>
+  verificationPoints: Array<{ title: string; description: string }>
+  updatedAt: string
+}
+
+export async function saveBuiltProfileSnapshot(snapshot: BuiltProfileSnapshot, tenant: TenantId) {
+  await replaceLayer('built_profile_snapshots', [toItem('built_profile_snapshots', snapshot, tenant, `${tenant.familyId}:${tenant.childId}:latest`)], tenant)
+}
+
+export async function getLatestBuiltProfileSnapshot(tenant: TenantId): Promise<BuiltProfileSnapshot | null> {
+  return (await readLayer<BuiltProfileSnapshot>('built_profile_snapshots', tenant)).slice(-1)[0] || null
+}
+
 export async function saveConditionalProfile(profile: ConditionalProfile, tenant: TenantId) {
   await upsertLayer('conditional_profiles', [toItem('conditional_profiles', profile, tenant)], tenant)
 }

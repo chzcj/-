@@ -68,3 +68,24 @@ export function getLatestProfile() {
 export function hasProfile() {
   return getLatestProfile() !== null
 }
+
+/* 把 DB 远端画像快照回灌到本机 localStorage（跨设备/重装后首次进入时）。
+   本机已有则跳过，避免重复。回灌后所有同步 getLatestProfile()/hasProfile() 消费方即可生效。 */
+export function hydrateProfileFromRemote(remote: {
+  completeness: number
+  coreJudgment: string
+  deepMechanism: string
+  supportFocus?: string
+  evidence?: Array<{ sourceLabel: string; evidenceText: string; explanation: string; strength: 'weak' | 'medium' | 'strong' }>
+  verificationPoints?: Array<{ title: string; description: string }>
+}) {
+  if (!remote?.coreJudgment || getLatestProfile()) return
+  createProfileSnapshot({
+    completeness: remote.completeness,
+    coreJudgment: remote.coreJudgment,
+    deepMechanism: remote.deepMechanism,
+    supportFocus: remote.supportFocus,
+    evidence: remote.evidence,
+    verificationPoints: remote.verificationPoints,
+  })
+}

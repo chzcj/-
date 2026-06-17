@@ -5,12 +5,38 @@ import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
 import { BottomNavTabs } from '@/components/layout/BottomNavTabs'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { getLatestProfile } from '@/lib/storage/profileStorage'
+import { getLatestProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage'
 
 export default function ProfileResultPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<ReturnType<typeof getLatestProfile>>(null)
-  useEffect(() => { setProfile(getLatestProfile()) }, [])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    const local = getLatestProfile()
+    if (local) { setProfile(local); setLoading(false); return }
+    // 本机无（跨设备/重装）→ 从 DB 取并回灌 localStorage。
+    let cancelled = false
+    fetch('/api/profile/built')
+      .then(r => r.json())
+      .then(json => {
+        if (cancelled) return
+        if (json.ok && json.data?.snapshot?.coreJudgment) {
+          hydrateProfileFromRemote(json.data.snapshot)
+          setProfile(getLatestProfile())
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+  if (loading) {
+    return (
+      <AppShell><div className="page without-voice with-bottom-tabs">
+        <PageHeader title="孩子画像" showBack onBack={() => router.push('/home')} />
+        <div style={{ textAlign: 'center', padding: 60, color: '#A1A1A6', fontSize: 14 }}>正在加载孩子画像…</div>
+      </div></AppShell>
+    )
+  }
   if (!profile) {
     return (
       <AppShell><div className="page without-voice with-bottom-tabs">

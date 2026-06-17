@@ -148,7 +148,7 @@ export default function GeneratingPage() {
 
         const protectionList = diag.childSelfProtection?.protectingWhat || []
 
-        createProfileSnapshot({
+        const snapshotInput = {
           completeness: Math.min(completedEntries * 20, 100),
           coreJudgment: profileText,
           deepMechanism: mechanismText,
@@ -160,7 +160,16 @@ export default function GeneratingPage() {
             title: '待验证',
             description: v,
           })),
-        })
+        }
+
+        createProfileSnapshot(snapshotInput)
+
+        // 持久化到 DB（让画像跨设备/重装不丢）；异步不阻塞，失败仅记日志。
+        void fetch('/api/profile/built', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ snapshot: snapshotInput }),
+        }).catch(() => {})
 
         if (!cancelled) {
           router.push('/profile/result')

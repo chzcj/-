@@ -8,6 +8,7 @@ import { useTencentAsrInput } from '@/hooks/useTencentAsrInput';
 import { apiClient } from '@/lib/api-client';
 import { formatBeijingTime, formatDuration } from '@/lib/beijing-time';
 import { useConversationStore } from '@/store/useConversationStore';
+import { hasProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage';
 import type { AuthUser, InputMode } from '@/types/childos';
 
 export default function HomePage() {
@@ -21,6 +22,7 @@ export default function HomePage() {
   const [beijingTime, setBeijingTime] = useState('');
   const [text, setText] = useState('');
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [hasBuiltProfile, setHasBuiltProfile] = useState(false);
   const voice = useTencentAsrInput();
   const voiceText = voice.liveTranscript.trim();
 
@@ -38,6 +40,23 @@ export default function HomePage() {
       if (result.ok) setUser(result.data.user);
     });
   }, [router]);
+
+  // 跨设备/重装：本机有画像直接用；本机无则从 DB 取并回灌 localStorage（之后全应用 hasProfile 生效）。
+  useEffect(() => {
+    if (hasProfile()) { setHasBuiltProfile(true); return; }
+    let cancelled = false;
+    fetch('/api/profile/built')
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        if (json.ok && json.data?.snapshot?.coreJudgment) {
+          hydrateProfileFromRemote(json.data.snapshot);
+          setHasBuiltProfile(true);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     setBeijingTime(formatBeijingTime());
@@ -126,16 +145,16 @@ export default function HomePage() {
           <span className="status-dots">•••</span>
         </div>
 
-        <div className="entry-card home-profile-entry" onClick={() => router.push('/profile/build')}>
+        <div className="entry-card home-profile-entry" onClick={() => router.push(hasBuiltProfile ? '/profile/result' : '/profile/build')}>
           <div className="icon-box">
             <UserRound size={22} />
           </div>
           <span className="home-profile-copy">
-            <span className="entry-title">建立孩子画像</span>
-            <span className="entry-desc">先认识孩子，再判断怎么支持</span>
+            <span className="entry-title">{hasBuiltProfile ? '孩子画像' : '建立孩子画像'}</span>
+            <span className="entry-desc">{hasBuiltProfile ? '查看孩子的条件化画像与支持重点' : '先认识孩子，再判断怎么支持'}</span>
           </span>
           <span className="entry-action">
-            去建立
+            {hasBuiltProfile ? '去查看' : '去建立'}
             <ChevronRight size={16} style={{ marginLeft: 4 }} />
           </span>
         </div>
