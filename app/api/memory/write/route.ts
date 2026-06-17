@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate, classifyInputForMemory } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
-import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
+import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 
 export async function POST(request: Request) {
-  if (!verifyInternalApi(request)) return authError()
+  if (!verifyAppApi(request)) return authError()
 
   try {
     const body = await request.json()

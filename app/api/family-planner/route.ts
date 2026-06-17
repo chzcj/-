@@ -6,7 +6,7 @@ import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/wri
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { decideFeatureUI } from '@/lib/server/features/feature-ui-router'
-import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
+import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 
 /* ================================================================
@@ -37,7 +37,7 @@ const FALLBACK: FamilyPlanOutput = {
 }
 
 export async function POST(request: Request) {
-  if (!verifyInternalApi(request)) return authError()
+  if (!verifyAppApi(request)) return authError()
 
   try {
     const body = await request.json()

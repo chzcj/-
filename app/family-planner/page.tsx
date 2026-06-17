@@ -39,10 +39,12 @@ export default function FamilyPlannerPage() {
   const [loading, setLoading] = useState(false)
   const [plan, setPlan] = useState<FamilyPlan | null>(null)
   const [originalText, setOriginalText] = useState('')
+  const [error, setError] = useState('')
 
   async function request(text: string) {
     if (!text.trim() || loading) return
     setLoading(true)
+    setError('')
     try {
       const res = await fetch('/api/family-planner', {
         method: 'POST',
@@ -54,8 +56,12 @@ export default function FamilyPlannerPage() {
         const d = json.data as PlannerData
         setPlan(d.plan)
         setMode(d.uiMode === 'light_followup' ? 'light_followup' : 'result_view')
+      } else {
+        setError(json?.error?.message || '这一步没有整理成功，可以稍后再试。')
       }
-    } catch {} finally {
+    } catch {
+      setError('这一步没有整理成功，可以稍后再试。')
+    } finally {
       setLoading(false)
     }
   }
@@ -74,6 +80,7 @@ export default function FamilyPlannerPage() {
     <AppShell>
       <div className="page">
         <PageHeader title="家庭规划" showBack onBack={() => router.push('/home')} />
+        {error ? <div className="toast">{error}</div> : null}
 
         {mode === 'special_collection' ? (
           <SpecialCollectionView

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { runMemoryRetrievePipeline } from '@/lib/server/memory/pipeline'
 import { resolveTenant } from '@/lib/server/memory/tenant'
-import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
+import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import type { EntryName } from '@/types/database'
 
 export async function GET(request: Request) {
-  if (!verifyInternalApi(request)) return authError()
+  if (!verifyAppApi(request)) return authError()
 
   try {
     const url = new URL(request.url)

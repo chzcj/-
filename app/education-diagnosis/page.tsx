@@ -38,11 +38,13 @@ export default function EducationDiagnosisPage() {
   const [mode, setMode] = useState<FeatureUiMode>('special_collection')
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<EduDiagData | null>(null)
+  const [error, setError] = useState('')
   const [turns, setTurns] = useState<string[]>([]) // 本会话已讲过的轮次，随提交透传给后端
 
   async function submit(text: string) {
     if (!text || loading) return
     setLoading(true)
+    setError('')
     const priorTurns = turns
     setTurns([...turns, text])
     try {
@@ -55,8 +57,12 @@ export default function EducationDiagnosisPage() {
       if (json.ok && json.data) {
         setData(json.data as EduDiagData)
         setMode(json.data.uiMode as FeatureUiMode)
+      } else {
+        setError(json?.error?.message || '这一步没有整理成功，可以稍后再试。')
       }
-    } catch {} finally {
+    } catch {
+      setError('这一步没有整理成功，可以稍后再试。')
+    } finally {
       setLoading(false)
     }
   }
@@ -65,6 +71,7 @@ export default function EducationDiagnosisPage() {
     <AppShell>
       <div className="page">
         <PageHeader title="教育模式诊断" showBack onBack={() => router.push('/home')} />
+        {error ? <div className="toast">{error}</div> : null}
 
         {mode === 'special_collection' ? (
           <SpecialCollectionView

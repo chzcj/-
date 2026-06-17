@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { callFastJson } from '@/lib/server/ark-agents'
-import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
+import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { createId } from '@/lib/storage/storageIds'
@@ -12,7 +12,7 @@ const TITLE_MAP: Record<string, string> = {
 }
 
 export async function POST(request: Request) {
-  if (!verifyInternalApi(request)) return authError()
+  if (!verifyAppApi(request)) return authError()
 
   try {
     const body = await request.json()

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { saveBuiltProfileSnapshot, getLatestBuiltProfileSnapshot, type BuiltProfileSnapshot } from '@/lib/server/memory/database-manager'
-import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
+import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 
 /* ================================================================
    首次建模孩子画像快照的 DB 持久化（让画像跨设备/重装不丢）。
@@ -9,14 +9,14 @@ import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
    ================================================================ */
 
 export async function GET(request: Request) {
-  if (!verifyInternalApi(request)) return authError()
+  if (!verifyAppApi(request)) return authError()
   const tenant = await resolveTenant()
   const snapshot = await getLatestBuiltProfileSnapshot(tenant).catch(() => null)
   return NextResponse.json({ ok: true, data: { snapshot } })
 }
 
 export async function POST(request: Request) {
-  if (!verifyInternalApi(request)) return authError()
+  if (!verifyAppApi(request)) return authError()
   try {
     const body = await request.json().catch(() => ({}))
     const s = body?.snapshot

@@ -5,7 +5,7 @@ import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob, modelReviewBucketKey } from '@/lib/server/jobs/queue'
 import { callAgentTextStream } from '@/lib/server/ark-agents'
-import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
+import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 import type { KnowledgeContext } from '@/types/database'
 
@@ -17,7 +17,7 @@ import type { KnowledgeContext } from '@/types/database'
    ================================================================ */
 
 export async function POST(request: Request) {
-  if (!verifyInternalApi(request)) return authError()
+  if (!verifyAppApi(request)) return authError()
 
   const body = await request.json().catch(() => ({} as Record<string, unknown>))
   const text = typeof body?.text === 'string' ? body.text.trim() : ''

@@ -73,29 +73,31 @@ export function BottomVoiceBar({ state = 'idle', hint, disabled, elevated = fals
       </div>
       {voice.error ? <div className="voice-dock-status">{voice.error}</div> : null}
       {!voice.error && liveTranscript ? <div className="voice-dock-status">{liveTranscript}</div> : null}
-      <div className={`text-input-panel ${keyboardOpen ? 'open' : ''}`} aria-hidden={!keyboardOpen}>
-        <div className="text-input-panel-inner">
-          <textarea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                submitText();
-              }
-            }}
-            placeholder="也可以直接打字，把最真实的情况说出来。"
-            disabled={disabled}
-          />
-          <div className="voice-dock-submit-row">
-            <SecondaryButton onClick={() => setText('')} disabled={!text.trim()}>
-              清空
-            </SecondaryButton>
-            <PrimaryButton onClick={submitText} disabled={!text.trim() || disabled}>
-              发送
-            </PrimaryButton>
+      <div className={`text-input-panel ${keyboardOpen ? 'open' : ''}`}>
+        {keyboardOpen ? (
+          <div className="text-input-panel-inner">
+            <textarea
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  submitText();
+                }
+              }}
+              placeholder="也可以直接打字，把最真实的情况说出来。"
+              disabled={disabled}
+            />
+            <div className="voice-dock-submit-row">
+              <SecondaryButton onClick={() => setText('')} disabled={!text.trim()} aria-label="清空文字输入">
+                清空
+              </SecondaryButton>
+              <PrimaryButton onClick={submitText} disabled={!text.trim() || disabled} aria-label="发送文字输入">
+                发送
+              </PrimaryButton>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );

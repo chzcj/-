@@ -111,3 +111,33 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **风险/冲突**
 - 本地有大量未提交改动，push 前请与负责人确认范围
+
+---
+
+## 2026-06-18 03:26 | Codex | parent-corpus-ui-auth-regression
+
+**做了什么**
+- 用家长语料 + Chrome/Computer Use 做本地真人式流程回归。
+- 修复用户侧 API 被内部 token guard 误拦的问题：新增 `verifyAppApi`，页面调用接口改为登录态 cookie + 同源校验，`/api/jobs/status` 仍保留内部鉴权。
+- 修复日常页底部文字输入区的无障碍状态：关闭时不再挂载可交互控件，打开后“发送/清空”按钮有稳定名称。
+- 教育诊断、家庭规划补充接口错误提示，避免后端 401/500 时前端静默无响应。
+
+**为什么**
+- 复测发现 `/education-diagnosis` 页面提交后没有任何反馈，根因是 `/api/education-diagnosis` 401 后前端吞错。
+- 日常页二次输入的“发送”按钮在无障碍树里没有稳定名称，影响键盘/读屏与自动化回归。
+
+**验证**
+- `npm run typecheck`
+- `npm run build`
+- `http://127.0.0.1:3101/daily`：打开文字输入后可按“发送文字输入”提交，能看到家长输入和 AI/规则回复。
+- `/api/education-diagnosis`、`/api/family-planner`：带 demo cookie + 同源 Referer/Origin 返回 200；仅 cookie 无同源头返回 401。
+- 健康检查：`mock:false`、`database:true`。
+- job_queue 从 500+ pending 持续下降到几十条，未见 failed。
+
+**下一步**
+- 若要完整跑完异步队列，保持 `3101` 服务和 `childos-parent-corpus-pg` 容器运行，poller 会继续消化 pending。
+- `output/parent-corpus-test/` 是本轮批测产物，仍未跟踪，未纳入提交。
+
+**风险/冲突**
+- `npm run sync:gitee` 仍提示远程 `master` 不存在；当前本地分支是 `main`，origin 指向 GitHub。
+- 当前无 FAST_AI key，教育诊断/家庭规划走规则/降级路径，不代表真实 LLM 质量验证。

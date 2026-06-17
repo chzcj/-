@@ -6,7 +6,7 @@ import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/wri
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { decideFeatureUI, normalizeReadiness } from '@/lib/server/features/feature-ui-router'
-import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
+import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 
 /* ================================================================
@@ -31,7 +31,7 @@ type EduDiagOutput = {
 const FALLBACK_GUIDE = '教育模式诊断不是判断你做得好不好，而是看这个家每天和周末怎么运转。你可以像讲生活流水一样多说一点：孩子放学后怎么过、周末怎么安排、谁主要管学习、孩子有没有一段真正属于自己的时间。'
 
 export async function POST(request: Request) {
-  if (!verifyInternalApi(request)) return authError()
+  if (!verifyAppApi(request)) return authError()
 
   try {
     const body = await request.json().catch(() => ({}))
