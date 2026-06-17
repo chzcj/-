@@ -45,7 +45,7 @@ export async function runModelReview(tenant: TenantId): Promise<void> {
     'modelReview',
     '复核这些待验证假设：对照近期证据找支持与反证，评估置信度(weight)并定 status。反证只能来自材料，谨慎不下稳定结论。',
     {
-      hypotheses: active.map((h, i) => ({ i, hypothesis: h.hypothesis, supportingEvidence: h.supportingEvidence.slice(0, 3) })),
+      hypotheses: active.map((h, i) => ({ i, hypothesis: h.hypothesis, supportingEvidence: (h.supportingEvidence || []).slice(0, 3) })),
       recentEpisodes,
       highValueAtoms,
     }
@@ -58,15 +58,18 @@ export async function runModelReview(tenant: TenantId): Promise<void> {
   const now = new Date().toISOString()
   const updated: PendingHypothesis[] = active.map((h, i) => {
     const r = byIndex.get(i)
-    if (!r) return h
+    // 旧版/外部写入的记录可能缺数组字段，统一兜底，避免展开 undefined 抛错（job 重试死循环）。
+    const hCounter = Array.isArray(h.possibleCounterEvidence) ? h.possibleCounterEvidence : []
+    const hSupport = Array.isArray(h.supportingEvidence) ? h.supportingEvidence : []
+    if (!r) return { ...h, possibleCounterEvidence: hCounter, supportingEvidence: hSupport }
     const counter = arr(r.counterEvidence)
     const newSupport = arr(r.newSupport)
     return {
       ...h,
-      weight: normWeight(r.weight, h.weight),
-      status: normStatus(r.status, h.status),
-      possibleCounterEvidence: counter.length > 0 ? Array.from(new Set([...h.possibleCounterEvidence, ...counter])) : h.possibleCounterEvidence,
-      supportingEvidence: newSupport.length > 0 ? Array.from(new Set([...h.supportingEvidence, ...newSupport])) : h.supportingEvidence,
+      weight: normWeight(r.weight, h.weight || 'medium'),
+      status: normStatus(r.status, h.status || 'pending'),
+      possibleCounterEvidence: counter.length > 0 ? Array.from(new Set([...hCounter, ...counter])) : hCounter,
+      supportingEvidence: newSupport.length > 0 ? Array.from(new Set([...hSupport, ...newSupport])) : hSupport,
       updatedAt: now,
     }
   })

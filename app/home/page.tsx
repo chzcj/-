@@ -9,6 +9,7 @@ import { apiClient } from '@/lib/api-client';
 import { formatBeijingTime, formatDuration } from '@/lib/beijing-time';
 import { useConversationStore } from '@/store/useConversationStore';
 import { hasProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage';
+import { clearAllChildOSData } from '@/lib/storage/localStorageService';
 import type { AuthUser, InputMode } from '@/types/childos';
 
 export default function HomePage() {
@@ -85,8 +86,10 @@ export default function HomePage() {
   async function logout() {
     const result = await apiClient.logout();
     if (result.ok) {
+      clearAllChildOSData(); // 清本地画像/记忆缓存，防同浏览器切账号串数据
       setUser(null);
-      setToast('已退出登录。');
+      setHasBuiltProfile(false);
+      router.replace('/login');
     }
   }
 

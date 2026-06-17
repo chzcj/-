@@ -41,3 +41,22 @@ export function updateStorage(updater: (current: ChildOSLocalStorageV1) => Child
   setStorage(next)
   return next
 }
+
+/* 清空本浏览器所有 ChildOS 本地数据（local + session 中 childos 前缀键）。
+   登录/登出时调用，防同一浏览器切换账号串到上一位用户的画像与状态。
+   DB 是真数据源（画像/记忆均按租户隔离持久化），清本地缓存无损。 */
+export function clearAllChildOSData() {
+  if (!isBrowser()) return
+  try {
+    for (const store of [window.localStorage, window.sessionStorage]) {
+      const keys: string[] = []
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i)
+        if (k && k.startsWith('childos')) keys.push(k)
+      }
+      keys.forEach(k => store.removeItem(k))
+    }
+  } catch {
+    /* storage 不可用，忽略 */
+  }
+}

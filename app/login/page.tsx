@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
 import { AppShell } from '@/components/layout/AppShell';
 import { apiClient } from '@/lib/api-client';
+import { clearAllChildOSData } from '@/lib/storage/localStorageService';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function LoginPage() {
     setToast('');
     const result = mode === 'login' ? await apiClient.login({ phone, password }) : await apiClient.register({ phone, password });
     if (result.ok) {
+      clearAllChildOSData(); // 进入前清本浏览器旧账号缓存，防串数据（真数据从 DB 按租户加载）
       router.replace('/home');
     } else {
       setToast(result.error.message);
@@ -38,6 +40,7 @@ export default function LoginPage() {
     setToast('');
     const result = await apiClient.demoLogin();
     if (result.ok) {
+      clearAllChildOSData();
       router.replace('/home');
     } else {
       setToast(result.error.message);

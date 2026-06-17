@@ -12,11 +12,14 @@ export default function GeneratingPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [error, setError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
   const steps = ['整理五个入口的关键事实', '跨入口综合建模', '生成条件化孩子画像']
 
   useEffect(() => {
     let cancelled = false
     const run = async () => {
+      setError('')
+      setStep(0)
       try {
         const storage = getStorage()
         const entryRecords = storage.entryRecords || []
@@ -177,31 +180,35 @@ export default function GeneratingPage() {
           router.push('/profile/result')
         }
       } catch (_err) {
-        if (!cancelled) {
-          setStep(2)
-          setTimeout(() => router.push('/profile/result'), 500)
-        }
+        // 不再静默跳结果页（会展示旧画像/空态）；明确报错 + 提供重试入口。
+        if (!cancelled) setError('画像生成中断了，可以重试一次。')
       }
     }
 
     run()
     return () => { cancelled = true }
-  }, [router])
+  }, [router, retryKey])
 
   return (
     <AppShell>
       <div className="page without-voice with-bottom-tabs">
         <PageHeader title="画像生成中" showBack={false} />
         <div style={{ marginTop: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-          <div className="loader" style={{ width: 56, height: 56, borderWidth: 5 }} />
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#1D1D1F' }}>正在生成孩子画像</div>
-          {steps.map((s, i) => (
+          {!error ? <div className="loader" style={{ width: 56, height: 56, borderWidth: 5 }} /> : null}
+          <div style={{ fontSize: 16, fontWeight: 600, color: '#1D1D1F' }}>{error ? '画像没有生成成功' : '正在生成孩子画像'}</div>
+          {!error ? steps.map((s, i) => (
             <div key={i} style={{ fontSize: 14, color: i <= step ? '#6E6AF8' : '#C7C7CC', fontWeight: i === step ? 600 : 400, transition: 'color 300ms' }}>
               {s}
             </div>
-          ))}
+          )) : null}
           {error ? (
-            <div style={{ fontSize: 14, color: '#FF3B30', marginTop: 10 }}>{error}</div>
+            <>
+              <div style={{ fontSize: 14, color: '#FF3B30', marginTop: 6, textAlign: 'center' }}>{error}</div>
+              <button type="button" className="primary-button" onClick={() => setRetryKey(k => k + 1)}
+                style={{ borderRadius: 999, height: 48, padding: '0 28px', fontSize: 15, fontWeight: 600 }}>重试</button>
+              <button type="button" className="secondary-button" onClick={() => router.push('/profile/build')}
+                style={{ borderRadius: 999, height: 44, padding: '0 24px', fontSize: 14, fontWeight: 600 }}>返回建模</button>
+            </>
           ) : (
             <div style={{ fontSize: 13, color: '#A1A1A6', marginTop: 10 }}>正在调用 AI 生成中，请稍候</div>
           )}
