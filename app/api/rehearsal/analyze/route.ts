@@ -4,6 +4,10 @@ import { generateRehearsal } from '@/lib/server/store'
 import { rehearsalAnalyzeSchema } from '@/lib/schemas'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
+import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
+import { enqueueJob } from '@/lib/server/jobs/queue'
+import { ingestEpisode } from '@/lib/server/memory/episode/pipeline'
+import { createId } from '@/lib/storage/storageIds'
 
 type ProfileAwareRehearsal = {
   childLikelyHearing: string
@@ -26,18 +30,27 @@ type RehearsalProfileContext = {
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
-  const { parentText, mode, profileContext, rehearsalContext } = body
+  const { parentText, mode, profileContext, rehearsalContext, fromSpecialFeature } = body
 
-  // 缺原话不预演（交付文档 5.2.3）：先要原话，给引导而非 BAD_REQUEST。
+  // 缺原话不预演（交付文档 5.2.3）：先要原话，给引导。
+  // 标准沟通预演入口（fromSpecialFeature）走 5.3 切换：空原话返回 special_collection 引导（非报错）。
   if (typeof parentText !== 'string' || !parentText.trim()) {
+    if (fromSpecialFeature) {
+      return ok({
+        uiMode: 'special_collection',
+        acknowledgement: '我先不急着帮你改说法，想先看看这句话到了孩子那里会被听成什么。',
+        collectionGuide: '把你准备对孩子说的原话直接写进来，不用润色，按平时会说的样子。也可以顺带说一句：这次你真正想达成什么、最担心他怎么反应、过去类似的话通常怎么收场。',
+        result: null
+      })
+    }
     return fail('NEED_PARENT_WORDS', '先把您准备对孩子说的原话写进来，我才能预演。不用润色，按平时会说的发就行。', undefined, 400)
   }
 
-  /* profile-aware 路径：有前端画像 或 有家长采集的预演上下文（目标/担心/背景）即进入。
-     画像优先用前端传入，缺失则从服务端记忆检索；并检索过往类似沟通。 */
+  /* profile-aware 路径：标准入口(fromSpecialFeature)默认画像感知，从服务端记忆检索；
+     或有前端画像/家长采集的预演上下文亦进入。画像优先用前端传入，缺失则从记忆检索。 */
   const rc = (rehearsalContext || {}) as { parentGoal?: string; parentWorry?: string; whatHappenedBeforeTalk?: string }
   const hasRehearsalCtx = Boolean(rc.parentGoal || rc.parentWorry || rc.whatHappenedBeforeTalk)
-  if (parentText && mode !== 'conflict' && (profileContext || hasRehearsalCtx)) {
+  if (parentText && mode !== 'conflict' && (fromSpecialFeature || profileContext || hasRehearsalCtx)) {
     try {
       const ctx = (profileContext || {}) as RehearsalProfileContext
       const tenant = await resolveTenant()
@@ -60,7 +73,7 @@ export async function POST(request: Request) {
         pastSimilarTalks.length ? `过往类似沟通：${pastSimilarTalks.join('；')}` : ''
       ].filter(Boolean).join('\n')
 
-      if (profileSummary.trim()) {
+      if (profileSummary.trim() || fromSpecialFeature) {
         const aiResult = await callFastJson<Partial<ProfileAwareRehearsal>>(
           `你是 ChildOS 的沟通预演 Agent。你只做画像感知的亲子沟通预演。
 
@@ -88,9 +101,11 @@ usedProfileEvidence: string[]`,
         ).catch(() => undefined)
 
         const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx)
+        if (fromSpecialFeature) void writeBackRehearsal(parentText) // 采集写回（异步，幂等）
         return ok({
           ...normalized,
           profileAware: true,
+          uiMode: 'result_view', // 5.3：有原话→已可预演→结果展示
           schemaVersion: 'childos.rehearsal.profile-aware.v1'
         })
       }
@@ -125,7 +140,10 @@ usedProfileEvidence: string[]`,
         { parentText }
       ).catch(() => undefined)
 
-      if (result?.headline) return ok(result)
+      if (result?.headline) {
+        if (fromSpecialFeature) void writeBackRehearsal(parentText)
+        return ok({ ...result, uiMode: 'result_view' })
+      }
     } catch {}
   }
 
@@ -136,6 +154,34 @@ usedProfileEvidence: string[]`,
   if (!result) return fail('CONVERSATION_NOT_FOUND', '我找不到刚刚那次整理了。', undefined, 404)
 
   return ok({ rehearsalId: result.rehearsalId, result })
+}
+
+/* 沟通预演采集写回（交付文档 5.3.16）：与教育诊断/家庭规划一致，把家长原话写入记忆，
+   预演越用越懂家庭。异步、幂等、绝不阻塞前台；仅标准入口(fromSpecialFeature)、非 conflict 调用。 */
+async function writeBackRehearsal(parentText: string): Promise<void> {
+  try {
+    const tenant = await resolveTenant()
+    const traceId = createId('trace')
+    const plan = buildMemoryWritePlan({
+      tenant,
+      dailyUpdates: [createDailyUpdate(`[沟通预演] ${parentText}`, 'insufficient', [], tenant, traceId)],
+      rationale: {
+        whyUpdate: '沟通预演采集，记录家长准备说的原话与意图',
+        whyNotPromoteSomeItems: '预演输入属操作性上下文，暂不升级为长期判断',
+        riskOfOvergeneralization: '',
+        nextVerificationNeed: ''
+      }
+    })
+    void enqueueJob('memory_write', { plan, tenant }, null, traceId)
+    void ingestEpisode(parentText, {
+      sourceEventId: traceId,
+      familyId: tenant.familyId,
+      childId: tenant.childId,
+      recentContext: '沟通预演采集'
+    })
+  } catch (e) {
+    console.error('[rehearsal] 写回失败（不影响前台）:', e)
+  }
 }
 
 function normalizeProfileAwareResult(

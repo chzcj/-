@@ -4,6 +4,7 @@ import { resolveTenant } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { enqueueJob } from '@/lib/server/jobs/queue'
+import { decideFeatureUI } from '@/lib/server/features/feature-ui-router'
 import { verifyInternalApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 
@@ -110,7 +111,17 @@ export async function POST(request: Request) {
     })
     void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
 
-    return NextResponse.json({ ok: true, data: { traceId, plan } })
+    // 5.3 UI 切换：失败节点不清(insufficient)→轻追问；出计划→结果展示。前台不暴露 readiness。
+    const router = decideFeatureUI({
+      featureType: 'family_planner',
+      hasExistingContextPack: true,
+      contextReadiness: insufficient ? 'partial' : 'ready',
+      missingHighImpactFacts: insufficient && plan.missingInfo ? [plan.missingInfo] : [],
+      userIntent: 'unclear',
+      currentQuestionSpan: 'same_topic'
+    })
+
+    return NextResponse.json({ ok: true, data: { traceId, uiMode: router.uiMode, plan } })
   } catch (error) {
     return NextResponse.json({
       ok: false,
