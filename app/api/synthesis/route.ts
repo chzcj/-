@@ -10,7 +10,7 @@ import { buildEntryPack } from '@/lib/server/memory/entry-builder'
 import type { EntryEvidencePack } from '@/types/database'
 
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
 
   try {
     const body = await request.json()

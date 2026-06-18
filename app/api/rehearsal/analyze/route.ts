@@ -30,7 +30,7 @@ type RehearsalProfileContext = {
 }
 
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
 
   const body = await request.json().catch(() => ({}))
   const { parentText, mode, profileContext, rehearsalContext, fromSpecialFeature } = body

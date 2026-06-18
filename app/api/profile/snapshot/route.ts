@@ -6,7 +6,7 @@ import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 
 export async function GET(request: Request) {
   // 鉴权：与其它前台数据接口一致（此处此前缺失，正是匿名越权读档案的入口）。
-  if (!verifyAppApi(request)) return authError();
+  if (!(await verifyAppApi(request))) return authError();
 
   // 租户完全以会话身份为准，忽略任何查询参数，杜绝匿名跨租户越权读取（IDOR）。
   const identity = await getRequestIdentity();

@@ -38,7 +38,7 @@ const FALLBACK: BoardSnapshot = {
 
 export async function GET(request: Request) {
   // 鉴权：此前 /api/board 无任何守卫，任意请求可读看板。补齐与其它前台接口一致。
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
   await waitMock(120)
   const identity = await getRequestIdentity()
 

@@ -17,7 +17,7 @@ import type { KnowledgeContext } from '@/types/database'
    ================================================================ */
 
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
 
   const body = await request.json().catch(() => ({} as Record<string, unknown>))
   const text = typeof body?.text === 'string' ? body.text.trim() : ''

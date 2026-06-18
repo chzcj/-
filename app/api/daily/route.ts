@@ -8,7 +8,7 @@ import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
 
   try {
     const body = await request.json()

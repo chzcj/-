@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getCurrentUser } from '@/lib/server/auth'
 
 export function verifyInternalApi(request: Request | NextRequest): boolean {
   const token = internalToken()
@@ -15,10 +16,15 @@ export function verifyInternalApi(request: Request | NextRequest): boolean {
   return hasValidInternalToken(request)
 }
 
-export function verifyAppApi(request: Request | NextRequest): boolean {
+export async function verifyAppApi(request: Request | NextRequest): Promise<boolean> {
+  // 内部 token（服务端/同进程调用）直通。
   if (hasValidInternalToken(request)) return true
+  // 未配置任何内部 token 的本地开发：直通，便于联调。
   if (!internalToken() && process.env.NODE_ENV === 'development') return true
-  return hasSessionCookie(request) && isSameOriginRequest(request)
+  // 浏览器请求：必须同源，且会话真实有效（demo token 或 DB 中未过期 session）。
+  // 仅有 cookie 不算数——伪造的 childos_session 会在 getCurrentUser 校验失败而被拒。
+  if (!isSameOriginRequest(request)) return false
+  return (await getCurrentUser()) !== undefined
 }
 
 export function authError() {
@@ -26,14 +32,6 @@ export function authError() {
     { ok: false, error: { code: 'UNAUTHORIZED', message: 'Invalid or missing API token' } },
     { status: 401 }
   )
-}
-
-function hasSessionCookie(request: Request | NextRequest): boolean {
-  const cookie = request.headers.get('cookie') || ''
-  return cookie
-    .split(';')
-    .map((part) => part.trim())
-    .some((part) => part.startsWith('childos_session=') && part.length > 'childos_session='.length)
 }
 
 function hasValidInternalToken(request: Request | NextRequest): boolean {

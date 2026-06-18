@@ -9,14 +9,14 @@ import { verifyAppApi, authError } from '@/lib/server/auth-guard'
    ================================================================ */
 
 export async function GET(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
   const tenant = await resolveTenant()
   const snapshot = await getLatestBuiltProfileSnapshot(tenant).catch(() => null)
   return NextResponse.json({ ok: true, data: { snapshot } })
 }
 
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
   try {
     const body = await request.json().catch(() => ({}))
     const s = body?.snapshot

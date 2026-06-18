@@ -12,7 +12,7 @@ const TITLE_MAP: Record<string, string> = {
 }
 
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
 
   try {
     const body = await request.json()

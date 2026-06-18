@@ -28,7 +28,7 @@ type MultiViewOutput = {
 const TEACHER_UNKNOWN = '学校那边目前还不清楚，可以后续补充。'
 
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
 
   try {
     const body = await request.json().catch(() => ({}))

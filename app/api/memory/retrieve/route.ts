@@ -5,7 +5,7 @@ import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import type { EntryName } from '@/types/database'
 
 export async function GET(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
 
   try {
     const url = new URL(request.url)

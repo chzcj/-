@@ -5,7 +5,7 @@ import { resolveTenant } from '@/lib/server/memory/tenant'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError()
+  if (!(await verifyAppApi(request))) return authError()
 
   try {
     const body = await request.json()

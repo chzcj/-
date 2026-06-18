@@ -13,7 +13,7 @@ const { Pool } = pg;
    无 key/LLM 失败返 503，前台显示重试，不出假数据。
    ================================================================ */
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError();
+  if (!(await verifyAppApi(request))) return authError();
 
   const body = await request.json().catch(() => ({}));
   const observations: string[] = Array.isArray(body?.observations)
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  if (!verifyAppApi(request)) return authError();
+  if (!(await verifyAppApi(request))) return authError();
 
   const url = new URL(request.url);
   const familyId = url.searchParams.get('familyId') || 'f_demo';

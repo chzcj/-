@@ -9,7 +9,7 @@ const rehearsalStreamSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  if (!verifyAppApi(request)) return authError();
+  if (!(await verifyAppApi(request))) return authError();
 
   const body = await request.json().catch(() => ({}));
   const parsed = rehearsalStreamSchema.safeParse(body);
