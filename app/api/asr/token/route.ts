@@ -1,7 +1,10 @@
 import { createHmac } from 'node:crypto';
 import { randomUUID } from 'node:crypto';
+import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 
-export async function GET() {
+export async function GET(request: Request) {
+  // 鉴权：此端点签发含 HMAC 签名的腾讯 ASR wsUrl，必须防止伪造 cookie 白嫖凭证。
+  if (!(await verifyAppApi(request))) return authError();
   const appid = process.env.TENCENT_APPID;
   const secretId = process.env.TENCENT_SECRET_ID;
   const secretKey = process.env.TENCENT_SECRET_KEY;

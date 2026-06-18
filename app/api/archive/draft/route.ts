@@ -1,8 +1,10 @@
 import { fail, ok, waitMock } from '@/lib/api-response';
+import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { archiveDraftQuerySchema } from '@/lib/schemas';
 import { getOrCreateArchive } from '@/lib/server/store';
 
 export async function GET(request: Request) {
+  if (!(await verifyAppApi(request))) return authError();
   const url = new URL(request.url);
   const parsed = archiveDraftQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
   if (!parsed.success) return fail('BAD_REQUEST', '档案草稿暂时没有整理成功，可以再试一次。', parsed.error.flatten());

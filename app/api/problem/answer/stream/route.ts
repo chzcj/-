@@ -1,8 +1,11 @@
 import { fail } from '@/lib/api-response';
+import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { problemAnswerSchema } from '@/lib/schemas';
 import { submitAnswerStreaming } from '@/lib/server/store';
 
 export async function POST(request: Request) {
+  // 鉴权须在创建流式 Response 之前返回。
+  if (!(await verifyAppApi(request))) return authError();
   const body = await request.json().catch(() => ({}));
   const parsed = problemAnswerSchema.safeParse(body);
   if (!parsed.success) return fail('BAD_REQUEST', '这次输入没有整理成功，可以再试一次。', parsed.error.flatten());

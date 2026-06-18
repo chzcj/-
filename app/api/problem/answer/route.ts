@@ -1,9 +1,11 @@
 import { fail, ok, waitMock } from '@/lib/api-response';
+import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { problemAnswerSchema } from '@/lib/schemas';
 import { isFastAIEnabled } from '@/lib/server/ark-agents';
 import { submitAnswer } from '@/lib/server/store';
 
 export async function POST(request: Request) {
+  if (!(await verifyAppApi(request))) return authError();
   const body = await request.json().catch(() => ({}));
   const parsed = problemAnswerSchema.safeParse(body);
   if (!parsed.success) return fail('BAD_REQUEST', '这次输入没有整理成功，可以再试一次。', parsed.error.flatten());

@@ -6,10 +6,9 @@ export function verifyInternalApi(request: Request | NextRequest): boolean {
   const token = internalToken()
 
   if (!token) {
-    // 未配置内部 token：保留 dev 直通 + 同源兜底（精确 host 比较，非子串），
-    // 不破坏演示/本地与无 token 部署。
-    if (process.env.NODE_ENV === 'development') return true
-    return isSameOriginRequest(request)
+    // 未配置内部 token：仅 dev 直通便于本地联调；prod 一律拒绝。
+    // 同源 Referer/Origin/Host 全是可伪造的请求头，不能作为内部端点的凭据。
+    return process.env.NODE_ENV === 'development'
   }
 
   // 已配置内部 token：只认 token，杜绝可伪造的 Referer/Origin 同源绕过。

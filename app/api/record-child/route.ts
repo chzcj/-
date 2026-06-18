@@ -1,4 +1,5 @@
 import { fail, ok } from '@/lib/api-response';
+import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { recordChildSchema } from '@/lib/schemas';
 import { callAgentJson } from '@/lib/server/ark-agents';
 import { getRequestIdentity } from '@/lib/server/auth';
@@ -7,6 +8,8 @@ import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline';
 import { enqueueJob } from '@/lib/server/jobs/queue';
 
 export async function POST(request: Request) {
+  // 鉴权：middleware 仅查 cookie 存在性，补 route 级守卫堵伪造 cookie。
+  if (!(await verifyAppApi(request))) return authError();
   const body = await request.json().catch(() => ({}));
   const parsed = recordChildSchema.safeParse(body);
   if (!parsed.success) return fail('BAD_REQUEST', '记录暂时没有保存成功，可以再试一次。', parsed.error.flatten());
