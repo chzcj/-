@@ -1,0 +1,26 @@
+# 依赖与构建产物：容器内重新 npm ci / next build，避免宿主 darwin 原生二进制污染镜像
+node_modules
+.next
+output
+out
+dist
+
+# 版本控制与本地元数据
+.git
+.gitignore
+.DS_Store
+*.log
+npm-debug.log*
+
+# 密钥与本地环境：绝不烘焙进镜像，运行时用 -e 注入
+.env
+.env.*
+*.local
+
+# 容器构建文件本身无需进镜像
+Dockerfile*
+.dockerignore
+
+# 文档/计划等与运行无关
+.claude
+.agents

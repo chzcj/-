@@ -1,0 +1,30 @@
+# 本地档位 C 测试镜像：容器内全新 npm ci + next build，
+# 配合 .dockerignore 排除宿主 node_modules，避免 darwin-arm64 原生二进制污染 linux 镜像。
+FROM node:20-alpine
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# 1) 先装依赖（利用层缓存；仅 package*.json 变更才重装）
+#    容器是干净环境，默认 registry.npmjs.org 国内不稳；切淘宝镜像 + 加重试/超时。
+#    npm 会把 lockfile 里 npmjs.org 的 resolved 主机替换为该镜像，integrity 一致。
+COPY package*.json ./
+RUN npm config set registry https://registry.npmmirror.com \
+ && npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-timeout 600000 \
+ && npm ci --no-audit --no-fund
+
+# 2) 拷贝源码（.dockerignore 已排除 node_modules/.next，保留容器内 linux 依赖）
+COPY . .
+
+# 3) 构建：NEXT_PUBLIC_* 在构建时内联进客户端包，档位 C 走非 mock
+ENV NEXT_PUBLIC_USE_MOCK=false
+RUN npm run build
+
+# 4) 运行（next start，非 standalone）
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+EXPOSE 3000
+CMD ["npm", "run", "start"]
