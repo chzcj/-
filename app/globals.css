@@ -1065,6 +1065,15 @@ a {
   gap: 2px;
 }
 
+/* 主导航五项底栏（对话/预演/诊断/记录/看板）：不影响共享 .talk-tabs 四项布局 */
+.talk-tabs-five {
+  grid-template-columns: repeat(5, 1fr);
+}
+.talk-tabs-five button {
+  font-size: 11px;
+  gap: 2px;
+}
+
 /* 三个并列专项功能入口（交付文档 5.3 / 原型 image1） */
 .feature-trio {
   display: grid;

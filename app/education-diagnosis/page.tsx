@@ -1,4 +1,5 @@
 'use client'
+import { ChevronRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
@@ -129,6 +130,19 @@ export default function EducationDiagnosisPage() {
                 <div style={{ fontSize: 13, lineHeight: 1.6, color: '#6E6E73' }}>{data.result.gentleNextStep}</div>
               ) : null}
             </div>
+
+            {/* 诊断→规划 自然链路：看清现状后，按家庭承受力定下一步行动 */}
+            <button
+              type="button"
+              onClick={() => router.push('/family-planner')}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '14px 16px', marginBottom: 16, background: '#fff', border: '1px solid rgba(110,106,248,0.12)', borderRadius: 16, cursor: 'pointer', textAlign: 'left' }}
+            >
+              <span style={{ flex: 1 }}>
+                <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1D1D1F' }}>看清了，按承受力定个下一步规划</span>
+                <span style={{ display: 'block', fontSize: 12, color: '#6E6E73', marginTop: 2 }}>把诊断变成这个家能落地的行动</span>
+              </span>
+              <ChevronRight size={18} style={{ color: '#C7C7CC', flexShrink: 0 }} />
+            </button>
 
             {/* 结果之后回到轻追问：围绕结果继续问或补充（文档 5.3.2 轻互动态） */}
             <LightFollowupView

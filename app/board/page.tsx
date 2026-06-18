@@ -1,4 +1,5 @@
 'use client'
+import { Archive, CalendarRange } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
@@ -75,6 +76,19 @@ export default function BoardPage() {
             <Section title="下一步" accent>
               <p style={{ fontSize: 15, lineHeight: 1.6, color: '#1D1D1F', margin: 0 }}>{board.currentBestNextStep}</p>
             </Section>
+
+            {/* 看板二级入口：家庭规划（下一步行动）+ 完整档案 */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={() => router.push('/family-planner')}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, background: 'rgba(110,106,248,0.06)', border: '1px solid rgba(110,106,248,0.14)', borderRadius: 14, fontSize: 14, fontWeight: 600, color: '#6E6AF8', cursor: 'pointer' }}>
+                <CalendarRange size={16} />制定家庭规划
+              </button>
+              <button type="button" onClick={() => router.push('/family-profile')}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 14, fontSize: 14, fontWeight: 600, color: '#1D1D1F', cursor: 'pointer' }}>
+                <Archive size={16} />查看完整档案
+              </button>
+            </div>
+
             {board.evidenceRefs && board.evidenceRefs.length > 0 ? (
               <details style={{ marginTop: 2 }}>
                 <summary style={{ fontSize: 12, color: '#6E6AF8', cursor: 'pointer', listStyle: 'none' }}>这些判断的依据（{board.evidenceRefs.length}）</summary>

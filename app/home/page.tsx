@@ -1,9 +1,10 @@
 'use client';
 
-import { Archive, BookOpenText, CalendarRange, ChevronRight, GraduationCap, LayoutDashboard, LogOut, MessageCircle, Mic, Square, UserRound } from 'lucide-react';
+import { CalendarRange, ChevronRight, GraduationCap, LayoutDashboard, LogOut, Mic, Square, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
+import { BottomNavTabs } from '@/components/layout/BottomNavTabs';
 import { useTencentAsrInput } from '@/hooks/useTencentAsrInput';
 import { apiClient } from '@/lib/api-client';
 import { formatBeijingTime, formatDuration } from '@/lib/beijing-time';
@@ -242,32 +243,7 @@ export default function HomePage() {
         </div>
 
         {toast ? <div className="toast">{toast}</div> : null}
-        <nav className="talk-tabs talk-tabs-six" aria-label="底部模块">
-          <button type="button" className="active" onClick={() => setToast('你已经在对话页，可以直接说一件挂心的小事。')}>
-            <MessageCircle size={20} />
-            <span>对话</span>
-          </button>
-          <button type="button" onClick={() => router.push('/rehearsal')}>
-            <Mic size={20} />
-            <span>沟通预演</span>
-          </button>
-          <button type="button" onClick={() => router.push('/education-diagnosis')}>
-            <GraduationCap size={20} />
-            <span>教育诊断</span>
-          </button>
-          <button type="button" onClick={() => router.push('/record-child')}>
-            <BookOpenText size={20} />
-            <span>记录孩子</span>
-          </button>
-          <button type="button" onClick={() => router.push('/family-planner')}>
-            <CalendarRange size={20} />
-            <span>家庭规划</span>
-          </button>
-          <button type="button" onClick={() => router.push('/family-profile')}>
-            <Archive size={20} />
-            <span>档案</span>
-          </button>
-        </nav>
+        <BottomNavTabs active="home" />
       </div>
     </AppShell>
   );
