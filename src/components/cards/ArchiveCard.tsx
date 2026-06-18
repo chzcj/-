@@ -1,6 +1,7 @@
 'use client';
 
 import type { ArchiveDraft } from '@/types/childos';
+import { VoiceFieldButton, appendTranscript } from '@/components/voice/VoiceFieldButton';
 
 interface ArchiveCardProps {
   archive: ArchiveDraft;
@@ -27,12 +28,21 @@ export function ArchiveCard({ archive, editable, onChange }: ArchiveCardProps) {
           <div className="section" key={field.key}>
             <div className="section-title">{field.label}</div>
             {editable ? (
-              <textarea
-                className="text-field"
-                value={value}
-                onChange={(event) => onChange?.({ ...archive, [field.key]: event.target.value })}
-                style={{ minHeight: field.key === 'date' ? 48 : 104 }}
-              />
+              <>
+                <textarea
+                  className="text-field"
+                  value={value}
+                  onChange={(event) => onChange?.({ ...archive, [field.key]: event.target.value })}
+                  style={{ minHeight: field.key === 'date' ? 48 : 104 }}
+                />
+                {field.key !== 'date' ? (
+                  <VoiceFieldButton
+                    compact
+                    onTranscript={(t) => onChange?.({ ...archive, [field.key]: appendTranscript(value, t) })}
+                    style={{ marginTop: 8 }}
+                  />
+                ) : null}
+              </>
             ) : (
               <div className="section-body">{value}</div>
             )}

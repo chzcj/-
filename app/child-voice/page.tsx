@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
 import { BottomNavTabs } from '@/components/layout/BottomNavTabs'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { VoiceFieldButton, appendTranscript } from '@/components/voice/VoiceFieldButton'
 
 export default function ChildVoicePage() {
   const router = useRouter()
@@ -37,6 +38,8 @@ export default function ChildVoicePage() {
         <textarea value={text} onChange={(e) => { setText(e.target.value); setSaved(false) }}
           placeholder="今天回家后我其实不想马上写作业，因为一想到后面还有好多东西，我就会烦..."
           style={{ width: '100%', minHeight: 140, borderRadius: 20, border: '1px solid rgba(29,29,31,0.08)', background: 'rgba(255,255,255,0.72)', padding: 14, fontSize: 15, lineHeight: 1.55, color: '#1D1D1F', resize: 'vertical', outline: 'none', fontFamily: 'inherit' }} />
+
+        <VoiceFieldButton idleLabel="说一说，自动转文字" onTranscript={(t) => { setText((prev) => appendTranscript(prev, t)); setSaved(false) }} style={{ marginTop: 10 }} />
 
         <div style={{ fontSize: 13, color: '#A1A1A6', marginTop: 6, marginBottom: 20 }}>
           这里只有记录，没有批评

@@ -6,6 +6,7 @@ import { BottomNavTabs } from '@/components/layout/BottomNavTabs'
 import { FollowUpCard } from '@/components/ai/FollowUpCard'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { createFollowUpRecord, getLatestEntryRecord } from '@/lib/storage/entryStorage'
+import { VoiceFieldButton, appendTranscript } from '@/components/voice/VoiceFieldButton'
 
 const ET = 'communication'
 const TITLE = '亲子沟通'
@@ -67,6 +68,7 @@ export default function FollowUpPage() {
         )}
         <textarea className="text-field" value={text} onChange={(e) => setText(e.target.value)}
           placeholder="把刚才想到的补充写在这里..." style={{ width: '100%', minHeight: 100, borderRadius: 20, border: '1px solid rgba(29,29,31,0.08)', background: 'rgba(255,255,255,0.72)', padding: 14, fontSize: 15, lineHeight: 1.55, color: '#1D1D1F', resize: 'vertical', outline: 'none', fontFamily: 'inherit', marginTop: 14 }} />
+        <VoiceFieldButton disabled={loading} idleLabel="说一说，自动转文字" onTranscript={(t) => setText((prev) => appendTranscript(prev, t))} style={{ marginTop: 12 }} />
         <button type="button" className="primary-button" onClick={handleSubmit} disabled={!text.trim() || loading}
           style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600, marginTop: 14 }}>继续补充</button>
         <BottomNavTabs active="profile" />

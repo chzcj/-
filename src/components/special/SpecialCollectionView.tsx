@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { VoiceFieldButton, appendTranscript } from '@/components/voice/VoiceFieldButton'
 
 /* ================================================================
    专项采集 UI（交付文档 5.3.1 A / 5.3.10）——三个专项功能共用的「建上下文」界面。
@@ -65,6 +66,14 @@ export function SpecialCollectionView({
         placeholder={placeholder}
         disabled={loading}
         style={{ width: '100%', minHeight: 150, fontSize: 15, lineHeight: 1.6, padding: 14, borderRadius: 16, border: '1px solid rgba(0,0,0,0.10)', resize: 'vertical', boxSizing: 'border-box' }}
+      />
+
+      {/* 语音输入：说一说自动转文字，追加到上面的文本，不影响打字 */}
+      <VoiceFieldButton
+        disabled={loading}
+        idleLabel="说一说，自动转文字"
+        onTranscript={(t) => setText((prev) => appendTranscript(prev, t))}
+        style={{ marginTop: 10 }}
       />
 
       <button

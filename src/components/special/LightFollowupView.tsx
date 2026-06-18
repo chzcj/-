@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { VoiceFieldButton, appendTranscript } from '@/components/voice/VoiceFieldButton'
 
 /* ================================================================
    轻追问 UI（交付文档 5.3.1 B / 5.3.11）——在已有上下文上「推判断」。
@@ -49,6 +50,14 @@ export function LightFollowupView({ acknowledgement, question, missingInfo = [],
         placeholder="不用说得很完整，凭最近几次印象说就行"
         disabled={loading}
         style={{ width: '100%', minHeight: 88, fontSize: 15, lineHeight: 1.6, padding: 14, borderRadius: 16, border: '1px solid rgba(0,0,0,0.10)', resize: 'vertical', boxSizing: 'border-box' }}
+      />
+
+      {/* 语音输入：说一说自动转文字 */}
+      <VoiceFieldButton
+        disabled={loading}
+        idleLabel="说一说，自动转文字"
+        onTranscript={(t) => setText((prev) => appendTranscript(prev, t))}
+        style={{ marginTop: 10 }}
       />
 
       <button
