@@ -1,20 +1,21 @@
-import { fail, ok, waitMock } from '@/lib/api-response';
-import { profileSnapshotQuerySchema } from '@/lib/schemas';
+import { fail, ok } from '@/lib/api-response';
 import { callAgentJson } from '@/lib/server/ark-agents';
 import { getRequestIdentity } from '@/lib/server/auth';
 import { loadProfileSnapshotContext } from '@/lib/server/db';
+import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const parsed = profileSnapshotQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
-  if (!parsed.success) return fail('BAD_REQUEST', '孩子档案暂时没有刷新成功，可以再试一次。', parsed.error.flatten());
+  // 鉴权：与其它前台数据接口一致（此处此前缺失，正是匿名越权读档案的入口）。
+  if (!verifyAppApi(request)) return authError();
 
-  await waitMock(300);
-  const identity = await getRequestIdentity({ familyId: parsed.data.familyId, childId: parsed.data.childId });
+  // 租户完全以会话身份为准，忽略任何查询参数，杜绝匿名跨租户越权读取（IDOR）。
+  const identity = await getRequestIdentity();
   const context = await loadProfileSnapshotContext(identity.familyId, identity.childId).catch((error) => {
     console.error('[childos] load profile context failed', error);
     return { digest: undefined, memories: [], events: [], latestUnderstandingCard: undefined };
   });
+
+  // 1) 有真实 digest：返回真实档案数据。
   if (context.digest?.recentChanges?.length || context.digest?.currentFocus || context.digest?.recentRecords?.length) {
     return ok({
       recentChanges: context.digest.recentChanges || [],
@@ -25,6 +26,8 @@ export async function GET(request: Request) {
       latestUnderstandingCard: context.latestUnderstandingCard
     });
   }
+
+  // 2) 无 digest：尝试 LLM 轻量生成。
   const snapshot = await callAgentJson<{
     recentChanges?: Array<{ title: string; body: string }>;
     currentFocus?: string;
@@ -48,23 +51,18 @@ export async function GET(request: Request) {
     return undefined;
   });
 
-  return ok(
-    snapshot || {
-      recentChanges: [
-        {
-          title: '数学作业开始前更容易拖延',
-          body: '当前更像是启动压力，而不是单纯贪玩手机。'
-        },
-        {
-          title: '催促后容易进入防御',
-          body: '家长一提醒，孩子可能先听成“不被信任”。'
-        }
-      ],
-      currentFocus: '先别急着围绕“手机”制定规则，优先观察孩子到底卡在开始前，还是卡在某一道题之后。',
-      recentRecords: [],
-      communicationTip: '',
-      hasUnreadUpdate: false,
-      latestUnderstandingCard: context.latestUnderstandingCard
-    }
-  );
+  // 3) 既无真实 digest 又 LLM 不可用/失败：不编造画像，返回 503 让前台显示重试。
+  //    红线：信息不足不能硬画像（对齐 weekly-review 的 503 设计）。
+  if (!snapshot) {
+    return fail('SNAPSHOT_UNAVAILABLE', '孩子档案暂时没有刷新成功，可以再试一次。', undefined, 503);
+  }
+
+  return ok({
+    recentChanges: snapshot.recentChanges || [],
+    currentFocus: snapshot.currentFocus || '',
+    recentRecords: snapshot.recentRecords || [],
+    communicationTip: snapshot.communicationTip || '',
+    hasUnreadUpdate: Boolean(snapshot.hasUnreadUpdate),
+    latestUnderstandingCard: snapshot.latestUnderstandingCard || context.latestUnderstandingCard
+  });
 }

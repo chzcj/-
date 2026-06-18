@@ -11,8 +11,9 @@ function ConflictResultInner() {
   const router = useRouter()
   const params = useSearchParams()
   const rawText = params.get('text') || ''
-  const [r, setR] = useState(mockConflictReview)
+  const [r, setR] = useState<typeof mockConflictReview | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -24,8 +25,10 @@ function ConflictResultInner() {
           body: JSON.stringify({ parentText: rawText, mode: 'conflict' }),
         })
         const json = await res.json()
-        if (!cancelled && json.ok && json.data?.headline) setR(json.data)
-      } catch {} finally { if (!cancelled) setLoading(false) }
+        if (cancelled) return
+        if (json.ok && json.data?.headline) setR(json.data)
+        else setError(true)
+      } catch { if (!cancelled) setError(true) } finally { if (!cancelled) setLoading(false) }
     }
     load()
     return () => { cancelled = true }
@@ -41,6 +44,12 @@ function ConflictResultInner() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#A1A1A6', fontSize: 14 }}>正在复盘冲突…</div>
+      ) : error || !r ? (
+        <div className="card" style={{ padding: 22, borderRadius: 28, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)', marginBottom: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 15, color: '#6E6E73', marginBottom: 14 }}>这次复盘没有成功，可以稍后再试一次。</div>
+          <button type="button" className="secondary-button" onClick={() => router.push('/conflict')}
+            style={{ borderRadius: 999, height: 44, padding: '0 24px', fontSize: 14, fontWeight: 600 }}>重新复盘</button>
+        </div>
       ) : (
         <div className="card" style={{ padding: 22, borderRadius: 28, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)', marginBottom: 16 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#1D1D1F', marginBottom: 10, lineHeight: 1.4 }}>{r.headline}</div>

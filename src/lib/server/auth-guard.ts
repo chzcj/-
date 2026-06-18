@@ -5,26 +5,14 @@ export function verifyInternalApi(request: Request | NextRequest): boolean {
   const token = internalToken()
 
   if (!token) {
-    return process.env.NODE_ENV === 'development'
+    // 未配置内部 token：保留 dev 直通 + 同源兜底（精确 host 比较，非子串），
+    // 不破坏演示/本地与无 token 部署。
+    if (process.env.NODE_ENV === 'development') return true
+    return isSameOriginRequest(request)
   }
 
-  const authHeader = request.headers.get('authorization') || ''
-  const apiKeyHeader = request.headers.get('x-api-key') || ''
-
-  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
-  const providedToken = bearerMatch ? bearerMatch[1] : apiKeyHeader
-
-  if (providedToken === token) return true
-
-  const referer = request.headers.get('referer') || ''
-  const origin = request.headers.get('origin') || ''
-  const host = request.headers.get('host') || ''
-
-  if (referer.includes(host) || origin.includes(host)) return true
-
-  if (process.env.NODE_ENV === 'development') return true
-
-  return false
+  // 已配置内部 token：只认 token，杜绝可伪造的 Referer/Origin 同源绕过。
+  return hasValidInternalToken(request)
 }
 
 export function verifyAppApi(request: Request | NextRequest): boolean {

@@ -28,7 +28,7 @@ export default function RecordChildPage() {
     const result = await apiClient.recordChild({ eventText, changeText, worryText });
     if (result.ok) {
       setSaved(true);
-      setToast('已保存为本地演示记录。接入真实数据库后，这里会写入孩子档案。');
+      setToast('记录已保存，会进入孩子的长期记忆，参与对孩子的持续理解。');
     } else {
       setToast(result.error.message);
     }

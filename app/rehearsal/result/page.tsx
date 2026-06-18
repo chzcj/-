@@ -22,9 +22,10 @@ function RehearsalResultInner() {
   const router = useRouter()
   const params = useSearchParams()
   const parentText = params.get('text') || '(未输入内容)'
-  const [r, setR] = useState(mockRehearsalResult)
+  const [r, setR] = useState<typeof mockRehearsalResult | null>(null)
   const [pa, setPa] = useState<ProfileAware | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -47,7 +48,8 @@ function RehearsalResultInner() {
         if (cancelled) return
         if (json.ok && json.data?.profileAware) setPa(json.data as ProfileAware)
         else if (json.ok && json.data?.headline) setR(json.data)
-      } catch {} finally { if (!cancelled) setLoading(false) }
+        else setError(true)
+      } catch { if (!cancelled) setError(true) } finally { if (!cancelled) setLoading(false) }
     }
     load()
     return () => { cancelled = true }
@@ -84,7 +86,7 @@ function RehearsalResultInner() {
             </div>
           ) : null}
         </div>
-      ) : (
+      ) : r ? (
         <div className="card" style={{ padding: 22, borderRadius: 28, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)', marginBottom: 16 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#1D1D1F', marginBottom: 10, lineHeight: 1.4 }}>{r.headline}</div>
           <div style={{ fontSize: 15, lineHeight: 1.6, color: '#6E6E73', marginBottom: 18 }}>{r.explanation}</div>
@@ -102,6 +104,12 @@ function RehearsalResultInner() {
             <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>更建议这样开口</div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{r.suggestedWording}</div>
           </div>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: 22, borderRadius: 28, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)', marginBottom: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 15, color: '#6E6E73', marginBottom: 14 }}>这次预演没有成功，可以换一种说法再试一次。</div>
+          <button type="button" className="secondary-button" onClick={() => router.push('/rehearsal')}
+            style={{ borderRadius: 999, height: 44, padding: '0 24px', fontSize: 14, fontWeight: 600 }}>重新预演</button>
         </div>
       )}
 

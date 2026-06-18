@@ -1,4 +1,4 @@
-import { fail, ok, waitMock } from '@/lib/api-response';
+import { fail, ok } from '@/lib/api-response';
 import { recordChildSchema } from '@/lib/schemas';
 import { callAgentJson } from '@/lib/server/ark-agents';
 import { getRequestIdentity } from '@/lib/server/auth';
@@ -11,7 +11,6 @@ export async function POST(request: Request) {
   const parsed = recordChildSchema.safeParse(body);
   if (!parsed.success) return fail('BAD_REQUEST', '记录暂时没有保存成功，可以再试一次。', parsed.error.flatten());
 
-  await waitMock(260);
   const input = parsed.data;
   const identity = await getRequestIdentity({ familyId: input.familyId, childId: input.childId });
   const title = input.eventText.slice(0, 28) || input.changeText.slice(0, 28) || '一条新的孩子记录';

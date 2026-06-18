@@ -15,12 +15,14 @@ export default function ObservationPage() {
   const [saved, setSaved] = useState(false)
   const [streaming, setStreaming] = useState('')
   const [insight, setInsight] = useState<typeof mockDailyObservationInsight | null>(null)
+  const [error, setError] = useState('')
 
   async function handleSubmit(text: string, _mode: InputMode) {
     if (!text.trim() || loading) return
     setLoading(true)
     setStreaming('')
     setSaved(false)
+    setError('')
     try {
       const res = await fetch('/api/daily/stream', {
         method: 'POST',
@@ -57,19 +59,24 @@ export default function ObservationPage() {
         }
       }
 
-      const usedAi = acc.trim().length > 0
-      const insightText = usedAi ? acc.trim() : mockDailyObservationInsight.insight
-      const resolvedAreas = usedAi ? linkedAreas : mockDailyObservationInsight.linkedAreas
+      const insightText = acc.trim()
+      // 没有 AI 解读（空流 / 后端降级）：不编造、不回退 mock，提示重试。
+      if (!insightText) {
+        setError('这次没有解读出来，可以再说一次。')
+        return
+      }
 
       createDailyObservation({
         rawText: text.trim(),
         insight: insightText,
-        linkedAreas: resolvedAreas,
-        note: mockDailyObservationInsight.note,
+        linkedAreas,
+        note: '',
       })
-      setInsight({ ...mockDailyObservationInsight, insight: insightText, linkedAreas: resolvedAreas })
+      setInsight({ insight: insightText, linkedAreas, note: '' })
       setSaved(true)
-    } catch {} finally {
+    } catch {
+      setError('解读暂时没成功，可以再试一次。')
+    } finally {
       setLoading(false)
       setStreaming('')
     }
@@ -107,6 +114,8 @@ export default function ObservationPage() {
             </div>
           </div>
         ) : null}
+
+        {error ? <div className="toast">{error}</div> : null}
 
         <BottomNavTabs active="record" />
       </div>

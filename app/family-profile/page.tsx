@@ -10,23 +10,15 @@ import { TopProgressBar } from '@/components/layout/TopProgressBar';
 import { apiClient } from '@/lib/api-client';
 import type { ProfileSnapshotCardLink } from '@/types/childos';
 
-const recentItems = [
-  {
-    title: '数学作业开始前更容易拖延',
-    body: '当前更像是启动压力，而不是单纯贪玩手机。'
-  },
-  {
-    title: '催促后容易进入防御',
-    body: '家长一提醒，孩子可能先听成“不被信任”。'
-  }
-];
+// 初始为空：不预置任何假线索。有真实数据时由 refreshProfile 从 getProfileSnapshot 覆盖。
+const recentItems: Array<{ title: string; body: string }> = [];
 
 export default function FamilyProfilePage() {
   const router = useRouter();
   const [toast, setToast] = useState('');
   const [activePanel, setActivePanel] = useState<'recent' | 'stable' | 'observe' | 'weekly' | undefined>();
   const [items, setItems] = useState(recentItems);
-  const [currentFocus, setCurrentFocus] = useState('先别急着围绕“手机”制定规则，优先观察孩子到底卡在开始前，还是卡在某一道题之后。');
+  const [currentFocus, setCurrentFocus] = useState('');
   const [latestUnderstandingCard, setLatestUnderstandingCard] = useState<ProfileSnapshotCardLink | undefined>();
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyData, setWeeklyData] = useState<{
@@ -49,7 +41,7 @@ export default function FamilyProfilePage() {
       if (result.data.recentChanges?.length) setItems(result.data.recentChanges);
       if (result.data.currentFocus) setCurrentFocus(result.data.currentFocus);
       setLatestUnderstandingCard(result.data.latestUnderstandingCard);
-      if (showToast) setToast('已刷新演示看板。真实数据库接入后会重新拉取最新档案。');
+      if (showToast) setToast('已刷新档案。');
     } else if (showToast) {
       setToast(result.error.message);
     }
@@ -106,12 +98,16 @@ export default function FamilyProfilePage() {
             {activePanel === 'recent' ? (
               <>
                 <div className="result-title">近期线索</div>
-                {items.map((item) => (
-                  <div className="profile-panel-item" key={item.title}>
-                    <strong>{item.title}</strong>
-                    <p>{item.body}</p>
-                  </div>
-                ))}
+                {items.length > 0 ? (
+                  items.map((item) => (
+                    <div className="profile-panel-item" key={item.title}>
+                      <strong>{item.title}</strong>
+                      <p>{item.body}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="section-body">还没有近期线索。多记几个真实片段后，这里会出现系统看到的变化。</div>
+                )}
               </>
             ) : null}
             {activePanel === 'stable' ? (
@@ -123,7 +119,7 @@ export default function FamilyProfilePage() {
             {activePanel === 'observe' ? (
               <>
                 <div className="result-title">观察重点</div>
-                <div className="section-body">{currentFocus}</div>
+                <div className="section-body">{currentFocus || '还在一起把孩子的情况看清楚，暂时先不急着定方向。'}</div>
               </>
             ) : null}
             {activePanel === 'weekly' ? (
@@ -187,20 +183,24 @@ export default function FamilyProfilePage() {
 
           <section className="result-card card">
             <div className="result-title">近期变化</div>
-            {items.map((item) => (
-              <button className="profile-row" type="button" key={item.title} onClick={() => setToast(item.body)}>
-                <span>
-                  <strong>{item.title}</strong>
-                  <small>{item.body}</small>
-                </span>
-                <ChevronRight size={18} />
-              </button>
-            ))}
+            {items.length > 0 ? (
+              items.map((item) => (
+                <button className="profile-row" type="button" key={item.title} onClick={() => setToast(item.body)}>
+                  <span>
+                    <strong>{item.title}</strong>
+                    <small>{item.body}</small>
+                  </span>
+                  <ChevronRight size={18} />
+                </button>
+              ))
+            ) : (
+              <div className="section-body">还没有积累到近期变化。完成几次对话或记录后，这里会显示系统看到的变化。</div>
+            )}
           </section>
 
           <section className="result-card card">
             <div className="result-title">当前支持重点</div>
-            <div className="section-body">{currentFocus}</div>
+            <div className="section-body">{currentFocus || '还在一起把孩子的情况看清楚，暂时先不急着定方向。'}</div>
             <div className="button-row" style={{ marginTop: 14 }}>
               <SecondaryButton onClick={() => router.push('/rehearsal/input?standalone=1')}>
                 <Mic size={16} />
@@ -214,7 +214,7 @@ export default function FamilyProfilePage() {
           </section>
 
           <EntryCard icon={<CalendarDays size={22} />} title="本周回顾" description="查看这周出现过的亲子互动线索" onClick={openWeeklyReview} />
-          <EntryCard icon={<ShieldCheck size={22} />} title="隐私与授权" description="查看哪些内容会被存入长期档案" onClick={() => setToast('当前演示版只保存 mock 数据；真实上线前会补隐私授权页。')} />
+          <EntryCard icon={<ShieldCheck size={22} />} title="隐私与授权" description="查看哪些内容会被存入长期档案" onClick={() => setToast('隐私与授权页正在完善中。')} />
         </div>
 
         {toast ? <div className="toast">{toast}</div> : null}

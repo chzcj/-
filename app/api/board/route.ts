@@ -3,6 +3,7 @@ import { callAgentJson } from '@/lib/server/ark-agents'
 import { getRequestIdentity } from '@/lib/server/auth'
 import { loadProfileSnapshotContext, loadLatestBoardSnapshot } from '@/lib/server/db'
 import { enqueueJob } from '@/lib/server/jobs/queue'
+import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 
 /* ================================================================
    家庭支持看板 board（交付文档 2 / 7.6 / 12.3）
@@ -35,7 +36,9 @@ const FALLBACK: BoardSnapshot = {
   currentBestNextStep: '这一两周先随手记一两个真实片段，不用分析，系统会慢慢看清。'
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // 鉴权：此前 /api/board 无任何守卫，任意请求可读看板。补齐与其它前台接口一致。
+  if (!verifyAppApi(request)) return authError()
   await waitMock(120)
   const identity = await getRequestIdentity()
 
