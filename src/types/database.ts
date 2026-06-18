@@ -535,19 +535,6 @@ export interface OrchestrationOutput {
   agent: 'daily_dialogue_orchestration_agent'
   contextMaturityLevel: MaturityLevel
   inputType: InputTypeLabel
-  decomposedInput: {
-    facts: string[]
-    childBehaviors: string[]
-    childQuotes: string[]
-    parentQuotes: string[]
-    parentActions: string[]
-    triggerPoints: string[]
-    parentEmotions: string[]
-    parentEvaluations: string[]
-    parentAssumptions: string[]
-    parentGoals: string[]
-    missingInformation: string[]
-  }
   retrievedContext: RetrievedContext
   relationshipToExistingModel: {
     type: InputClassification

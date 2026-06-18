@@ -11,7 +11,7 @@ import type {
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
 import { createId } from '@/lib/storage/storageIds'
-import { FORBIDDEN_PARENT_LABELS, SAFETY_KEYWORDS } from '@/lib/server/constitution'
+import { SAFETY_KEYWORDS } from '@/lib/server/constitution'
 import type { TenantId } from '@/lib/server/memory/tenant'
 
 /* ================================================================
@@ -31,7 +31,6 @@ export async function runOrchestrationPipeline(input: OrchestrationInput): Promi
   const effectiveMaturity = retrievalPacket.contextMaturityLevel || maturity.level
 
   const inputType = classifyInputType(input.userText)
-  const hasLabel = FORBIDDEN_PARENT_LABELS.some(label => input.userText.includes(label))
   const isSafety = SAFETY_KEYWORDS.some(kw => input.userText.includes(kw))
 
   if (isSafety) {
@@ -56,19 +55,6 @@ export async function runOrchestrationPipeline(input: OrchestrationInput): Promi
     agent: 'daily_dialogue_orchestration_agent',
     contextMaturityLevel: effectiveMaturity,
     inputType,
-    decomposedInput: {
-      facts: extractFacts(input.userText),
-      childBehaviors: extractChildBehaviors(input.userText),
-      childQuotes: [],
-      parentQuotes: [input.userText],
-      parentActions: [],
-      triggerPoints: [],
-      parentEmotions: [],
-      parentEvaluations: hasLabel ? [input.userText] : [],
-      parentAssumptions: [],
-      parentGoals: [],
-      missingInformation: canExplain ? [] : ['需要更多现场信息来判断']
-    },
     retrievedContext: {
       relevantChildStructureModel: retrievalPacket.relevantChildStructureModels,
       relevantEntryEvidencePacks: retrievalPacket.supportingEvidence,
@@ -175,11 +161,6 @@ function buildSafetyResponse(
     agent: 'daily_dialogue_orchestration_agent',
     contextMaturityLevel: maturity,
     inputType: 'high_risk_signal',
-    decomposedInput: {
-      facts: [], childBehaviors: [], childQuotes: [], parentQuotes: [input.userText],
-      parentActions: [], triggerPoints: [], parentEmotions: [], parentEvaluations: [],
-      parentAssumptions: [], parentGoals: [], missingInformation: []
-    },
     retrievedContext: {
       relevantChildStructureModel: retrieval.relevantChildStructureModels,
       relevantEntryEvidencePacks: [],
@@ -196,22 +177,6 @@ function buildSafetyResponse(
       updateStableProfile: [], updateFamilyInteractionPattern: [], updateWeeklyReportMaterial: [], doNotWrite: ['安全风险，只记录不分析'] },
     frontResponseDraft: '这个已经不能当普通亲子沟通问题处理。现在优先不是分析谁对谁错，而是先保证孩子安全。建议您马上联系线下可信亲友、学校老师或专业机构一起介入，不要一个人扛。'
   }
-}
-
-function extractFacts(text: string): string[] {
-  const facts: string[] = []
-  if (text.length > 10) facts.push(`家长输入：${text.slice(0, 100)}`)
-  return facts
-}
-
-function extractChildBehaviors(text: string): string[] {
-  const behaviors: string[] = []
-  if (text.includes('拖')) behaviors.push('拖延')
-  if (text.includes('手机')) behaviors.push('使用手机')
-  if (text.includes('沉默') || text.includes('不说')) behaviors.push('沉默/回避沟通')
-  if (text.includes('烦') || text.includes('发火')) behaviors.push('情绪烦躁')
-  if (text.includes('没写') || text.includes('骗')) behaviors.push('隐瞒进度')
-  return behaviors
 }
 
 function buildFrontResponse(
