@@ -37,10 +37,16 @@ app.prepare().then(() => {
   const wss = new WebSocketServer({ noServer: true })
   wss.on('connection', handleAsrConnection)
 
+  // 非 ASR 的 upgrade（dev 模式的 HMR 热更新 /_next/webpack-hmr 等）转发给 Next，
+  // 不能直接 destroy，否则 dev 下热更新断、且易引发资源/状态错乱。
+  const upgradeHandler = typeof app.getUpgradeHandler === 'function' ? app.getUpgradeHandler() : null
+
   server.on('upgrade', (req, socket, head) => {
     const { pathname } = parse(req.url)
     if (pathname === '/api/asr/stream') {
       wss.handleUpgrade(req, socket, head, (client) => wss.emit('connection', client, req))
+    } else if (upgradeHandler) {
+      upgradeHandler(req, socket, head)
     } else {
       socket.destroy()
     }
