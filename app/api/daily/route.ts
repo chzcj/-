@@ -3,6 +3,7 @@ import { runOrchestrationPipeline, deriveLinkedAreas } from '@/lib/server/orches
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
+import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
@@ -57,6 +58,9 @@ export async function POST(request: Request) {
 
     // 后台记忆写入入队（可靠重试，文档 14.3）。plan 内 itemId 已固定 → executeWritePlan 幂等，无需去重键。
     void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
+
+    // 日常深拆（Layer 2）：异步六维拆解 + 保守生成新假设 → memory_write → model_review。幂等键按 (tenant + sha(text)) 派生。
+    void enqueueJob('daily_deep', { text: userText, tenant, traceId }, `daily_deep_${deriveEpisodeId(userText, { familyId: tenant.familyId, childId: tenant.childId })}`, traceId)
 
     return NextResponse.json({
       ok: true,

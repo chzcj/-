@@ -120,6 +120,9 @@ export async function POST(request: Request) {
           // 桶幂等键限流，无活跃假设时 runModelReview 提前 no-op，不空跑 LLM。
           void enqueueJob('model_review', { tenant }, modelReviewBucketKey(tenant), traceId)
 
+          // 日常深拆（Layer 2）：异步六维拆解 + 保守生成新假设 → memory_write → model_review。复用 episodeId 幂等去重。
+          void enqueueJob('daily_deep', { text, tenant, traceId }, `daily_deep_${episodeId}`, traceId)
+
           controller.close()
         } catch (error) {
           send({ type: 'error', message: '这次没有整理成功，可以再试一次。', detail: String(error) })

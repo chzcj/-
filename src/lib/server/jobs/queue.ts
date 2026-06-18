@@ -7,6 +7,7 @@ import { ingestEpisodeStrict, type IngestContext } from '@/lib/server/memory/epi
 import { rebuildBriefAndBoard } from '@/lib/server/memory/digest/updaters'
 import { runEntryEvidenceBuild, type EntryEvidencePayload } from '@/lib/server/memory/entry-evidence/builder'
 import { runModelReview } from '@/lib/server/memory/model-review/reviewer'
+import { runDailyDeep, type DailyDeepPayload } from '@/lib/server/memory/daily-deep/builder'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { MemoryWritePlan } from '@/types/database'
 
@@ -16,7 +17,7 @@ import type { MemoryWritePlan } from '@/types/database'
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
 interface DigestUpdatePayload { tenant: TenantId }
@@ -114,6 +115,11 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   } else if (jobType === 'model_review') {
     const p = payload as DigestUpdatePayload
     await runModelReview(p.tenant) // 复核待验证假设：反证+置信度，幂等可重跑
+  } else if (jobType === 'daily_deep') {
+    // 日常对话深拆：六维拆解 + 保守生成新假设。有新假设 → 走标准 memory_write
+    // （→ 链式 model_review 完成反馈复盘）；无则 no-op，不空跑、不写库。
+    const r = await runDailyDeep(payload as DailyDeepPayload)
+    if (r) await enqueueJob('memory_write', { plan: r.plan, tenant: r.tenant }, null, null)
   }
 }
 
