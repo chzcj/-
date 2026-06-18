@@ -2,6 +2,7 @@ import { fail, ok } from '@/lib/api-response';
 import { getRequestIdentity } from '@/lib/server/auth';
 import { isDatabaseEnabled } from '@/lib/server/db';
 import { callAgentJson } from '@/lib/server/ark-agents';
+import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import pg from 'pg';
 
 const { Pool } = pg;
@@ -12,6 +13,8 @@ const { Pool } = pg;
    无 key/LLM 失败返 503，前台显示重试，不出假数据。
    ================================================================ */
 export async function POST(request: Request) {
+  if (!verifyAppApi(request)) return authError();
+
   const body = await request.json().catch(() => ({}));
   const observations: string[] = Array.isArray(body?.observations)
     ? body.observations.filter((s: unknown): s is string => typeof s === 'string' && s.trim().length > 0).slice(0, 30)
@@ -39,6 +42,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  if (!verifyAppApi(request)) return authError();
+
   const url = new URL(request.url);
   const familyId = url.searchParams.get('familyId') || 'f_demo';
   const childId = url.searchParams.get('childId') || 'c_demo';

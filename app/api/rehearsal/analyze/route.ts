@@ -8,6 +8,7 @@ import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/wri
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { createId } from '@/lib/storage/storageIds'
+import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 
 type ProfileAwareRehearsal = {
   childLikelyHearing: string
@@ -29,6 +30,8 @@ type RehearsalProfileContext = {
 }
 
 export async function POST(request: Request) {
+  if (!verifyAppApi(request)) return authError()
+
   const body = await request.json().catch(() => ({}))
   const { parentText, mode, profileContext, rehearsalContext, fromSpecialFeature } = body
 

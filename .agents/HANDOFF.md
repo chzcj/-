@@ -141,3 +141,31 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **风险/冲突**
 - `npm run sync:gitee` 仍提示远程 `master` 不存在；当前本地分支是 `main`，origin 指向 GitHub。
 - 当前无 FAST_AI key，教育诊断/家庭规划走规则/降级路径，不代表真实 LLM 质量验证。
+
+---
+
+## 2026-06-18 09:49 | Codex | parent-corpus-auth-hardening
+
+**做了什么**
+- 继续用家长语料做 479 条接口批测，并用 Chrome + Computer Use 走真人式页面抽样。
+- 修复 `/api/rehearsal/analyze`、`/api/rehearsal/stream`、`/api/profile/weekly-review` 缺少用户侧 API 鉴权的问题，统一走 demo/正式登录 cookie + 同源 Referer/Origin 校验。
+- 保留 `profile/weekly-review` 无 FAST_AI 时的 503 明确降级；不造假周报。
+
+**为什么**
+- 批测发现未登录也能直接 POST `/api/rehearsal/analyze`；周报 POST 未登录会返回 503 而不是 401，属于家长语料接口越权/语义错误。
+
+**验证**
+- `npm run typecheck`
+- `npm run build`
+- 家长语料接口批测：479/479 符合预期；entry/weekly 因无 FAST_AI 返回 503，daily/rehearsal/education/planner/multi 返回 200 或正常降级。
+- 鉴权复测：rehearsal/weekly 带 demo cookie + 同源头可用；无 cookie 或 cookie 无同源头均 401。
+- Chrome 真人路径：home→daily、rehearsal、education-diagnosis、family-planner、child-voice→multi-view 均可提交并展示结果/降级引导。
+- job_queue 已全部 succeeded，无 pending/running/failed。
+
+**下一步**
+- 如果要测真实 LLM 质量，需要补 FAST_AI_API_KEY/FAST_AI_MODEL 后再跑 entry summary 与 weekly review。
+- `output/parent-corpus-test/` 仍是未跟踪批测产物，不要提交。
+
+**风险/冲突**
+- `npm run sync:gitee` 仍提示远程 `master` 不存在；当前本地分支是 `main`。
+- 当前 3101 服务正在用 `JOB_BATCH=40` 跑本地验证，可按需关闭。

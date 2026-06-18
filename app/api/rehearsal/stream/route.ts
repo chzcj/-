@@ -1,6 +1,7 @@
 import { fail } from '@/lib/api-response';
 import { z } from 'zod';
 import { submitRehearsalStreaming } from '@/lib/server/store';
+import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 
 const rehearsalStreamSchema = z.object({
   conversationId: z.string().min(1),
@@ -8,6 +9,8 @@ const rehearsalStreamSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!verifyAppApi(request)) return authError();
+
   const body = await request.json().catch(() => ({}));
   const parsed = rehearsalStreamSchema.safeParse(body);
   if (!parsed.success) return fail('BAD_REQUEST', '这次输入没有整理成功，可以再试一次。', parsed.error.flatten());
