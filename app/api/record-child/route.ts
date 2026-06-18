@@ -2,10 +2,13 @@ import { fail, ok } from '@/lib/api-response';
 import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { recordChildSchema } from '@/lib/schemas';
 import { callAgentJson } from '@/lib/server/ark-agents';
-import { getRequestIdentity } from '@/lib/server/auth';
+import { resolveTenant } from '@/lib/server/memory/tenant';
 import { insertMemoryRecords, rebuildFamilyMemoryDigest, saveChildEvent } from '@/lib/server/db';
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline';
+import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline';
+import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine';
 import { enqueueJob } from '@/lib/server/jobs/queue';
+import { createId } from '@/lib/storage/storageIds';
 
 export async function POST(request: Request) {
   // 鉴权：middleware 仅查 cookie 存在性，补 route 级守卫堵伪造 cookie。
@@ -15,7 +18,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return fail('BAD_REQUEST', '记录暂时没有保存成功，可以再试一次。', parsed.error.flatten());
 
   const input = parsed.data;
-  const identity = await getRequestIdentity({ familyId: input.familyId, childId: input.childId });
+  // 会话身份为准，忽略 body 的 familyId/childId，杜绝登录用户借 body 越权写他人租户。
+  const identity = await resolveTenant();
   const title = input.eventText.slice(0, 28) || input.changeText.slice(0, 28) || '一条新的孩子记录';
   const draft = await callAgentJson<{
     title?: string;
@@ -72,6 +76,21 @@ export async function POST(request: Request) {
     text: recordText,
     ctx: { sourceEventId: eventId || undefined, familyId: identity.familyId, childId: identity.childId, episodeId }
   }, episodeId, eventId || undefined);
+
+  // 统一走标准记忆写入链路（与 daily 对齐）：memory_write → digest_update → BoardSnapshot/Brief，
+  // 让"记录孩子"也驱动家庭看板更新（此前只走旧 memory_records，Board 不读那张表）。
+  // 旧的同步 insertMemoryRecords + rebuildFamilyMemoryDigest 暂保留兼容其它消费方（weekly-report/archive）。
+  const writePlan = buildMemoryWritePlan({
+    tenant: identity,
+    dailyUpdates: [createDailyUpdate(`[记录孩子] ${recordText}`, 'insufficient', [], identity, eventId || undefined)],
+    rationale: {
+      whyUpdate: '家长记录了一件孩子的事',
+      whyNotPromoteSomeItems: '单条记录属观察线索，暂不升级为长期判断',
+      riskOfOvergeneralization: '',
+      nextVerificationNeed: ''
+    }
+  });
+  void enqueueJob('memory_write', { plan: writePlan, tenant: identity }, null, createId('trace'));
 
   return ok({
     eventId: eventId || `local_${Date.now()}`,
