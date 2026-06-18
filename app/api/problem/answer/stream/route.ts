@@ -1,6 +1,7 @@
 import { fail } from '@/lib/api-response';
 import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { problemAnswerSchema } from '@/lib/schemas';
+import { resolveTenant } from '@/lib/server/memory/tenant';
 import { submitAnswerStreaming } from '@/lib/server/store';
 
 export async function POST(request: Request) {
@@ -10,6 +11,8 @@ export async function POST(request: Request) {
   const parsed = problemAnswerSchema.safeParse(body);
   if (!parsed.success) return fail('BAD_REQUEST', '这次输入没有整理成功，可以再试一次。', parsed.error.flatten());
 
+  // 租户在 POST 同步上下文解析（cookies() 合法），供流内会话归属校验。
+  const tenant = await resolveTenant();
   const encoder = new TextEncoder();
 
   return new Response(
@@ -21,7 +24,7 @@ export async function POST(request: Request) {
 
         try {
           send({ type: 'start', round: parsed.data.round + 1 });
-          const a1 = await submitAnswerStreaming(parsed.data.conversationId, parsed.data.round, parsed.data.inputMode, parsed.data.text, (delta) => {
+          const a1 = await submitAnswerStreaming(parsed.data.conversationId, tenant, parsed.data.round, parsed.data.inputMode, parsed.data.text, (delta) => {
             send({ type: 'delta', delta });
           });
           if (!a1) {

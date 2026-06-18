@@ -1,6 +1,7 @@
 import { fail, ok, waitMock } from '@/lib/api-response';
 import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { archiveDraftQuerySchema } from '@/lib/schemas';
+import { resolveTenant } from '@/lib/server/memory/tenant';
 import { getOrCreateArchive } from '@/lib/server/store';
 
 export async function GET(request: Request) {
@@ -10,7 +11,8 @@ export async function GET(request: Request) {
   if (!parsed.success) return fail('BAD_REQUEST', '档案草稿暂时没有整理成功，可以再试一次。', parsed.error.flatten());
 
   await waitMock(500);
-  const archive = await getOrCreateArchive(parsed.data.conversationId);
+  const tenant = await resolveTenant();
+  const archive = await getOrCreateArchive(parsed.data.conversationId, tenant);
   if (!archive) return fail('CONVERSATION_NOT_FOUND', '我找不到刚刚那次整理了。', undefined, 404);
 
   return ok(archive);

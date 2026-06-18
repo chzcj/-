@@ -56,6 +56,9 @@ const store =
 
 const { conversations, archives, correctionLogs, memoryRecords, rehearsalMessages } = store;
 
+// 请求者租户标识，用于会话归属校验（防 IDOR：凭 conversationId 越权访问他人会话）。
+type ReqTenant = { familyId: string; childId: string };
+
 function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -77,12 +80,12 @@ export async function startConversation(familyId: string, childId: string) {
   return conversation;
 }
 
-export async function getConversation(conversationId: string) {
-  return getCachedOrPersistedConversation(conversationId);
+export async function getConversation(conversationId: string, tenant: ReqTenant) {
+  return getCachedOrPersistedConversation(conversationId, tenant);
 }
 
-export async function submitAnswer(conversationId: string, round: number, inputMode: InputMode, text: string) {
-  const conversation = await getCachedOrPersistedConversation(conversationId);
+export async function submitAnswer(conversationId: string, tenant: ReqTenant, round: number, inputMode: InputMode, text: string) {
+  const conversation = await getCachedOrPersistedConversation(conversationId, tenant);
   if (!conversation) return undefined;
 
   conversation.rounds.push({
@@ -111,12 +114,13 @@ export async function submitAnswer(conversationId: string, round: number, inputM
 
 export async function submitAnswerStreaming(
   conversationId: string,
+  tenant: ReqTenant,
   round: number,
   inputMode: InputMode,
   text: string,
   onDelta: (delta: string) => void
 ) {
-  const conversation = await getCachedOrPersistedConversation(conversationId);
+  const conversation = await getCachedOrPersistedConversation(conversationId, tenant);
   if (!conversation) return undefined;
 
   conversation.rounds.push({
@@ -189,8 +193,8 @@ export async function submitAnswerStreaming(
   return a1;
 }
 
-export async function generateUnderstanding(conversationId: string) {
-  const conversation = await getCachedOrPersistedConversation(conversationId);
+export async function generateUnderstanding(conversationId: string, tenant: ReqTenant) {
+  const conversation = await getCachedOrPersistedConversation(conversationId, tenant);
   if (!conversation) return undefined;
   const fallbackCard = makeUnderstandingCard(conversation, 1);
   const agentCard = await generateUnderstandingFast(conversation, fallbackCard, 1);
@@ -202,8 +206,8 @@ export async function generateUnderstanding(conversationId: string) {
   return card;
 }
 
-export async function submitFeedback(conversationId: string, cardId: string, feedbackType: CardFeedbackType, text: string) {
-  const conversation = await getCachedOrPersistedConversation(conversationId);
+export async function submitFeedback(conversationId: string, tenant: ReqTenant, cardId: string, feedbackType: CardFeedbackType, text: string) {
+  const conversation = await getCachedOrPersistedConversation(conversationId, tenant);
   if (!conversation) return undefined;
 
   if (feedbackType === 'accurate') {
@@ -228,8 +232,8 @@ export async function submitFeedback(conversationId: string, cardId: string, fee
   return { updated: true, cardId: updatedCard.cardId, card: updatedCard };
 }
 
-export async function generateRehearsal(conversationId: string, parentText: string): Promise<RehearsalResultData | undefined> {
-  const conversation = await getCachedOrPersistedConversation(conversationId);
+export async function generateRehearsal(conversationId: string, tenant: ReqTenant, parentText: string): Promise<RehearsalResultData | undefined> {
+  const conversation = await getCachedOrPersistedConversation(conversationId, tenant);
   if (!conversation) return undefined;
   const fallback = makeRehearsal(conversationId, parentText);
   const agentResult = await tryFastJson<RehearsalResultData>(
@@ -294,8 +298,8 @@ export async function getRehearsalHistory(conversationId: string) {
   return rehearsalMessages.get(conversationId) || [];
 }
 
-export async function generateAdvice(conversationId: string): Promise<AdviceCardData | undefined> {
-  const conversation = await getCachedOrPersistedConversation(conversationId);
+export async function generateAdvice(conversationId: string, tenant: ReqTenant): Promise<AdviceCardData | undefined> {
+  const conversation = await getCachedOrPersistedConversation(conversationId, tenant);
   if (!conversation) return undefined;
   const fallback = makeAdvice(conversationId);
   const agentCard = await tryFastJson<AdviceCardData>(
@@ -329,8 +333,8 @@ export async function generateAdvice(conversationId: string): Promise<AdviceCard
   return card;
 }
 
-export async function getOrCreateArchive(conversationId: string): Promise<ArchiveDraft | undefined> {
-  const conversation = await getCachedOrPersistedConversation(conversationId);
+export async function getOrCreateArchive(conversationId: string, tenant: ReqTenant): Promise<ArchiveDraft | undefined> {
+  const conversation = await getCachedOrPersistedConversation(conversationId, tenant);
   if (!conversation) return undefined;
   const existing = conversation.archiveDraft;
   if (existing) return existing;
@@ -372,8 +376,8 @@ export async function getOrCreateArchive(conversationId: string): Promise<Archiv
   return archive;
 }
 
-export async function confirmArchive(conversationId: string, archive: ArchiveDraft) {
-  const conversation = await getCachedOrPersistedConversation(conversationId);
+export async function confirmArchive(conversationId: string, tenant: ReqTenant, archive: ArchiveDraft) {
+  const conversation = await getCachedOrPersistedConversation(conversationId, tenant);
   if (!conversation) return undefined;
   archives.set(archive.archiveId, archive);
   conversation.archiveDraft = archive;
@@ -454,12 +458,19 @@ function summarize(text: string, round: number) {
   return `第 ${round} 轮：${trimmed.slice(0, 44)}...`;
 }
 
-async function getCachedOrPersistedConversation(conversationId: string) {
-  const cached = conversations.get(conversationId);
-  if (cached) return cached;
-  const persisted = await safeLoadConversationState(conversationId);
-  if (persisted) conversations.set(conversationId, persisted);
-  return persisted;
+async function getCachedOrPersistedConversation(conversationId: string, tenant?: ReqTenant) {
+  let conv = conversations.get(conversationId);
+  if (!conv) {
+    const persisted = await safeLoadConversationState(conversationId);
+    if (persisted) {
+      conversations.set(conversationId, persisted);
+      conv = persisted;
+    }
+  }
+  if (!conv) return undefined;
+  // 租户隔离：会话必须属于请求者租户，否则视为不存在（防 IDOR）。
+  if (tenant && (conv.familyId !== tenant.familyId || conv.childId !== tenant.childId)) return undefined;
+  return conv;
 }
 
 async function persistConversation(conversation: ConversationStateData) {

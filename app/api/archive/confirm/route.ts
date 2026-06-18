@@ -1,6 +1,7 @@
 import { fail, ok, waitMock } from '@/lib/api-response';
 import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { archiveConfirmSchema } from '@/lib/schemas';
+import { resolveTenant } from '@/lib/server/memory/tenant';
 import { confirmArchive } from '@/lib/server/store';
 import type { ArchiveDraft } from '@/types/childos';
 
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     conversationId: parsed.data.conversationId,
     ...parsed.data.archive
   };
-  const result = await confirmArchive(parsed.data.conversationId, archive);
+  const result = await confirmArchive(parsed.data.conversationId, await resolveTenant(), archive);
   if (!result) return fail('CONVERSATION_NOT_FOUND', '我找不到刚刚那次整理了。', undefined, 404);
 
   return ok(result);
