@@ -9,6 +9,8 @@
     "prebuild": "node scripts/build-prompts.mjs",
     "build": "NEXT_IGNORE_INCORRECT_LOCKFILE=1 next build",
     "start": "next start",
+    "asr:dev": "node scripts/build-prompts.mjs && NODE_ENV=development NEXT_IGNORE_INCORRECT_LOCKFILE=1 node server.js",
+    "asr:start": "NODE_ENV=production node server.js",
     "pretypecheck": "node scripts/build-prompts.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",

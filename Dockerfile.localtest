@@ -22,9 +22,11 @@ COPY . .
 ENV NEXT_PUBLIC_USE_MOCK=false
 RUN npm run build
 
-# 4) 运行（next start，非 standalone）
+# 4) 运行：用统一自定义服务器（托管 Next + /api/asr/stream WS 代理）。
+#    真转写需在 docker run 时传 -e TENCENT_APPID=.. -e TENCENT_SECRET_ID=.. -e TENCENT_SECRET_KEY=..
+#    不传也能跑，语音按钮显示「未配置」可见降级。
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]
