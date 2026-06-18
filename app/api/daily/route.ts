@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { runOrchestrationPipeline } from '@/lib/server/orchestration/pipeline'
+import { runOrchestrationPipeline, deriveLinkedAreas } from '@/lib/server/orchestration/pipeline'
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
@@ -32,11 +32,9 @@ export async function POST(request: Request) {
     })
 
     // 前台只暴露家长可见信息：回复正文 + 关联领域名。
-    // 内部判断字段（decomposedInput / routingDecision / memoryAction 等）不出前台（交付文档 6.5 / 11.2 / 13.3 P0）。
+    // 内部判断字段（routingDecision / memoryAction 等）不出前台（交付文档 6.5 / 11.2 / 13.3 P0）。
     const visibleReply = output.frontResponseDraft
-    const linkedAreas = output.retrievedContext.relevantEntryEvidencePacks
-      .map((pack) => (pack as { entryName?: string }).entryName)
-      .filter((name): name is string => Boolean(name))
+    const linkedAreas = deriveLinkedAreas(userText)
 
     // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）。
     // 写入失败只记录日志、不影响前台返回；重试机制由后续 job_queue 改进承接。

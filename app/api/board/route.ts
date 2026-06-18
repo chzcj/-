@@ -18,6 +18,7 @@ type BoardSnapshot = {
   stableUnderstanding: string[]
   familyInteractionPatterns: string[]
   recentChanges: string[]
+  judgmentChanges: string[]
   pendingQuestions: string[]
   currentBestNextStep: string
   version?: number
@@ -32,6 +33,7 @@ const FALLBACK: BoardSnapshot = {
   stableUnderstanding: [],
   familyInteractionPatterns: [],
   recentChanges: [],
+  judgmentChanges: [],
   pendingQuestions: ['可以先多记几个具体场景，比如孩子在作业开始前和开始后的不同反应。'],
   currentBestNextStep: '这一两周先随手记一两个真实片段，不用分析，系统会慢慢看清。'
 }
@@ -82,6 +84,7 @@ function normalizeBoard(raw: Record<string, unknown> | Partial<BoardSnapshot>, m
     stableUnderstanding: strList(r.stableUnderstanding),
     familyInteractionPatterns: strList(r.familyInteractionPatterns),
     recentChanges: strList(r.recentChanges),
+    judgmentChanges: strList(r.judgmentChanges),
     pendingQuestions: pending.length > 0 ? pending : FALLBACK.pendingQuestions,
     currentBestNextStep: textOr(r.currentBestNextStep, FALLBACK.currentBestNextStep),
     ...(meta?.version !== undefined ? { version: meta.version } : {}),

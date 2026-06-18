@@ -27,6 +27,7 @@ interface BoardCore {
   stableUnderstanding: string[]
   familyInteractionPatterns: string[]
   recentChanges: string[]
+  judgmentChanges: string[]
   pendingQuestions: string[]
   currentBestNextStep: string
 }

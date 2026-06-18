@@ -1,4 +1,4 @@
-import { runOrchestrationPipeline } from '@/lib/server/orchestration/pipeline'
+import { runOrchestrationPipeline, deriveLinkedAreas } from '@/lib/server/orchestration/pipeline'
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
@@ -46,9 +46,7 @@ export async function POST(request: Request) {
           // 规则引擎：检索 + 分类 + 安全检测 + 结构化判断 + 降级文案
           const output = await runOrchestrationPipeline({ userText: text, maturityLevel: maturityLevel as never, tenant })
 
-          const linkedAreas = output.retrievedContext.relevantEntryEvidencePacks
-            .map((pack) => (pack as { entryName?: string }).entryName)
-            .filter((name): name is string => Boolean(name))
+          const linkedAreas = deriveLinkedAreas(text)
 
           const isSafety = output.relationshipToExistingModel.type === 'safety'
           let finalText = output.frontResponseDraft

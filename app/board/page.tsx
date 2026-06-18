@@ -10,6 +10,7 @@ type BoardSnapshot = {
   stableUnderstanding: string[]
   familyInteractionPatterns: string[]
   recentChanges: string[]
+  judgmentChanges?: string[]
   pendingQuestions: string[]
   currentBestNextStep: string
   pending?: boolean
@@ -69,6 +70,7 @@ export default function BoardPage() {
             <ListSection title="稳定理解" items={board.stableUnderstanding} empty="还在积累证据，暂不下稳定结论。" />
             <ListSection title="家庭互动模式" items={board.familyInteractionPatterns} empty="还没看到反复出现的互动模式。" />
             <ListSection title="近期变化" items={board.recentChanges} empty="近期暂无明显变化。" />
+            <ListSection title="判断变化" items={board.judgmentChanges || []} empty="我们对孩子的理解暂时没有需要调整的地方。" />
             <ListSection title="待验证关键点" items={board.pendingQuestions} empty="暂无待验证的点。" />
             <Section title="下一步" accent>
               <p style={{ fontSize: 15, lineHeight: 1.6, color: '#1D1D1F', margin: 0 }}>{board.currentBestNextStep}</p>

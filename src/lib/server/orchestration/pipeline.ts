@@ -25,6 +25,26 @@ export interface OrchestrationInput {
   tenant: TenantId
 }
 
+// 家长友好的「关联领域」标签（供前台展示，如观察页解读 chips）。
+// 零 LLM、不暴露内部机制名/假设；纯关键词→主题映射。
+const LINKED_AREA_RULES: Array<[RegExp, string]> = [
+  [/作业|写作业|学习|做题|功课|成绩|背|预习|复习/, '学习与作业'],
+  [/手机|游戏|平板|刷|看视频|短视频/, '手机与娱乐'],
+  [/烦|发火|哭|情绪|崩溃|生气|急躁|焦虑|害怕/, '情绪状态'],
+  [/睡|起床|作息|熬夜|赖床|午休/, '作息节奏'],
+  [/同学|老师|学校|班级|班里|校园/, '学校与同伴'],
+  [/说|聊|沟通|顶嘴|不理|沉默|吵|对话/, '亲子沟通'],
+]
+
+/** 从家长本轮输入派生家长可读的关联领域标签（替代失效的 entryName 提取）。 */
+export function deriveLinkedAreas(text: string): string[] {
+  const areas: string[] = []
+  for (const [re, area] of LINKED_AREA_RULES) {
+    if (re.test(text) && !areas.includes(area)) areas.push(area)
+  }
+  return areas.slice(0, 4)
+}
+
 export async function runOrchestrationPipeline(input: OrchestrationInput): Promise<OrchestrationOutput> {
   const maturity = input.maturityLevel ? { level: input.maturityLevel } : getCurrentMaturityState(input.tenant)
   const retrievalPacket = await buildDailyDialogueRetrievalPacket(input.userText, input.tenant)
