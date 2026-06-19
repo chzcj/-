@@ -16,6 +16,7 @@ import type {
 import {
   isDatabaseEnabled,
   loadMemoryLayerItems,
+  loadMemoryLayerItemById,
   replaceMemoryLayerItems,
   upsertMemoryLayerItems,
   debugMemoryLayerItemCounts
@@ -294,7 +295,11 @@ export async function saveTurnEvent(tenant: TenantId, event: TurnEvent): Promise
 }
 
 export async function getTurnEventByTraceId(tenant: TenantId, traceId: string): Promise<TurnEvent | null> {
-  const all = await readLayer<TurnEvent>('turn_events', tenant)
+  // DB 启用：按 item_id=traceId 主键直查（O(1)），避免加载整层 turn_events 再 JS 过滤（随交互增长退化）。
+  if (typeof window === 'undefined' && isDatabaseEnabled()) {
+    return (await loadMemoryLayerItemById<TurnEvent>('turn_events', traceId, tenant.familyId, tenant.childId)) || null
+  }
+  const all = readClientLayer<TurnEvent>('turn_events', tenant)
   return all.find(e => e.traceId === traceId) || null
 }
 

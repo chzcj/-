@@ -218,6 +218,7 @@ async function ensureVectorSchema(): Promise<boolean> {
           CREATE INDEX IF NOT EXISTS idx_episodes_mech_gin
             ON evidence_episodes USING gin (mechanism_tags);
           CREATE INDEX IF NOT EXISTS idx_atoms_episode ON fact_atoms (episode_id);
+          CREATE INDEX IF NOT EXISTS idx_atoms_tenant ON fact_atoms (family_id, child_id);
           CREATE INDEX IF NOT EXISTS idx_episodes_tenant
             ON evidence_episodes (family_id, child_id);
         `);
@@ -295,21 +296,28 @@ export async function upsertAtoms(rows: AtomRow[]): Promise<number | undefined> 
   if (!(await ensureVectorSchema())) return undefined;
   const pool = getPool();
   if (!pool) return undefined;
-  for (const r of rows) {
+  // 多行 INSERT（每块一条），收敛原逐行 N+1。每行 10 列，分块 200 行。
+  for (const batch of chunkArray(rows, 200)) {
+    const values: unknown[] = [];
+    const placeholders = batch.map((r, i) => {
+      const b = i * 10;
+      values.push(
+        r.atomId, r.episodeId, r.familyId || 'f_demo', r.childId || 'c_demo',
+        r.content, r.sourceType, r.factType || null, r.isHighValue,
+        r.evidenceStrength || 'medium', toVectorLiteral(r.embedding)
+      );
+      return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10}::vector)`;
+    });
     await pool.query(
       `INSERT INTO fact_atoms
          (atom_id, episode_id, family_id, child_id, content, source_type, fact_type,
           is_high_value, evidence_strength, embedding)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::vector)
+       VALUES ${placeholders.join(', ')}
        ON CONFLICT (atom_id) DO UPDATE SET
          content=EXCLUDED.content, source_type=EXCLUDED.source_type, fact_type=EXCLUDED.fact_type,
          is_high_value=EXCLUDED.is_high_value, evidence_strength=EXCLUDED.evidence_strength,
          embedding=EXCLUDED.embedding`,
-      [
-        r.atomId, r.episodeId, r.familyId || 'f_demo', r.childId || 'c_demo',
-        r.content, r.sourceType, r.factType || null, r.isHighValue,
-        r.evidenceStrength || 'medium', toVectorLiteral(r.embedding)
-      ]
+      values
     );
   }
   return rows.length;
@@ -951,6 +959,27 @@ export async function loadMemoryLayerItems<T>(layerName: string, familyId = 'f_d
   return result.rows.map(row => row.data);
 }
 
+// 按 item_id 主键直查单项（PK 命中，O(1)）——审计/按 traceId 取回等场景避免加载整层再 JS 过滤。
+export async function loadMemoryLayerItemById<T>(layerName: string, itemId: string, familyId = 'f_demo', childId = 'c_demo'): Promise<T | undefined> {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const result = await pool.query<{ data: T }>(
+    `SELECT data FROM memory_layer_items
+     WHERE family_id = $1 AND child_id = $2 AND layer_name = $3 AND item_id = $4
+     LIMIT 1`,
+    [familyId, childId, layerName, itemId]
+  );
+  return result.rows[0]?.data;
+}
+
+// 分块（避免单条 INSERT 超 Postgres 65535 param 上限；同时把 N+1 收敛为每块一条 INSERT）。
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
 export async function replaceMemoryLayerItems<T>(
   layerName: string,
   items: Array<{ itemId: string; familyId?: string; childId?: string; data: T }>,
@@ -968,22 +997,23 @@ export async function replaceMemoryLayerItems<T>(
        WHERE layer_name = $1 AND family_id = $2 AND child_id = $3`,
       [layerName, familyId, childId]
     );
-    for (const item of items) {
+    // 多行 INSERT（每块一条），收敛原逐项 N+1。
+    for (const batch of chunkArray(items, 500)) {
+      const values: unknown[] = [];
+      const rows = batch.map((item, i) => {
+        const b = i * 5;
+        values.push(layerName, item.itemId, item.familyId || familyId, item.childId || childId, JSON.stringify(item.data));
+        return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}::jsonb)`;
+      });
       await client.query(
         `INSERT INTO memory_layer_items (layer_name, item_id, family_id, child_id, data)
-         VALUES ($1, $2, $3, $4, $5::jsonb)
+         VALUES ${rows.join(', ')}
          ON CONFLICT (family_id, child_id, layer_name, item_id)
          DO UPDATE SET family_id = EXCLUDED.family_id,
                        child_id = EXCLUDED.child_id,
                        data = EXCLUDED.data,
                        updated_at = NOW()`,
-        [
-          layerName,
-          item.itemId,
-          item.familyId || familyId,
-          item.childId || childId,
-          JSON.stringify(item.data)
-        ]
+        values
       );
     }
     await client.query('COMMIT');
@@ -1006,22 +1036,23 @@ export async function upsertMemoryLayerItems<T>(
   if (!pool) return undefined;
   if (items.length === 0) return 0;
   await ensureDbSchema();
-  for (const item of items) {
+  // 多行 INSERT（每块一条），收敛原逐项 N+1。每行 5 列，分块 500 行（远低于 param 上限）。
+  for (const batch of chunkArray(items, 500)) {
+    const values: unknown[] = [];
+    const rows = batch.map((item, i) => {
+      const b = i * 5;
+      values.push(layerName, item.itemId, item.familyId || familyId, item.childId || childId, JSON.stringify(item.data));
+      return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}::jsonb)`;
+    });
     await pool.query(
       `INSERT INTO memory_layer_items (layer_name, item_id, family_id, child_id, data)
-       VALUES ($1, $2, $3, $4, $5::jsonb)
+       VALUES ${rows.join(', ')}
        ON CONFLICT (family_id, child_id, layer_name, item_id)
        DO UPDATE SET family_id = EXCLUDED.family_id,
                      child_id = EXCLUDED.child_id,
                      data = EXCLUDED.data,
                      updated_at = NOW()`,
-      [
-        layerName,
-        item.itemId,
-        item.familyId || familyId,
-        item.childId || childId,
-        JSON.stringify(item.data)
-      ]
+      values
     );
   }
   return items.length;
