@@ -3,7 +3,7 @@ import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { recordChildSchema } from '@/lib/schemas';
 import { callAgentJson } from '@/lib/server/ark-agents';
 import { resolveTenant } from '@/lib/server/memory/tenant';
-import { insertMemoryRecords, rebuildFamilyMemoryDigest, saveChildEvent } from '@/lib/server/db';
+import { saveChildEvent } from '@/lib/server/db';
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline';
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline';
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine';
@@ -45,52 +45,31 @@ export async function POST(request: Request) {
     return undefined;
   });
 
+  // 统一走标准记忆链路（与 daily 对齐，单一口径）：Episode 抽取 + memory_write→digest_update→Board/Brief。
+  // eventRecording agent 判定不值得入记忆(shouldWrite:false)时只留 child_events，不进记忆层。
+  // 已下线旧的 insertMemoryRecords + rebuildFamilyMemoryDigest 双写（Board 不读旧表，记录仍由 child_events 入周报）。
   if (draft?.memoryWriteSuggestion?.shouldWrite !== false) {
-    const written = await insertMemoryRecords([
-      {
-        familyId: identity.familyId,
-        childId: identity.childId,
-        type: draft?.memoryWriteSuggestion?.type || 'raw_event',
-        title: draft?.title || title,
-        content: draft?.eventSummary || [input.eventText, input.changeText, input.worryText].filter(Boolean).join('；'),
-        evidence: input.eventText,
-        confidence: 'low',
-        tags: ['record_child']
+    const recordText = [input.eventText, input.changeText, input.worryText].filter(Boolean).join('。');
+    // Episode 抽取入队（可靠重试 + 去重）：episodeId 按 (tenant + sha(text)) 派生作幂等键。
+    const episodeId = deriveEpisodeId(recordText, { familyId: identity.familyId, childId: identity.childId });
+    void enqueueJob('episode_ingest', {
+      text: recordText,
+      ctx: { sourceEventId: eventId || undefined, familyId: identity.familyId, childId: identity.childId, episodeId }
+    }, episodeId, eventId || undefined);
+
+    // memory_write → digest_update → BoardSnapshot/Brief，让"记录孩子"驱动家庭看板与简报。
+    const writePlan = buildMemoryWritePlan({
+      tenant: identity,
+      dailyUpdates: [createDailyUpdate(`[记录孩子] ${recordText}`, 'insufficient', [], identity, eventId || undefined)],
+      rationale: {
+        whyUpdate: '家长记录了一件孩子的事',
+        whyNotPromoteSomeItems: '单条记录属观察线索，暂不升级为长期判断',
+        riskOfOvergeneralization: '',
+        nextVerificationNeed: ''
       }
-    ]).catch((error) => {
-      console.error('[childos] insert record memory failed', error);
-      return 0;
     });
-    if (written > 0) {
-      await rebuildFamilyMemoryDigest(identity.familyId, identity.childId).catch((error) => {
-        console.error('[childos] rebuild record digest failed', error);
-      });
-    }
+    void enqueueJob('memory_write', { plan: writePlan, tenant: identity }, null, createId('trace'));
   }
-
-  // Episode 抽取入队（可靠重试 + 去重）。用登录用户真实租户，与 daily 检索同源；
-  // episodeId 按 (tenant + sha(text)) 派生作幂等键，eventId 仅写溯源不进键。
-  const recordText = [input.eventText, input.changeText, input.worryText].filter(Boolean).join('。');
-  const episodeId = deriveEpisodeId(recordText, { familyId: identity.familyId, childId: identity.childId });
-  void enqueueJob('episode_ingest', {
-    text: recordText,
-    ctx: { sourceEventId: eventId || undefined, familyId: identity.familyId, childId: identity.childId, episodeId }
-  }, episodeId, eventId || undefined);
-
-  // 统一走标准记忆写入链路（与 daily 对齐）：memory_write → digest_update → BoardSnapshot/Brief，
-  // 让"记录孩子"也驱动家庭看板更新（此前只走旧 memory_records，Board 不读那张表）。
-  // 旧的同步 insertMemoryRecords + rebuildFamilyMemoryDigest 暂保留兼容其它消费方（weekly-report/archive）。
-  const writePlan = buildMemoryWritePlan({
-    tenant: identity,
-    dailyUpdates: [createDailyUpdate(`[记录孩子] ${recordText}`, 'insufficient', [], identity, eventId || undefined)],
-    rationale: {
-      whyUpdate: '家长记录了一件孩子的事',
-      whyNotPromoteSomeItems: '单条记录属观察线索，暂不升级为长期判断',
-      riskOfOvergeneralization: '',
-      nextVerificationNeed: ''
-    }
-  });
-  void enqueueJob('memory_write', { plan: writePlan, tenant: identity }, null, createId('trace'));
 
   return ok({
     eventId: eventId || `local_${Date.now()}`,
