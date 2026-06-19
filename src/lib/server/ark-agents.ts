@@ -14,6 +14,9 @@ const FAST_API_KEY = process.env.FAST_AI_API_KEY || '';
 const FAST_MODEL = process.env.FAST_AI_MODEL || 'deepseek-v4-flash';
 const FAST_BASE = (process.env.FAST_AI_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
 const FAST_TEMP = Number(process.env.FAST_AI_TEMPERATURE || 0.25);
+// 超时（容错）：上游 LLM 卡住时不让请求无限挂。JSON 用总超时；流式用「无新 chunk」的 idle 超时（不打断正常长输出）。
+const FAST_TIMEOUT_MS = Number(process.env.FAST_AI_TIMEOUT_MS || 45_000);
+const FAST_STREAM_IDLE_MS = Number(process.env.FAST_AI_STREAM_IDLE_MS || 25_000);
 
 export function isFastAIEnabled() {
   return Boolean(FAST_API_KEY && FAST_MODEL);
@@ -129,83 +132,105 @@ export async function callFastTextStream(system: string, payload: unknown, onDel
 }
 
 async function callOpenAICompatibleJson<T>({ system, user }: { system: string; user: string }): Promise<T | undefined> {
-  const response = await fetch(`${FAST_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${FAST_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: FAST_MODEL,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user }
-      ],
-      temperature: FAST_TEMP,
-      response_format: { type: 'json_object' }
-    })
-  });
+  // 总超时：上游卡住时 abort，避免请求无限挂（caller 的 .catch 走降级）。
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FAST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${FAST_BASE}/chat/completions`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${FAST_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: FAST_MODEL,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user }
+        ],
+        temperature: FAST_TEMP,
+        response_format: { type: 'json_object' }
+      })
+    });
 
-  if (!response.ok) {
-    const message = await response.text().catch(() => '');
-    throw new Error(`FAST_AI_REQUEST_FAILED:${response.status}:${message.slice(0, 300)}`);
+    if (!response.ok) {
+      const message = await response.text().catch(() => '');
+      throw new Error(`FAST_AI_REQUEST_FAILED:${response.status}:${message.slice(0, 300)}`);
+    }
+
+    const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const text = data.choices?.[0]?.message?.content || '';
+    if (!text) throw new Error('FAST_AI_EMPTY_OUTPUT');
+    return parseJson<T>(text);
+  } finally {
+    clearTimeout(timer);
   }
-
-  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  const text = data.choices?.[0]?.message?.content || '';
-  if (!text) throw new Error('FAST_AI_EMPTY_OUTPUT');
-  return parseJson<T>(text);
 }
 
 async function callOpenAICompatibleTextStream({ system, user }: { system: string; user: string }, onDelta: (delta: string) => void): Promise<string | undefined> {
-  const response = await fetch(`${FAST_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${FAST_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: FAST_MODEL,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user }
-      ],
-      stream: true,
-      temperature: FAST_TEMP
-    })
-  });
+  // idle 超时：每收到一个 chunk 就重置，只在「上游卡住、长时间无新数据」时 abort——不打断正常长输出。
+  const controller = new AbortController();
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  const bumpIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => controller.abort(), FAST_STREAM_IDLE_MS);
+  };
+  try {
+    bumpIdle();
+    const response = await fetch(`${FAST_BASE}/chat/completions`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${FAST_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: FAST_MODEL,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user }
+        ],
+        stream: true,
+        temperature: FAST_TEMP
+      })
+    });
 
-  if (!response.ok) {
-    const message = await response.text().catch(() => '');
-    throw new Error(`FAST_AI_REQUEST_FAILED:${response.status}:${message.slice(0, 300)}`);
-  }
-
-  if (!response.body) return undefined;
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let fullText = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for (const line of lines) {
-      const delta = parseOpenAIStreamLine(line);
-      if (!delta) continue;
-      fullText += delta;
-      onDelta(delta);
+    if (!response.ok) {
+      const message = await response.text().catch(() => '');
+      throw new Error(`FAST_AI_REQUEST_FAILED:${response.status}:${message.slice(0, 300)}`);
     }
-  }
 
-  const tail = parseOpenAIStreamLine(buffer);
-  if (tail) {
-    fullText += tail;
-    onDelta(tail);
+    if (!response.body) return undefined;
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bumpIdle(); // 收到新数据，重置 idle 计时
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const delta = parseOpenAIStreamLine(line);
+        if (!delta) continue;
+        fullText += delta;
+        onDelta(delta);
+      }
+    }
+
+    const tail = parseOpenAIStreamLine(buffer);
+    if (tail) {
+      fullText += tail;
+      onDelta(tail);
+    }
+    return fullText.trim() || undefined;
+  } finally {
+    if (idleTimer) clearTimeout(idleTimer);
   }
-  return fullText.trim() || undefined;
 }
 
 function parseOpenAIStreamLine(line: string) {

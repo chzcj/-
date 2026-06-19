@@ -11,6 +11,8 @@ const EMBEDDING_BASE = (process.env.EMBEDDING_BASE_URL || 'https://dashscope.ali
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'text-embedding-v3'
 // 阿里百炼 text-embedding 单次批量上限为 10 条，超出需分批。
 const EMBEDDING_BATCH_SIZE = Math.max(1, Number(process.env.EMBEDDING_BATCH_SIZE || 10))
+// 超时：embedding API 卡住时 abort，落到下方 catch 返回 null（检索降级「取最近」），不无限挂。
+const EMBEDDING_TIMEOUT_MS = Number(process.env.EMBEDDING_TIMEOUT_MS || 15_000)
 
 export function isEmbeddingEnabled(): boolean {
   return Boolean(EMBEDDING_API_KEY && EMBEDDING_MODEL)
@@ -18,9 +20,12 @@ export function isEmbeddingEnabled(): boolean {
 
 /** 单批编码（≤ EMBEDDING_BATCH_SIZE 条），失败项为 null。 */
 async function embedChunk(texts: string[]): Promise<(number[] | null)[]> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), EMBEDDING_TIMEOUT_MS)
   try {
     const response = await fetch(`${EMBEDDING_BASE}/embeddings`, {
       method: 'POST',
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${EMBEDDING_API_KEY}` },
       body: JSON.stringify({ model: EMBEDDING_MODEL, input: texts })
     })
@@ -39,6 +44,8 @@ async function embedChunk(texts: string[]): Promise<(number[] | null)[]> {
   } catch (err) {
     console.error('[embedding] 调用异常:', err)
     return texts.map(() => null)
+  } finally {
+    clearTimeout(timer)
   }
 }
 
