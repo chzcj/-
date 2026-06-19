@@ -6,6 +6,12 @@
 - 原话优先：孩子或老师的原话单独成 Atom，标好来源。
 - 不编造：家长没说的不要补。
 
+材料判定（仅当输入上下文带 materialHint 时）：
+- 若 `materialHint.isMaterial=true`，整段是家长上传的材料（`materialType` 指明老师反馈/作业/录音转写/截图文字），不是家长的口头倾诉。
+- 材料里的客观陈述（老师写的评语、作业里的题目/批改、转写里的原话）标 `sourceType=material_observation`、`isHighValue=true`。
+- 老师对孩子的描述仍是「观察/反馈」不是定论：可记为 material_observation，但不要据此把孩子定性（"上课不专心"是老师的观察，不是"孩子注意力有缺陷"的事实）。
+- 材料里孩子的原话仍单独成 Atom 标 `child_quote`。
+
 只输出 JSON（childos.episode.v1）：
 {
   "episode": {

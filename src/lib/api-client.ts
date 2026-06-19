@@ -278,6 +278,13 @@ export const apiClient = {
       body: JSON.stringify({ familyId: 'f_demo', childId: 'c_demo', ...input })
     });
   },
+  analyzeMaterial(input: { materialText: string; materialType?: string; familyId?: string; childId?: string }, init?: RequestInit) {
+    return requestJson<{ traceId: string; reading: string; keyPoints: string[] }>('/api/material-understanding', {
+      ...init,
+      method: 'POST',
+      body: JSON.stringify({ familyId: 'f_demo', childId: 'c_demo', materialType: 'other', ...input })
+    });
+  },
   getProfileSnapshot(input: { familyId?: string; childId?: string } = {}, init?: RequestInit) {
     const params = new URLSearchParams({
       familyId: input.familyId || 'f_demo',

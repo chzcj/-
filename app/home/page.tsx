@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarRange, ChevronRight, GraduationCap, LayoutDashboard, LogOut, Mic, Square, UserRound } from 'lucide-react';
+import { CalendarRange, ChevronRight, FileText, GraduationCap, LayoutDashboard, LogOut, Mic, Square, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
@@ -35,6 +35,7 @@ export default function HomePage() {
     router.prefetch('/record-child');
     router.prefetch('/family-planner');
     router.prefetch('/education-diagnosis');
+    router.prefetch('/material-understanding');
     router.prefetch('/board');
     router.prefetch('/family-profile');
     router.prefetch('/login');
@@ -178,8 +179,8 @@ export default function HomePage() {
           <ChevronRight size={18} style={{ color: '#C7C7CC', flexShrink: 0 }} />
         </button>
 
-        {/* 三个并列专项功能（交付文档 5.3，对齐原型）：按需进入专项采集 / 轻追问 */}
-        <div className="feature-trio">
+        {/* 四个并列专项功能（交付文档 5.3 + 2 材料理解，2×2）：按需进入专项采集 / 轻追问 */}
+        <div className="feature-trio feature-quad">
           <button type="button" onClick={() => router.push('/rehearsal')}>
             <span className="ft-icon"><Mic size={18} /></span>
             <span className="ft-name">沟通预演</span>
@@ -194,6 +195,11 @@ export default function HomePage() {
             <span className="ft-icon"><CalendarRange size={18} /></span>
             <span className="ft-name">家庭规划</span>
             <span className="ft-desc">按家庭承受力定下一步</span>
+          </button>
+          <button type="button" onClick={() => router.push('/material-understanding')}>
+            <span className="ft-icon"><FileText size={18} /></span>
+            <span className="ft-name">材料理解</span>
+            <span className="ft-desc">把材料里的事实和评价分开看</span>
           </button>
         </div>
 

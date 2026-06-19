@@ -66,6 +66,15 @@ export const recordChildSchema = z.object({
   message: 'EMPTY_RECORD'
 });
 
+// 材料理解：家长贴入材料文本（老师反馈/作业/录音转写/截图文字）。
+// familyId/childId 仅占位，路由用 resolveTenant() 覆盖，杜绝 body 越权。
+export const materialUnderstandingSchema = z.object({
+  familyId: z.string().min(1).default('f_demo'),
+  childId: z.string().min(1).default('c_demo'),
+  materialText: z.string().trim().min(1).max(4000),
+  materialType: z.enum(['teacher_feedback', 'homework', 'transcript', 'screenshot_text', 'other']).default('other')
+});
+
 export const profileSnapshotQuerySchema = z.object({
   familyId: z.string().min(1).default('f_demo'),
   childId: z.string().min(1).default('c_demo')

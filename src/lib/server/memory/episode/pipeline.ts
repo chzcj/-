@@ -51,6 +51,9 @@ export interface IngestContext {
   childId?: string
   requestId?: string  // 客户端幂等令牌（Idempotency-Key），优先用于派生 episodeId
   episodeId?: string  // 显式指定（job handler 透传，保证重试用同一 id）
+  // 材料理解专用：整段输入来自家长上传的材料（老师反馈/作业/录音转写/截图文字）。
+  // 传给抽取器作 materialHint，让其把材料里的客观陈述标 sourceType=material_observation。
+  materialSource?: { isMaterial: boolean; materialType?: string }
 }
 
 // 确定派生 episodeId：有客户端令牌用之，否则按 (tenant + sha(text)) 去重同文本重复提交。
@@ -68,7 +71,12 @@ export async function ingestEpisodeStrict(text: string, ctx: IngestContext = {})
   const extracted = await callAgentJson<ExtractedEpisode>(
     'episodeExtractor',
     '把家长这段话整理成一个 Episode 并拆出 Atoms。',
-    { parentText: text, recentContext: ctx.recentContext || '' }
+    {
+      parentText: text,
+      recentContext: ctx.recentContext || '',
+      // 仅材料理解入口会带：让抽取器把材料里的客观陈述标 material_observation。
+      ...(ctx.materialSource?.isMaterial ? { materialHint: ctx.materialSource } : {})
+    }
   )
   if (!extracted?.episode?.summary?.trim()) return // 合法 no-op
 

@@ -1117,6 +1117,10 @@ a {
   line-height: 1.4;
   color: var(--text-secondary);
 }
+/* 四个专项功能（加入材料理解后）改 2×2，复用 .feature-trio 的按钮样式，仅覆盖列数。 */
+.feature-quad {
+  grid-template-columns: repeat(2, 1fr);
+}
 
 .home-profile-entry {
   min-height: 96px;
