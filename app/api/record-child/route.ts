@@ -9,6 +9,7 @@ import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline';
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine';
 import { enqueueJob } from '@/lib/server/jobs/queue';
 import { createId } from '@/lib/storage/storageIds';
+import { recordFeatureTurn } from '@/lib/server/memory/turn-event';
 
 export async function POST(request: Request) {
   // 鉴权：middleware 仅查 cookie 存在性，补 route 级守卫堵伪造 cookie。
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
   const input = parsed.data;
   // 会话身份为准，忽略 body 的 familyId/childId，杜绝登录用户借 body 越权写他人租户。
   const identity = await resolveTenant();
+  // 路由级 traceId：同时贯穿 memory_write 入队与 TurnEvent 快照（强字段闭环）。
+  const traceId = createId('trace');
   const title = input.eventText.slice(0, 28) || input.changeText.slice(0, 28) || '一条新的孩子记录';
   const draft = await callAgentJson<{
     title?: string;
@@ -68,8 +71,16 @@ export async function POST(request: Request) {
         nextVerificationNeed: ''
       }
     });
-    void enqueueJob('memory_write', { plan: writePlan, tenant: identity }, null, createId('trace'));
+    void enqueueJob('memory_write', { plan: writePlan, tenant: identity }, null, traceId);
   }
+
+  // TurnEvent 快照（字段闭环全覆盖）：记录本轮记录输入+整理产出（shouldWrite 与否都落，审计完整）。
+  recordFeatureTurn({
+    traceId, tenant: identity, mode: 'child_record',
+    userMessage: input.eventText || input.changeText || input.worryText,
+    assistantReply: draft?.eventSummary || draft?.title || title,
+    specializedContextPack: { changeText: input.changeText, worryText: input.worryText }
+  });
 
   return ok({
     eventId: eventId || `local_${Date.now()}`,

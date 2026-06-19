@@ -8,6 +8,7 @@ import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { decideFeatureUI } from '@/lib/server/features/feature-ui-router'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
+import { recordFeatureTurn } from '@/lib/server/memory/turn-event'
 
 /* ================================================================
    家庭综合规划 family_planner（交付文档 5.4）
@@ -126,6 +127,14 @@ export async function POST(request: Request) {
       missingHighImpactFacts: insufficient && plan.missingInfo ? [plan.missingInfo] : [],
       userIntent: 'unclear',
       currentQuestionSpan: 'same_topic'
+    })
+
+    // TurnEvent 快照（字段闭环全覆盖）：记录本轮规划输入+承受力上下文+产出。
+    recordFeatureTurn({
+      traceId, tenant, mode: 'family_planner',
+      userMessage: userText,
+      assistantReply: [plan.acknowledgement, plan.boundaryFirst].filter(Boolean).join(' '),
+      specializedContextPack: familyContext
     })
 
     return NextResponse.json({ ok: true, data: { traceId, uiMode: router.uiMode, plan } })

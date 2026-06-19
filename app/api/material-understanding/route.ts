@@ -8,6 +8,7 @@ import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline';
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine';
 import { enqueueJob } from '@/lib/server/jobs/queue';
 import { createId } from '@/lib/storage/storageIds';
+import { recordFeatureTurn } from '@/lib/server/memory/turn-event';
 
 // 材料理解：家长贴入材料文本 → 前台 Agent 给家长可读解读；
 // 后台把材料抽成事实并标 sourceType=material_observation 写入记忆，驱动 Board/Brief。
@@ -62,6 +63,13 @@ export async function POST(request: Request) {
     }
   });
   void enqueueJob('memory_write', { plan: writePlan, tenant: identity }, null, traceId);
+
+  // TurnEvent 快照（交付文档 7.1/7.2 字段闭环全覆盖）：记录本轮材料输入+解读产出。
+  recordFeatureTurn({
+    traceId, tenant: identity, mode: 'material_understanding',
+    userMessage: materialText, assistantReply: reading,
+    specializedContextPack: { materialType }
+  });
 
   return ok({ traceId, reading, keyPoints });
 }

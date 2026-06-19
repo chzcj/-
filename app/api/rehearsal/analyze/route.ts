@@ -3,12 +3,14 @@ import { callFastJson } from '@/lib/server/ark-agents'
 import { generateRehearsal } from '@/lib/server/store'
 import { rehearsalAnalyzeSchema } from '@/lib/schemas'
 import { resolveTenant } from '@/lib/server/memory/tenant'
+import type { TenantId } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { createId } from '@/lib/storage/storageIds'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
+import { recordFeatureTurn } from '@/lib/server/memory/turn-event'
 
 type ProfileAwareRehearsal = {
   childLikelyHearing: string
@@ -53,10 +55,12 @@ export async function POST(request: Request) {
      或有前端画像/家长采集的预演上下文亦进入。画像优先用前端传入，缺失则从记忆检索。 */
   const rc = (rehearsalContext || {}) as { parentGoal?: string; parentWorry?: string; whatHappenedBeforeTalk?: string }
   const hasRehearsalCtx = Boolean(rc.parentGoal || rc.parentWorry || rc.whatHappenedBeforeTalk)
+  // 路由级 traceId/tenant：贯穿 TurnEvent 快照与采集写回（强字段闭环），各结果路径共享。
+  const tenant = await resolveTenant()
+  const traceId = createId('trace')
   if (parentText && mode !== 'conflict' && (fromSpecialFeature || profileContext || hasRehearsalCtx)) {
     try {
       const ctx = (profileContext || {}) as RehearsalProfileContext
-      const tenant = await resolveTenant()
       const packet = await buildDailyDialogueRetrievalPacket(parentText, tenant).catch(() => undefined)
       const pastSimilarTalks = (packet?.recentRelatedEvents || []).slice(0, 3)
       const memHypotheses = ctx.pendingHypotheses?.length ? ctx.pendingHypotheses : (packet?.pendingHypotheses || [])
@@ -105,7 +109,12 @@ usedProfileEvidence: string[]`,
         ).catch(() => undefined)
 
         const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx)
-        if (fromSpecialFeature) void writeBackRehearsal(parentText) // 采集写回（异步，幂等）
+        if (fromSpecialFeature) void writeBackRehearsal(parentText, traceId, tenant) // 采集写回（异步，幂等）
+        recordFeatureTurn({
+          traceId, tenant, mode: 'communication_rehearsal',
+          userMessage: parentText, assistantReply: normalized.saferVersion,
+          specializedContextPack: { rehearsalContext: rc, mode, fromSpecialFeature, profileAware: true }
+        })
         return ok({
           ...normalized,
           profileAware: true,
@@ -128,7 +137,14 @@ usedProfileEvidence: string[]`,
         { dialogue: parentText }
       ).catch(() => undefined)
 
-      if (result?.headline) return ok(result)
+      if (result?.headline) {
+        recordFeatureTurn({
+          traceId, tenant, mode: 'communication_rehearsal',
+          userMessage: parentText, assistantReply: result.suggestedReplacement,
+          specializedContextPack: { mode: 'conflict' }
+        })
+        return ok(result)
+      }
     } catch {}
   }
 
@@ -145,7 +161,12 @@ usedProfileEvidence: string[]`,
       ).catch(() => undefined)
 
       if (result?.headline) {
-        if (fromSpecialFeature) void writeBackRehearsal(parentText)
+        if (fromSpecialFeature) void writeBackRehearsal(parentText, traceId, tenant)
+        recordFeatureTurn({
+          traceId, tenant, mode: 'communication_rehearsal',
+          userMessage: parentText, assistantReply: result.suggestedWording,
+          specializedContextPack: { rehearsalContext: rc, fromSpecialFeature }
+        })
         return ok({ ...result, uiMode: 'result_view' })
       }
     } catch {}
@@ -161,11 +182,10 @@ usedProfileEvidence: string[]`,
 }
 
 /* 沟通预演采集写回（交付文档 5.3.16）：与教育诊断/家庭规划一致，把家长原话写入记忆，
-   预演越用越懂家庭。异步、幂等、绝不阻塞前台；仅标准入口(fromSpecialFeature)、非 conflict 调用。 */
-async function writeBackRehearsal(parentText: string): Promise<void> {
+   预演越用越懂家庭。异步、幂等、绝不阻塞前台；仅标准入口(fromSpecialFeature)、非 conflict 调用。
+   traceId/tenant 由路由透传，与 TurnEvent 快照共享同一 traceId（强字段闭环）。 */
+async function writeBackRehearsal(parentText: string, traceId: string, tenant: TenantId): Promise<void> {
   try {
-    const tenant = await resolveTenant()
-    const traceId = createId('trace')
     const plan = buildMemoryWritePlan({
       tenant,
       dailyUpdates: [createDailyUpdate(`[沟通预演] ${parentText}`, 'insufficient', [], tenant, traceId)],

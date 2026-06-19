@@ -8,6 +8,7 @@ import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { decideFeatureUI, normalizeReadiness } from '@/lib/server/features/feature-ui-router'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
+import { recordFeatureTurn } from '@/lib/server/memory/turn-event'
 
 /* ================================================================
    教育模式诊断 education_diagnosis（交付文档 5.3）
@@ -119,6 +120,18 @@ export async function POST(request: Request) {
 
     // 前台安全返回：只给 uiMode + 自然语言，绝不含 readiness/coverage 等后台字段（红线 5）。
     const acknowledgement = textOr(ai?.acknowledgement, '我先不急着下结论，想先弄清你们家每天和周末大概怎么运转。')
+    // TurnEvent 快照（字段闭环全覆盖）：记录本轮诊断采集输入+检索上下文+产出。
+    recordFeatureTurn({
+      traceId, tenant, mode: 'education_diagnosis',
+      userMessage: userText,
+      assistantReply: [acknowledgement, modeReading].filter(Boolean).join(' '),
+      specializedContextPack: {
+        sessionTurns,
+        knownFacts: packet.knownFacts,
+        recentEducationEvents: packet.recentEducationEvents,
+        childUnderstanding: packet.childUnderstanding
+      }
+    })
     return NextResponse.json({
       ok: true,
       data: {
