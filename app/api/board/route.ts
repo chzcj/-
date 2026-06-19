@@ -4,6 +4,7 @@ import { getRequestIdentity } from '@/lib/server/auth'
 import { loadProfileSnapshotContext, loadLatestBoardSnapshot } from '@/lib/server/db'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
+import { createId } from '@/lib/storage/storageIds'
 
 /* ================================================================
    家庭支持看板 board（交付文档 2 / 7.6 / 12.3）
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
   await waitMock(120)
   const identity = await getRequestIdentity()
+  const traceId = createId('trace') // 贯穿 board 实时回退的 digest_update 入队与日志，便于按 traceId 追溯
 
   // 1) 优先读持久化最新快照（快，无 LLM）。历史快照字段可能缺失/漂移，命中也跑 normalize 兜底。
   const snap = await loadLatestBoardSnapshot(identity.familyId, identity.childId).catch(() => undefined)
@@ -56,7 +58,7 @@ export async function GET(request: Request) {
 
   // 2) 无快照（新家庭 / digest 未跑）→ 回退实时生成（保留现有体验）。
   const context = await loadProfileSnapshotContext(identity.familyId, identity.childId).catch((error) => {
-    console.error('[childos] load board context failed', error)
+    console.error(`[childos] load board context failed traceId=${traceId}:`, error)
     return { digest: undefined, memories: [], events: [], latestUnderstandingCard: undefined }
   })
   const board = await callAgentJson<Partial<BoardSnapshot>>(
@@ -64,12 +66,12 @@ export async function GET(request: Request) {
     '根据近期记忆和孩子记录，生成家长可见的家庭支持看板。',
     { familyId: identity.familyId, childId: identity.childId, context }
   ).catch((error) => {
-    console.error('[childos] boardUpdater failed', error)
+    console.error(`[childos] boardUpdater failed traceId=${traceId}:`, error)
     return undefined
   })
 
-  // 3) 自愈入队（null 键，每次 miss 都入队，靠 content_hash 短路防重复），让下次走快照。
-  void enqueueJob('digest_update', { tenant: { familyId: identity.familyId, childId: identity.childId } }, null, null)
+  // 3) 自愈入队（null 键，每次 miss 都入队，靠 content_hash 短路防重复），让下次走快照。传 traceId 关联前台请求与后台 job。
+  void enqueueJob('digest_update', { tenant: { familyId: identity.familyId, childId: identity.childId } }, null, traceId)
 
   // pending:true → 还没持久化快照（digest_update 正在后台建）；前台据此显示"正在整理"并轮询。
   return ok<BoardSnapshot>({ ...normalizeBoard(board || {}), pending: true })

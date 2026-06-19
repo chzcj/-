@@ -230,10 +230,10 @@ async function claimAndRunOne(pool: pg.Pool): Promise<boolean> {
 
   const idStr = String(job.id)
   ;(g.__childosJobInflight ||= new Set()).add(idStr)
-  // 心跳：长任务每 30s 推 updated_at，避免被僵尸回收误判。
+  // 心跳：长任务每 30s 推 updated_at，避免被僵尸回收误判。失败记日志（此前静默吞掉，连续失败会被误判僵尸却无从察觉）。
   const hb = setInterval(() => {
     void pool.query(`UPDATE job_queue SET updated_at=NOW() WHERE id=$1 AND status='running'`, [job!.id])
-      .catch(() => {})
+      .catch(err => console.warn(`[jobs] 心跳更新失败 id=${job!.id}:`, err instanceof Error ? err.message : err))
   }, 30_000)
   hb.unref?.()
 

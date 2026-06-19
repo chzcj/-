@@ -97,6 +97,8 @@ export async function rankByRelevance<T>(
   const vectors = await embedTexts([query, ...candidates.map(toText)])
   const queryVector = vectors[0]
   if (!queryVector) {
+    // embedding 已启用却拿不到 query 向量 = 运行时降级(API 失败/超时)，区别于「未配置」的已知状态，记日志便于排障。
+    console.warn('[retrieval] embedding 已启用但 query 向量生成失败，本次降级为按原顺序取最近')
     return candidates.slice(0, topK).map((item) => ({ item, score: 0 }))
   }
   const scored = candidates.map((item, i) => {
