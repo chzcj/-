@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { ok, failFromError } from '@/lib/api-response'
 import { callAgentJson } from '@/lib/server/ark-agents'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
@@ -86,22 +86,19 @@ export async function POST(request: Request) {
     }
 
     const hasTeacher = teacherFacts.length > 0
-    return NextResponse.json({
-      ok: true,
-      data: {
-        traceId,
-        headline: textOr(ai?.headline, '同一件事，家长、孩子、老师看到的可能很不一样。'),
-        summary: textOr(ai?.summary, childText
-          ? '把三方放在一起看，孩子不是单纯不用心——他在不同关系里的状态不一样，值得分开理解。'
-          : '先听听孩子自己怎么说，再把家长和学校的观察放进来，会看得更全。'),
-        parentView: textOr(ai?.parentView, parentUnderstanding[0] || '家长更多看到的是表面的拖延和不配合。'),
-        childView: textOr(ai?.childView, childText || (memChildQuotes[0] || '还没有听到孩子自己的话，可以先请他说一段。')),
-        teacherView: hasTeacher ? textOr(ai?.teacherView, teacherFacts[0]) : TEACHER_UNKNOWN,
-        finalChips: normalizeChips(ai?.finalChips),
-      }
+    return ok({
+      traceId,
+      headline: textOr(ai?.headline, '同一件事，家长、孩子、老师看到的可能很不一样。'),
+      summary: textOr(ai?.summary, childText
+        ? '把三方放在一起看，孩子不是单纯不用心——他在不同关系里的状态不一样，值得分开理解。'
+        : '先听听孩子自己怎么说，再把家长和学校的观察放进来，会看得更全。'),
+      parentView: textOr(ai?.parentView, parentUnderstanding[0] || '家长更多看到的是表面的拖延和不配合。'),
+      childView: textOr(ai?.childView, childText || (memChildQuotes[0] || '还没有听到孩子自己的话，可以先请他说一段。')),
+      teacherView: hasTeacher ? textOr(ai?.teacherView, teacherFacts[0]) : TEACHER_UNKNOWN,
+      finalChips: normalizeChips(ai?.finalChips),
     })
   } catch (error) {
-    return NextResponse.json({ ok: false, error: { code: 'MULTI_VIEW_ERROR', message: String(error) } }, { status: 500 })
+    return failFromError(error)
   }
 }
 

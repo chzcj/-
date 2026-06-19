@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { ok, failFromError } from '@/lib/api-response'
 import { runSynthesisPipeline } from '@/lib/server/synthesis/pipeline'
 import { buildSynthesisRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
@@ -76,16 +76,8 @@ export async function POST(request: Request) {
     // 后台记忆写入入队（可靠重试）。输出 synthesis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
     void enqueueJob('memory_write', { plan: writePlan, tenant }, null, createId('trace'))
 
-    return NextResponse.json({
-      ok: true,
-      data: {
-        synthesis: output
-      }
-    })
+    return ok({ synthesis: output })
   } catch (error) {
-    return NextResponse.json({
-      ok: false,
-      error: { code: 'SYNTHESIS_ERROR', message: String(error) }
-    }, { status: 500 })
+    return failFromError(error)
   }
 }

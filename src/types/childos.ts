@@ -9,6 +9,9 @@ export interface ApiErrorBody {
   code: string;
   message: string;
   detail?: unknown;
+  // 错误分类（统一错误码体系）：errorType 区分 校验/临时/永久；retriable=true 时前端可自动重试。
+  errorType?: 'validation' | 'temporary' | 'permanent';
+  retriable?: boolean;
 }
 
 export type ApiResult<T> =

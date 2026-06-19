@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { ok, fail, failFromError } from '@/lib/api-response'
 import { callAgentJson } from '@/lib/server/ark-agents'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { buildEducationDiagnosisRetrievalPacket } from '@/lib/server/memory/retrieval/router'
@@ -39,10 +39,7 @@ export async function POST(request: Request) {
     const { text = '', priorTurns = [] } = body
 
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      return NextResponse.json({
-        ok: false,
-        error: { code: 'EMPTY_INPUT', message: '可以像讲生活流水一样，多说说孩子平时和周末怎么过' }
-      }, { status: 400 })
+      return fail('EMPTY_INPUT', '可以像讲生活流水一样，多说说孩子平时和周末怎么过', undefined, 400)
     }
 
     const userText = text.trim()
@@ -132,33 +129,27 @@ export async function POST(request: Request) {
         childUnderstanding: packet.childUnderstanding
       }
     })
-    return NextResponse.json({
-      ok: true,
-      data: {
-        traceId,
-        uiMode,
-        acknowledgement,
-        // 还想多了解的方面（自然语言，非数值）——仅在未就绪时给。
-        missingInfo: uiMode === 'result_view' ? [] : missingHighImpactFacts,
-        // 轻追问（只问一个关键点）
-        followupPrompt: uiMode === 'light_followup'
-          ? textOr(ai?.lightFollowupPrompt, '这里先看一个点：周末有没有一段真正属于孩子自己、不被安排也不被临时加任务的时间？')
-          : '',
-        // 专项采集引导（信息几乎为空时）
-        collectionGuide: uiMode === 'special_collection'
-          ? textOr(ai?.collectionGuide, FALLBACK_GUIDE)
-          : '',
-        // 正式结果（仅就绪且有内容时）
-        result: uiMode === 'result_view'
-          ? { modeReading, keyTensions, gentleNextStep: textOr(ai?.gentleNextStep, '') }
-          : null
-      }
+    return ok({
+      traceId,
+      uiMode,
+      acknowledgement,
+      // 还想多了解的方面（自然语言，非数值）——仅在未就绪时给。
+      missingInfo: uiMode === 'result_view' ? [] : missingHighImpactFacts,
+      // 轻追问（只问一个关键点）
+      followupPrompt: uiMode === 'light_followup'
+        ? textOr(ai?.lightFollowupPrompt, '这里先看一个点：周末有没有一段真正属于孩子自己、不被安排也不被临时加任务的时间？')
+        : '',
+      // 专项采集引导（信息几乎为空时）
+      collectionGuide: uiMode === 'special_collection'
+        ? textOr(ai?.collectionGuide, FALLBACK_GUIDE)
+        : '',
+      // 正式结果（仅就绪且有内容时）
+      result: uiMode === 'result_view'
+        ? { modeReading, keyTensions, gentleNextStep: textOr(ai?.gentleNextStep, '') }
+        : null
     })
   } catch (error) {
-    return NextResponse.json({
-      ok: false,
-      error: { code: 'EDUCATION_DIAGNOSIS_ERROR', message: String(error) }
-    }, { status: 500 })
+    return failFromError(error)
   }
 }
 

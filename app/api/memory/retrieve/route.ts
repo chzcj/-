@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { ok, failFromError } from '@/lib/api-response'
 import { runMemoryRetrievePipeline } from '@/lib/server/memory/pipeline'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
@@ -22,14 +22,8 @@ export async function GET(request: Request) {
 
     const result = await runMemoryRetrievePipeline(safePurpose as 'daily_dialogue' | 'deep_diagnosis' | 'entry_collection' | 'multi_entry_synthesis', tenant, targetEntry || undefined)
 
-    return NextResponse.json({
-      ok: true,
-      data: result
-    })
+    return ok(result)
   } catch (error) {
-    return NextResponse.json({
-      ok: false,
-      error: { code: 'RETRIEVE_ERROR', message: String(error) }
-    }, { status: 500 })
+    return failFromError(error)
   }
 }

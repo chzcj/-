@@ -7,6 +7,7 @@ import { enqueueJob, modelReviewBucketKey } from '@/lib/server/jobs/queue'
 import { saveTurnEvent } from '@/lib/server/memory/database-manager'
 import { callAgentTextStream } from '@/lib/server/ark-agents'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
+import { fail } from '@/lib/api-response'
 import { createId } from '@/lib/storage/storageIds'
 import type { KnowledgeContext } from '@/types/database'
 
@@ -25,10 +26,7 @@ export async function POST(request: Request) {
   const maturityLevel = (body as { maturityLevel?: unknown })?.maturityLevel
 
   if (!text) {
-    return new Response(
-      JSON.stringify({ ok: false, error: { code: 'EMPTY_INPUT', message: '请输入内容' } }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    )
+    return fail('EMPTY_INPUT', '请输入内容', undefined, 400)
   }
 
   const traceId = createId('trace')

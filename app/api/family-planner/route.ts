@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { ok, fail, failFromError } from '@/lib/api-response'
 import { callAgentJson } from '@/lib/server/ark-agents'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
@@ -45,10 +45,7 @@ export async function POST(request: Request) {
     const { text = '' } = body
 
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      return NextResponse.json({
-        ok: false,
-        error: { code: 'EMPTY_INPUT', message: '可以多讲一点家里的情况' }
-      }, { status: 400 })
+      return fail('EMPTY_INPUT', '可以多讲一点家里的情况', undefined, 400)
     }
 
     const userText = text.trim()
@@ -137,12 +134,9 @@ export async function POST(request: Request) {
       specializedContextPack: familyContext
     })
 
-    return NextResponse.json({ ok: true, data: { traceId, uiMode: router.uiMode, plan } })
+    return ok({ traceId, uiMode: router.uiMode, plan })
   } catch (error) {
-    return NextResponse.json({
-      ok: false,
-      error: { code: 'FAMILY_PLANNER_ERROR', message: String(error) }
-    }, { status: 500 })
+    return failFromError(error)
   }
 }
 

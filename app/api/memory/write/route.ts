@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { ok, fail, failFromError } from '@/lib/api-response'
 import { runMemoryWritePipeline, buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate, classifyInputForMemory } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
@@ -55,14 +55,9 @@ export async function POST(request: Request) {
 
     const result = await runMemoryWritePipeline(writePlan, tenant)
 
-    return NextResponse.json({
-      ok: result.ok,
-      data: { written: result.written, classification }
-    })
+    if (!result.ok) return fail('MEMORY_WRITE_FAILED', '记忆这次没有完全写入成功，稍后再试。', { written: result.written, classification }, 500)
+    return ok({ written: result.written, classification })
   } catch (error) {
-    return NextResponse.json({
-      ok: false,
-      error: { code: 'MEMORY_WRITE_ERROR', message: String(error) }
-    }, { status: 500 })
+    return failFromError(error)
   }
 }

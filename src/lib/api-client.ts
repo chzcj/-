@@ -21,7 +21,7 @@ import type {
 function fallbackError(detail?: unknown): ApiResult<never> {
   return {
     ok: false,
-    error: { code: 'INTERNAL_ERROR', message: '今天有点忙，我们稍后再试。', detail },
+    error: { code: 'INTERNAL_ERROR', message: '今天有点忙，我们稍后再试。', detail, errorType: 'temporary', retriable: true },
     requestId: 'client_error'
   };
 }
@@ -39,20 +39,33 @@ function normalizeResult<T>(json: unknown): ApiResult<T> {
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
-  try {
-    const response = await fetch(path, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init?.headers || {})
+  // GET 幂等：对临时可重试错误(retriable)与网络异常自动重试一次；POST 等非幂等不自动重试，避免重复写。
+  const method = (init?.method || 'GET').toUpperCase();
+  const canRetry = method === 'GET';
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const response = await fetch(path, {
+        ...init,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(init?.headers || {})
+        }
+      });
+      const json = await response.json().catch(() => undefined);
+      const result = normalizeResult<T>(json);
+      if (!response.ok && result.ok) return fallbackError({ status: response.status, path });
+      if (!result.ok && result.error.retriable && canRetry && attempt === 0) {
+        await new Promise((r) => setTimeout(r, 600));
+        continue;
       }
-    });
-    const json = await response.json().catch(() => undefined);
-    const result = normalizeResult<T>(json);
-    if (!response.ok && result.ok) return fallbackError({ status: response.status, path });
-    return result;
-  } catch (error) {
-    return fallbackError(String(error));
+      return result;
+    } catch (error) {
+      if (canRetry && attempt === 0) {
+        await new Promise((r) => setTimeout(r, 600));
+        continue;
+      }
+      return fallbackError(String(error));
+    }
   }
 }
 

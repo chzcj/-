@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { ok, fail, failFromError } from '@/lib/api-response'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { saveBuiltProfileSnapshot, getLatestBuiltProfileSnapshot, type BuiltProfileSnapshot } from '@/lib/server/memory/database-manager'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
   const tenant = await resolveTenant()
   const snapshot = await getLatestBuiltProfileSnapshot(tenant).catch(() => null)
-  return NextResponse.json({ ok: true, data: { snapshot } })
+  return ok({ snapshot })
 }
 
 export async function POST(request: Request) {
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const s = body?.snapshot
     if (!s || typeof s.coreJudgment !== 'string' || !s.coreJudgment.trim()) {
-      return NextResponse.json({ ok: false, error: { code: 'BAD_SNAPSHOT', message: '快照内容缺失' } }, { status: 400 })
+      return fail('BAD_SNAPSHOT', '快照内容缺失', undefined, 400)
     }
     const tenant = await resolveTenant()
     const snapshot: BuiltProfileSnapshot = {
@@ -49,8 +49,8 @@ export async function POST(request: Request) {
       updatedAt: new Date().toISOString(),
     }
     await saveBuiltProfileSnapshot(snapshot, tenant)
-    return NextResponse.json({ ok: true, data: { saved: true } })
+    return ok({ saved: true })
   } catch (error) {
-    return NextResponse.json({ ok: false, error: { code: 'PROFILE_BUILT_ERROR', message: String(error) } }, { status: 500 })
+    return failFromError(error)
   }
 }

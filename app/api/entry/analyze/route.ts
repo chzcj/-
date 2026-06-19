@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { ok, fail, failFromError } from '@/lib/api-response'
 import { callFastJson } from '@/lib/server/ark-agents'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { resolveTenant } from '@/lib/server/memory/tenant'
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { entryType, rawText, stage } = body
     if (!entryType || !rawText) {
-      return NextResponse.json({ ok: false, error: { code: 'BAD_REQUEST', message: '缺少 entryType 或 rawText' } }, { status: 400 })
+      return fail('BAD_REQUEST', '缺少 entryType 或 rawText', undefined, 400)
     }
 
     const topic = TITLE_MAP[entryType] || entryType
@@ -57,9 +57,9 @@ export async function POST(request: Request) {
 
       // 无 AI 结果（无 key / LLM 失败）→ 503 明确告知，而非 ok:true/data 空（前台据此显示重试）。
       if (!result?.mainJudgment) {
-        return NextResponse.json({ ok: false, error: { code: 'ENTRY_SUMMARY_UNAVAILABLE', message: '这一步暂时没有整理成功，可以稍后再试。' } }, { status: 503 })
+        return fail('ENTRY_SUMMARY_UNAVAILABLE', '这一步暂时没有整理成功，可以稍后再试。', undefined, 503)
       }
-      return NextResponse.json({ ok: true, data: result })
+      return ok(result)
     }
 
     const followUp = await callFastJson<{
@@ -72,10 +72,10 @@ export async function POST(request: Request) {
     ).catch(() => undefined)
 
     if (!followUp?.purpose) {
-      return NextResponse.json({ ok: false, error: { code: 'ENTRY_FOLLOWUP_UNAVAILABLE', message: '这一步暂时没有整理成功，可以稍后再试。' } }, { status: 503 })
+      return fail('ENTRY_FOLLOWUP_UNAVAILABLE', '这一步暂时没有整理成功，可以稍后再试。', undefined, 503)
     }
-    return NextResponse.json({ ok: true, data: followUp })
+    return ok(followUp)
   } catch (error) {
-    return NextResponse.json({ ok: false, error: { code: 'ENTRY_ERROR', message: String(error) } }, { status: 500 })
+    return failFromError(error)
   }
 }

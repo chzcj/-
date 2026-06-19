@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { ok, fail, failFromError } from '@/lib/api-response'
 import { runOrchestrationPipeline, deriveLinkedAreas, buildDailyCards, buildTurnEvent } from '@/lib/server/orchestration/pipeline'
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
@@ -17,10 +17,7 @@ export async function POST(request: Request) {
     const { text = '', maturityLevel } = body
 
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      return NextResponse.json({
-        ok: false,
-        error: { code: 'EMPTY_INPUT', message: '请输入内容' }
-      }, { status: 400 })
+      return fail('EMPTY_INPUT', '请输入内容', undefined, 400)
     }
 
     const userText = text.trim()
@@ -70,19 +67,8 @@ export async function POST(request: Request) {
       output, traceId, tenant, userMessage: userText, assistantReply: visibleReply, linkedAreas
     })).catch((err) => console.error(`[daily] TurnEvent 快照写入失败 traceId=${traceId}:`, err))
 
-    return NextResponse.json({
-      ok: true,
-      data: {
-        traceId,
-        visibleReply,
-        linkedAreas,
-        cards
-      }
-    })
+    return ok({ traceId, visibleReply, linkedAreas, cards })
   } catch (error) {
-    return NextResponse.json({
-      ok: false,
-      error: { code: 'DAILY_ERROR', message: String(error) }
-    }, { status: 500 })
+    return failFromError(error)
   }
 }
