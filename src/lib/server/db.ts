@@ -323,6 +323,25 @@ export async function upsertAtoms(rows: AtomRow[]): Promise<number | undefined> 
   return rows.length;
 }
 
+// 按租户取最近的高价值 FactAtom（孩子原话 / 材料观察 / 反证 / 执行反馈），供 Brief/Board 重建直接消费原子事实证据。
+// 用 idx_atoms_tenant + is_high_value 过滤；DB/向量 schema 不可用或异常时返回 []（不拖垮 digest）。
+export async function loadHighValueAtoms(familyId = 'f_demo', childId = 'c_demo', limit = 8): Promise<Array<{ content: string; sourceType: string }>> {
+  const pool = getPool();
+  if (!pool) return [];
+  if (!(await ensureVectorSchema())) return [];
+  try {
+    const r = await pool.query<{ content: string; source_type: string }>(
+      `SELECT content, source_type FROM fact_atoms
+       WHERE family_id=$1 AND child_id=$2 AND is_high_value=true
+       ORDER BY created_at DESC LIMIT $3`,
+      [familyId, childId, limit]
+    );
+    return r.rows.map(row => ({ content: row.content, sourceType: row.source_type }));
+  } catch {
+    return [];
+  }
+}
+
 export interface FactAtomRecord {
   atomId: string;
   episodeId: string;

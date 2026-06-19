@@ -6,7 +6,8 @@ import {
   getLatestBoardHash,
   insertBoardSnapshot,
   upsertFamilyBrief,
-  getCurrentVersions
+  getCurrentVersions,
+  loadHighValueAtoms
 } from '@/lib/server/db'
 import type { TenantId } from '@/lib/server/memory/tenant'
 
@@ -33,15 +34,22 @@ interface BoardCore {
 }
 interface EvidenceBundle { refs: EvidenceRef[]; packetSummary: string; contentHash: string }
 
-// 复用 daily 检索包（永读最新）；evidenceRefs 只引稳定粒度（不引 atom）并冗余 snippet 使快照自包含。
+// 复用 daily 检索包（永读最新）+ 直接捞高价值 FactAtom（孩子原话/材料观察/反证/执行反馈）——
+// 此前无 query 调用退化为只吃 daily_updates 文本，材料等原子事实证据进不了 Brief/Board，这里补上。
 async function collectEvidence(tenant: TenantId): Promise<EvidenceBundle> {
-  const p = await buildDailyDialogueRetrievalPacket(undefined, tenant)
+  const [p, atoms] = await Promise.all([
+    buildDailyDialogueRetrievalPacket(undefined, tenant),
+    loadHighValueAtoms(tenant.familyId, tenant.childId, 8).catch(() => [])
+  ])
   const refs: EvidenceRef[] = [
     ...p.supportingEvidence.map((s) => ({ kind: 'fact' as const, id: `ev_${sha(s)}`, snippet: s.slice(0, 120) })),
-    ...p.recentRelatedEvents.map((s) => ({ kind: 'event' as const, id: `evt_${sha(s)}`, snippet: s.slice(0, 120) }))
+    ...p.recentRelatedEvents.map((s) => ({ kind: 'event' as const, id: `evt_${sha(s)}`, snippet: s.slice(0, 120) })),
+    ...atoms.map((a) => ({ kind: 'fact' as const, id: `atom_${sha(a.content)}`, snippet: a.content.slice(0, 120) }))
   ]
+  const highValueFactTexts = atoms.map(a => a.content)
   const packetSummary = [
     p.relevantChildStructureModels.length ? `画像：${p.relevantChildStructureModels.join('；')}` : '',
+    highValueFactTexts.length ? `高价值事实（原话/材料/反证/反馈）：${highValueFactTexts.join('；')}` : '',
     p.supportingEvidence.length ? `证据：${p.supportingEvidence.join('；')}` : '',
     p.recentRelatedEvents.length ? `近期事件：${p.recentRelatedEvents.join('；')}` : '',
     p.pendingHypotheses.length ? `待验证：${p.pendingHypotheses.join('；')}` : ''

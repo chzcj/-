@@ -110,10 +110,19 @@ usedProfileEvidence: string[]`,
 
         const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx)
         if (fromSpecialFeature) void writeBackRehearsal(parentText, traceId, tenant) // 采集写回（异步，幂等）
+        // TurnEvent 含检索快照（与 daily/planner/education 对齐，提升可复现）：profileSummary + 过往类似沟通 + 待验证假设。
         recordFeatureTurn({
           traceId, tenant, mode: 'communication_rehearsal',
           userMessage: parentText, assistantReply: normalized.saferVersion,
-          specializedContextPack: { rehearsalContext: rc, mode, fromSpecialFeature, profileAware: true }
+          specializedContextPack: {
+            rehearsalContext: rc, mode, fromSpecialFeature, profileAware: true,
+            retrievedFacts: {
+              profileSummary: profileSummary.slice(0, 1500),
+              pastSimilarTalks,
+              childModels: packet?.relevantChildStructureModels || [],
+              pendingHypotheses: memHypotheses
+            }
+          }
         })
         return ok({
           ...normalized,

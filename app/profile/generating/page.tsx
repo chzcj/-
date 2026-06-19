@@ -233,11 +233,13 @@ function mapStrength(s: string | undefined): 'weak' | 'medium' | 'strong' {
   return 'medium'
 }
 
-// 轮询三件套 v1 就绪（交付文档 3.4/13.4）：ready 即返回；最多 ~16s（8×2s）后超时返回（兜底，不死锁）。
+// 轮询三件套 v1 就绪（交付文档 3.4/13.4）：ready 即返回；最多 ~40s（16×2.5s）后超时返回（兜底，不死锁）。
+// digest_update 含 familyBriefUpdater + boardUpdater 两次 LLM 调用 + 队列延迟，故给足等待窗口，
+// 让正常情况下都能等到三件套 v1；仅在 digest 真失败时才超时跳转（result 靠本地快照、board/daily 优雅处理 pending）。
 // isCancelled 让页面卸载/重试时提前退出。
 async function waitForTripleReady(isCancelled: () => boolean): Promise<void> {
-  const MAX_TRIES = 8
-  const INTERVAL = 2000
+  const MAX_TRIES = 16
+  const INTERVAL = 2500
   for (let i = 0; i < MAX_TRIES; i++) {
     if (isCancelled()) return
     try {

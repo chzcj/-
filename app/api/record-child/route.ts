@@ -54,16 +54,18 @@ export async function POST(request: Request) {
   if (draft?.memoryWriteSuggestion?.shouldWrite !== false) {
     const recordText = [input.eventText, input.changeText, input.worryText].filter(Boolean).join('。');
     // Episode 抽取入队（可靠重试 + 去重）：episodeId 按 (tenant + sha(text)) 派生作幂等键。
+    // sourceEventId/traceId 统一用 traceId（与 memory_write + TurnEvent 对齐），保证"按 traceId 追溯整轮链路"；
+    // eventId 是 child_events 主键，仅用于事件记录与响应，不参与 trace 链路。
     const episodeId = deriveEpisodeId(recordText, { familyId: identity.familyId, childId: identity.childId });
     void enqueueJob('episode_ingest', {
       text: recordText,
-      ctx: { sourceEventId: eventId || undefined, familyId: identity.familyId, childId: identity.childId, episodeId }
-    }, episodeId, eventId || undefined);
+      ctx: { sourceEventId: traceId, familyId: identity.familyId, childId: identity.childId, episodeId }
+    }, episodeId, traceId);
 
     // memory_write → digest_update → BoardSnapshot/Brief，让"记录孩子"驱动家庭看板与简报。
     const writePlan = buildMemoryWritePlan({
       tenant: identity,
-      dailyUpdates: [createDailyUpdate(`[记录孩子] ${recordText}`, 'insufficient', [], identity, eventId || undefined)],
+      dailyUpdates: [createDailyUpdate(`[记录孩子] ${recordText}`, 'insufficient', [], identity, traceId)],
       rationale: {
         whyUpdate: '家长记录了一件孩子的事',
         whyNotPromoteSomeItems: '单条记录属观察线索，暂不升级为长期判断',

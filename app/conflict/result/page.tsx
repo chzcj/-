@@ -5,13 +5,22 @@ import { Suspense, useEffect, useState } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
 import { BottomNavTabs } from '@/components/layout/BottomNavTabs'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { mockConflictReview } from '@/data/mockOutputs'
+
+// 冲突复盘结果类型（对应 /api/rehearsal/analyze mode=conflict 的返回）。此前借 typeof mockConflictReview，
+// 易误把 mock 当真数据源；改为独立类型，与 mock 文件解耦。
+type ConflictReview = {
+  headline: string
+  explanation: string
+  escalationSentence: string
+  childMayHear: string
+  suggestedReplacement: string
+}
 
 function ConflictResultInner() {
   const router = useRouter()
   const params = useSearchParams()
   const rawText = params.get('text') || ''
-  const [r, setR] = useState<typeof mockConflictReview | null>(null)
+  const [r, setR] = useState<ConflictReview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
