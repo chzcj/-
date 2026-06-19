@@ -25,6 +25,12 @@ const dev = process.env.NODE_ENV !== 'production'
 const port = parseInt(process.env.PORT, 10) || 3000
 const hostname = process.env.HOSTNAME || '0.0.0.0'
 
+// 生产部署守卫：prod 运行时若未显式 NEXT_PUBLIC_USE_MOCK=false，记忆数据会进进程内存、重启丢失。
+// 用大声告警（非 exit）——既提醒生产误配，又不打断合法的无 DB prod 冒烟测试。
+if (!dev && process.env.NEXT_PUBLIC_USE_MOCK !== 'false') {
+  console.error('[childos] ⚠️ 生产模式但 NEXT_PUBLIC_USE_MOCK!=false：数据将进进程内存、重启丢失。生产请在构建时设 NEXT_PUBLIC_USE_MOCK=false。')
+}
+
 const app = next({ dev, hostname, port })
 const handle = app.getRequestHandler()
 
