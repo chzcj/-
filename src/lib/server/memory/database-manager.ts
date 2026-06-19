@@ -10,7 +10,8 @@ import type {
   ParentNarrativePattern,
   DailyInteractionUpdate,
   RetrievalIndex,
-  EntryName
+  EntryName,
+  TurnEvent
 } from '@/types/database'
 import {
   isDatabaseEnabled,
@@ -282,6 +283,24 @@ export async function saveDailyInteractionUpdate(update: DailyInteractionUpdate,
 
 export async function getDailyInteractionUpdates(tenant: TenantId): Promise<DailyInteractionUpdate[]> {
   return readLayer<DailyInteractionUpdate>('daily_updates', tenant)
+}
+
+/* ================================================================
+   TurnEvent：每轮前台对话的输入+输出快照（交付文档 7.2，字段闭环可复现）。
+   layer_name='turn_events'、item_id=traceId（全局唯一，重试/重发幂等）；DB-off 降级进程内存同源。
+   ================================================================ */
+export async function saveTurnEvent(tenant: TenantId, event: TurnEvent): Promise<void> {
+  await upsertLayer('turn_events', [toItem('turn_events', event, tenant, event.traceId)], tenant)
+}
+
+export async function getTurnEventByTraceId(tenant: TenantId, traceId: string): Promise<TurnEvent | null> {
+  const all = await readLayer<TurnEvent>('turn_events', tenant)
+  return all.find(e => e.traceId === traceId) || null
+}
+
+export async function listTurnEvents(tenant: TenantId, limit = 50): Promise<TurnEvent[]> {
+  const all = await readLayer<TurnEvent>('turn_events', tenant)
+  return all.slice(-limit).reverse() // 最近的在前
 }
 
 /* ================================================================

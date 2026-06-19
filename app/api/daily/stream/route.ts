@@ -1,9 +1,10 @@
-import { runOrchestrationPipeline, deriveLinkedAreas, buildDailyCards } from '@/lib/server/orchestration/pipeline'
+import { runOrchestrationPipeline, deriveLinkedAreas, buildDailyCards, buildTurnEvent } from '@/lib/server/orchestration/pipeline'
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob, modelReviewBucketKey } from '@/lib/server/jobs/queue'
+import { saveTurnEvent } from '@/lib/server/memory/database-manager'
 import { callAgentTextStream } from '@/lib/server/ark-agents'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
@@ -88,6 +89,12 @@ export async function POST(request: Request) {
           }
 
           send({ type: 'final', text: finalText, linkedAreas, cards, traceId })
+
+          // TurnEvent 输入快照（交付文档 7.2）：fire-and-forget，置于回复发出后，零阻塞。
+          // 按 traceId 持久化「喂给 Agent 的上下文 + Agent 产出」，供 13.1 可复现审计。
+          void saveTurnEvent(tenant, buildTurnEvent({
+            output, traceId, tenant, userMessage: text, assistantReply: finalText, linkedAreas
+          })).catch((err) => console.error(`[daily/stream] TurnEvent 快照写入失败 traceId=${traceId}:`, err))
 
           // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）。
           // 注意：daily 流只写 L9 dailyUpdate，不写 L1(RawMaterial)/L2(CleanedFact)——这是已决策的架构演进：

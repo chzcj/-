@@ -7,7 +7,8 @@ import type {
   EvidenceStrength,
   RoutingDecision,
   MemoryAction,
-  DailyCards
+  DailyCards,
+  TurnEvent
 } from '@/types/database'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
@@ -81,6 +82,41 @@ export function buildDailyCards(output: OrchestrationOutput): DailyCards {
   }
 
   return cards
+}
+
+/**
+ * 装配每轮 TurnEvent 输入+输出快照（交付文档 7.2）。纯函数，从同步 output 直接取数，
+ * 零额外查询/LLM。按 traceId 持久化后可复现「家长说这句话时喂给 Agent 的上下文 + Agent 产出」。
+ */
+export function buildTurnEvent(args: {
+  output: OrchestrationOutput
+  traceId: string
+  tenant: TenantId
+  userMessage: string
+  assistantReply: string
+  linkedAreas: string[]
+  mode?: string
+}): TurnEvent {
+  const now = new Date().toISOString()
+  return {
+    turnId: createId('turn'),
+    traceId: args.traceId,
+    familyId: args.tenant.familyId,
+    childId: args.tenant.childId,
+    mode: args.mode || 'daily_dialogue',
+    userMessage: args.userMessage,
+    assistantReply: args.assistantReply,
+    maturityLevel: args.output.contextMaturityLevel,
+    inputType: args.output.inputType,
+    relationship: args.output.relationshipToExistingModel,
+    retrievedContextSnapshot: args.output.retrievedContext,
+    routingDecisionSnapshot: args.output.routingDecision,
+    memoryActionSnapshot: args.output.memoryAction,
+    linkedAreas: args.linkedAreas,
+    recentTurnsSnapshot: [],
+    knowledgeContextSnapshot: null,
+    createdAt: now
+  }
 }
 
 export async function runOrchestrationPipeline(input: OrchestrationInput): Promise<OrchestrationOutput> {

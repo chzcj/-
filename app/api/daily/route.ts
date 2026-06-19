@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
-import { runOrchestrationPipeline, deriveLinkedAreas, buildDailyCards } from '@/lib/server/orchestration/pipeline'
+import { runOrchestrationPipeline, deriveLinkedAreas, buildDailyCards, buildTurnEvent } from '@/lib/server/orchestration/pipeline'
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { enqueueJob } from '@/lib/server/jobs/queue'
+import { saveTurnEvent } from '@/lib/server/memory/database-manager'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 
@@ -63,6 +64,11 @@ export async function POST(request: Request) {
 
     // 日常深拆（Layer 2）：异步六维拆解 + 保守生成新假设 → memory_write → model_review。幂等键按 (tenant + sha(text)) 派生。
     void enqueueJob('daily_deep', { text: userText, tenant, traceId }, `daily_deep_${deriveEpisodeId(userText, { familyId: tenant.familyId, childId: tenant.childId })}`, traceId)
+
+    // TurnEvent 输入快照（交付文档 7.2）：fire-and-forget，按 traceId 持久化喂给 Agent 的上下文+产出，供可复现审计。
+    void saveTurnEvent(tenant, buildTurnEvent({
+      output, traceId, tenant, userMessage: userText, assistantReply: visibleReply, linkedAreas
+    })).catch((err) => console.error(`[daily] TurnEvent 快照写入失败 traceId=${traceId}:`, err))
 
     return NextResponse.json({
       ok: true,

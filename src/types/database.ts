@@ -554,6 +554,30 @@ export interface DailyCards {
   understandingCard?: { tier: '初版' | '标准' | '深度'; reading: string }   // 孩子理解卡，档位按成熟度
 }
 
+// 每轮前台对话的输入+输出快照（交付文档 7.2 TurnEvent）。按 traceId 持久化，
+// 实现 7.1 字段闭环可追溯 / 13.1 可复现审计——给定 traceId 可取回「喂给 Agent 的上下文 + Agent 产出」。
+// retrievedContextSnapshot 即文档 familyBriefSnapshot+retrievedFactsSnapshot 在本架构的等价映射；
+// recentTurnsSnapshot=[]（daily 无会话缓冲）、knowledgeContextSnapshot=null（知识库 P0 恒空，文档 9.2）。
+export interface TurnEvent {
+  turnId: string
+  traceId: string
+  familyId: string
+  childId: string
+  mode: string
+  userMessage: string
+  assistantReply: string
+  maturityLevel: MaturityLevel
+  inputType: InputTypeLabel
+  relationship: { type: InputClassification; explanation: string; confidence: EvidenceStrength }
+  retrievedContextSnapshot: RetrievedContext
+  routingDecisionSnapshot: RoutingDecision
+  memoryActionSnapshot: MemoryAction
+  linkedAreas: string[]
+  recentTurnsSnapshot: never[]
+  knowledgeContextSnapshot: null
+  createdAt: string
+}
+
 export interface RetrievedContext {
   relevantChildStructureModel: string[]
   relevantEntryEvidencePacks: string[]
