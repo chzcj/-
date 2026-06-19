@@ -17,10 +17,8 @@ export async function GET(request: Request) {
       ? purpose as typeof validPurposes[number]
       : 'daily_dialogue'
 
-    const tenant = await resolveTenant({
-      familyId: url.searchParams.get('familyId') || 'f_demo',
-      childId: url.searchParams.get('childId') || 'c_demo'
-    })
+    // 会话身份为准（无会话回落 f_demo），忽略 query 的 familyId/childId——杜绝借 query 越权检索他人租户记忆。
+    const tenant = await resolveTenant()
 
     const result = await runMemoryRetrievePipeline(safePurpose as 'daily_dialogue' | 'deep_diagnosis' | 'entry_collection' | 'multi_entry_synthesis', tenant, targetEntry || undefined)
 

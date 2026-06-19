@@ -58,13 +58,13 @@ export async function GET(request: Request) {
     });
   }
 
+  // 每请求新建连接池：必须 try/finally 保证关闭，否则任一 query 抛错跳 catch 时连接泄漏、最终耗尽。
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 2,
+    idleTimeoutMillis: 10_000
+  });
   try {
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      max: 2,
-      idleTimeoutMillis: 10_000
-    });
-
     const [memories, events, conversations] = await Promise.all([
       pool.query<{
         type: string;
@@ -102,8 +102,6 @@ export async function GET(request: Request) {
       )
     ]);
 
-    await pool.end();
-
     const sessionCount = conversations.rows[0]?.count || 0;
     const recentClues = memories.rows.map((row) => ({
       type: row.type,
@@ -131,5 +129,7 @@ export async function GET(request: Request) {
       childEvents: [],
       weeklySummary: '本周回顾暂时加载失败，可以稍后再试。'
     });
+  } finally {
+    await pool.end().catch(() => {});
   }
 }

@@ -21,10 +21,8 @@ export async function POST(request: Request) {
       crossCuttingSupplement,
     } = body
 
-    const tenant = await resolveTenant({
-      familyId: (body as { familyId?: string }).familyId || 'f_demo',
-      childId: (body as { childId?: string }).childId || 'c_demo'
-    })
+    // 会话身份为准（无会话回落 f_demo），忽略 body 的 familyId/childId——杜绝借 body 越权综合他人租户。
+    const tenant = await resolveTenant()
     const { familyId, childId } = tenant
 
     const retrievalPacket = await buildSynthesisRetrievalPacket(tenant)

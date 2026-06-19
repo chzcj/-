@@ -18,10 +18,8 @@ export async function POST(request: Request) {
       newInput = ''
     } = body
 
-    const tenant = await resolveTenant({
-      familyId: (body as { familyId?: string }).familyId || 'f_demo',
-      childId: (body as { childId?: string }).childId || 'c_demo'
-    })
+    // 会话身份为准（无会话回落 f_demo），忽略 body 的 familyId/childId——杜绝内部 token 路径下借 body 越权写他人租户。
+    const tenant = await resolveTenant()
 
     // 前端（五入口 summary 页）传的 rawMaterials/cleanedFacts 是 string[]，
     // 而后端按 RawMaterial[]/CleanedFact[] 处理——直接透传会产生 materialId/factId=undefined
