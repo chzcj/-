@@ -103,7 +103,10 @@ export default function HomePage() {
       return;
     }
     // 主入口进入新版日常对话（合并深度复盘，交付文档 4）：首条输入暂存后跳转 /daily 流式开聊。
-    window.sessionStorage.setItem('childos_daily_pending', JSON.stringify({ text: value, inputMode }));
+    // sessionStorage 在隐私/无痕模式可能抛异常，兜底——即使存不进也照常跳转（daily 进空态，不阻断）。
+    try {
+      window.sessionStorage.setItem('childos_daily_pending', JSON.stringify({ text: value, inputMode }));
+    } catch {}
     router.push('/daily');
   }
 

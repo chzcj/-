@@ -83,6 +83,8 @@ export default function MaterialUnderstandingPage() {
                     key={t.key}
                     type="button"
                     onClick={() => setMaterialType(t.key)}
+                    aria-pressed={active}
+                    aria-label={`材料类型：${t.label}${active ? '（已选）' : ''}`}
                     style={{
                       fontSize: 13,
                       padding: '6px 14px',

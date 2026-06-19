@@ -115,14 +115,15 @@ function DailyDialogueContent() {
   useEffect(() => {
     if (startedRef.current) return
     startedRef.current = true
-    const raw = window.sessionStorage.getItem('childos_daily_pending')
-    if (raw) {
-      window.sessionStorage.removeItem('childos_daily_pending')
-      try {
+    // sessionStorage 在隐私/无痕模式下访问可能抛异常，整体兜底，避免首条输入读取失败导致页面崩。
+    try {
+      const raw = window.sessionStorage.getItem('childos_daily_pending')
+      if (raw) {
+        window.sessionStorage.removeItem('childos_daily_pending')
         const pending = JSON.parse(raw) as { text: string }
         if (pending.text?.trim()) void runTurn(pending.text)
-      } catch {}
-    }
+      }
+    } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

@@ -65,6 +65,8 @@ export function SpecialCollectionView({
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
         disabled={loading}
+        maxLength={4000}
+        aria-label={title}
         style={{ width: '100%', minHeight: 150, fontSize: 15, lineHeight: 1.6, padding: 14, borderRadius: 16, border: '1px solid rgba(0,0,0,0.10)', resize: 'vertical', boxSizing: 'border-box' }}
       />
 
