@@ -22,6 +22,7 @@ export function PageHeader({
         <button
           type="button"
           onClick={onBack}
+          aria-label="返回"
           className="flex items-center justify-center flex-shrink-0"
           style={{
             width: 40,

@@ -23,11 +23,14 @@ export default function BoardPage() {
   const router = useRouter()
   const [board, setBoard] = useState<BoardSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  const [tick, setTick] = useState(0) // 重试触发：递增即重跑加载副作用
 
   useEffect(() => {
     let alive = true
     let tries = 0
     const MAX_TRIES = 5 // 刚建模后 digest_update 需几秒写好快照，期间轮询重试，避免空态
+    setFailed(false)
     async function load() {
       try {
         const r = await fetch('/api/board')
@@ -42,15 +45,23 @@ export default function BoardPage() {
             return // 保持 loading 态
           }
           setBoard(d)
+        } else {
+          setFailed(true)
         }
         setLoading(false)
       } catch {
-        if (alive) setLoading(false)
+        if (alive) { setFailed(true); setLoading(false) }
       }
     }
     void load()
     return () => { alive = false }
-  }, [])
+  }, [tick])
+
+  function retry() {
+    setLoading(true)
+    setFailed(false)
+    setTick((t) => t + 1)
+  }
 
   const updatedLabel = board?.updatedAt
     ? new Date(board.updatedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -104,7 +115,15 @@ export default function BoardPage() {
             ) : null}
           </div>
         ) : (
-          <div style={{ fontSize: 14, color: '#6E6E73', padding: '24px 0' }}>看板暂时没有加载出来，可以稍后再看。</div>
+          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+            <div style={{ fontSize: 14, color: '#6E6E73', marginBottom: 14 }}>
+              {failed ? '看板这次没加载出来，可能是网络或后台还在整理。' : '看板暂时还没有内容。'}
+            </div>
+            <button type="button" onClick={retry}
+              style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, color: '#6E6AF8', background: 'rgba(110,106,248,0.06)', border: '1px solid rgba(110,106,248,0.16)', borderRadius: 999, cursor: 'pointer' }}>
+              重试
+            </button>
+          </div>
         )}
       </div>
     </AppShell>

@@ -150,7 +150,14 @@ export default function HomePage() {
           <span className="status-dots">•••</span>
         </div>
 
-        <div className="entry-card home-profile-entry" onClick={() => router.push(hasBuiltProfile ? '/profile/result' : '/profile/build')}>
+        <div
+          className="entry-card home-profile-entry"
+          role="button"
+          tabIndex={0}
+          aria-label={hasBuiltProfile ? '孩子画像，查看条件化画像与支持重点' : '建立孩子画像'}
+          onClick={() => router.push(hasBuiltProfile ? '/profile/result' : '/profile/build')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(hasBuiltProfile ? '/profile/result' : '/profile/build'); } }}
+        >
           <div className="icon-box">
             <UserRound size={22} />
           </div>
