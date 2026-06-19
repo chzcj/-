@@ -13,7 +13,7 @@ export default function GeneratingPage() {
   const [step, setStep] = useState(0)
   const [error, setError] = useState('')
   const [retryKey, setRetryKey] = useState(0)
-  const steps = ['整理五个入口的关键事实', '跨入口综合建模', '生成条件化孩子画像']
+  const steps = ['整理五个入口的关键事实', '跨入口综合建模', '生成条件化孩子画像', '生成家庭简报与支持看板']
 
   useEffect(() => {
     let cancelled = false
@@ -169,12 +169,20 @@ export default function GeneratingPage() {
 
         createProfileSnapshot(snapshotInput)
 
-        // 持久化到 DB（让画像跨设备/重装不丢）；异步不阻塞，失败仅记日志。
-        void fetch('/api/profile/built', {
+        // 持久化到 DB（让画像跨设备/重装不丢）：改 await（best-effort）确保快照确实落库再继续，失败不致命。
+        await fetch('/api/profile/built', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ snapshot: snapshotInput }),
         }).catch(() => {})
+
+        if (cancelled) return
+
+        // 强保证三件套 v1（交付文档 3.4/13.4）：跳 result 前等 FamilyModel v1 + Brief v1 + Board v1 就绪。
+        // generating 本是 loading 页（不违背前台快）。synthesis/diagnosis 的 memory_write 已链式触发
+        // digest_update→rebuildBriefAndBoard，这里只轮询等它跑完；超时仍跳转（result 靠本地快照、board/daily 优雅处理 pending，不死锁）。
+        setStep(3)
+        await waitForTripleReady(() => cancelled)
 
         if (!cancelled) {
           router.push('/profile/result')
@@ -223,4 +231,24 @@ function mapStrength(s: string | undefined): 'weak' | 'medium' | 'strong' {
   if (s === 'weak') return 'weak'
   if (s === 'strong') return 'strong'
   return 'medium'
+}
+
+// 轮询三件套 v1 就绪（交付文档 3.4/13.4）：ready 即返回；最多 ~16s（8×2s）后超时返回（兜底，不死锁）。
+// isCancelled 让页面卸载/重试时提前退出。
+async function waitForTripleReady(isCancelled: () => boolean): Promise<void> {
+  const MAX_TRIES = 8
+  const INTERVAL = 2000
+  for (let i = 0; i < MAX_TRIES; i++) {
+    if (isCancelled()) return
+    try {
+      const r = await fetch('/api/profile/readiness')
+      const json = await r.json()
+      if (json.ok && json.data?.ready) return
+    } catch {
+      /* 网络抖动忽略，继续轮询直到超时兜底 */
+    }
+    if (isCancelled()) return
+    await new Promise<void>(resolve => setTimeout(resolve, INTERVAL))
+  }
+  // 达上限仍未就绪：照常返回，让调用方跳转（result 靠本地快照、board/daily 优雅处理 pending）。
 }
