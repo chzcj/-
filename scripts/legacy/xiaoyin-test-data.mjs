@@ -1,5 +1,5 @@
 export const TEST_BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
-export const API_KEY = process.env.INTERNAL_API_TOKEN || 'sk-48697dd7cb8f4b469b2a9b496092d5d8';
+export const API_KEY = process.env.INTERNAL_API_TOKEN;
 export const FAMILY_ID = 'f_test_xiaoyin';
 export const CHILD_ID = 'c_test_xiaoyin';
 

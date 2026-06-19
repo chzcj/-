@@ -3,7 +3,7 @@
    五入口 → 画像 → 8场景 Profile-Blind vs Profile-Aware 对照测试 */
 
 const BASE = process.env.TEST_BASE_URL || 'https://yujian.yihe.site';
-const KEY = process.env.INTERNAL_API_TOKEN || 'sk-48697dd7cb8f4b469b2a9b496092d5d8';
+const KEY = process.env.INTERNAL_API_TOKEN;
 const h = { 'Content-Type': 'application/json', 'x-api-key': KEY };
 
 async function post(url, body, timeout = 180000) {

@@ -4,7 +4,7 @@ const __filename = process.argv[1]?.split('/').pop() || 'test-xiaoyin-v3.mjs';
 console.log(`\n========== [start] ${__filename} ==========`);
 
 const BASE = process.env.TEST_BASE_URL || 'https://yujian.yihe.site';
-const KEY = process.env.INTERNAL_API_TOKEN || 'sk-48697dd7cb8f4b469b2a9b496092d5d8';
+const KEY = process.env.INTERNAL_API_TOKEN;
 const FID = 'f_test_xiaoyin';
 const CID = 'c_test_xiaoyin';
 const headers = { 'Content-Type': 'application/json', 'x-api-key': KEY };
