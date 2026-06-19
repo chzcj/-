@@ -1,4 +1,4 @@
-import { runOrchestrationPipeline, deriveLinkedAreas } from '@/lib/server/orchestration/pipeline'
+import { runOrchestrationPipeline, deriveLinkedAreas, buildDailyCards } from '@/lib/server/orchestration/pipeline'
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
@@ -49,6 +49,8 @@ export async function POST(request: Request) {
           const linkedAreas = deriveLinkedAreas(text)
 
           const isSafety = output.relationshipToExistingModel.type === 'safety'
+          // 家长可读卡片（交付文档 4.5）：同步纯函数装配，零额外 LLM、不阻塞。安全回复不挂分析卡。
+          const cards = isSafety ? {} : buildDailyCards(output)
           let finalText = output.frontResponseDraft
 
           if (isSafety) {
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
             }
           }
 
-          send({ type: 'final', text: finalText, linkedAreas, traceId })
+          send({ type: 'final', text: finalText, linkedAreas, cards, traceId })
 
           // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）。
           // 注意：daily 流只写 L9 dailyUpdate，不写 L1(RawMaterial)/L2(CleanedFact)——这是已决策的架构演进：

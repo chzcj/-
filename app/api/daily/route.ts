@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { runOrchestrationPipeline, deriveLinkedAreas } from '@/lib/server/orchestration/pipeline'
+import { runOrchestrationPipeline, deriveLinkedAreas, buildDailyCards } from '@/lib/server/orchestration/pipeline'
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
@@ -36,6 +36,8 @@ export async function POST(request: Request) {
     // 内部判断字段（routingDecision / memoryAction 等）不出前台（交付文档 6.5 / 11.2 / 13.3 P0）。
     const visibleReply = output.frontResponseDraft
     const linkedAreas = deriveLinkedAreas(userText)
+    // 家长可读卡片（交付文档 4.5）：与 stream 路由对齐，安全回复不挂卡片。
+    const cards = output.relationshipToExistingModel.type === 'safety' ? {} : buildDailyCards(output)
 
     // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）。
     // 写入失败只记录日志、不影响前台返回；重试机制由后续 job_queue 改进承接。
@@ -67,7 +69,8 @@ export async function POST(request: Request) {
       data: {
         traceId,
         visibleReply,
-        linkedAreas
+        linkedAreas,
+        cards
       }
     })
   } catch (error) {

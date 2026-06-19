@@ -5,13 +5,54 @@ import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { BottomVoiceBar } from '@/components/voice/BottomVoiceBar'
 import type { InputMode } from '@/types/childos'
+import type { DailyCards } from '@/types/database'
 
-type Turn = { role: 'parent' | 'ai'; text: string }
+type Turn = { role: 'parent' | 'ai'; text: string; cards?: DailyCards; linkedAreas?: string[] }
 
 /* ================================================================
    新版日常对话 —— 主入口（合并深度复盘，交付文档 4）。
    家长每轮输入经 /api/daily/stream 流式回复；越聊越懂靠后台记忆而非会话缓冲。
    ================================================================ */
+
+// AI 回复后的家长可读卡片（交付文档 4.5）：判断变化内联小卡 + 折叠理解卡 + 关联领域 chips。
+// 都不打断对话；无内容则不渲染。文案均来自后台 cards（家长可读，不含字段/置信度/机制名）。
+function AiTurnExtras({ cards, linkedAreas }: { cards?: DailyCards; linkedAreas?: string[] }) {
+  const delta = cards?.judgmentDelta?.trim()
+  const uc = cards?.understandingCard
+  const areas = (linkedAreas || []).filter(Boolean)
+  if (!delta && !uc && areas.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+      {delta ? (
+        <div className="card" style={{ padding: 14, borderRadius: 16, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 4 }}>判断有更新</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: '#1D1D1F' }}>{delta}</div>
+        </div>
+      ) : null}
+
+      {uc?.reading ? (
+        <details>
+          <summary style={{ fontSize: 13, color: '#6E6AF8', cursor: 'pointer', listStyle: 'none', padding: '2px 0' }}>
+            当前对孩子的理解 · {uc.tier} ›
+          </summary>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: '#1D1D1F', marginTop: 8, padding: '12px 14px', borderRadius: 14, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
+            {uc.reading}
+          </div>
+        </details>
+      ) : null}
+
+      {areas.length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {areas.map((a) => (
+            <span key={a} className="chip" style={{ fontSize: 11, background: 'rgba(110,106,248,0.06)', color: '#6E6AF8', border: '1px solid rgba(110,106,248,0.12)' }}>{a}</span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function DailyDialogueContent() {
   const router = useRouter()
   const [turns, setTurns] = useState<Turn[]>([])
@@ -34,6 +75,8 @@ function DailyDialogueContent() {
         body: JSON.stringify({ text: value }),
       })
       let acc = ''
+      let finalCards: DailyCards | undefined
+      let finalLinked: string[] | undefined
       if (res.body) {
         const reader = res.body.getReader()
         const decoder = new TextDecoder()
@@ -49,13 +92,17 @@ function DailyDialogueContent() {
             try {
               const evt = JSON.parse(line)
               if (evt.type === 'delta') { acc += evt.delta; setStreaming(acc) }
-              else if (evt.type === 'final' && evt.text) acc = evt.text
+              else if (evt.type === 'final') {
+                if (evt.text) acc = evt.text
+                if (evt.cards && typeof evt.cards === 'object') finalCards = evt.cards as DailyCards
+                if (Array.isArray(evt.linkedAreas)) finalLinked = evt.linkedAreas
+              }
             } catch {}
           }
         }
       }
       const reply = acc.trim() || '我先记下了，你可以继续说说当时的具体情形。'
-      setTurns((prev) => [...prev, { role: 'ai', text: reply }])
+      setTurns((prev) => [...prev, { role: 'ai', text: reply, cards: finalCards, linkedAreas: finalLinked }])
     } catch {
       setTurns((prev) => [...prev, { role: 'ai', text: '这次没整理成功，可以再说一次。' }])
     } finally {
@@ -100,21 +147,23 @@ function DailyDialogueContent() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
           {turns.map((t, i) => (
-            <div
-              key={i}
-              style={{
-                alignSelf: t.role === 'parent' ? 'flex-end' : 'flex-start',
-                maxWidth: '86%',
-                fontSize: 15,
-                lineHeight: 1.55,
-                padding: '10px 14px',
-                borderRadius: 16,
-                background: t.role === 'parent' ? '#6E6AF8' : 'rgba(110,106,248,0.06)',
-                color: t.role === 'parent' ? '#fff' : '#1D1D1F',
-                border: t.role === 'parent' ? 'none' : '1px solid rgba(110,106,248,0.10)',
-              }}
-            >
-              {t.text}
+            <div key={i} style={{ alignSelf: t.role === 'parent' ? 'flex-end' : 'flex-start', maxWidth: '86%', width: t.role === 'ai' ? '100%' : undefined }}>
+              <div
+                style={{
+                  alignSelf: t.role === 'parent' ? 'flex-end' : 'flex-start',
+                  fontSize: 15,
+                  lineHeight: 1.55,
+                  padding: '10px 14px',
+                  borderRadius: 16,
+                  background: t.role === 'parent' ? '#6E6AF8' : 'rgba(110,106,248,0.06)',
+                  color: t.role === 'parent' ? '#fff' : '#1D1D1F',
+                  border: t.role === 'parent' ? 'none' : '1px solid rgba(110,106,248,0.10)',
+                  display: 'inline-block'
+                }}
+              >
+                {t.text}
+              </div>
+              {t.role === 'ai' ? <AiTurnExtras cards={t.cards} linkedAreas={t.linkedAreas} /> : null}
             </div>
           ))}
 

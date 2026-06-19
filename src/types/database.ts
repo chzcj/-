@@ -546,6 +546,14 @@ export interface OrchestrationOutput {
   frontResponseDraft: string
 }
 
+// 日常对话页的家长可读卡片（交付文档 4.5 判断差量 + 初版/标准/深度孩子理解分析卡）。
+// 由同步的 OrchestrationOutput 纯函数装配，零额外 LLM；前端在 AI 回复后渲染。
+// 全部自然语言、家长可读，不含字段名/置信度/机制名（P0 红线）。
+export interface DailyCards {
+  judgmentDelta?: string                                                    // 本轮判断变化，仅真有变化/新方向时给
+  understandingCard?: { tier: '初版' | '标准' | '深度'; reading: string }   // 孩子理解卡，档位按成熟度
+}
+
 export interface RetrievedContext {
   relevantChildStructureModel: string[]
   relevantEntryEvidencePacks: string[]

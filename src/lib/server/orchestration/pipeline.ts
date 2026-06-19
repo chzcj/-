@@ -6,7 +6,8 @@ import type {
   MaturityLevel,
   EvidenceStrength,
   RoutingDecision,
-  MemoryAction
+  MemoryAction,
+  DailyCards
 } from '@/types/database'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
@@ -43,6 +44,43 @@ export function deriveLinkedAreas(text: string): string[] {
     if (re.test(text) && !areas.includes(area)) areas.push(area)
   }
   return areas.slice(0, 4)
+}
+
+// 成熟度→分析卡档位（交付文档 4.5）：用 MaturityLevel 做证据深度的代理。
+// L4 深度 / L3 标准 / L2 初版；L0/L1 理解还不足以成卡 → null（不展示）。
+const TIER_BY_MATURITY: Record<MaturityLevel, '初版' | '标准' | '深度' | null> = {
+  L0: null,
+  L1: null,
+  L2: '初版',
+  L3: '标准',
+  L4: '深度'
+}
+
+/**
+ * 从同步的 OrchestrationOutput 装配日常对话页的家长可读卡片（交付文档 4.5）。
+ * 零额外 LLM、纯函数：判断差量来自 relationshipToExistingModel.type，
+ * 理解卡 reading 用 relevantChildStructureModel[0]（已被 /profile/result 当家长可读内容展示）。
+ * 全部自然语言，不暴露字段/置信度/机制名（P0）。
+ */
+export function buildDailyCards(output: OrchestrationOutput): DailyCards {
+  const cards: DailyCards = {}
+
+  // 判断差量：仅在真有变化/新方向时给；无变化/信息不足/安全不给。
+  const rel = output.relationshipToExistingModel.type
+  if (rel === 'counter_evidence') {
+    cards.judgmentDelta = '这条和之前的理解不太一致，我先把它标成需要重新看的点，不急着套旧解释。'
+  } else if (rel === 'new_mechanism_signal') {
+    cards.judgmentDelta = '这像是一个新的方向，和之前聊的不太一样，我先记下来，接下来多看一两次。'
+  }
+
+  // 理解卡：有家长可读理解文本且成熟度足够（≥L2）时给，档位按成熟度。
+  const reading = output.retrievedContext.relevantChildStructureModel?.[0]?.trim()
+  const tier = TIER_BY_MATURITY[output.contextMaturityLevel]
+  if (reading && tier) {
+    cards.understandingCard = { tier, reading: reading.length > 280 ? `${reading.slice(0, 280)}…` : reading }
+  }
+
+  return cards
 }
 
 export async function runOrchestrationPipeline(input: OrchestrationInput): Promise<OrchestrationOutput> {
