@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { agentPrompts, type AgentPromptKey } from '@/lib/server/agent-prompts';
+import { fastApiKey, fastModel, fastBase, fastTemp, ensureSettingsLoaded } from '@/lib/server/settings/runtime-config';
 
 type ArkAgentsGlobal = typeof globalThis & {
   __childosFastWarmupTimer?: ReturnType<typeof setInterval>;
@@ -10,16 +11,15 @@ type ArkAgentsGlobal = typeof globalThis & {
 
 const agentGlobal = globalThis as ArkAgentsGlobal;
 
-const FAST_API_KEY = process.env.FAST_AI_API_KEY || '';
-const FAST_MODEL = process.env.FAST_AI_MODEL || 'deepseek-v4-flash';
-const FAST_BASE = (process.env.FAST_AI_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
-const FAST_TEMP = Number(process.env.FAST_AI_TEMPERATURE || 0.25);
+// key/model/base/temperature 改由运行时配置层提供（支持管理员面板即时改、无需重启）；
+// 这里只留非凭证、无需 UI 改的超时参数为 env const。
 // 超时（容错）：上游 LLM 卡住时不让请求无限挂。JSON 用总超时；流式用「无新 chunk」的 idle 超时（不打断正常长输出）。
 const FAST_TIMEOUT_MS = Number(process.env.FAST_AI_TIMEOUT_MS || 45_000);
 const FAST_STREAM_IDLE_MS = Number(process.env.FAST_AI_STREAM_IDLE_MS || 25_000);
 
 export function isFastAIEnabled() {
-  return Boolean(FAST_API_KEY && FAST_MODEL);
+  ensureSettingsLoaded();
+  return Boolean(fastApiKey() && fastModel());
 }
 
 export function startFastAIWarmupLoop() {
@@ -42,15 +42,15 @@ export async function warmFastAI() {
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), Number(process.env.FAST_AI_WARMUP_TIMEOUT_MS || 8000));
-  agentGlobal.__childosFastWarmupPromise = fetch(`${FAST_BASE}/chat/completions`, {
+  agentGlobal.__childosFastWarmupPromise = fetch(`${fastBase()}/chat/completions`, {
     method: 'POST',
     signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${FAST_API_KEY}`
+      Authorization: `Bearer ${fastApiKey()}`
     },
     body: JSON.stringify({
-      model: FAST_MODEL,
+      model: fastModel(),
       messages: [{ role: 'user', content: 'ping' }],
       max_tokens: 1,
       temperature: 0
@@ -136,20 +136,20 @@ async function callOpenAICompatibleJson<T>({ system, user }: { system: string; u
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FAST_TIMEOUT_MS);
   try {
-    const response = await fetch(`${FAST_BASE}/chat/completions`, {
+    const response = await fetch(`${fastBase()}/chat/completions`, {
       method: 'POST',
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${FAST_API_KEY}`
+        Authorization: `Bearer ${fastApiKey()}`
       },
       body: JSON.stringify({
-        model: FAST_MODEL,
+        model: fastModel(),
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user }
         ],
-        temperature: FAST_TEMP,
+        temperature: fastTemp(),
         response_format: { type: 'json_object' }
       })
     });
@@ -178,21 +178,21 @@ async function callOpenAICompatibleTextStream({ system, user }: { system: string
   };
   try {
     bumpIdle();
-    const response = await fetch(`${FAST_BASE}/chat/completions`, {
+    const response = await fetch(`${fastBase()}/chat/completions`, {
       method: 'POST',
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${FAST_API_KEY}`
+        Authorization: `Bearer ${fastApiKey()}`
       },
       body: JSON.stringify({
-        model: FAST_MODEL,
+        model: fastModel(),
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user }
         ],
         stream: true,
-        temperature: FAST_TEMP
+        temperature: fastTemp()
       })
     });
 

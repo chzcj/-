@@ -26,10 +26,25 @@ export async function verifyAppApi(request: Request | NextRequest): Promise<bool
   return (await getCurrentUser()) !== undefined
 }
 
+// 管理员专用：在 verifyAppApi 基础上要求会话用户 isAdmin。内部 token / dev 直通不赋予管理员身份，
+// 必须是真实 admin 登录会话（demo 账号可由 DEMO_ADMIN/ADMIN_PHONES 提权，便于本地测面板）。
+export async function verifyAdminApi(request: Request | NextRequest): Promise<boolean> {
+  if (!(await verifyAppApi(request))) return false
+  const user = await getCurrentUser()
+  return user?.isAdmin === true
+}
+
 export function authError() {
   return NextResponse.json(
     { ok: false, error: { code: 'UNAUTHORIZED', message: 'Invalid or missing API token' } },
     { status: 401 }
+  )
+}
+
+export function forbiddenError() {
+  return NextResponse.json(
+    { ok: false, error: { code: 'FORBIDDEN', message: '需要管理员权限' } },
+    { status: 403 }
   )
 }
 

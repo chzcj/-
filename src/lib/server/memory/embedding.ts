@@ -1,21 +1,21 @@
 import 'server-only'
+import { embApiKey, embBase, embModel, ensureSettingsLoaded } from '@/lib/server/settings/runtime-config'
 
 /* ================================================================
    Embedding 客户端 — 向量检索基础设施（架构-1）
    OpenAI 兼容接口（默认阿里百炼 text-embedding-v3，1024 维）。
    未配置或调用失败时返回 null，检索层据此降级到「取最近」。
+   key/base/model 改由运行时配置层提供（支持管理员面板即时改、无需重启）。
    ================================================================ */
 
-const EMBEDDING_API_KEY = process.env.EMBEDDING_API_KEY || process.env.DASHSCOPE_API_KEY || ''
-const EMBEDDING_BASE = (process.env.EMBEDDING_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1').replace(/\/$/, '')
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'text-embedding-v3'
 // 阿里百炼 text-embedding 单次批量上限为 10 条，超出需分批。
 const EMBEDDING_BATCH_SIZE = Math.max(1, Number(process.env.EMBEDDING_BATCH_SIZE || 10))
 // 超时：embedding API 卡住时 abort，落到下方 catch 返回 null（检索降级「取最近」），不无限挂。
 const EMBEDDING_TIMEOUT_MS = Number(process.env.EMBEDDING_TIMEOUT_MS || 15_000)
 
 export function isEmbeddingEnabled(): boolean {
-  return Boolean(EMBEDDING_API_KEY && EMBEDDING_MODEL)
+  ensureSettingsLoaded()
+  return Boolean(embApiKey() && embModel())
 }
 
 /** 单批编码（≤ EMBEDDING_BATCH_SIZE 条），失败项为 null。 */
@@ -23,11 +23,11 @@ async function embedChunk(texts: string[]): Promise<(number[] | null)[]> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), EMBEDDING_TIMEOUT_MS)
   try {
-    const response = await fetch(`${EMBEDDING_BASE}/embeddings`, {
+    const response = await fetch(`${embBase()}/embeddings`, {
       method: 'POST',
       signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${EMBEDDING_API_KEY}` },
-      body: JSON.stringify({ model: EMBEDDING_MODEL, input: texts })
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${embApiKey()}` },
+      body: JSON.stringify({ model: embModel(), input: texts })
     })
     if (!response.ok) {
       const msg = await response.text().catch(() => '')

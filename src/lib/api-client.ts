@@ -18,6 +18,30 @@ import type {
   UnderstandingFeedbackResponse
 } from '@/types/childos';
 
+// ---- 管理员后台类型 ----
+export interface AdminAIConfigStatus {
+  fastAi: { configured: boolean; model: string; baseUrl: string; temperature: number; apiKeyMasked: string; apiKeySet: boolean; source: string };
+  embedding: { configured: boolean; model: string; baseUrl: string; apiKeyMasked: string; apiKeySet: boolean; source: string };
+}
+export interface AdminOverview {
+  system: {
+    databaseConfigured: boolean; databaseReady: boolean; vectorReady: boolean;
+    fastConfigured: boolean; embeddingConfigured: boolean; mockMode: boolean;
+    mockModeInProduction: boolean; cookieSecure: boolean; nodeEnv: string;
+  };
+  business: Record<string, number | boolean | string | undefined>;
+  jobs: {
+    byType: Record<string, Record<string, number>>;
+    totals: { pending: number; running: number; retrying: number; succeeded: number; failed: number };
+    recentFailures: Array<{ jobType: string; attempts: number; maxAttempts: number; lastError: string; at: string }>;
+  };
+  ai: AdminAIConfigStatus;
+}
+export interface AdminConfigInput {
+  fastAi?: { apiKey?: string; baseUrl?: string; model?: string; temperature?: number };
+  embedding?: { apiKey?: string; baseUrl?: string; model?: string };
+}
+
 function fallbackError(detail?: unknown): ApiResult<never> {
   return {
     ok: false,
@@ -316,5 +340,18 @@ export const apiClient = {
       childEvents: Array<{ title: string; eventText: string; createdAt?: string }>;
       weeklySummary: string;
     }>(`/api/profile/weekly-review?${params.toString()}`, init);
+  },
+  adminOverview(init?: RequestInit) {
+    return requestJson<AdminOverview>('/api/admin/overview', init);
+  },
+  adminGetConfig(init?: RequestInit) {
+    return requestJson<{ config: AdminAIConfigStatus; encryptionAvailable: boolean }>('/api/admin/config', init);
+  },
+  adminSaveConfig(input: AdminConfigInput, init?: RequestInit) {
+    return requestJson<{ config: AdminAIConfigStatus }>('/api/admin/config', {
+      ...init,
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
   }
 };

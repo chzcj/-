@@ -9,6 +9,7 @@ import {
   findUserByPhone,
   findUserBySessionTokenHash,
   isDatabaseEnabled,
+  setUserAdminByPhone,
   type UserRecord
 } from '@/lib/server/db';
 
@@ -21,6 +22,20 @@ export interface AuthUser {
   phone: string;
   familyId: string;
   childId: string;
+  isAdmin: boolean;
+}
+
+// 管理员手机号白名单（声明式）：登录/注册时把名单内的号落库 is_admin=true。
+function adminPhones(): string[] {
+  return (process.env.ADMIN_PHONES || '').split(',').map((s) => normalizePhone(s)).filter(Boolean);
+}
+function isAdminPhone(phone: string): boolean {
+  return adminPhones().includes(normalizePhone(phone));
+}
+async function maybePromoteAdmin(user: UserRecord): Promise<void> {
+  if (isAdminPhone(user.phone) && !user.isAdmin) {
+    await setUserAdminByPhone(user.phone, true).catch((err) => console.error('[auth] 同步管理员标记失败', err));
+  }
 }
 
 export function normalizePhone(phone: string) {
@@ -36,6 +51,7 @@ export async function registerWithPhonePassword(phoneInput: string, password: st
   const user = await createUser(phone, hashPassword(password));
   if (!user) throw new Error('AUTH_DATABASE_UNAVAILABLE');
   await setLoginSession(user);
+  await maybePromoteAdmin(user);
   return publicUser(user);
 }
 
@@ -46,6 +62,7 @@ export async function loginWithPhonePassword(phoneInput: string, password: strin
   const user = await findUserByPhone(phone);
   if (!user || !verifyPassword(password, user.passwordHash)) throw new Error('BAD_CREDENTIALS');
   await setLoginSession(user);
+  await maybePromoteAdmin(user);
   return publicUser(user);
 }
 
@@ -136,7 +153,9 @@ function publicUser(user: UserRecord): AuthUser {
     userId: user.userId,
     phone: user.phone,
     familyId: user.familyId,
-    childId: user.childId
+    childId: user.childId,
+    // 运行时叠加白名单：即使落库同步时序未到，名单内的号也即时识别为管理员。
+    isAdmin: user.isAdmin || isAdminPhone(user.phone)
   };
 }
 
@@ -145,6 +164,8 @@ function demoUser(): AuthUser {
     userId: 'demo_user',
     phone: '13800002641',
     familyId: 'f_demo',
-    childId: 'c_demo'
+    childId: 'c_demo',
+    // demo 账号是否管理员：ADMIN_PHONES 含 demo 号 或 DEMO_ADMIN=true（方便本地测面板）。
+    isAdmin: isAdminPhone('13800002641') || process.env.DEMO_ADMIN === 'true'
   };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarRange, ChevronRight, FileText, GraduationCap, LayoutDashboard, LogOut, Mic, Square, UserRound } from 'lucide-react';
+import { CalendarRange, ChevronRight, FileText, GraduationCap, LayoutDashboard, LogOut, Mic, Settings, Square, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
@@ -188,6 +188,23 @@ export default function HomePage() {
           </span>
           <ChevronRight size={18} style={{ color: '#C7C7CC', flexShrink: 0 }} />
         </button>
+
+        {user?.isAdmin && (
+          <button
+            type="button"
+            onClick={() => router.push('/admin')}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px', marginBottom: 12, background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 18, cursor: 'pointer', textAlign: 'left' }}
+          >
+            <span style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(110,106,248,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6E6AF8', flexShrink: 0 }}>
+              <Settings size={20} />
+            </span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: '#1D1D1F' }}>管理员后台</span>
+              <span style={{ display: 'block', fontSize: 13, color: '#6E6E73', marginTop: 2 }}>系统状态、数据统计、AI 配置</span>
+            </span>
+            <ChevronRight size={18} style={{ color: '#C7C7CC', flexShrink: 0 }} />
+          </button>
+        )}
 
         {/* 四个并列专项功能（交付文档 5.3 + 2 材料理解，2×2）：按需进入专项采集 / 轻追问 */}
         <div className="feature-trio feature-quad">

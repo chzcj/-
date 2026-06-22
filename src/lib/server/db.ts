@@ -51,6 +51,7 @@ export async function ensureDbSchema() {
         password_hash TEXT NOT NULL,
         family_id TEXT NOT NULL,
         child_id TEXT NOT NULL,
+        is_admin BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
@@ -61,6 +62,14 @@ export async function ensureDbSchema() {
         token_hash TEXT UNIQUE NOT NULL,
         expires_at TIMESTAMPTZ NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      -- 管理员后台 AI 配置（单行）：key 字段存 AES-GCM 密文，绝不存明文。
+      CREATE TABLE IF NOT EXISTS app_settings (
+        id INT PRIMARY KEY DEFAULT 1,
+        value JSONB NOT NULL DEFAULT '{}'::jsonb,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CHECK (id = 1)
       );
 
       CREATE TABLE IF NOT EXISTS archives (
@@ -155,6 +164,8 @@ export async function ensureDbSchema() {
         ALTER TABLE family_memory_digests ADD COLUMN IF NOT EXISTS brief_version INT NOT NULL DEFAULT 0;
         ALTER TABLE family_memory_digests ADD COLUMN IF NOT EXISTS brief_evidence_refs JSONB NOT NULL DEFAULT '[]'::jsonb;
         ALTER TABLE family_memory_digests ADD COLUMN IF NOT EXISTS brief_hash TEXT NOT NULL DEFAULT '';
+        -- users 补 is_admin（既有库；CREATE IF NOT EXISTS 不改既有表）
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
       EXCEPTION WHEN others THEN RAISE NOTICE 'memory_layer_items migration skipped: %', SQLERRM;
       END $$;
     `)).then(() => undefined);
@@ -583,6 +594,7 @@ export interface UserRecord {
   passwordHash: string;
   familyId: string;
   childId: string;
+  isAdmin: boolean;
 }
 
 export async function findUserByPhone(phone: string) {
@@ -595,7 +607,8 @@ export async function findUserByPhone(phone: string) {
     password_hash: string;
     family_id: string;
     child_id: string;
-  }>('SELECT user_id, phone, password_hash, family_id, child_id FROM users WHERE phone = $1', [phone]);
+    is_admin: boolean;
+  }>('SELECT user_id, phone, password_hash, family_id, child_id, is_admin FROM users WHERE phone = $1', [phone]);
   return mapUser(result.rows[0]);
 }
 
@@ -612,10 +625,11 @@ export async function createUser(phone: string, passwordHash: string) {
     password_hash: string;
     family_id: string;
     child_id: string;
+    is_admin: boolean;
   }>(
     `INSERT INTO users (user_id, phone, password_hash, family_id, child_id)
      VALUES ($1, $2, $3, $4, $5)
-     RETURNING user_id, phone, password_hash, family_id, child_id`,
+     RETURNING user_id, phone, password_hash, family_id, child_id, is_admin`,
     [userId, phone, passwordHash, familyId, childId]
   );
   return mapUser(result.rows[0]);
@@ -645,8 +659,9 @@ export async function findUserBySessionTokenHash(tokenHash: string) {
     password_hash: string;
     family_id: string;
     child_id: string;
+    is_admin: boolean;
   }>(
-    `SELECT u.user_id, u.phone, u.password_hash, u.family_id, u.child_id
+    `SELECT u.user_id, u.phone, u.password_hash, u.family_id, u.child_id, u.is_admin
      FROM auth_sessions s
      JOIN users u ON u.user_id = s.user_id
      WHERE s.token_hash = $1 AND s.expires_at > NOW()`,
@@ -660,6 +675,50 @@ export async function deleteAuthSession(tokenHash: string) {
   if (!pool) return;
   await ensureDbSchema();
   await pool.query('DELETE FROM auth_sessions WHERE token_hash = $1', [tokenHash]);
+}
+
+/** 把指定手机号标记/取消管理员（声明式同步 ADMIN_PHONES，幂等）。 */
+export async function setUserAdminByPhone(phone: string, isAdmin = true): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  await ensureDbSchema();
+  await pool.query('UPDATE users SET is_admin = $2, updated_at = NOW() WHERE phone = $1', [phone, isAdmin]);
+}
+
+/** 读管理员 AI 配置（单行 app_settings.value，原样返回含密文；解密在 runtime-config 层做）。 */
+export async function loadAppSettings(): Promise<Record<string, unknown>> {
+  const pool = getPool();
+  if (!pool) return {};
+  await ensureDbSchema();
+  const r = await pool.query<{ value: Record<string, unknown> }>('SELECT value FROM app_settings WHERE id = 1');
+  return r.rows[0]?.value || {};
+}
+
+/** 覆盖写管理员 AI 配置（单行 upsert）。value 内的 key 字段须已是密文。 */
+export async function saveAppSettings(value: Record<string, unknown>): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  await ensureDbSchema();
+  await pool.query(
+    `INSERT INTO app_settings (id, value, updated_at) VALUES (1, $1::jsonb, NOW())
+     ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [JSON.stringify(value)]
+  );
+}
+
+/** 向量层两表计数（admin 业务统计补充；DB/pgvector 未就绪返回 0）。 */
+export async function countAtomsAndEpisodes(): Promise<{ factAtoms: number; evidenceEpisodes: number }> {
+  const pool = getPool();
+  if (!pool || !(await ensureVectorSchema())) return { factAtoms: 0, evidenceEpisodes: 0 };
+  try {
+    const [a, e] = await Promise.all([
+      pool.query<{ count: number }>('SELECT COUNT(*)::int AS count FROM fact_atoms'),
+      pool.query<{ count: number }>('SELECT COUNT(*)::int AS count FROM evidence_episodes')
+    ]);
+    return { factAtoms: a.rows[0]?.count || 0, evidenceEpisodes: e.rows[0]?.count || 0 };
+  } catch {
+    return { factAtoms: 0, evidenceEpisodes: 0 };
+  }
 }
 
 export async function saveConversationState(conversation: ConversationStateData) {
@@ -1202,6 +1261,7 @@ function mapUser(row?: {
   password_hash: string;
   family_id: string;
   child_id: string;
+  is_admin?: boolean;
 }): UserRecord | undefined {
   if (!row) return undefined;
   return {
@@ -1209,6 +1269,7 @@ function mapUser(row?: {
     phone: row.phone,
     passwordHash: row.password_hash,
     familyId: row.family_id,
-    childId: row.child_id
+    childId: row.child_id,
+    isAdmin: row.is_admin === true
   };
 }

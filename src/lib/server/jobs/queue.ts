@@ -201,6 +201,37 @@ export async function getJobHealth(tenant: TenantId): Promise<JobHealth | undefi
   }
 }
 
+/** 全局 job 健康度（管理员后台用，跨所有租户，不带 tenant 过滤）。 */
+export async function getGlobalJobHealth(): Promise<JobHealth | undefined> {
+  const pool = jobPool()
+  if (!pool) return undefined
+  await ensureJobSchema(pool)
+  const counts = await pool.query<{ job_type: string; status: string; n: number }>(
+    `SELECT job_type, status, count(*)::int AS n FROM job_queue GROUP BY job_type, status`
+  )
+  const fails = await pool.query<{ job_type: string; attempts: number; max_attempts: number; last_error: string | null; updated_at: Date | string }>(
+    `SELECT job_type, attempts, max_attempts, last_error, updated_at FROM job_queue
+     WHERE status = 'failed' ORDER BY updated_at DESC LIMIT 10`
+  )
+  const byType: Record<string, Record<string, number>> = {}
+  const totals = { pending: 0, running: 0, retrying: 0, succeeded: 0, failed: 0 }
+  for (const r of counts.rows) {
+    ;(byType[r.job_type] ||= {})[r.status] = r.n
+    if (r.status in totals) (totals as Record<string, number>)[r.status] += r.n
+  }
+  return {
+    byType,
+    totals,
+    recentFailures: fails.rows.map(f => ({
+      jobType: f.job_type,
+      attempts: f.attempts,
+      maxAttempts: f.max_attempts,
+      lastError: (f.last_error || '').slice(0, 200),
+      at: f.updated_at instanceof Date ? f.updated_at.toISOString() : String(f.updated_at),
+    })),
+  }
+}
+
 // 认领一条并执行。claim 用 FOR UPDATE SKIP LOCKED；running 提前 COMMIT 后再跑 AI；终态用 CAS 守卫。
 async function claimAndRunOne(pool: pg.Pool): Promise<boolean> {
   const client = await pool.connect()
