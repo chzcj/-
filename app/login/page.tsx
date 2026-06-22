@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, LockKeyhole, Phone, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, LockKeyhole, Phone, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
@@ -15,20 +15,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   async function submit() {
     if (loading) return;
     if (!phone.trim() || password.length < 8) {
+      setHasError(true);
       setToast('请填写手机号，并设置至少 8 位密码。');
       return;
     }
     setLoading(true);
     setToast('');
+    setHasError(false);
     const result = mode === 'login' ? await apiClient.login({ phone, password }) : await apiClient.register({ phone, password });
     if (result.ok) {
       clearAllChildOSData(); // 进入前清本浏览器旧账号缓存，防串数据（真数据从 DB 按租户加载）
       router.replace('/home');
     } else {
+      setHasError(true);
       setToast(result.error.message);
     }
     setLoading(false);
@@ -63,20 +68,23 @@ export default function LoginPage() {
         <form className="auth-card" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           <label className="auth-field">
             <span>手机号</span>
-            <div>
+            <div style={hasError ? { borderColor: 'var(--danger)' } : undefined}>
               <Phone size={18} />
-              <input inputMode="tel" autoComplete="username" name="phone" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="请输入手机号" disabled={loading} />
+              <input inputMode="tel" autoComplete="username" name="phone" value={phone} onChange={(event) => { setPhone(event.target.value); if (hasError) setHasError(false); }} placeholder="请输入手机号" disabled={loading} />
             </div>
           </label>
           <label className="auth-field">
             <span>密码</span>
-            <div>
+            <div style={{ gridTemplateColumns: '22px 1fr auto', ...(hasError ? { borderColor: 'var(--danger)' } : null) }}>
               <LockKeyhole size={18} />
-              <input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} name="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="至少 8 位" disabled={loading} />
+              <input type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} name="password" value={password} onChange={(event) => { setPassword(event.target.value); if (hasError) setHasError(false); }} placeholder="至少 8 位" disabled={loading} />
+              <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? '隐藏密码' : '显示密码'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 0, padding: 0, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </label>
 
-          {toast ? <div className="toast">{toast}</div> : null}
+          {toast ? <div className="toast" style={{ color: 'var(--danger)', background: 'rgba(228,90,90,0.08)', border: '1px solid rgba(228,90,90,0.25)' }}>{toast}</div> : null}
 
           <PrimaryButton type="submit" loading={loading}>
             {mode === 'login' ? '登录' : '注册并进入'}
