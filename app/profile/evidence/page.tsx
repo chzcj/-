@@ -2,19 +2,24 @@
 
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
-import { getLatestProfile } from '@/lib/storage/profileStorage'
+import { useHydratedProfile } from '@/hooks/useHydratedProfile'
 import { humanizeEntryRef, humanizeMechanismLabel } from '@/lib/entry-name-i18n'
 
 export default function EvidencePage() {
   const router = useRouter()
-  const [profile, setProfile] = useState<ReturnType<typeof getLatestProfile>>(null)
+  const { profile, loading } = useHydratedProfile()
 
-  useEffect(() => {
-    setProfile(getLatestProfile())
-  }, [])
+  if (loading && !profile) {
+    return (
+      <HiFiMainShell activeTab="profile">
+        <div className="loading-wrap" style={{ minHeight: '50vh' }}>
+          <div className="loader" aria-hidden="true" />
+        </div>
+      </HiFiMainShell>
+    )
+  }
 
   if (!profile) {
     return (

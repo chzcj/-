@@ -17,6 +17,7 @@ export type RehearsalAnalyzeData = {
   stuckPoint?: string
   suggestedWording?: string
   taskTitle?: string
+  closingAdvice?: string
 }
 
 function ProfileBlock({ title, children }: { title: string; children: React.ReactNode }) {

@@ -20,6 +20,8 @@ type ProfileAwareRehearsal = {
   usedProfileEvidence: string[]
   /** 从 saferVersion 提炼的"今晚要试"任务标题（祈使句式），供任务卡片直接使用，避免照抄台词原话。 */
   taskTitle?: string
+  /** 结合预演对话的针对性沟通建议（结束页展示） */
+  closingAdvice?: string
 }
 
 type RehearsalProfileContext = {
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
 
 ${profileSummary}
 
-请判断家长这句话在这个孩子画像里会被怎样接收，并给一句更稳妥的可直接说出口版本。
+请判断家长这句话在这个孩子画像里会被怎样接收，并模拟孩子可能的口头回复。
 
 规则：
 - 家长发来的就是一段完整自述：他这次真正想达成什么、最担心孩子怎么反应、谈话前发生了什么，可能都内联在这段话里——请主动从中识别并使用，不要因为没有单独字段就忽略。
@@ -93,7 +95,10 @@ ${profileSummary}
 - 必须使用画像中的机制、保护策略或家庭循环。
 - 不要泛泛说"多鼓励少批评"。
 - 不要说家长控制欲强、孩子就是懒。
-- saferVersion 必须是一句家长可以直接说的话。
+- **possibleChildReaction.immediateReaction** 必须是孩子听到家长话后可能说出口的回复（对话体，可用引号，20-60字），禁止写成给家长的建议句。
+- **childLikelyHearing** 写孩子内心怎么理解家长的话（分析，不是孩子原话）。
+- **saferVersion** 写一句家长可以直接说的更稳版本（仅用于结束页建议，模拟对话中不展示）。
+- **closingAdvice** 结合本轮预演对话，给家长 2-3 句针对性沟通建议（总结预演中的卡点 + 下一步怎么试），禁止泛泛鸡汤。
 - taskTitle 是从 saferVersion 提炼的"今晚要试"任务标题，祈使句式 6–24 字，描述动作而非照抄台词。好例："今晚用这句更稳的话跟他试一次"、"先不提成绩，用这句话开场试试"。坏例（禁止）：直接复制 saferVersion 原话、或写"理解您不问不放心"这种共情句。
 
 只输出 JSON，字段固定为：
@@ -105,6 +110,7 @@ saferVersion: string
 whyThisIsSafer: string
 avoidPhrases: string[]
 usedProfileEvidence: string[]
+closingAdvice: string
 taskTitle: string`,
           { parentMessage: parentText, profileContext: profileSummary.slice(0, 1500) }
         ).catch(() => undefined)
@@ -115,7 +121,8 @@ taskTitle: string`,
         }
         recordFeatureTurn({
           traceId, tenant, mode: 'communication_rehearsal',
-          userMessage: parentText, assistantReply: normalized.saferVersion,
+          userMessage: parentText,
+          assistantReply: normalized.possibleChildReaction?.immediateReaction || normalized.childLikelyHearing,
           specializedContextPack: {
             rehearsalContext: rc, mode, fromSpecialFeature, profileAware: true,
             retrievedFacts: {
@@ -212,6 +219,7 @@ function normalizeProfileAwareResult(
     avoidPhrases: nonEmptyArray(value?.avoidPhrases, fallback.avoidPhrases),
     usedProfileEvidence: nonEmptyArray(value?.usedProfileEvidence, fallback.usedProfileEvidence),
     taskTitle: value?.taskTitle?.trim() || undefined,
+    closingAdvice: value?.closingAdvice?.trim() || undefined,
   }
 }
 

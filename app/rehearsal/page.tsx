@@ -26,18 +26,16 @@ type FeedItem =
   | { type: 'thinking' }
 
 function mapAnalyzeToSecondMe(data: RehearsalAnalyzeData) {
+  // 气泡主文 = 孩子可能的口头回复（模拟对话），不是给家长的改说法。
   const childText =
-    data.possibleChildReaction?.immediateReaction ||
-    (Array.isArray(data.childMayHear) ? data.childMayHear[0] : data.childMayHear) ||
-    data.childLikelyHearing ||
+    data.possibleChildReaction?.immediateReaction?.trim() ||
     '……（孩子暂时没有接话）'
 
-  const hintTitle = data.headline || '他可能是这样听到的'
+  const hintTitle = '他可能是这样听到的'
   const hintText =
+    data.childLikelyHearing ||
     data.possibleChildReaction?.innerReaction ||
     data.explanation ||
-    data.whyThisIsSafer ||
-    data.stuckPoint ||
     '可以继续换一句更轻的开口方式。'
 
   return { childText, hintTitle, hintText }
@@ -55,6 +53,7 @@ export default function RehearsalPage() {
   const [round, setRound] = useState(0)
   const [endData, setEndData] = useState<RehearsalAnalyzeData | null>(null)
   const [taskSaved, setTaskSaved] = useState(false)
+  const [tonightSaved, setTonightSaved] = useState(false)
   const [rehearsalTraceId, setRehearsalTraceId] = useState<string | undefined>()
   const feedEndRef = useRef<HTMLDivElement>(null)
 
@@ -110,6 +109,7 @@ export default function RehearsalPage() {
     setRound(0)
     setEndData(null)
     setTaskSaved(false)
+    setTonightSaved(false)
     setStatusText('当前状态：孩子有点烦，防御比较高')
     setFeed([
       {
@@ -196,6 +196,7 @@ export default function RehearsalPage() {
     setFeed([])
     setEndData(null)
     setTaskSaved(false)
+    setTonightSaved(false)
     setRehearsalTraceId(undefined)
     setStep('entry')
   }
@@ -210,7 +211,7 @@ export default function RehearsalPage() {
   function tryTonight() {
     const title = endData?.taskTitle || endData?.saferVersion || endData?.suggestedWording || summary
     void saveTaskFromRehearsal(title.trim(), '沟通预演', rehearsalTraceId)
-    setTaskSaved(true)
+    setTonightSaved(true)
   }
 
   const profile = getLatestProfile()
@@ -375,14 +376,18 @@ export default function RehearsalPage() {
               </p>
             </div>
             <div className="profile-block">
-              <h3>2. 这次比较有用的方向是</h3>
-              <p>{endData?.whyThisIsSafer || endData?.saferVersion || '先减少“被站在旁边看着”的感觉，再谈开始。'}</p>
+              <h3>2. 结合这次预演，建议你留意</h3>
+              <p>
+                {endData?.closingAdvice ||
+                  endData?.whyThisIsSafer ||
+                  '先减少「被站在旁边看着」的感觉，再谈开始。'}
+              </p>
             </div>
             <div className="profile-block">
-              <h3>3. 现实里可以试的不是一句话，而是一段做法</h3>
+              <h3>3. 今晚可以试的说法</h3>
               <p>
-                {endData?.suggestedWording ||
-                  endData?.saferVersion ||
+                {endData?.saferVersion ||
+                  endData?.suggestedWording ||
                   '今晚如果又卡在作业开始前，可以先让孩子自己选第一项，你暂时离开十分钟。'}
               </p>
             </div>
@@ -396,10 +401,10 @@ export default function RehearsalPage() {
               <button type="button" className="secondary-button" onClick={saveDirection} disabled={taskSaved}>
                 {taskSaved ? '已保存' : '保存这个方向'}
               </button>
-              <button type="button" className="secondary-button" onClick={tryTonight} disabled={taskSaved}>
-                今晚试一次
+              <button type="button" className="primary-button" onClick={tryTonight} disabled={tonightSaved}>
+                {tonightSaved ? '已加入今晚任务' : '今晚试一次'}
               </button>
-              <button type="button" className="primary-button" onClick={restartSimulation}>
+              <button type="button" className="secondary-button" onClick={restartSimulation}>
                 重新练一遍
               </button>
             </div>

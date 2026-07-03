@@ -292,3 +292,23 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 用户设置部署变量后 `npm run deploy`，验证：理解卡无半句、任务 tab 标题是祈使句、画像二级页无英文/标签去重、画像卡片可点击展开进度、底部四按钮 + 编辑/密码/注销 modal 可用、注销后 30 天内重新登录恢复、登录后画像超 2 天自动重写。
 - `ProfileSettingsOverlay.tsx` 已不被引用，可删（保留不影响）。
 - 注销 30 天后真正清理的 job 未建（当前重新登录即恢复，超期仍可恢复），后续加清理 job。
+
+## 2026-07-04 04:35 | Cursor | 遗留问题修复 + 6 项新反馈 + 部署
+
+**本轮修复**
+- 交流线程过滤：`turnEventsToDailyThread` 仅 `daily_dialogue`，预演 TurnEvent 不再泄漏到交流页。
+- 键盘底栏：新增 `useKeyboardOffset`；底栏 fixed 贴底，输入区随键盘上移。
+- 生成画像 UI 错位：`/profile/generating` 补 import `hifi-build.css`（top-bar 隐藏）；hero 标题去重。
+- 四模块收尾追问：`entry-analyze` fallback purpose 引导家长补充关键信息。
+- 预演「今晚试一次」：独立 `tonightSaved` 状态，不再与「已保存」互斥禁用。
+- 预演孩子回复：API prompt 区分 immediateReaction（孩子口头回复）vs saferVersion（结束页建议）；`mapAnalyzeToSecondMe` 不再 fallback 到 childLikelyHearing；结束页加 `closingAdvice`。
+- 二级画像页：`useHydratedProfile` hook，result/deep/evidence 优先 GET `/api/profile/built`。
+
+**部署**
+- 2026-07-04 04:32 部署成功；readiness `ready:true` mockMode:false databaseConfigured:true
+
+**验证**
+- `npm run typecheck` ✅ `npm run build` ✅ `npm run deploy` ✅
+
+**待观察**
+- 线上预演多轮后 closingAdvice 质量；键盘 fixed 布局在 iPhone Safari 实机；profile_rewrite 超 2 天登录静默重写效果。

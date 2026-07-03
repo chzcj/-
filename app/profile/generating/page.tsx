@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import '../build/hifi-build.css'
 import { HiFiBuildHero } from '@/components/profile/HiFiBuildHero'
 import { HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { createProfileSnapshot, hasProfile } from '@/lib/storage/profileStorage'
@@ -275,7 +276,7 @@ export default function GeneratingPage() {
     >
       <HiFiBuildHero
         kicker="建模中"
-        title={error ? '生成中断' : '正在生成孩子画像'}
+        title="正在综合四个模块"
         copy={error ? '可以重试一次，或返回继续补充模块信息。' : '四个模块的信息正在综合，请稍候片刻。'}
         compact
         mascot={!error}

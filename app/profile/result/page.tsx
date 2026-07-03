@@ -2,44 +2,17 @@
 
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
-import { getLatestProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage'
+import { useHydratedProfile } from '@/hooks/useHydratedProfile'
 import { humanizeMechanismLabel } from '@/lib/entry-name-i18n'
 
 function ProfileResultContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justFinishedOnboarding = searchParams.get('onboarding') === '1'
-  const [profile, setProfile] = useState<ReturnType<typeof getLatestProfile>>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const local = getLatestProfile()
-    if (local) {
-      setProfile(local)
-      setLoading(false)
-      return
-    }
-    let cancelled = false
-    fetch('/api/profile/built')
-      .then((r) => r.json())
-      .then((json) => {
-        if (cancelled) return
-        if (json.ok && json.data?.snapshot?.coreJudgment) {
-          hydrateProfileFromRemote(json.data.snapshot)
-          setProfile(getLatestProfile())
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const { profile, loading } = useHydratedProfile()
 
   const backTarget = justFinishedOnboarding ? '/profile/build' : '/family-profile'
 
