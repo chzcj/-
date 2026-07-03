@@ -112,11 +112,16 @@ export async function callSupportTextStream(system: string, payload: unknown, on
   );
 }
 
-export async function callFastJson<T>(system: string, payload: unknown): Promise<T | undefined> {
+export async function callFastJson<T>(
+  system: string,
+  payload: unknown,
+  options?: { maxTokens?: number }
+): Promise<T | undefined> {
   if (!isFastAIEnabled()) return undefined;
   return callOpenAICompatibleJson<T>({
     system,
-    user: `只输出 JSON，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`
+    user: `只输出 JSON，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
+    maxTokens: options?.maxTokens
   });
 }
 
@@ -131,7 +136,15 @@ export async function callFastTextStream(system: string, payload: unknown, onDel
   );
 }
 
-async function callOpenAICompatibleJson<T>({ system, user }: { system: string; user: string }): Promise<T | undefined> {
+async function callOpenAICompatibleJson<T>({
+  system,
+  user,
+  maxTokens
+}: {
+  system: string
+  user: string
+  maxTokens?: number
+}): Promise<T | undefined> {
   // 总超时：上游卡住时 abort，避免请求无限挂（caller 的 .catch 走降级）。
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FAST_TIMEOUT_MS);
@@ -150,6 +163,7 @@ async function callOpenAICompatibleJson<T>({ system, user }: { system: string; u
           { role: 'user', content: user }
         ],
         temperature: fastTemp(),
+        max_tokens: maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 2048),
         response_format: { type: 'json_object' }
       })
     });
@@ -159,9 +173,10 @@ async function callOpenAICompatibleJson<T>({ system, user }: { system: string; u
       throw new Error(`FAST_AI_REQUEST_FAILED:${response.status}:${message.slice(0, 300)}`);
     }
 
-    const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: CacheUsage };
     const text = data.choices?.[0]?.message?.content || '';
     if (!text) throw new Error('FAST_AI_EMPTY_OUTPUT');
+    logCacheHit('json', fastModel(), data.usage);
     return parseJson<T>(text);
   } finally {
     clearTimeout(timer);
@@ -192,6 +207,7 @@ async function callOpenAICompatibleTextStream({ system, user }: { system: string
           { role: 'user', content: user }
         ],
         stream: true,
+        stream_options: { include_usage: true },
         temperature: fastTemp()
       })
     });
@@ -206,6 +222,7 @@ async function callOpenAICompatibleTextStream({ system, user }: { system: string
     const decoder = new TextDecoder();
     let buffer = '';
     let fullText = '';
+    let streamUsage: CacheUsage | undefined;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -215,6 +232,8 @@ async function callOpenAICompatibleTextStream({ system, user }: { system: string
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
       for (const line of lines) {
+        const u = extractStreamUsage(line);
+        if (u) streamUsage = u;
         const delta = parseOpenAIStreamLine(line);
         if (!delta) continue;
         fullText += delta;
@@ -222,11 +241,14 @@ async function callOpenAICompatibleTextStream({ system, user }: { system: string
       }
     }
 
+    const tailUsage = extractStreamUsage(buffer);
+    if (tailUsage) streamUsage = tailUsage;
     const tail = parseOpenAIStreamLine(buffer);
     if (tail) {
       fullText += tail;
       onDelta(tail);
     }
+    logCacheHit('stream', fastModel(), streamUsage);
     return fullText.trim() || undefined;
   } finally {
     if (idleTimer) clearTimeout(idleTimer);
@@ -243,6 +265,20 @@ function parseOpenAIStreamLine(line: string) {
     return event.choices?.[0]?.delta?.content || '';
   } catch {
     return '';
+  }
+}
+
+/** 流式末尾 chunk（choices 为空）携带 usage；逐行扫描捕获，供 cache 命中观测。 */
+function extractStreamUsage(line: string): CacheUsage | undefined {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed === 'data: [DONE]') return undefined;
+  const data = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : trimmed;
+  if (!data || data === '[DONE]') return undefined;
+  try {
+    const event = JSON.parse(data) as { usage?: CacheUsage };
+    return event.usage;
+  } catch {
+    return undefined;
   }
 }
 
@@ -263,4 +299,21 @@ function parseJson<T>(text: string): T | undefined {
     }
     throw new Error('FAST_AI_JSON_PARSE_FAILED');
   }
+}
+
+/* DeepSeek prompt cache 可观测：读取 usage.prompt_cache_hit_tokens / miss_tokens 并打日志。
+   DeepSeek 自动按「从第 0 token 起字节一致的前缀」缓存，命中价约 1/10。这里只观测，不改请求。 */
+interface CacheUsage {
+  prompt_cache_hit_tokens?: number
+  prompt_cache_miss_tokens?: number
+  total_tokens?: number
+}
+
+function logCacheHit(scope: string, model: string, usage?: CacheUsage): void {
+  if (!usage) return
+  const hit = usage.prompt_cache_hit_tokens ?? 0
+  const miss = usage.prompt_cache_miss_tokens ?? 0
+  const total = hit + miss
+  const rate = total > 0 ? Math.round((hit / total) * 100) : 0
+  console.info(`[cache:${scope}] model=${model} hit=${hit} miss=${miss} rate=${rate}%`)
 }

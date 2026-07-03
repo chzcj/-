@@ -203,6 +203,8 @@ export function useTencentAsrInput() {
       isListening,
       isSupported,
       error,
+      // ASR 服务/环境不可用：浏览器不支持，或 WS 连不上/识别服务出错。麦克风权限类错误可重试，不算 unavailable。
+      asrUnavailable: !isSupported || /不可用|不支持/.test(error),
       startListening,
       stopListening,
       getTranscript,
@@ -261,6 +263,6 @@ function mapMicrophoneError(err: unknown) {
     case 'ConstraintNotSatisfiedError':
       return '当前浏览器的麦克风参数不兼容，已建议切到更兼容模式后重试。';
     default:
-      return `麦克风初始化失败（${err.name}）。`;
+      return '麦克风暂时用不了，可以先打字输入。';
   }
 }

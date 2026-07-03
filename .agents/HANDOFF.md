@@ -24,6 +24,43 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 ```
 
 ---
+## 2026-07-04 02:50 | Cursor | token 优化 + 记忆分层 + 四模块质量
+
+**做了什么**
+- `prompts/core/parentFacingStyle.md` 缩减 8k→4.2k 字符（删示例与文风金标准整节，保留铁律与文风核心）
+- 四模块 capture 恢复 parentFacingStyle（`profile-build-prompts.buildEntryAnalyzeSystem`），稳定前缀利 DeepSeek prompt cache
+- `ark-agents.ts` 加 `prompt_cache_hit_tokens`/`miss_tokens` 日志观测（JSON + 流式 `stream_options.include_usage`）
+- `daily/stream` 删 `episode_ingest`/`daily_deep`/`model_review` 无条件入队（日常高频消耗消除）
+- `jobs/queue.ts` `modelReviewBucketKey` 改每用户每天 1 次（自然日桶）+ memory_write 链式复用同 key
+- 新增 `app/api/daily/deep-expand/route.ts`：深度展开/任务时入队 `episode_ingest` + `daily_deep`（低频深拆）
+- `understanding-card` 进入时触发 deep-expand（幂等 sessionStorage 标记）；`task-service` 保存任务时同步入队 episode + daily_deep
+- 记忆分层 l1_optional：`daily/stream` 对 `insufficient`/`safety` 跳过 memory_write（L0 turn_event 仍无条件写）
+- `<50` 字硬追问（`EntryCapturePage`，不调 AI 绝对不可绕过；final 走独立页面天然豁免）
+- ASR 降级：`useTencentAsrInput` 暴露 `asrUnavailable` + EntryCapturePage 语音按钮禁用提示
+- 删 dead code `src/lib/server/context/retriever.ts`（localStorage 版，服务端全返空，无 import）
+
+**为什么**
+- 用户反馈 token 消耗过快：日常每条消息触发 4 个后台 job（episode/daily_deep/model_review + memory_write），高频烧 token
+- parentFacingStyle 8k 字符每轮 SP 过长；四模块此前移除文风宪法导致输出质量下降
+- 降日常高频消耗，保深度展开/建模质量；记忆关键写入（L0 总写、L2 按需、L1 编排判定）
+- 全链路审查确认：daily 前端 prose/section/enrich 已注入 retrievalPack 全部 8 字段，无"没用上"的记忆
+
+**验证**
+- `npm run typecheck` ✅（build-prompts 重生 35 个 prompt）
+- `npm run build` ✅
+- 部署阻塞：`SSH_HOST`/`SSH_PASS`/`AUTH_TOKEN` shell 变量未设置，需用户 export 后 `npm run deploy`
+
+**下一步**
+- 用户 export 三变量后跑 `npm run deploy`，验证 `curl https://yujian.yihe.site/api/readiness` ready:true
+- 观察 pm2 log 中 `[cache:json]`/`[cache:stream]` hit/miss 确认 cache 命中率
+- `digest_update` 含 2 次 LLM（familyBriefUpdater+boardUpdater）但有 contentHash 指纹短路；DB 写本身（executeWritePlan）零 LLM
+
+**风险/冲突**
+- 日常交流不再自动沉淀 episode；改为深度展开/任务时触发。若用户只日常聊不点深度展开，episode 池增长变慢（L0 turn_event 仍完整保留可回溯）
+- `daily_deep` job 类型保留（handler 不删），仅日常不再触发；深度展开/任务时低频跑
+- 其他 Agent 勿动：`app/api/daily/stream/route.ts`、`src/lib/server/jobs/queue.ts`、`src/lib/server/ark-agents.ts`
+
+---
 ## 2026-06-12 | Codex | backend-pipeline-repair
 
 **做了什么**
@@ -169,3 +206,41 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **风险/冲突**
 - `npm run sync:gitee` 仍提示远程 `master` 不存在；当前本地分支是 `main`。
 - 当前 3101 服务正在用 `JOB_BATCH=40` 跑本地验证，可按需关闭。
+
+---
+
+## 2026-06-12 | Cursor | hi-fi 全站收尾 + 默认部署
+
+**做了什么**
+- hi-fi 主流程收尾：`profile/generating`、`result`、`deep/evidence/verify`、`final-follow-up`、预演子组件与 `/rehearsal` 结果步。
+- `middleware` 补充 `/rehearsal/result` 重定向；`npm run deploy` + `.cursor/rules/deploy-after-update.mdc`（以后更新默认部署）。
+
+**为什么**
+- 以 hi-fi 四 Tab 为主产品；旧路由仅保留代码、由 middleware 跳到 `/daily`。
+
+**验证**
+- `npm run typecheck` ✅ `npm run build` ✅
+- `npm run deploy` ✅ 服务器 readiness `ready:true`，PM2 `yujian` 已重启。
+
+**下一步**
+- 新功能只加在 hi-fi Shell；旧 `AppShell` 页面无需再迁。
+- 每次可上线改动：typecheck → build → deploy（除非用户说先不部署）。
+
+**风险/冲突**
+- `README.md` 产品结构仍写旧五入口/ `/home`，文档待人工统一（不影响线上）。
+
+---
+
+## 2026-06-12 | Cursor | 画像页精简 + 交流正文行距
+
+**做了什么**
+- `/family-profile`：删除信息闭环、Current Insight、4-layer Model；Trend/Uncertainty 改名为「孩子最近变化」「待确认观点」；画像数据中心 5 张卡片楷体 + 字号/行距 +0.5pt。
+- `/daily` 正文回复 `.bubble-reply`：行距 `1.72`（15px 字号）。
+- 已部署 https://yujian.yihe.site
+
+**验证**
+- `npm run typecheck` ✅ `npm run build` ✅ `npm run deploy` ✅
+- readiness：`ready:true` `mockMode:false` `databaseConfigured:true`
+
+**下一步**
+- 用户看线上正文行距是否合适，可再微调 `1.72` → `1.78` 等。

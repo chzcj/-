@@ -84,10 +84,12 @@ export function sha(s: string): string {
   return createHash('sha256').update(s).digest('hex').slice(0, 32)
 }
 
-// 定期重评限流键：按 10 分钟时间桶 + 租户。每桶至多触发一次 model_review（unique idem 去重）。
-// runModelReview 无活跃假设时 no-op（不空跑 LLM），故安全可超发。
+// 模型复核限流键：按「自然日 + 租户」时间桶。每租户每天至多触发一次 model_review（unique idem 去重）。
+// runModelReview 无活跃假设时 no-op（不空跑 LLM），故安全可超发。daily/stream 不再直接入队，
+// 仅 memory_write 写入待验证假设后链式触发，复用此 key 实现每日 1 次频控。
 export function modelReviewBucketKey(tenant: TenantId): string {
-  return `model_review:${tenant.familyId}:${tenant.childId}:${Math.floor(Date.now() / 600_000)}`
+  const dayBucket = new Date().toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
+  return `model_review:${tenant.familyId}:${tenant.childId}:${dayBucket}`
 }
 
 // 两个 handler。executeWritePlan/ingestEpisodeStrict 内绝不吞异常，异常上抛驱动重试。
@@ -99,9 +101,9 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     // null 键强制入队；真正去重靠 rebuildBriefAndBoard 内 content_hash 短路（同证据集空跑）。
     await enqueueJob('digest_update', { tenant: p.tenant }, null, null)
     // 写了待验证假设（综合/诊断后）→ 链式触发模型复核（反证收集+置信度，P2 后台深）。
-    // 仅在有假设时触发，避免在 daily 等普通写入上空跑 LLM。
+    // 仅在有假设时触发，避免在 daily 等普通写入上空跑 LLM。复用每日桶 key → 每租户每天最多 1 次。
     if ((p.plan.pendingHypothesesToCreateOrUpdate?.length || 0) > 0) {
-      await enqueueJob('model_review', { tenant: p.tenant }, null, null)
+      await enqueueJob('model_review', { tenant: p.tenant }, modelReviewBucketKey(p.tenant), null)
     }
   } else if (jobType === 'episode_ingest') {
     const p = payload as EpisodeIngestPayload
