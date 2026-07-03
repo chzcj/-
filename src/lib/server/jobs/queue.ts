@@ -8,6 +8,7 @@ import { rebuildBriefAndBoard } from '@/lib/server/memory/digest/updaters'
 import { runEntryEvidenceBuild, type EntryEvidencePayload } from '@/lib/server/memory/entry-evidence/builder'
 import { runModelReview } from '@/lib/server/memory/model-review/reviewer'
 import { runDailyDeep, type DailyDeepPayload } from '@/lib/server/memory/daily-deep/builder'
+import { runProfileRewrite } from '@/lib/server/profile-rewrite'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { MemoryWritePlan } from '@/types/database'
 
@@ -17,7 +18,7 @@ import type { MemoryWritePlan } from '@/types/database'
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
 interface DigestUpdatePayload { tenant: TenantId }
@@ -100,6 +101,12 @@ export function digestUpdateBucketKey(tenant: TenantId): string {
   return `digest_update:${tenant.familyId}:${tenant.childId}:${dayBucket}`
 }
 
+/** 画像重写 2 天桶：每租户每 2 天至多 1 次重写（登录触发 + bucket 幂等双保险）。 */
+export function profileRewriteBucketKey(tenant: TenantId): string {
+  const epochBucket = Math.floor(Date.now() / (2 * 24 * 60 * 60 * 1000))
+  return `profile_rewrite:${tenant.familyId}:${tenant.childId}:${epochBucket}`
+}
+
 // 两个 handler。executeWritePlan/ingestEpisodeStrict 内绝不吞异常，异常上抛驱动重试。
 async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   if (jobType === 'memory_write') {
@@ -130,6 +137,10 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     // （→ 链式 model_review 完成反馈复盘）；无则 no-op，不空跑、不写库。
     const r = await runDailyDeep(payload as DailyDeepPayload)
     if (r) await enqueueJob('memory_write', { plan: r.plan, tenant: r.tenant }, null, null)
+  } else if (jobType === 'profile_rewrite') {
+    // 每 2 天登录触发：基于记忆层整体重写画像字段 → 链式 digest_update 刷新 brief/board。
+    const p = payload as DigestUpdatePayload
+    await runProfileRewrite(p.tenant)
   }
 }
 

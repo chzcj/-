@@ -270,3 +270,25 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **下一步**
 - 用户看线上正文行距是否合适，可再微调 `1.72` → `1.78` 等。
+
+## 2026-07-04 03:50 | Cursor | 画像/任务/理解卡 7 问题 + 注销 + 每2天重写画像
+
+**做了什么（用户提的 7 问题 + 后端增强）**
+1. 理解卡截断修复：`parentFacingCopy.md` 加 paragraph 完整性硬约束（句号收尾禁半句）+ `fillDailySectionCopy` max_tokens 2048→3072 + `validateSectionCompleteness` 校验重试。
+2. 任务说人话：`fillDailySectionCopy` 同次 LLM 输出 `taskTitle`（祈使句式）→ `composeDailyActions` payload → `DailyAiMessage.pickTaskTitle` 优先用；预演 `rehearsal/analyze` 同步加 `taskTitle`，`rehearsal/page` saveDirection/tryTonight 优先用。
+3. 设置图标修歪：`family-profile` 自定义 SVG 换 lucide `Settings`（几何对称）。
+4. 判断依据标签去重 + 中文化：新建 `src/lib/entry-name-i18n.ts`（EntryName→中文 + humanizeEntryRef/humanizeJoinedEntries/humanizeMechanismLabel）；`generating` 双源(crossEntryEvidenceMap)去重 + sourceLabel/evidenceText/mechanismText 全 humanize；`result` 标签 dedupe + humanize；`evidence`/`deep` 渲染兜底 humanize。
+5. 机制链英文：同上 i18n 层覆盖 `daily_rhythm_phone+learning_homework` 等 joinkey + inline `daily中…` 替换。
+6. 画像卡片 accordion：`family-profile` profileCards 改可点击就地展开 + 进度条 + progressHint 引导（已收集 N%/继续交流补全）。
+7. 设置上拉页拆除：删 `ProfileSettingsOverlay` 挂载 + 齿轮按钮；底部加四按钮（编辑个人资料/编辑孩子信息 并列 → 修改密码长条 → 注销账号红色长条）；新建 `ProfileEditModals`（4 modal：profile/child/password/delete，布局参考深色截图但育见浅绿配色）。
+8. 注销软删除 30 天：`db.ts` 加 `deleted_at` 列 + `markUserDeleted/restoreUser/isUserDeleted/updateUserPassword`；`auth.ts` `loginWithPhonePassword` 重新登录即恢复 + `changeUserPassword`；新 route `/api/auth/change-password` + `/api/account/delete`。
+9. 每 2 天登录重写画像：新建 `profile-rewrite.ts` agent（读旧 snapshot + buildProgress + evidenceNetwork + childStructureModel → LLM 整体重写 coreJudgment/deepMechanism/supportFocus/evidence/verificationPoints → `saveBuiltProfileSnapshot` → 链式 digest_update，全 humanize 中文化）；`queue.ts` 加 `profile_rewrite` job + `profileRewriteBucketKey`（2 天桶）；`login/route` 登录后检查 built.updatedAt > 2 天静默入队。
+
+**验证**
+- `npm run typecheck` ✅ `npm run build` ✅
+- 部署阻塞：本机缺 `SSH_HOST`/`SSH_PASS`/`AUTH_TOKEN`，未执行 `npm run deploy`。
+
+**下一步**
+- 用户设置部署变量后 `npm run deploy`，验证：理解卡无半句、任务 tab 标题是祈使句、画像二级页无英文/标签去重、画像卡片可点击展开进度、底部四按钮 + 编辑/密码/注销 modal 可用、注销后 30 天内重新登录恢复、登录后画像超 2 天自动重写。
+- `ProfileSettingsOverlay.tsx` 已不被引用，可删（保留不影响）。
+- 注销 30 天后真正清理的 job 未建（当前重新登录即恢复，超期仍可恢复），后续加清理 job。

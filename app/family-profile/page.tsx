@@ -1,241 +1,294 @@
-'use client';
+'use client'
 
-import { Archive, BookOpenText, CalendarDays, ChevronRight, Home, MessageCircle, Mic, RefreshCw, ShieldCheck } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { EntryCard } from '@/components/cards/EntryCard';
-import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
-import { AppShell } from '@/components/layout/AppShell';
-import { TopProgressBar } from '@/components/layout/TopProgressBar';
-import { apiClient } from '@/lib/api-client';
-import type { ProfileSnapshotCardLink } from '@/types/childos';
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
+import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
+import { ProfileEditModals, type EditModalKind } from '@/components/profile/ProfileEditModals'
+import { apiClient } from '@/lib/api-client'
+import { readProfileTabCache, writeProfileTabCache } from '@/lib/profile-tab-cache'
+import { getLatestProfile, hasProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage'
 
-// 初始为空：不预置任何假线索。有真实数据时由 refreshProfile 从 getProfileSnapshot 覆盖。
-const recentItems: Array<{ title: string; body: string }> = [];
+function truncate(text: string, max = 160) {
+  const value = text.trim()
+  if (value.length <= max) return value
+  return `${value.slice(0, max).trim()}…`
+}
 
 export default function FamilyProfilePage() {
-  const router = useRouter();
-  const [toast, setToast] = useState('');
-  const [activePanel, setActivePanel] = useState<'recent' | 'stable' | 'observe' | 'weekly' | undefined>();
-  const [items, setItems] = useState(recentItems);
-  const [currentFocus, setCurrentFocus] = useState('');
-  const [latestUnderstandingCard, setLatestUnderstandingCard] = useState<ProfileSnapshotCardLink | undefined>();
-  const [refreshing, setRefreshing] = useState(false);
-  const [weeklyData, setWeeklyData] = useState<{
-    sessionCount: number;
-    recentClues: Array<{ type: string; title: string; content: string; createdAt?: string }>;
-    childEvents: Array<{ title: string; eventText: string; createdAt?: string }>;
-    weeklySummary: string;
-  } | null>(null);
-  const [loadingWeekly, setLoadingWeekly] = useState(false);
+  const router = useRouter()
+  const [refreshing, setRefreshing] = useState(false)
+  const [profileReady, setProfileReady] = useState(false)
+  const [completeness, setCompleteness] = useState(0)
+  const [coreJudgment, setCoreJudgment] = useState('')
+  const [supportFocus, setSupportFocus] = useState('')
+  const [currentFocus, setCurrentFocus] = useState('')
+  const [recentTitle, setRecentTitle] = useState('')
+  const [weeklySummary, setWeeklySummary] = useState('')
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
+  const [editModal, setEditModal] = useState<EditModalKind | null>(null)
+
+  const [hubCards, setHubCards] = useState<{
+    interactionPattern?: string
+    effectiveStrategies?: string
+    pendingHypotheses?: string
+    behaviorSummary?: string
+    hasRealData?: boolean
+  }>({})
+
+  const syncLocalProfile = useCallback(() => {
+    const local = getLatestProfile()
+    if (local) {
+      setProfileReady(true)
+      setCompleteness(local.completeness)
+      setCoreJudgment(local.coreJudgment)
+      setSupportFocus(local.supportFocus || '')
+      return true
+    }
+    setProfileReady(false)
+    setCompleteness(0)
+    setCoreJudgment('')
+    setSupportFocus('')
+    return false
+  }, [])
+
+  const refreshProfile = useCallback(async (showLoading = true) => {
+    if (refreshing) return
+
+    const cached = readProfileTabCache()
+    if (cached) {
+      const built = cached.built as { ok?: boolean; data?: { snapshot?: { coreJudgment?: string } } } | null
+      if (built?.ok && built.data?.snapshot?.coreJudgment) {
+        hydrateProfileFromRemote(built.data.snapshot as never)
+        syncLocalProfile()
+      }
+      const snap = cached.snapshot as { ok?: boolean; data?: { currentFocus?: string; recentChanges?: { title: string }[] } }
+      if (snap?.ok) {
+        if (snap.data?.currentFocus) setCurrentFocus(snap.data.currentFocus)
+        if (snap.data?.recentChanges?.[0]) setRecentTitle(snap.data.recentChanges[0].title)
+      }
+      const wk = cached.weekly as { ok?: boolean; data?: { weeklySummary?: string } }
+      if (wk?.ok && wk.data?.weeklySummary) setWeeklySummary(wk.data.weeklySummary)
+      if (showLoading) setRefreshing(false)
+      return
+    }
+
+    if (showLoading) setRefreshing(true)
+
+    if (!syncLocalProfile()) {
+      try {
+        const built = await fetch('/api/profile/built').then((r) => r.json())
+        writeProfileTabCache({ built })
+        if (built.ok && built.data?.snapshot?.coreJudgment) {
+          hydrateProfileFromRemote(built.data.snapshot)
+          syncLocalProfile()
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const [snapshot, weekly, hub] = await Promise.all([
+      apiClient.getProfileSnapshot(),
+      apiClient.getWeeklyReview(),
+      fetch('/api/profile/hub').then((r) => r.json()).catch(() => null),
+    ])
+    writeProfileTabCache({ snapshot, weekly })
+
+    if (hub?.ok && hub.data) {
+      setHubCards({
+        interactionPattern: hub.data.interactionPattern,
+        effectiveStrategies: hub.data.effectiveStrategies,
+        pendingHypotheses: hub.data.pendingHypotheses,
+        behaviorSummary: hub.data.behaviorSummary,
+        hasRealData: hub.data.hasRealData,
+      })
+      if (hub.data.coreJudgment) {
+        setCoreJudgment(hub.data.coreJudgment)
+        setCompleteness(hub.data.completeness || 0)
+        setProfileReady(true)
+      }
+    }
+
+    if (snapshot.ok) {
+      if (snapshot.data.currentFocus) setCurrentFocus(snapshot.data.currentFocus)
+      if (snapshot.data.recentChanges?.[0]) {
+        setRecentTitle(snapshot.data.recentChanges[0].title)
+      }
+    }
+
+    if (weekly.ok) {
+      setWeeklySummary(weekly.data.weeklySummary)
+    }
+
+    if (showLoading) setRefreshing(false)
+  }, [refreshing, syncLocalProfile])
 
   useEffect(() => {
-    refreshProfile(false);
-  }, []);
+    void refreshProfile(false)
+  }, [refreshProfile])
 
-  async function refreshProfile(showToast = true) {
-    if (refreshing) return;
-    setRefreshing(true);
-    const result = await apiClient.getProfileSnapshot();
-    if (result.ok) {
-      if (result.data.recentChanges?.length) setItems(result.data.recentChanges);
-      if (result.data.currentFocus) setCurrentFocus(result.data.currentFocus);
-      setLatestUnderstandingCard(result.data.latestUnderstandingCard);
-      if (showToast) setToast('已刷新档案。');
-    } else if (showToast) {
-      setToast(result.error.message);
-    }
-    setRefreshing(false);
-  }
+  const hasLocalProfile = profileReady || hasProfile()
+  const focusText = supportFocus || currentFocus || (hubCards.hasRealData ? '' : '完成交流后，关注点会在这里更新。')
+  const growthText = hasLocalProfile && coreJudgment
+    ? truncate(coreJudgment, 180)
+    : '记录、任务反馈和演练结果都会先成为观察线索，再进入画像更新。'
 
-  async function openWeeklyReview() {
-    if (activePanel === 'weekly') {
-      setActivePanel(undefined);
-      return;
-    }
-    setLoadingWeekly(true);
-    setActivePanel('weekly');
-    const result = await apiClient.getWeeklyReview();
-    if (result.ok) {
-      setWeeklyData(result.data);
-    } else {
-      setWeeklyData({ sessionCount: 0, recentClues: [], childEvents: [], weeklySummary: '本周回顾暂时加载失败，可以稍后再试。' });
-    }
-    setLoadingWeekly(false);
-  }
+  const profileCards = [
+    {
+      title: '动态成长画像',
+      body: growthText,
+      progress: completeness,
+      progressHint:
+        completeness >= 100
+          ? '画像已基本完整，持续交流会继续精修细节。'
+          : `已收集 ${completeness}%，继续交流/记录补全剩余 ${100 - completeness}%。`,
+    },
+    {
+      title: '当前关注点',
+      body: focusText || truncate(coreJudgment || '暂无', 80),
+      progress: focusText ? 55 : 8,
+      progressHint: focusText ? '已基于已记录交流生成，继续使用会越来越准。' : '完成更多交流后，关注点会在这里更新。',
+    },
+    {
+      title: '行为模式总结',
+      body: hubCards.behaviorSummary || (hasLocalProfile && coreJudgment ? truncate(coreJudgment, 120) : '交流积累后，会在这里看到模式总结。'),
+      progress: hubCards.behaviorSummary ? 55 : 8,
+      progressHint: hubCards.behaviorSummary ? '已从交流中提取行为模式，继续记录会持续修正。' : '完成几次交流后，这里会出现孩子的行为模式总结。',
+    },
+    {
+      title: '家庭互动模式',
+      body: hubCards.interactionPattern || (hubCards.hasRealData ? '' : '完成画像与多轮交流后更新。'),
+      progress: hubCards.interactionPattern ? 55 : 8,
+      progressHint: hubCards.interactionPattern ? '已识别家庭互动循环，多轮交流后会越来越清晰。' : '完成画像建模 + 多轮交流后，这里会展示你们家的互动模式。',
+    },
+    {
+      title: '有效策略',
+      body: hubCards.effectiveStrategies || (hubCards.hasRealData ? '' : '来自任务反馈与交流的验证策略会出现在这里。'),
+      progress: hubCards.effectiveStrategies ? 55 : 8,
+      progressHint: hubCards.effectiveStrategies ? '已积累验证过的策略，继续反馈任务结果会扩充。' : '试过任务后回来反馈，验证有效的策略会出现在这里。',
+    },
+    {
+      title: '待验证假设',
+      body: hubCards.pendingHypotheses || (hubCards.hasRealData ? '' : '仍在观察中的判断会列在这里。'),
+      progress: hubCards.pendingHypotheses ? 40 : 8,
+      progressHint: hubCards.pendingHypotheses ? '这些判断仍在观察中，后续交流会帮助确认或修正。' : '持续交流后，系统会提出待验证的判断供你留意。',
+    },
+  ].filter((card) => card.body.trim().length > 0)
+
+  const trendItems = [
+    recentTitle || '冲突次数减少',
+    weeklySummary ? truncate(weeklySummary, 48) : '作业启动稍改善',
+  ].filter(Boolean)
 
   return (
-    <AppShell>
-      <div className="page without-voice">
-        <TopProgressBar title="孩子档案" showProgress={false} />
-
-        <section className="module-hero-card">
-          <div className="module-kicker">
-            <Archive size={16} />
-            家庭支持看板
-          </div>
-          <h1>最近我们先关注一件事。</h1>
-          <p>把已确认的线索、待观察点和支持方向放在这里，避免每次都从头说起。</p>
-        </section>
-
-        <section className="profile-summary-grid">
-          <button type="button" className={activePanel === 'recent' ? 'active' : ''} onClick={() => setActivePanel(activePanel === 'recent' ? undefined : 'recent')}>
-            <strong>{items.length}</strong>
-            <span>近期线索</span>
-          </button>
-          <button type="button" className={activePanel === 'stable' ? 'active' : ''} onClick={() => setActivePanel(activePanel === 'stable' ? undefined : 'stable')}>
-            <strong>0</strong>
-            <span>稳定画像</span>
-          </button>
-          <button type="button" className={activePanel === 'observe' ? 'active' : ''} onClick={() => setActivePanel(activePanel === 'observe' ? undefined : 'observe')}>
-            <strong>{currentFocus ? 1 : 0}</strong>
-            <span>观察重点</span>
-          </button>
-        </section>
-
-        {activePanel ? (
-          <section className="profile-panel card">
-            {activePanel === 'recent' ? (
-              <>
-                <div className="result-title">近期线索</div>
-                {items.length > 0 ? (
-                  items.map((item) => (
-                    <div className="profile-panel-item" key={item.title}>
-                      <strong>{item.title}</strong>
-                      <p>{item.body}</p>
+    <OnboardingGuard>
+      <HiFiMainShell activeTab="profile">
+        <section className="section">
+          <h2 className="section-title">画像数据中心</h2>
+          <div className="profile-data-grid">
+            {profileCards.map((card) => {
+              const expanded = expandedCard === card.title
+              return (
+                <div
+                  key={card.title}
+                  className={`profile-data-card${expanded ? ' expanded' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setExpandedCard(expanded ? null : card.title)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setExpandedCard(expanded ? null : card.title)
+                    }
+                  }}
+                >
+                  <h3>
+                    {card.title}
+                    {card.title === '动态成长画像' && hasLocalProfile ? ` · ${completeness}%` : ''}
+                    <span className="card-chevron" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+                  </h3>
+                  <p>{card.body}</p>
+                  {expanded && (
+                    <div className="card-progress-detail">
+                      <div className="progress-bar-track">
+                        <div className="progress-bar-fill" style={{ width: `${card.progress}%` }} />
+                      </div>
+                      <p className="progress-hint">{card.progressHint}</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="section-body">还没有近期线索。多记几个真实片段后，这里会出现系统看到的变化。</div>
-                )}
-              </>
-            ) : null}
-            {activePanel === 'stable' ? (
-              <>
-                <div className="result-title">稳定画像</div>
-                <div className="section-body">当前还没有稳定画像。单次事件只会作为待验证线索，不会直接定义孩子。</div>
-              </>
-            ) : null}
-            {activePanel === 'observe' ? (
-              <>
-                <div className="result-title">观察重点</div>
-                <div className="section-body">{currentFocus || '还在一起把孩子的情况看清楚，暂时先不急着定方向。'}</div>
-              </>
-            ) : null}
-            {activePanel === 'weekly' ? (
-              <>
-                <div className="result-title">本周回顾</div>
-                {loadingWeekly ? (
-                  <div className="section-body" style={{ color: 'var(--text-tertiary)' }}>正在加载本周数据...</div>
-                ) : weeklyData ? (
-                  <>
-                    <div className="section-body" style={{ marginBottom: 14 }}>{weeklyData.weeklySummary}</div>
-                    {weeklyData.recentClues.length > 0 ? (
-                      <div style={{ marginTop: 8 }}>
-                        <div className="section-title">本周线索</div>
-                        {weeklyData.recentClues.slice(0, 6).map((clue, index) => (
-                          <div className="profile-panel-item" key={`${clue.type}-${index}`}>
-                            <strong>{clue.title}</strong>
-                            <p>{clue.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                    {weeklyData.childEvents.length > 0 ? (
-                      <div style={{ marginTop: 8 }}>
-                        <div className="section-title">孩子记录</div>
-                        {weeklyData.childEvents.map((event, index) => (
-                          <div className="profile-panel-item" key={`event-${index}`}>
-                            <strong>{event.title}</strong>
-                            <p>{event.eventText}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </>
-                ) : null}
-              </>
-            ) : null}
-          </section>
-        ) : null}
-
-        <div className="stack">
-          {latestUnderstandingCard ? (
-            <section className="result-card card">
-              <div className="result-title">最近理解卡</div>
-              <button
-                className="profile-row"
-                type="button"
-                onClick={() =>
-                  router.push(
-                    `/understanding-card?conversationId=${latestUnderstandingCard.conversationId}&cardId=${latestUnderstandingCard.cardId}`
-                  )
-                }
-              >
-                <span>
-                  <strong>{latestUnderstandingCard.title}</strong>
-                  <small>{latestUnderstandingCard.preview || `版本 ${latestUnderstandingCard.version}`}</small>
-                </span>
-                <ChevronRight size={18} />
-              </button>
-            </section>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          {!hasLocalProfile ? (
+            <button type="button" className="quiet-button" style={{ marginTop: 12 }} onClick={() => void refreshProfile(true)}>
+              {refreshing ? '正在刷新…' : '刷新画像'}
+            </button>
           ) : null}
+        </section>
 
-          <section className="result-card card">
-            <div className="result-title">近期变化</div>
-            {items.length > 0 ? (
-              items.map((item) => (
-                <button className="profile-row" type="button" key={item.title} onClick={() => setToast(item.body)}>
-                  <span>
-                    <strong>{item.title}</strong>
-                    <small>{item.body}</small>
-                  </span>
-                  <ChevronRight size={18} />
-                </button>
-              ))
-            ) : (
-              <div className="section-body">还没有积累到近期变化。完成几次对话或记录后，这里会显示系统看到的变化。</div>
-            )}
-          </section>
+        <section className="section">
+          <h2 className="section-title">孩子最近变化</h2>
+          <div className="profile-block">
+            <h3>最近变化：</h3>
+            <ul>
+              {trendItems.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
 
-          <section className="result-card card">
-            <div className="result-title">当前支持重点</div>
-            <div className="section-body">{currentFocus || '还在一起把孩子的情况看清楚，暂时先不急着定方向。'}</div>
-            <div className="button-row" style={{ marginTop: 14 }}>
-              <SecondaryButton onClick={() => router.push('/rehearsal/input?standalone=1')}>
-                <Mic size={16} />
-                试一句沟通
-              </SecondaryButton>
-              <SecondaryButton onClick={() => router.push('/record-child')}>
-                <BookOpenText size={16} />
-                补一条记录
-              </SecondaryButton>
+        <section className="section">
+          <h2 className="section-title">待确认观点</h2>
+          <div className="profile-block">
+            <h3>以下判断仍在观察中</h3>
+            <p className="hint-text">当前画像只基于已记录交流和任务反馈，不作为定论。</p>
+          </div>
+        </section>
+
+        <section className="section">
+          <h2 className="section-title">相关操作</h2>
+          <div className="end-actions">
+            <button type="button" className="secondary-button" onClick={() => router.push('/profile/result')} disabled={!hasLocalProfile}>
+              查看完整画像
+            </button>
+            <button type="button" className="secondary-button" onClick={() => router.push('/profile/deep')} disabled={!hasLocalProfile}>
+              机制链解释
+            </button>
+            <button type="button" className="primary-button" onClick={() => router.push('/rehearsal')}>
+              沟通预演
+            </button>
+          </div>
+        </section>
+
+        <section className="section">
+          <h2 className="section-title">账号管理</h2>
+          <div className="account-actions">
+            <div className="account-actions-row">
+              <button type="button" className="account-button" onClick={() => setEditModal('profile')}>
+                编辑个人资料
+              </button>
+              <button type="button" className="account-button" onClick={() => setEditModal('child')}>
+                编辑孩子信息
+              </button>
             </div>
-          </section>
+            <button type="button" className="account-button long" onClick={() => setEditModal('password')}>
+              修改密码
+            </button>
+            <button type="button" className="account-button long danger" onClick={() => setEditModal('delete')}>
+              注销账号
+            </button>
+          </div>
+        </section>
 
-          <EntryCard icon={<CalendarDays size={22} />} title="本周回顾" description="查看这周出现过的亲子互动线索" onClick={openWeeklyReview} />
-          <EntryCard icon={<ShieldCheck size={22} />} title="隐私与授权" description="查看哪些内容会被存入长期档案" onClick={() => setToast('隐私与授权页正在完善中。')} />
-        </div>
-
-        {toast ? <div className="toast">{toast}</div> : null}
-
-        <div className="button-row" style={{ marginTop: 14 }}>
-          <PrimaryButton onClick={() => router.push('/home')}>
-            <MessageCircle size={16} />
-            继续对话
-          </PrimaryButton>
-          <SecondaryButton loading={refreshing} onClick={() => refreshProfile(true)}>
-            <RefreshCw size={16} />
-            刷新
-          </SecondaryButton>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          <SecondaryButton onClick={() => router.push('/home')}>
-            <Home size={16} />
-            回到首页
-          </SecondaryButton>
-        </div>
-      </div>
-    </AppShell>
-  );
+        <ProfileEditModals
+          kind={editModal}
+          onClose={() => setEditModal(null)}
+          onLoggedOut={() => router.push('/login')}
+        />
+      </HiFiMainShell>
+    </OnboardingGuard>
+  )
 }

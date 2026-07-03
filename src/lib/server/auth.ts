@@ -9,7 +9,10 @@ import {
   findUserByPhone,
   findUserBySessionTokenHash,
   isDatabaseEnabled,
+  isUserDeleted,
+  restoreUser,
   setUserAdminByPhone,
+  updateUserPassword,
   type UserRecord
 } from '@/lib/server/db';
 
@@ -23,6 +26,7 @@ export interface AuthUser {
   familyId: string;
   childId: string;
   isAdmin: boolean;
+  onboardingComplete: boolean;
 }
 
 // 管理员手机号白名单（声明式）：登录/注册时把名单内的号落库 is_admin=true。
@@ -40,6 +44,12 @@ async function maybePromoteAdmin(user: UserRecord): Promise<void> {
 
 export function normalizePhone(phone: string) {
   return phone.replace(/[^\d+]/g, '').trim();
+}
+
+/** 生产环境默认关闭 demo 登录；开发环境始终开放。 */
+export function isDemoLoginEnabled(): boolean {
+  if (process.env.NODE_ENV !== 'production') return true;
+  return process.env.DEMO_LOGIN_ENABLED === 'true';
 }
 
 export async function registerWithPhonePassword(phoneInput: string, password: string) {
@@ -61,9 +71,24 @@ export async function loginWithPhonePassword(phoneInput: string, password: strin
   validateCredentials(phone, password);
   const user = await findUserByPhone(phone);
   if (!user || !verifyPassword(password, user.passwordHash)) throw new Error('BAD_CREDENTIALS');
+  // 注销账号 30 天恢复期：重新登录即恢复（清除 deleted_at）。
+  if (await isUserDeleted(user.userId)) {
+    await restoreUser(user.userId).catch((err) => console.error('[auth] 恢复已注销账号失败', err));
+  }
   await setLoginSession(user);
   await maybePromoteAdmin(user);
   return publicUser(user);
+}
+
+/** 修改密码：验证旧密码后更新。 */
+export async function changeUserPassword(userId: string, phone: string, oldPassword: string, newPassword: string): Promise<void> {
+  requireAuthDatabase();
+  const normalizedPhone = normalizePhone(phone);
+  validateCredentials(normalizedPhone, newPassword);
+  const user = await findUserByPhone(normalizedPhone);
+  if (!user || user.userId !== userId) throw new Error('USER_NOT_FOUND');
+  if (!verifyPassword(oldPassword, user.passwordHash)) throw new Error('BAD_CREDENTIALS');
+  await updateUserPassword(userId, hashPassword(newPassword));
 }
 
 export async function logoutCurrentUser() {
@@ -154,8 +179,8 @@ function publicUser(user: UserRecord): AuthUser {
     phone: user.phone,
     familyId: user.familyId,
     childId: user.childId,
-    // 运行时叠加白名单：即使落库同步时序未到，名单内的号也即时识别为管理员。
-    isAdmin: user.isAdmin || isAdminPhone(user.phone)
+    isAdmin: user.isAdmin || isAdminPhone(user.phone),
+    onboardingComplete: user.onboardingComplete === true
   };
 }
 
@@ -165,7 +190,8 @@ function demoUser(): AuthUser {
     phone: '13800002641',
     familyId: 'f_demo',
     childId: 'c_demo',
-    // demo 账号是否管理员：ADMIN_PHONES 含 demo 号 或 DEMO_ADMIN=true（方便本地测面板）。
-    isAdmin: isAdminPhone('13800002641') || process.env.DEMO_ADMIN === 'true'
+    // Demo 会话永无管理员权限，避免公开 demo 接口被滥用提权。
+    isAdmin: false,
+    onboardingComplete: false
   };
 }

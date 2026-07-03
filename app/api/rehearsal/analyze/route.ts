@@ -5,9 +5,6 @@ import { rehearsalAnalyzeSchema } from '@/lib/schemas'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
-import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
-import { enqueueJob } from '@/lib/server/jobs/queue'
-import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { createId } from '@/lib/storage/storageIds'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { recordFeatureTurn } from '@/lib/server/memory/turn-event'
@@ -21,6 +18,8 @@ type ProfileAwareRehearsal = {
   whyThisIsSafer: string
   avoidPhrases: string[]
   usedProfileEvidence: string[]
+  /** 从 saferVersion 提炼的"今晚要试"任务标题（祈使句式），供任务卡片直接使用，避免照抄台词原话。 */
+  taskTitle?: string
 }
 
 type RehearsalProfileContext = {
@@ -95,6 +94,7 @@ ${profileSummary}
 - 不要泛泛说"多鼓励少批评"。
 - 不要说家长控制欲强、孩子就是懒。
 - saferVersion 必须是一句家长可以直接说的话。
+- taskTitle 是从 saferVersion 提炼的"今晚要试"任务标题，祈使句式 6–24 字，描述动作而非照抄台词。好例："今晚用这句更稳的话跟他试一次"、"先不提成绩，用这句话开场试试"。坏例（禁止）：直接复制 saferVersion 原话、或写"理解您不问不放心"这种共情句。
 
 只输出 JSON，字段固定为：
 childLikelyHearing: string
@@ -104,13 +104,15 @@ riskPoints: string[]
 saferVersion: string
 whyThisIsSafer: string
 avoidPhrases: string[]
-usedProfileEvidence: string[]`,
+usedProfileEvidence: string[]
+taskTitle: string`,
           { parentMessage: parentText, profileContext: profileSummary.slice(0, 1500) }
         ).catch(() => undefined)
 
         const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx)
-        if (fromSpecialFeature) void writeBackRehearsal(parentText, traceId, tenant) // 采集写回（异步，幂等）
-        // TurnEvent 含检索快照（与 daily/planner/education 对齐，提升可复现）：profileSummary + 过往类似沟通 + 待验证假设。
+        if (fromSpecialFeature) {
+          // 预演过程不写记忆；仅记录 TurnEvent 供审计。任务反馈后再 memory_write。
+        }
         recordFeatureTurn({
           traceId, tenant, mode: 'communication_rehearsal',
           userMessage: parentText, assistantReply: normalized.saferVersion,
@@ -126,6 +128,7 @@ usedProfileEvidence: string[]`,
         })
         return ok({
           ...normalized,
+          traceId,
           profileAware: true,
           uiMode: 'result_view', // 5.3：有原话→已可预演→结果展示
           schemaVersion: 'childos.rehearsal.profile-aware.v1'
@@ -170,13 +173,12 @@ usedProfileEvidence: string[]`,
       ).catch(() => undefined)
 
       if (result?.headline) {
-        if (fromSpecialFeature) void writeBackRehearsal(parentText, traceId, tenant)
         recordFeatureTurn({
           traceId, tenant, mode: 'communication_rehearsal',
           userMessage: parentText, assistantReply: result.suggestedWording,
           specializedContextPack: { rehearsalContext: rc, fromSpecialFeature }
         })
-        return ok({ ...result, uiMode: 'result_view' })
+        return ok({ ...result, traceId, uiMode: 'result_view' })
       }
     } catch {}
   }
@@ -188,33 +190,6 @@ usedProfileEvidence: string[]`,
   if (!result) return fail('CONVERSATION_NOT_FOUND', '我找不到刚刚那次整理了。', undefined, 404)
 
   return ok({ rehearsalId: result.rehearsalId, result })
-}
-
-/* 沟通预演采集写回（交付文档 5.3.16）：与教育诊断/家庭规划一致，把家长原话写入记忆，
-   预演越用越懂家庭。异步、幂等、绝不阻塞前台；仅标准入口(fromSpecialFeature)、非 conflict 调用。
-   traceId/tenant 由路由透传，与 TurnEvent 快照共享同一 traceId（强字段闭环）。 */
-async function writeBackRehearsal(parentText: string, traceId: string, tenant: TenantId): Promise<void> {
-  try {
-    const plan = buildMemoryWritePlan({
-      tenant,
-      dailyUpdates: [createDailyUpdate(`[沟通预演] ${parentText}`, 'insufficient', [], tenant, traceId)],
-      rationale: {
-        whyUpdate: '沟通预演采集，记录家长准备说的原话与意图',
-        whyNotPromoteSomeItems: '预演输入属操作性上下文，暂不升级为长期判断',
-        riskOfOvergeneralization: '',
-        nextVerificationNeed: ''
-      }
-    })
-    void enqueueJob('memory_write', { plan, tenant }, null, traceId)
-    // Episode 抽取统一走队列（对齐 daily / 其它专项）：可追踪、可重试、幂等。
-    const episodeId = deriveEpisodeId(parentText, { familyId: tenant.familyId, childId: tenant.childId })
-    void enqueueJob('episode_ingest', {
-      text: parentText,
-      ctx: { sourceEventId: traceId, familyId: tenant.familyId, childId: tenant.childId, episodeId }
-    }, episodeId, traceId)
-  } catch (e) {
-    console.error('[rehearsal] 写回失败（不影响前台）:', e)
-  }
 }
 
 function normalizeProfileAwareResult(
@@ -236,6 +211,7 @@ function normalizeProfileAwareResult(
     whyThisIsSafer: nonEmpty(value?.whyThisIsSafer, fallback.whyThisIsSafer),
     avoidPhrases: nonEmptyArray(value?.avoidPhrases, fallback.avoidPhrases),
     usedProfileEvidence: nonEmptyArray(value?.usedProfileEvidence, fallback.usedProfileEvidence),
+    taskTitle: value?.taskTitle?.trim() || undefined,
   }
 }
 

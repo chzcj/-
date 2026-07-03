@@ -166,6 +166,21 @@ export async function ensureDbSchema() {
         ALTER TABLE family_memory_digests ADD COLUMN IF NOT EXISTS brief_hash TEXT NOT NULL DEFAULT '';
         -- users 补 is_admin（既有库；CREATE IF NOT EXISTS 不改既有表）
         ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN NOT NULL DEFAULT FALSE;
+        -- 软删除（注销账号 30 天恢复期）
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+        -- 已有画像快照或已多次交流的老用户，标记为已完成 onboarding
+        UPDATE users u SET onboarding_complete = TRUE
+        WHERE onboarding_complete = FALSE AND EXISTS (
+          SELECT 1 FROM memory_layer_items m
+          WHERE m.family_id = u.family_id AND m.child_id = u.child_id
+            AND m.layer_name = 'built_profile_snapshots'
+        );
+        UPDATE users u SET onboarding_complete = TRUE
+        WHERE onboarding_complete = FALSE AND (
+          SELECT COUNT(*)::int FROM conversations c
+          WHERE c.family_id = u.family_id AND c.child_id = u.child_id
+        ) >= 3;
       EXCEPTION WHEN others THEN RAISE NOTICE 'memory_layer_items migration skipped: %', SQLERRM;
       END $$;
     `)).then(() => undefined);
@@ -190,7 +205,15 @@ async function ensureVectorSchema(): Promise<boolean> {
   if (!globalDb.__childosVectorSchemaReady) {
     globalDb.__childosVectorSchemaReady = (async () => {
       try {
-        await pool.query('CREATE EXTENSION IF NOT EXISTS vector');
+        // 扩展通常由 superuser 预装；普通 DB 用户无 CREATE EXTENSION 权限时仍应继续建表
+        try {
+          await pool.query('CREATE EXTENSION IF NOT EXISTS vector');
+        } catch (extErr) {
+          const ext = await pool.query<{ ok: number }>(
+            `SELECT 1 AS ok FROM pg_extension WHERE extname = 'vector' LIMIT 1`
+          );
+          if (!ext.rows.length) throw extErr;
+        }
         await pool.query(`
           CREATE TABLE IF NOT EXISTS evidence_episodes (
             episode_id TEXT PRIMARY KEY,
@@ -595,6 +618,7 @@ export interface UserRecord {
   familyId: string;
   childId: string;
   isAdmin: boolean;
+  onboardingComplete: boolean;
 }
 
 export async function findUserByPhone(phone: string) {
@@ -608,7 +632,8 @@ export async function findUserByPhone(phone: string) {
     family_id: string;
     child_id: string;
     is_admin: boolean;
-  }>('SELECT user_id, phone, password_hash, family_id, child_id, is_admin FROM users WHERE phone = $1', [phone]);
+    onboarding_complete: boolean;
+  }>('SELECT user_id, phone, password_hash, family_id, child_id, is_admin, onboarding_complete FROM users WHERE phone = $1', [phone]);
   return mapUser(result.rows[0]);
 }
 
@@ -626,10 +651,11 @@ export async function createUser(phone: string, passwordHash: string) {
     family_id: string;
     child_id: string;
     is_admin: boolean;
+    onboarding_complete: boolean;
   }>(
     `INSERT INTO users (user_id, phone, password_hash, family_id, child_id)
      VALUES ($1, $2, $3, $4, $5)
-     RETURNING user_id, phone, password_hash, family_id, child_id, is_admin`,
+     RETURNING user_id, phone, password_hash, family_id, child_id, is_admin, onboarding_complete`,
     [userId, phone, passwordHash, familyId, childId]
   );
   return mapUser(result.rows[0]);
@@ -660,8 +686,9 @@ export async function findUserBySessionTokenHash(tokenHash: string) {
     family_id: string;
     child_id: string;
     is_admin: boolean;
+    onboarding_complete: boolean;
   }>(
-    `SELECT u.user_id, u.phone, u.password_hash, u.family_id, u.child_id, u.is_admin
+    `SELECT u.user_id, u.phone, u.password_hash, u.family_id, u.child_id, u.is_admin, u.onboarding_complete
      FROM auth_sessions s
      JOIN users u ON u.user_id = s.user_id
      WHERE s.token_hash = $1 AND s.expires_at > NOW()`,
@@ -675,6 +702,58 @@ export async function deleteAuthSession(tokenHash: string) {
   if (!pool) return;
   await ensureDbSchema();
   await pool.query('DELETE FROM auth_sessions WHERE token_hash = $1', [tokenHash]);
+}
+
+export async function setUserOnboardingComplete(userId: string, complete = true): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  await ensureDbSchema();
+  await pool.query(
+    'UPDATE users SET onboarding_complete = $2, updated_at = NOW() WHERE user_id = $1',
+    [userId, complete]
+  );
+}
+
+/** 更新用户密码哈希（修改密码）。 */
+export async function updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  await ensureDbSchema();
+  await pool.query(
+    'UPDATE users SET password_hash = $2, updated_at = NOW() WHERE user_id = $1',
+    [userId, passwordHash]
+  );
+}
+
+/** 软删除账号（注销）：标记 deleted_at，30 天内可恢复。 */
+export async function markUserDeleted(userId: string): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  await ensureDbSchema();
+  await pool.query(
+    'UPDATE users SET deleted_at = NOW(), updated_at = NOW() WHERE user_id = $1',
+    [userId]
+  );
+}
+
+/** 恢复已注销账号（30 天内重新登录时调用）。 */
+export async function restoreUser(userId: string): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  await ensureDbSchema();
+  await pool.query(
+    'UPDATE users SET deleted_at = NULL, updated_at = NOW() WHERE user_id = $1',
+    [userId]
+  );
+}
+
+/** 检查账号是否已软删除。 */
+export async function isUserDeleted(userId: string): Promise<boolean> {
+  const pool = getPool();
+  if (!pool) return false;
+  await ensureDbSchema();
+  const result = await pool.query('SELECT deleted_at FROM users WHERE user_id = $1', [userId]);
+  return !!result.rows[0]?.deleted_at;
 }
 
 /** 把指定手机号标记/取消管理员（声明式同步 ADMIN_PHONES，幂等）。 */
@@ -1262,6 +1341,7 @@ function mapUser(row?: {
   family_id: string;
   child_id: string;
   is_admin?: boolean;
+  onboarding_complete?: boolean;
 }): UserRecord | undefined {
   if (!row) return undefined;
   return {
@@ -1270,6 +1350,7 @@ function mapUser(row?: {
     passwordHash: row.password_hash,
     familyId: row.family_id,
     childId: row.child_id,
-    isAdmin: row.is_admin === true
+    isAdmin: row.is_admin === true,
+    onboardingComplete: row.onboarding_complete === true
   };
 }

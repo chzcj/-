@@ -1,24 +1,31 @@
 'use client'
-import { ArrowRight } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { AppShell } from '@/components/layout/AppShell'
-import { BottomNavTabs } from '@/components/layout/BottomNavTabs'
-import { PageHeader } from '@/components/ui/PageHeader'
-import { getLatestProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage'
 
-export default function ProfileResultPage() {
+import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
+import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
+import { getLatestProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage'
+import { humanizeMechanismLabel } from '@/lib/entry-name-i18n'
+
+function ProfileResultContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const justFinishedOnboarding = searchParams.get('onboarding') === '1'
   const [profile, setProfile] = useState<ReturnType<typeof getLatestProfile>>(null)
   const [loading, setLoading] = useState(true)
+
   useEffect(() => {
     const local = getLatestProfile()
-    if (local) { setProfile(local); setLoading(false); return }
-    // 本机无（跨设备/重装）→ 从 DB 取并回灌 localStorage。
+    if (local) {
+      setProfile(local)
+      setLoading(false)
+      return
+    }
     let cancelled = false
     fetch('/api/profile/built')
-      .then(r => r.json())
-      .then(json => {
+      .then((r) => r.json())
+      .then((json) => {
         if (cancelled) return
         if (json.ok && json.data?.snapshot?.coreJudgment) {
           hydrateProfileFromRemote(json.data.snapshot)
@@ -26,97 +33,145 @@ export default function ProfileResultPage() {
         }
       })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  const backTarget = justFinishedOnboarding ? '/profile/build' : '/family-profile'
+
   if (loading) {
     return (
-      <AppShell><div className="page without-voice with-bottom-tabs">
-        <PageHeader title="孩子画像" showBack onBack={() => router.push('/home')} />
-        <div style={{ textAlign: 'center', padding: 60, color: '#A1A1A6', fontSize: 14 }}>正在加载孩子画像…</div>
-      </div></AppShell>
+      <HiFiMainShell activeTab="profile">
+        <div className="loading-wrap" style={{ minHeight: '50vh' }}>
+          <div className="loader" aria-hidden="true" />
+          <h2>正在加载孩子画像…</h2>
+        </div>
+      </HiFiMainShell>
     )
   }
+
   if (!profile) {
     return (
-      <AppShell><div className="page without-voice with-bottom-tabs">
-        <PageHeader title="孩子画像" showBack onBack={() => router.push('/profile/build')} />
-        <div className="result-card card" style={{ marginTop: 20, textAlign: 'center', padding: 32 }}>
-          <div className="result-title">还没有孩子画像</div>
-          <div style={{ fontSize: 15, color: '#6E6E73', marginTop: 10 }}>请先完成五入口建模</div>
-          <button type="button" className="primary-button" onClick={() => router.push('/profile/build')}
-            style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600, marginTop: 20 }}>建立孩子画像</button>
-        </div>
-      </div></AppShell>
+      <HiFiMainShell activeTab="profile">
+        <button type="button" className="quiet-button" onClick={() => router.push('/profile/build')}>
+          <ArrowLeft size={16} /> 返回
+        </button>
+        <section className="section">
+          <div className="profile-block">
+            <h3>还没有孩子画像</h3>
+            <p className="hint-text">请先完成四个模块建模</p>
+            <button type="button" className="primary-button wide-button" onClick={() => router.push('/profile/build')}>
+              建立孩子画像
+            </button>
+          </div>
+        </section>
+      </HiFiMainShell>
     )
   }
 
   const hasEvidence = (profile.evidence || []).length > 0
 
   return (
-    <AppShell>
-      <div className="page without-voice with-bottom-tabs">
-        <PageHeader title="孩子画像" showBack onBack={() => router.push('/home')} />
-        <div
-          style={{
-            fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6,
-            background: 'linear-gradient(135deg, rgba(110,106,248,0.06), rgba(110,106,248,0.02))',
-            borderRadius: 12, padding: '8px 14px', display: 'inline-block'
-          }}>
-          画像完整度 {profile.completeness}%
-        </div>
+    <OnboardingGuard>
+      <HiFiMainShell activeTab="profile">
+        {!justFinishedOnboarding ? (
+          <button type="button" className="quiet-button" onClick={() => router.push(backTarget)}>
+            <ArrowLeft size={16} /> 返回
+          </button>
+        ) : null}
 
-        <div style={{
-          marginTop: 16, marginBottom: 16,
-          padding: '20px 18px', borderRadius: 22,
-          background: 'rgba(255,255,255,0.72)',
-          border: '1px solid rgba(29,29,31,0.06)',
-        }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#6E6AF8', marginBottom: 10 }}>
-            条件化画像
+        {justFinishedOnboarding ? (
+          <article className="hero-card compact">
+            <span className="module-kicker">画像已生成</span>
+            <h2 className="hero-title">可以开始交流和预演了</h2>
+            <p className="hero-copy">下面的理解会作为后续对话的背景。</p>
+            <button type="button" className="primary-button wide-button" onClick={() => router.push('/daily')}>
+              开始交流
+              <ArrowRight size={18} />
+            </button>
+          </article>
+        ) : (
+          <article className="hero-card compact">
+            <span className="module-kicker">孩子画像 · {profile.completeness}%</span>
+            <h2 className="hero-title">条件化理解</h2>
+            <p className="hero-copy">基于四个模块真实片段生成，会随新交流持续更新。</p>
+          </article>
+        )}
+
+        <section className="section">
+          <div className="profile-block">
+            <h3>核心理解</h3>
+            <p>{profile.coreJudgment}</p>
           </div>
-          <div style={{ fontSize: 15, lineHeight: 1.7, color: '#1D1D1F', whiteSpace: 'pre-wrap' }}>
-            {profile.coreJudgment}
-          </div>
-        </div>
+        </section>
 
         {profile.supportFocus ? (
-          <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.05)', border: '1px solid rgba(110,106,248,0.10)', marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>当前支持重点</div>
-            <div style={{ fontSize: 15, lineHeight: 1.55, color: '#6E6E73' }}>{profile.supportFocus}</div>
-          </div>
+          <section className="section">
+            <div className="profile-block">
+              <h3>当前支持重点</h3>
+              <p>{profile.supportFocus}</p>
+            </div>
+          </section>
         ) : null}
 
         {hasEvidence ? (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-            {profile.evidence?.slice(0, 4).map((e) => (
-              <span key={e.id} className="chip" style={{ fontSize: 12, cursor: 'default' }}>{e.sourceLabel}</span>
-            ))}
-          </div>
+          <section className="section">
+            <h2 className="section-title">判断依据摘要</h2>
+            <div className="layer-tags">
+              {Array.from(new Set(profile.evidence?.slice(0, 8).map((e) => e.sourceLabel) || []))
+                .slice(0, 4)
+                .map((label) => (
+                  <span key={label} className="tag">
+                    {humanizeMechanismLabel(label)}
+                  </span>
+                ))}
+            </div>
+          </section>
         ) : null}
 
-        <button type="button" className="primary-button"
-          onClick={() => router.push('/profile/deep')}
-          style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
-          去看机制链解释 <ArrowRight size={18} style={{ marginLeft: 6 }} />
-        </button>
-        <button type="button" className="secondary-button"
-          onClick={() => router.push('/rehearsal')}
-          style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
-          进入沟通预演
-        </button>
-        <button type="button" className="secondary-button"
-          onClick={() => router.push('/child-voice')}
-          style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600 }}>
-          听听孩子自己怎么说
-        </button>
-        <NavTabs />
-      </div>
-    </AppShell>
+        <section className="section">
+          <h2 className="section-title">下一步</h2>
+          <div className="profile-data-grid">
+            <button type="button" className="profile-data-card" onClick={() => router.push('/profile/deep')}>
+              <h3>机制链解释</h3>
+              <p>家长动作与孩子保护策略如何互相强化</p>
+            </button>
+            <button type="button" className="profile-data-card" onClick={() => router.push('/profile/evidence')}>
+              <h3>判断依据</h3>
+              <p>每条证据的来源与关联说明</p>
+            </button>
+            <button type="button" className="profile-data-card" onClick={() => router.push('/rehearsal')}>
+              <h3>沟通预演</h3>
+              <p>结合画像，试一句更安全的说法</p>
+            </button>
+            <button type="button" className="profile-data-card" onClick={() => router.push('/daily')}>
+              <h3>回到交流</h3>
+              <p>带着这份理解继续聊今天的事</p>
+            </button>
+          </div>
+        </section>
+      </HiFiMainShell>
+    </OnboardingGuard>
   )
 }
-function NavTabs() {
+
+export default function ProfileResultPage() {
   return (
-    <BottomNavTabs active="profile" />
+    <Suspense
+      fallback={
+        <HiFiMainShell activeTab="profile">
+          <div className="loading-wrap" style={{ minHeight: '50vh' }}>
+            <div className="loader" aria-hidden="true" />
+            <h2>加载中…</h2>
+          </div>
+        </HiFiMainShell>
+      }
+    >
+      <ProfileResultContent />
+    </Suspense>
   )
 }

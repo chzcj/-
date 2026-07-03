@@ -1,209 +1,417 @@
 'use client'
-import { RefreshCw } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { AppShell } from '@/components/layout/AppShell'
-import { PageHeader } from '@/components/ui/PageHeader'
-import { SpecialCollectionView } from '@/components/special/SpecialCollectionView'
-import { LightFollowupView } from '@/components/special/LightFollowupView'
-import type { FeatureUiMode } from '@/types/feature-ui'
 
-/* ================================================================
-   沟通预演（交付文档 5.2 / 5.3）——单页状态机，接入共用 5.3 切换基座。
-   special_collection（采集原话）→ result_view（画像感知预演）⇄ light_followup（继续追问）。
-   ================================================================ */
+import { useEffect, useRef, useState } from 'react'
+import { HiFiInputZone } from '@/components/hifi/HiFiInputZone'
+import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
+import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
+import {
+  SimulationParentBubble,
+  SimulationSecondMeBubble,
+} from '@/components/rehearsal/SimulationSecondMeBubble'
+import type { RehearsalAnalyzeData } from '@/components/rehearsal/RehearsalOutput'
+import {
+  CUSTOM_SCENE,
+  REHEARSAL_SCENES,
+  type RehearsalScene,
+} from '@/data/rehearsalScenes'
+import { getLatestProfile } from '@/lib/storage/profileStorage'
+import { saveTaskFromRehearsal } from '@/lib/storage/taskStorage'
+import type { InputMode } from '@/types/childos'
 
-type ChildReaction = { immediateReaction: string; innerReaction: string; behaviorRisk: string }
-type AnalyzeData = {
-  uiMode?: FeatureUiMode
-  profileAware?: boolean
-  acknowledgement?: string
-  collectionGuide?: string
-  // profile-aware 结果
-  childLikelyHearing?: string
-  possibleChildReaction?: ChildReaction
-  riskPoints?: string[]
-  saferVersion?: string
-  whyThisIsSafer?: string
-  avoidPhrases?: string[]
-  // 通用结果
-  headline?: string
-  explanation?: string
-  childMayHear?: string[]
-  stuckPoint?: string
-  suggestedWording?: string
+type SimulationStep = 'entry' | 'confirm' | 'active' | 'end'
+
+type FeedItem =
+  | { type: 'parent'; text: string }
+  | { type: 'child'; childText: string; hintTitle: string; hintText: string }
+  | { type: 'thinking' }
+
+function mapAnalyzeToSecondMe(data: RehearsalAnalyzeData) {
+  const childText =
+    data.possibleChildReaction?.immediateReaction ||
+    (Array.isArray(data.childMayHear) ? data.childMayHear[0] : data.childMayHear) ||
+    data.childLikelyHearing ||
+    '……（孩子暂时没有接话）'
+
+  const hintTitle = data.headline || '他可能是这样听到的'
+  const hintText =
+    data.possibleChildReaction?.innerReaction ||
+    data.explanation ||
+    data.whyThisIsSafer ||
+    data.stuckPoint ||
+    '可以继续换一句更轻的开口方式。'
+
+  return { childText, hintTitle, hintText }
 }
 
-// 「你可以这样讲」——对齐 5.2.1，引导家长把原话与意图一起讲。
-const GUIDES = [
-  '这次你真正想达成什么（让他开始 / 承认卡点 / 修复关系…）',
-  '你最担心他怎么反应（顶嘴 / 沉默 / 关门 / 表面答应…）',
-  '过去类似的话，通常怎么收场',
-  '说之前是不是已经有冲突、疲惫、考试或手机压力',
-]
-
 export default function RehearsalPage() {
-  const router = useRouter()
-  const [mode, setMode] = useState<FeatureUiMode>('special_collection')
+  const [step, setStep] = useState<SimulationStep>('entry')
+  const [selectedId, setSelectedId] = useState(REHEARSAL_SCENES[0].id)
+  const [customText, setCustomText] = useState('')
+  const [summary, setSummary] = useState(REHEARSAL_SCENES[0].summary)
+  const [sceneTitle, setSceneTitle] = useState(REHEARSAL_SCENES[0].title)
+  const [statusText, setStatusText] = useState('当前状态：孩子有点烦，防御比较高')
+  const [feed, setFeed] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<AnalyzeData | null>(null)
-  const [originalText, setOriginalText] = useState('') // 原话，追问时携带上下文
+  const [round, setRound] = useState(0)
+  const [endData, setEndData] = useState<RehearsalAnalyzeData | null>(null)
+  const [taskSaved, setTaskSaved] = useState(false)
+  const [rehearsalTraceId, setRehearsalTraceId] = useState<string | undefined>()
+  const feedEndRef = useRef<HTMLDivElement>(null)
 
-  async function analyze(parentText: string) {
-    if (!parentText.trim() || loading) return
+  const selectedScene: RehearsalScene =
+    selectedId === CUSTOM_SCENE.id
+      ? { ...CUSTOM_SCENE, summary: customText.trim() || CUSTOM_SCENE.summary }
+      : REHEARSAL_SCENES.find((s) => s.id === selectedId) || REHEARSAL_SCENES[0]
+
+  useEffect(() => {
+    try {
+      const seed = sessionStorage.getItem('childos_rehearsal_scene_seed')
+      if (!seed) return
+      sessionStorage.removeItem('childos_rehearsal_scene_seed')
+      const matched = REHEARSAL_SCENES.find(
+        (s) => s.title.includes(seed) || s.seed === seed || seed.includes(s.title.slice(0, 2))
+      )
+      if (matched) {
+        setSelectedId(matched.id)
+        setSummary(matched.summary)
+        setSceneTitle(matched.title)
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  useEffect(() => {
+    feedEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [feed, loading, step])
+
+  function selectScenario(scene: RehearsalScene) {
+    setSelectedId(scene.id)
+    if (scene.id === CUSTOM_SCENE.id) {
+      setSceneTitle(CUSTOM_SCENE.title)
+      setSummary(customText.trim() || CUSTOM_SCENE.summary)
+    } else {
+      setSceneTitle(scene.title)
+      setSummary(scene.summary)
+    }
+  }
+
+  function startSimulation() {
+    const nextSummary =
+      selectedId === CUSTOM_SCENE.id
+        ? customText.trim() || CUSTOM_SCENE.summary
+        : selectedScene.summary
+    setSummary(nextSummary)
+    setStep('confirm')
+  }
+
+  function enterRehearsal() {
+    const scene = selectedScene
+    setRound(0)
+    setEndData(null)
+    setTaskSaved(false)
+    setStatusText('当前状态：孩子有点烦，防御比较高')
+    setFeed([
+      {
+        type: 'child',
+        childText: scene.openingChild || '你别催我行不行，我又不是不写。',
+        hintTitle: scene.openingHintTitle || '他可能是这样听到的',
+        hintText:
+          scene.openingHint ||
+          '他现在不一定是在认真回答“什么时候写”，更像是在把你推开。',
+      },
+    ])
+    setStep('active')
+  }
+
+  async function sendSimulationText(text: string, _mode: InputMode) {
+    const value = text.trim()
+    if (!value || loading || step !== 'active') return
+
+    setFeed((prev) => [...prev, { type: 'parent', text: value }, { type: 'thinking' }])
     setLoading(true)
+
     try {
       const res = await fetch('/api/rehearsal/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parentText, fromSpecialFeature: true }),
+        body: JSON.stringify({
+          parentText: `【预演场景：${sceneTitle}】\n场景摘要：${summary}\n家长说：${value}`,
+          fromSpecialFeature: true,
+        }),
       })
       const json = await res.json()
+      setFeed((prev) => prev.filter((item) => item.type !== 'thinking'))
+
       if (json.ok && json.data) {
-        const d = json.data as AnalyzeData
-        setData(d)
-        // 有原话→result_view；空原话→后端回 special_collection 引导
-        setMode(d.uiMode === 'special_collection' ? 'special_collection' : 'result_view')
+        const data = json.data as RehearsalAnalyzeData & { traceId?: string }
+        if (data.traceId) setRehearsalTraceId(data.traceId)
+        const reply = mapAnalyzeToSecondMe(data)
+        setEndData(data)
+        setFeed((prev) => [...prev, { type: 'child', ...reply }])
+        setStatusText(
+          reply.hintTitle.includes('松动') || reply.hintTitle.includes('具体')
+            ? '当前状态：孩子开始谈条件，有一点松动'
+            : '当前状态：孩子仍有防御，需要先降压力'
+        )
+        setRound((r) => {
+          const next = r + 1
+          if (next >= 4) {
+            window.setTimeout(() => setStep('end'), 700)
+          }
+          return next
+        })
+      } else {
+        setFeed((prev) => [
+          ...prev,
+          {
+            type: 'child',
+            childText: '……（这次没有模拟出来，你可以换一句更轻的试试）',
+            hintTitle: '预演暂时中断',
+            hintText: json.error?.message || '网络或分析服务暂时不可用。',
+          },
+        ])
       }
-    } catch {} finally {
+    } catch {
+      setFeed((prev) => prev.filter((item) => item.type !== 'thinking'))
+      setFeed((prev) => [
+        ...prev,
+        {
+          type: 'child',
+          childText: '……（这次没有模拟出来）',
+          hintTitle: '网络不太稳定',
+          hintText: '请稍后再试，或换一句更轻的开口方式。',
+        },
+      ])
+    } finally {
       setLoading(false)
     }
   }
 
-  // 首次采集：记住原话
-  function submitCollection(text: string) {
-    setOriginalText(text)
-    void analyze(text)
+  function restartSimulation() {
+    setCustomText('')
+    setSelectedId(REHEARSAL_SCENES[0].id)
+    setSummary(REHEARSAL_SCENES[0].summary)
+    setSceneTitle(REHEARSAL_SCENES[0].title)
+    setFeed([])
+    setEndData(null)
+    setTaskSaved(false)
+    setRehearsalTraceId(undefined)
+    setStep('entry')
   }
 
-  // 结果后追问：携带原话上下文重新预演
-  function submitFollowup(text: string) {
-    void analyze(`${originalText}\n\n（家长追问：${text}）`)
+  function saveDirection() {
+    const title = endData?.taskTitle || endData?.saferVersion || endData?.suggestedWording
+    if (!title?.trim()) return
+    void saveTaskFromRehearsal(title.trim(), '预演方向', rehearsalTraceId)
+    setTaskSaved(true)
   }
+
+  function tryTonight() {
+    const title = endData?.taskTitle || endData?.saferVersion || endData?.suggestedWording || summary
+    void saveTaskFromRehearsal(title.trim(), '沟通预演', rehearsalTraceId)
+    setTaskSaved(true)
+  }
+
+  const profile = getLatestProfile()
+  const confirmBullets = profile?.coreJudgment
+    ? [
+        truncate(profile.coreJudgment, 72),
+        profile.supportFocus ? truncate(profile.supportFocus, 72) : '他对“被站在旁边盯着”比较敏感。',
+        '他不一定是不想配合，更可能是对开始之后会被催、被改、被评价有防御。',
+      ]
+    : [
+        '孩子最近几次冲突多发生在作业开始前。',
+        '他对“被站在旁边盯着”比较敏感。',
+        '他不一定是不想写，更可能是对“开始之后会被催、被检查、被评价”有防御。',
+      ]
 
   return (
-    <AppShell>
-      <div className="page">
-        <PageHeader title="沟通预演" showBack onBack={() => router.push('/home')} />
-
-        {mode === 'special_collection' ? (
-          <SpecialCollectionView
-            title="把你准备对孩子说的话，先预演一遍"
-            subtitle="先看看这句话到了孩子那里会被听成什么。把原话写进来，不用润色；顺带讲讲下面这些会更准。"
-            inputGuides={GUIDES}
-            placeholder="把你准备对孩子说的原话直接写进来，比如：你再这样拖下去，手机就别想要了。我其实是想让他今晚把作业开个头，最怕他一听就摔门……"
-            primaryActionText="预演一下他会怎么听"
-            loadingText="正在结合孩子画像分析这句话…"
-            loading={loading}
-            extraGuide={data?.collectionGuide || undefined}
-            onSubmit={submitCollection}
+    <OnboardingGuard>
+      <HiFiMainShell
+        activeTab="rehearsal"
+        showInput={step === 'active'}
+        inputZone={
+          <HiFiInputZone
+            busy={loading}
+            placeholder="你想怎么接？输入你真实想说的话……"
+            onSubmit={sendSimulationText}
           />
-        ) : null}
-
-        {mode === 'result_view' && data ? (
-          <div>
-            {originalText ? (
-              <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)', marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#A1A1A6', marginBottom: 4 }}>你原本想说</div>
-                <div style={{ fontSize: 15, lineHeight: 1.5, color: '#1D1D1F', whiteSpace: 'pre-wrap' }}>{originalText.split('\n\n（家长追问：')[0]}</div>
+        }
+      >
+        <div className={`simulation-layout${step === 'entry' ? '' : ' hidden'}`} id="simulationEntry">
+          <section className="section">
+            <div className="scenario-grid" id="scenarioGrid">
+              {REHEARSAL_SCENES.map((scene) => (
+                <button
+                  key={scene.id}
+                  type="button"
+                  className={`scenario-card${selectedId === scene.id ? ' active' : ''}`}
+                  onClick={() => selectScenario(scene)}
+                >
+                  <span className="scenario-title">{scene.title}</span>
+                  <span className="scenario-desc">{scene.subtitle}</span>
+                </button>
+              ))}
+              <div
+                className={`scenario-card custom-scenario${selectedId === CUSTOM_SCENE.id ? ' active' : ''}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => selectScenario(CUSTOM_SCENE)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') selectScenario(CUSTOM_SCENE)
+                }}
+              >
+                <span className="scenario-title">{CUSTOM_SCENE.title}</span>
+                <span className="scenario-desc">{CUSTOM_SCENE.subtitle}</span>
+                <textarea
+                  className="custom-scene-input"
+                  id="simulationSceneInput"
+                  rows={3}
+                  placeholder={CUSTOM_SCENE.placeholder}
+                  value={customText}
+                  onChange={(e) => {
+                    setCustomText(e.target.value)
+                    if (selectedId === CUSTOM_SCENE.id) {
+                      setSummary(e.target.value.trim() || CUSTOM_SCENE.summary)
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
               </div>
-            ) : null}
-
-            {data.profileAware ? renderProfileAware(data) : renderGeneric(data)}
-
-            {/* 结果后回到轻追问（5.3.7 轻互动态） */}
-            <div style={{ marginTop: 16 }}>
-              <LightFollowupView
-                acknowledgement=""
-                question="想问第一句怎么开口，或这个说法会不会太重？也可以告诉我你试了之后他的反应。"
-                loading={loading}
-                onSubmit={submitFollowup}
-              />
             </div>
+          </section>
 
-            <button type="button" className="secondary-button"
-              onClick={() => { setMode('special_collection'); setData(null); setOriginalText('') }}
-              style={{ width: '100%', borderRadius: 999, height: 48, fontSize: 15, fontWeight: 600, marginTop: 14 }}>
-              <RefreshCw size={16} style={{ marginRight: 6 }} />换一句重新预演
+          <div className="simulation-start-actions">
+            <button className="primary-button wide-button" type="button" onClick={startSimulation}>
+              开始预演
             </button>
+            <p className="boundary-note">
+              这里不是预测孩子一定会这样说，而是基于已有记录，帮你提前看见可能的沟通走向。
+            </p>
           </div>
-        ) : null}
-      </div>
-    </AppShell>
+        </div>
+
+        <div className={`simulation-layout${step === 'confirm' ? '' : ' hidden'}`} id="simulationConfirm">
+          <section className="section">
+            <h2 className="section-title">这次先按这个场景来练</h2>
+            <div className="profile-block">
+              <h3>场景摘要：</h3>
+              <p id="simulationSummary">{summary}</p>
+            </div>
+          </section>
+
+          <section className="section">
+            <div className="profile-block">
+              <h3>我会参考这些理解：</h3>
+              <ul>
+                {confirmBullets.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          <section className="section">
+            <div className="profile-block">
+              <h3>开始前提醒：</h3>
+              <p>你不用选标准答案。你每一轮都用自己的话输入，我来模拟孩子可能怎么接。</p>
+            </div>
+            <button className="primary-button wide-button" type="button" onClick={enterRehearsal}>
+              进入预演
+            </button>
+          </section>
+        </div>
+
+        <div className={`simulation-layout${step === 'active' ? '' : ' hidden'}`} id="simulationActive">
+          <section className="section">
+            <div className="rehearsal-header">
+              <h2 id="rehearsalTitle">沟通预演｜{sceneTitle}</h2>
+              <p id="rehearsalStatus">{statusText}</p>
+            </div>
+          </section>
+
+          <section className="section">
+            <h2 className="section-title">预演对话</h2>
+            <div className="simulation-feed" id="simulationFeed">
+              {feed.map((item, index) => {
+                if (item.type === 'parent') return <SimulationParentBubble key={index} text={item.text} />
+                if (item.type === 'thinking') {
+                  return (
+                    <div key={index} className="message-row ai">
+                      <div className="bubble thinking-bubble">
+                        <span className="thinking-dots" aria-hidden="true">
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                      </div>
+                    </div>
+                  )
+                }
+                return (
+                  <SimulationSecondMeBubble
+                    key={index}
+                    childText={item.childText}
+                    hintTitle={item.hintTitle}
+                    hintText={item.hintText}
+                  />
+                )
+              })}
+              <div ref={feedEndRef} />
+            </div>
+          </section>
+        </div>
+
+        <div className={`simulation-layout${step === 'end' ? '' : ' hidden'}`} id="simulationEnd">
+          <section className="section">
+            <h2 className="section-title">这次预演里，我看到的重点</h2>
+            <div className="profile-block">
+              <h3>1. 孩子最容易被触发的是</h3>
+              <p>
+                {endData?.childLikelyHearing ||
+                  endData?.riskPoints?.[0] ||
+                  '当你解释“我是怕你拖到很晚”，或者说“你每次都拖”时，孩子容易听成：你还是在盯他、评价他。'}
+              </p>
+            </div>
+            <div className="profile-block">
+              <h3>2. 这次比较有用的方向是</h3>
+              <p>{endData?.whyThisIsSafer || endData?.saferVersion || '先减少“被站在旁边看着”的感觉，再谈开始。'}</p>
+            </div>
+            <div className="profile-block">
+              <h3>3. 现实里可以试的不是一句话，而是一段做法</h3>
+              <p>
+                {endData?.suggestedWording ||
+                  endData?.saferVersion ||
+                  '今晚如果又卡在作业开始前，可以先让孩子自己选第一项，你暂时离开十分钟。'}
+              </p>
+            </div>
+            <div className="profile-block">
+              <h3>4. 这次还不能直接进入档案的内容</h3>
+              <p>
+                预演里的孩子反应只是模拟，不等于真实证据。只有你今晚真的试了，并反馈孩子实际怎么反应，才会更新档案。
+              </p>
+            </div>
+            <div className="end-actions">
+              <button type="button" className="secondary-button" onClick={saveDirection} disabled={taskSaved}>
+                {taskSaved ? '已保存' : '保存这个方向'}
+              </button>
+              <button type="button" className="secondary-button" onClick={tryTonight} disabled={taskSaved}>
+                今晚试一次
+              </button>
+              <button type="button" className="primary-button" onClick={restartSimulation}>
+                重新练一遍
+              </button>
+            </div>
+          </section>
+        </div>
+      </HiFiMainShell>
+    </OnboardingGuard>
   )
 }
 
-function renderProfileAware(d: AnalyzeData) {
-  return (
-    <div className="card" style={{ padding: 22, borderRadius: 28, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)' }}>
-      {d.childLikelyHearing ? <Section title="孩子可能先听成">{d.childLikelyHearing}</Section> : null}
-      {d.possibleChildReaction ? (
-        <Section title="他可能的反应">
-          {`当下：${d.possibleChildReaction.immediateReaction}\n心里：${d.possibleChildReaction.innerReaction}\n行为风险：${d.possibleChildReaction.behaviorRisk}`}
-        </Section>
-      ) : null}
-      {d.riskPoints?.length ? <ListSection title="容易踩的点" items={d.riskPoints} /> : null}
-      {d.saferVersion ? (
-        <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.05)', border: '1px solid rgba(110,106,248,0.10)', marginTop: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>更建议这样开口</div>
-          <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{d.saferVersion}</div>
-          {d.whyThisIsSafer ? <div style={{ fontSize: 13, lineHeight: 1.55, color: '#6E6E73', marginTop: 8 }}>{d.whyThisIsSafer}</div> : null}
-        </div>
-      ) : null}
-      {d.avoidPhrases?.length ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-          {d.avoidPhrases.map((p, i) => <span key={i} className="chip" style={{ fontSize: 12, color: '#C0392B', background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.12)' }}>避免：{p}</span>)}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function renderGeneric(d: AnalyzeData) {
-  return (
-    <div className="card" style={{ padding: 22, borderRadius: 28, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)' }}>
-      {d.headline ? <div style={{ fontSize: 16, fontWeight: 700, color: '#1D1D1F', marginBottom: 10, lineHeight: 1.4 }}>{d.headline}</div> : null}
-      {d.explanation ? <div style={{ fontSize: 15, lineHeight: 1.6, color: '#6E6E73', marginBottom: 18 }}>{d.explanation}</div> : null}
-      {d.childMayHear?.length ? (
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>孩子可能先听成</div>
-          {d.childMayHear.map((h, i) => (
-            <div key={i} style={{ fontSize: 15, color: '#1D1D1F', padding: '6px 0', borderTop: i > 0 ? '1px solid rgba(29,29,31,0.04)' : 'none' }}>{h}</div>
-          ))}
-        </div>
-      ) : null}
-      {d.stuckPoint ? (
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>更容易卡住的地方</div>
-          <div style={{ fontSize: 15, lineHeight: 1.55, color: '#6E6E73' }}>{d.stuckPoint}</div>
-        </div>
-      ) : null}
-      {d.suggestedWording ? (
-        <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.05)', border: '1px solid rgba(110,106,248,0.10)' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>更建议这样开口</div>
-          <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{d.suggestedWording}</div>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function Section({ title, children }: { title: string; children: string }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 15, lineHeight: 1.6, color: '#1D1D1F', whiteSpace: 'pre-wrap' }}>{children}</div>
-    </div>
-  )
-}
-
-function ListSection({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>{title}</div>
-      <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {items.map((it, i) => <li key={i} style={{ fontSize: 14, lineHeight: 1.55, color: '#1D1D1F' }}>{it}</li>)}
-      </ul>
-    </div>
-  )
+function truncate(text: string, max = 72) {
+  const value = text.trim()
+  if (value.length <= max) return value
+  return `${value.slice(0, max).trim()}…`
 }

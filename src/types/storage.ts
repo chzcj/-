@@ -1,7 +1,11 @@
 export type EntryType =
+  | 'daily'
+  | 'homework'
+  | 'communication'
+  | 'family'
+  /** @deprecated 旧路由/数据兼容 */
   | 'study'
   | 'routine'
-  | 'communication'
   | 'emotion'
   | 'environment'
   | 'child_voice'
@@ -147,5 +151,6 @@ export type ChildOSLocalStorageV1 = {
   evidenceRecords: LocalEvidenceRecord[]
   verificationPoints: LocalVerificationPoint[]
   dailyObservations: LocalDailyObservation[]
+  parentInfo?: { identity: string; nickname: string; updatedAt: number }
   updatedAt: string
 }
