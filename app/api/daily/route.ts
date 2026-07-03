@@ -1,9 +1,10 @@
 import { ok, fail, failFromError } from '@/lib/api-response'
-import { runOrchestrationPipeline, deriveLinkedAreas, buildDailyCards, buildTurnEvent } from '@/lib/server/orchestration/pipeline'
+/** @deprecated 请使用 POST /api/daily/stream — 本路由仅保留兼容，逻辑已对齐 stream（L1 optional + 不触发 daily_deep） */
+import { buildTurnEvent } from '@/lib/server/orchestration/pipeline'
+import { runDailyTurnBff } from '@/lib/server/daily/daily-turn-bff'
 import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
-import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { saveTurnEvent } from '@/lib/server/memory/database-manager'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
@@ -14,7 +15,10 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { text = '', maturityLevel } = body
+    const { text = '', maturityLevel, recentSectionIds: rawRecent } = body
+    const recentSectionIds = Array.isArray(rawRecent)
+      ? rawRecent.filter((id: unknown) => typeof id === 'string')
+      : []
 
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return fail('EMPTY_INPUT', '请输入内容', undefined, 400)
@@ -24,50 +28,50 @@ export async function POST(request: Request) {
     const traceId = createId('trace')
     const tenant = await resolveTenant()
 
-    const output = await runOrchestrationPipeline({
-      userText,
-      maturityLevel,
-      tenant
-    })
+    const result = await runDailyTurnBff({ userText, maturityLevel, tenant, traceId, recentSectionIds })
 
-    // 前台只暴露家长可见信息：回复正文 + 关联领域名。
-    // 内部判断字段（routingDecision / memoryAction 等）不出前台（交付文档 6.5 / 11.2 / 13.3 P0）。
-    const visibleReply = output.frontResponseDraft
-    const linkedAreas = deriveLinkedAreas(userText)
-    // 家长可读卡片（交付文档 4.5）：与 stream 路由对齐，安全回复不挂卡片。
-    const cards = output.relationshipToExistingModel.type === 'safety' ? {} : buildDailyCards(output)
-
-    // 后台记忆写入异步执行，不阻塞前台回复（交付文档 6.3 / 12.4）。
-    // 写入失败只记录日志、不影响前台返回；重试机制由后续 job_queue 改进承接。
-    const writePlan = buildMemoryWritePlan({
-      tenant,
-      dailyUpdates: [createDailyUpdate(
-        userText,
-        output.relationshipToExistingModel.type,
-        output.retrievedContext.matchedMechanisms,
+    // L1 optional：与 /api/daily/stream 一致，insufficient / safety 跳过 L1 写入；L0 TurnEvent 仍总写。
+    const relType = result.output.relationshipToExistingModel.type
+    const shouldWriteL1 = !result.isSafety && relType !== 'insufficient'
+    if (shouldWriteL1) {
+      const writePlan = buildMemoryWritePlan({
         tenant,
-        traceId
-      )],
-      rationale: {
-        whyUpdate: '日常对话调度完成',
-        whyNotPromoteSomeItems: output.routingDecision.frontResponseType === 'light_response' ? '轻回应，不升级为长期判断' : '',
-        riskOfOvergeneralization: '',
-        nextVerificationNeed: output.routingDecision.needFollowup ? output.routingDecision.followupQuestion : ''
-      }
-    })
+        dailyUpdates: [createDailyUpdate(
+          userText,
+          relType,
+          result.output.retrievedContext.matchedMechanisms,
+          tenant,
+          traceId
+        )],
+        rationale: {
+          whyUpdate: '日常对话调度完成',
+          whyNotPromoteSomeItems: result.output.routingDecision.frontResponseType === 'light_response' ? '轻回应，不升级为长期判断' : '',
+          riskOfOvergeneralization: '',
+          nextVerificationNeed: result.output.routingDecision.needFollowup ? result.output.routingDecision.followupQuestion : ''
+        }
+      })
+      void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
+    }
 
-    // 后台记忆写入入队（可靠重试，文档 14.3）。plan 内 itemId 已固定 → executeWritePlan 幂等，无需去重键。
-    void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
-
-    // 日常深拆（Layer 2）：异步六维拆解 + 保守生成新假设 → memory_write → model_review。幂等键按 (tenant + sha(text)) 派生。
-    void enqueueJob('daily_deep', { text: userText, tenant, traceId }, `daily_deep_${deriveEpisodeId(userText, { familyId: tenant.familyId, childId: tenant.childId })}`, traceId)
-
-    // TurnEvent 输入快照（交付文档 7.2）：fire-and-forget，按 traceId 持久化喂给 Agent 的上下文+产出，供可复现审计。
     void saveTurnEvent(tenant, buildTurnEvent({
-      output, traceId, tenant, userMessage: userText, assistantReply: visibleReply, linkedAreas
+      output: result.output,
+      traceId,
+      tenant,
+      userMessage: userText,
+      assistantReply: result.finalText,
+      linkedAreas: result.linkedAreas,
+      sections: result.sections,
+      actions: result.actions,
     })).catch((err) => console.error(`[daily] TurnEvent 快照写入失败 traceId=${traceId}:`, err))
 
-    return ok({ traceId, visibleReply, linkedAreas, cards })
+    return ok({
+      traceId,
+      visibleReply: result.finalText,
+      linkedAreas: result.linkedAreas,
+      cards: result.cards,
+      sections: result.sections,
+      actions: result.actions,
+    })
   } catch (error) {
     return failFromError(error)
   }

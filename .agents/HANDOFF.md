@@ -24,6 +24,32 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 ```
 
 ---
+## 2026-07-04 02:52 | Cursor | 全面自检：真实调用验证 + 4 处隐患修复
+
+**做了什么（修复"看似改了实则没用"的隐患）**
+- `app/api/entry/analyze/route.ts`：episode idem key 由 `entry_${entryType}`（不带 tenant）改为 `deriveEpisodeId(rawText,{familyId,childId})`——原 key 多租户下第一个用户占用后其余被 `ON CONFLICT DO NOTHING` 吞掉，四模块 episode 沉淀对多用户失效；同时撤销 `facts≥2 跳过 entry_evidence`（按用户要求恢复总是入队，四模块一次性建档质量优先），entry_evidence idem key 改带 tenant+episodeId
+- `src/lib/server/jobs/queue.ts`：新增 `digestUpdateBucketKey`（每租户每天 1 次），memory_write 链式 digest_update 改用此 key——原 null key 每次 memory_write 都跑 2 次 LLM（brief+board），对齐同行 Mem0/Zep「后台周期性合并」范式
+- `app/api/board/route.ts`：自愈 digest_update idem key 由 null 改为 `digestUpdateBucketKey`（同频控）
+- `app/api/daily/route.ts`（@deprecated）：对齐 stream——删 daily_deep 无条件入队 + 加 L1 optional（insufficient/safety 跳过 memory_write），防意外调用绕过降频
+
+**为什么（同行研究 + 真实调用验证结论）**
+- DeepSeek cache 字段名经官方文档确认为 `prompt_cache_hit_tokens`/`prompt_cache_miss_tokens`，ark-agents 日志真实捕获；cache 要求前缀 ≥1024 tokens 且字节一致，parentFacingStyle 4.2k≈2.1k tokens 达标
+- 全链路「真实调用」核实：entry/analyze→runEntryFollowUp/Summary→buildEntryAnalyzeSystem（含 parentFacingStyle）✅；registry.generated 真实重生（新版 parentFacingStyle）✅；getTurnEventByTraceId DB 主键直查可用 ✅；understanding-card useEffect 真实调 /api/daily/deep-expand（sessionStorage 幂等）✅；startJobPoller 经 instrumentation.ts 启动 + ecosystem NODE_ENV=production ✅；前端调 /api/daily/stream（deprecated 路由无前端调用）✅；<50 字硬追问不调 AI ✅；ASR 降级按钮 disabled ✅；daily/stream shouldWriteL1 真实生效 ✅
+- 同行 Mem0 2026 单遍 ADD-only（冲突推迟到检索 recency-weighted rerank，降 60-70% 写入 LLM）；准入控制两阶段（规则过滤高召回→轻量 LLM 评分高精度）——我们的 L1 optional 即规则过滤层，Type Prior 按层分类已具备
+
+**验证**
+- `npm run typecheck` ✅ `npm run build` ✅（build-prompts 重生 35 prompt）
+- 部署仍阻塞：`SSH_HOST`/`SSH_PASS`/`AUTH_TOKEN` shell 变量未设置
+
+**下一步**
+- 用户 export 三变量后 `npm run deploy`，验证 readiness + pm2 log cache 命中率
+- 观察 digest_update/model_review 每日桶频控后后台 LLM 调用数下降
+
+**风险/冲突**
+- digest_update 改每日桶后，当天首次触发后才建 brief，当天后续新证据要等明天进 brief（rebuildBriefAndBoard 读全量记忆，首次即反映当前全量，可接受）
+- entry_evidence 恢复总是入队：四模块每模块 +1 次后台深度拆解（一次性，非高频）
+
+---
 ## 2026-07-04 02:50 | Cursor | token 优化 + 记忆分层 + 四模块质量
 
 **做了什么**

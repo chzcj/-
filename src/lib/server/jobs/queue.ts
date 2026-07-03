@@ -92,14 +92,22 @@ export function modelReviewBucketKey(tenant: TenantId): string {
   return `model_review:${tenant.familyId}:${tenant.childId}:${dayBucket}`
 }
 
+// Brief/Board 重建限流键：按「自然日 + 租户」时间桶。每租户每天至多重建一次 familyBrief + boardSnapshot。
+// 同行最佳实践（Mem0/Zep）：后台周期性合并而非每次写入触发，避免每条 memory_write 都跑 2 次 LLM。
+// rebuildBriefAndBoard 内部 collectEvidence 读全量记忆 + contentHash 指纹短路，故每日 1 次足够新鲜。
+export function digestUpdateBucketKey(tenant: TenantId): string {
+  const dayBucket = new Date().toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
+  return `digest_update:${tenant.familyId}:${tenant.childId}:${dayBucket}`
+}
+
 // 两个 handler。executeWritePlan/ingestEpisodeStrict 内绝不吞异常，异常上抛驱动重试。
 async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   if (jobType === 'memory_write') {
     const p = payload as MemoryWritePayload
     await executeWritePlan(p.plan, p.tenant)
     // 链式触发 Brief/Board 更新（文档 12.1：后台写入→Brief→看板）。
-    // null 键强制入队；真正去重靠 rebuildBriefAndBoard 内 content_hash 短路（同证据集空跑）。
-    await enqueueJob('digest_update', { tenant: p.tenant }, null, null)
+    // 每日桶频控：每租户每天至多重建 1 次（同行 Mem0/Zep 后台周期性合并范式）；rebuildBriefAndBoard 内 content_hash 短路兜底。
+    await enqueueJob('digest_update', { tenant: p.tenant }, digestUpdateBucketKey(p.tenant), null)
     // 写了待验证假设（综合/诊断后）→ 链式触发模型复核（反证收集+置信度，P2 后台深）。
     // 仅在有假设时触发，避免在 daily 等普通写入上空跑 LLM。复用每日桶 key → 每租户每天最多 1 次。
     if ((p.plan.pendingHypothesesToCreateOrUpdate?.length || 0) > 0) {

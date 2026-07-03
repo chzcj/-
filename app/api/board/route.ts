@@ -2,7 +2,7 @@ import { ok, waitMock } from '@/lib/api-response'
 import { callAgentJson } from '@/lib/server/ark-agents'
 import { getRequestIdentity } from '@/lib/server/auth'
 import { loadProfileSnapshotContext, loadLatestBoardSnapshot } from '@/lib/server/db'
-import { enqueueJob } from '@/lib/server/jobs/queue'
+import { digestUpdateBucketKey, enqueueJob } from '@/lib/server/jobs/queue'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { createId } from '@/lib/storage/storageIds'
 
@@ -70,8 +70,9 @@ export async function GET(request: Request) {
     return undefined
   })
 
-  // 3) 自愈入队（null 键，每次 miss 都入队，靠 content_hash 短路防重复），让下次走快照。传 traceId 关联前台请求与后台 job。
-  void enqueueJob('digest_update', { tenant: { familyId: identity.familyId, childId: identity.childId } }, null, traceId)
+  // 3) 自愈入队（每日桶频控：每租户每天至多重建 1 次 brief/board；rebuildBriefAndBoard 内 content_hash 短路兜底）。
+  //    传 traceId 关联前台请求与后台 job；pending:true → 前台显示"正在整理"并轮询。
+  void enqueueJob('digest_update', { tenant: { familyId: identity.familyId, childId: identity.childId } }, digestUpdateBucketKey({ familyId: identity.familyId, childId: identity.childId }), traceId)
 
   // pending:true → 还没持久化快照（digest_update 正在后台建）；前台据此显示"正在整理"并轮询。
   return ok<BoardSnapshot>({ ...normalizeBoard(board || {}), pending: true })

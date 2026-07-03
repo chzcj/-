@@ -1,14 +1,20 @@
 import { ok, fail, failFromError } from '@/lib/api-response'
-import { callFastJson } from '@/lib/server/ark-agents'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
+import { fastAiFailureMessage, runEntryFollowUp, runEntrySummary } from '@/lib/server/entry-analyze'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
-import { createId } from '@/lib/storage/storageIds'
+import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 
 const TITLE_MAP: Record<string, string> = {
-  study: '学习作业', routine: '手机与日常节奏',
-  communication: '亲子沟通', emotion: '情绪压力', environment: '关系环境',
-  final: '五入口综合',
+  daily: '日常节奏',
+  homework: '学习作业',
+  communication: '亲子沟通',
+  family: '家庭支持',
+  study: '学习作业',
+  routine: '日常节奏',
+  emotion: '亲子沟通',
+  environment: '家庭支持',
+  final: '四模块综合',
 }
 
 export async function POST(request: Request) {
@@ -18,33 +24,28 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { entryType, rawText, stage } = body
     if (!entryType || !rawText) {
-      return fail('BAD_REQUEST', '缺少 entryType 或 rawText', undefined, 400)
+      return fail('BAD_REQUEST', '内容暂时没有收到，请返回重新录入。', undefined, 400)
     }
 
-    const topic = TITLE_MAP[entryType] || entryType
-
     if (stage === 'summary') {
-      const result = await callFastJson<{
-        mainJudgment: string; facts: string[]; pendingHypotheses: string[]; note: string
-      }>(
-        `你是 ChildOS 的阶段总结 agent。家长在"${topic}"入口填了一段描述。请你根据这段输入，写一个阶段总结。
-要求：mainJudgment 写当前阶段的核心判断（不贴标签，不直接采信家长的评价词如懒/不自觉/沉迷）；facts 提取 2-4 个可验证事实；pendingHypotheses 提 2-3 个候选假设（用"可能"开头）；note 写后续值得继续观察的方向。
-只输出 JSON，不输出 Markdown 或解释。`,
-        { entryType, rawText }
-      ).catch(() => undefined)
+      const { result, error } = await runEntrySummary(entryType, rawText)
 
-      // 入口采集 Episode 抽取入队。episodeId 随机（同入口允许重复提交各成一篇）；
-      // key=null 不去重；job 重试用 payload 内固定 episodeId 保证幂等。
       const tenant = await resolveTenant()
-      const episodeId = createId('ep')
+      // episodeId 确定派生（tenant + sha(rawText)）：同用户同文本重做 → upsert 同一行 + idem 去重；
+      // 不同用户/不同文本 → 各自 episodeId，不再因 idem key 不带 tenant 而被多租户互相吞掉。
+      const episodeId = deriveEpisodeId(rawText, {
+        familyId: tenant.familyId,
+        childId: tenant.childId,
+        sourceEventId: `entry_${entryType}`,
+      })
       void enqueueJob('episode_ingest', {
         text: rawText,
         ctx: { sourceEventId: `entry_${entryType}`, familyId: tenant.familyId, childId: tenant.childId, episodeId }
-      }, null, `entry_${entryType}`)
+      }, episodeId, `entry_${entryType}`)
 
-      // EntryEvidencePack(L3) 由后台「入口证据建造 Agent」深度生成（测评反馈：前台只返阶段反馈，证据包后台深拆）。
-      // 仅在真有 AI 结果时入队（前台快总结作 hint，深拆/写库在 entry_evidence job 异步完成；LLM 失败 job 内回退规则版）。
       if (result?.mainJudgment && TITLE_MAP[entryType] && entryType !== 'final') {
+        // 恢复：总是入队 entry_evidence 后台深度拆解（撤销此前 facts≥2 跳过逻辑）。
+        // 四模块是一次性建档，质量优先；entry_evidence 提供 cross-entry 综合所需的结构化证据包。
         void enqueueJob('entry_evidence', {
           entryType,
           rawText,
@@ -52,29 +53,24 @@ export async function POST(request: Request) {
           facts: Array.isArray(result.facts) ? result.facts : [],
           hypotheses: Array.isArray(result.pendingHypotheses) ? result.pendingHypotheses : [],
           tenant,
-        }, null, `entry_evd_${entryType}`)
+        }, `entry_evd_${tenant.familyId}_${tenant.childId}_${episodeId}`, `entry_${entryType}`)
       }
 
-      // 无 AI 结果（无 key / LLM 失败）→ 503 明确告知，而非 ok:true/data 空（前台据此显示重试）。
       if (!result?.mainJudgment) {
-        return fail('ENTRY_SUMMARY_UNAVAILABLE', '这一步暂时没有整理成功，可以稍后再试。', undefined, 503)
+        const message = fastAiFailureMessage(error)
+        console.error('[entry/analyze] summary failed', { entryType, error })
+        return fail('ENTRY_SUMMARY_UNAVAILABLE', message, undefined, 503)
       }
       return ok(result)
     }
 
-    const followUp = await callFastJson<{
-      shouldAsk: boolean; purpose: string; directions: string[]; voicePrompt: string
-    }>(
-      `你是 ChildOS 的入口追问 agent。家长在"${topic}"入口输入了一段描述。根据这段描述生成一个追问。
-要求：purpose 一句话说明追问的精确目的（帮家长把现场看得更具体）；directions 给 3-4 个候选思考方向（短标签）；voicePrompt 给一句口语化的追问提示（像面谈老师在问）。
-只输出 JSON，不输出 Markdown 或解释。`,
-      { entryType, rawText }
-    ).catch(() => undefined)
-
-    if (!followUp?.purpose) {
-      return fail('ENTRY_FOLLOWUP_UNAVAILABLE', '这一步暂时没有整理成功，可以稍后再试。', undefined, 503)
+    const { result, error } = await runEntryFollowUp(entryType, rawText)
+    if (!result || (result.shouldAsk !== false && !result.purpose)) {
+      const message = fastAiFailureMessage(error)
+      console.error('[entry/analyze] followUp failed', { entryType, error })
+      return fail('ENTRY_FOLLOWUP_UNAVAILABLE', message, undefined, 503)
     }
-    return ok(followUp)
+    return ok(result)
   } catch (error) {
     return failFromError(error)
   }
