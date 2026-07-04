@@ -82,7 +82,8 @@ export async function requireTextStream(
   system: string,
   task: string,
   payload: unknown,
-  onDelta?: (delta: string) => void
+  onDelta?: (delta: string) => void,
+  options?: { maxTokens?: number }
 ): Promise<string> {
   assertFastAiConfigured()
   let lastErr: unknown
@@ -92,7 +93,8 @@ export async function requireTextStream(
       const raw = await callFastTextStream(
         system,
         { task, ...(typeof payload === 'object' && payload ? payload : { input: payload }) },
-        onDelta || (() => {})
+        onDelta || (() => {}),
+        options
       )
       if (!raw?.trim()) throw new Error('LLM_EMPTY_OUTPUT')
       return filterParentFacingText(raw.trim())

@@ -8,6 +8,7 @@ import {
   getLatestEvidenceNetwork,
   getPendingHypotheses,
   getLatestBuiltProfileSnapshot,
+  saveBuiltProfileSnapshot,
   getFamilyInteractionCycles,
   getParentNarrativePattern,
   saveEvidenceNetwork,
@@ -350,5 +351,20 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<void> {
       updatedAt: now,
     }
     await saveParentNarrativePattern(pattern, tenant)
+  }
+
+  // share-layer 收尾：用最新深度机制刷新 built_profile_snapshots.deepMechanism，
+  // 让前端 /profile/result 渲染的 deepMechanism 与 evidence_networks 同步（不再停留在 synthesis 旧文本）。
+  if (builtSnapshot) {
+    const topMechanism = network.candidateMechanismMatrix[0]
+    const newDeepMechanism = topMechanism
+      ? `${topMechanism.mechanismName}：${topMechanism.description}`.slice(0, 200)
+      : builtSnapshot.deepMechanism
+    if (newDeepMechanism && newDeepMechanism !== builtSnapshot.deepMechanism) {
+      await saveBuiltProfileSnapshot(
+        { ...builtSnapshot, deepMechanism: newDeepMechanism, updatedAt: now },
+        tenant
+      )
+    }
   }
 }

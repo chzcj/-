@@ -305,7 +305,7 @@ export interface ChildStructureModel {
   primaryConditionalProfile: ConditionalProfile | null
   secondaryConditionalProfiles: ConditionalProfile[]
   dominantProtectiveStrategies: string[]
-  likelyFamilyInteractionPatterns: string[]
+  // likelyFamilyInteractionPatterns 已删（dead write：retrieval 统一从 L7 FamilyInteractionCycle 拼，不读此字段）
   learningSituationHypotheses: string[]
   emotionalPressureHypotheses: string[]
   trustAndCommunicationHypotheses: string[]

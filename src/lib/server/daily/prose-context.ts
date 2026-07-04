@@ -65,7 +65,8 @@ export function buildDailyProsePayload(output: OrchestrationOutput, userText: st
   const mode = resolveProseMode(output)
   const hasPack = packHasContent(ctx)
 
-  // retrievalPack：稳定子字段在前（跨轮不变），动态子字段在后（每轮变）
+  // retrievalPack：前端 AI 只读不思考的子集（见 docs/contracts/read-contract.md）。
+  // 稳定子字段在前（跨轮不变），动态子字段在后（每轮变）
   const retrievalPack = {
     childStructureModels: ctx.relevantChildStructureModel?.slice(0, 4) || [],
     entryEvidence: ctx.relevantEntryEvidencePacks?.slice(0, 4) || [],

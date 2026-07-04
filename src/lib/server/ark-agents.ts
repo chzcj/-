@@ -125,12 +125,13 @@ export async function callFastJson<T>(
   });
 }
 
-export async function callFastTextStream(system: string, payload: unknown, onDelta: (delta: string) => void): Promise<string | undefined> {
+export async function callFastTextStream(system: string, payload: unknown, onDelta: (delta: string) => void, options?: { maxTokens?: number }): Promise<string | undefined> {
   if (!isFastAIEnabled()) return undefined;
   return callOpenAICompatibleTextStream(
     {
       system,
-      user: `只输出要展示给用户的文本，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`
+      user: `只输出要展示给用户的文本，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
+      maxTokens: options?.maxTokens
     },
     onDelta
   );
@@ -183,7 +184,7 @@ async function callOpenAICompatibleJson<T>({
   }
 }
 
-async function callOpenAICompatibleTextStream({ system, user }: { system: string; user: string }, onDelta: (delta: string) => void): Promise<string | undefined> {
+async function callOpenAICompatibleTextStream({ system, user, maxTokens }: { system: string; user: string; maxTokens?: number }, onDelta: (delta: string) => void): Promise<string | undefined> {
   // idle 超时：每收到一个 chunk 就重置，只在「上游卡住、长时间无新数据」时 abort——不打断正常长输出。
   const controller = new AbortController();
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -208,7 +209,8 @@ async function callOpenAICompatibleTextStream({ system, user }: { system: string
         ],
         stream: true,
         stream_options: { include_usage: true },
-        temperature: fastTemp()
+        temperature: fastTemp(),
+        max_tokens: maxTokens ?? Number(process.env.FAST_AI_STREAM_MAX_TOKENS || 1024)
       })
     });
 

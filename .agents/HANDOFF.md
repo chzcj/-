@@ -485,3 +485,31 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - prompt cache 实际命中率需观察 LLM provider 计费面板；retrievalPack 稳定子字段在同一会话内机制不变时才稳定。
 - deep_mechanism_review 首次跑会调一次完整 LLM（~2458 tok SP），后续走 cache。
 - 未 commit/push（等用户确认后 push）。
+
+## 2026-07-05 04:35 | Cursor | 流式并行 + 字段合一 + 条件画像 bug 修复 + share-layer 收尾
+
+**做了什么**
+- 流式并行重构（`daily-turn-bff.ts`）：prose 与 section LLM 真并行（原串行——prose 全打完才启动 section LLM，注释说并行但代码是串行）。section 事件缓冲到 prose_complete 后 flush，保证 UI 顺序。section LLM TTFT 与 prose 流式重叠，prose 完成时 section 首字已就绪。ACTIONS_PAUSE_MS 300→0。
+- max_tokens 限制（`ark-agents.ts`/`llm-required.ts`/`parent-facing-copy.ts`）：流式 LLM 调用原无 max_tokens（用 provider 默认 4096），prose 1024 / section 2048，防 LLM 生成冗余被截浪费时长。
+- 条件画像 bug 修复（`profile-rewrite.ts`）：`structureModel?.primaryConditionalProfile`（对象）被当字符串塞进 LLM material，改为 `.childTendency` 取字符串。真实类型断点。
+- 互动模式 dead write 删除（`database.ts`/`decision-engine.ts`）：`ChildStructureModel.likelyFamilyInteractionPatterns` 写但不读（retrieval 统一从 L7 FamilyInteractionCycle 拼），删除字段+写入。互动模式真源唯一为 L7 cycles。
+- share-layer 收尾（`deep-mechanism/reviewer.ts`）：deep_mechanism 跑完同步刷新 `built_profile_snapshots.deepMechanism`，让前端 /profile/result 渲染的深度机制与 evidence_networks 一致（不再停留在 synthesis 旧文本）。
+- 前后端读取区分契约（`docs/contracts/read-contract.md`）：显式定义 FrontendReadSchema（前端 AI 只读子集：entryFacts/matchedMechanisms/familyPatterns/parentUnderstanding/childStructureModels）vs BackendReadSchema（deep_mechanism 读全量），prose-context.ts 注释引用。
+
+**为什么**
+- 用户点名流式慢：根因是 prose/section 串行（section LLM 等 prose 全完成才启动）+ 300ms actions pause + 无 max_tokens。BFF 层全部修复。
+- 条件画像两处合一：实际是"草案态（synthesis draft string）→ 成型态（ChildStructureModel 对象）"两阶段，非冗余；但 profile-rewrite 读对象当字符串是真 bug，统一取 .childTendency。
+- 互动模式三处合一：L5 ChildStructureModel.likelyFamilyInteractionPatterns 是 dead write（retrieval 用 L7 cycles），删除让真源唯一。
+- share-layer：deep_mechanism 覆盖 evidence_networks 但没刷新 built 的 deepMechanism，前端渲染 stale，补同步刷新。
+
+**验证**
+- npm run typecheck ✓ / npm run build ✓
+- audit:memory-contract ✓（16/16）/ test-daily-contract.mjs ✓（22/22）
+- 真实 e2e（测试账号 12234567890）15/15 ✓：timing orchestration=154ms proseFirst=2939ms，BFF 层无节流
+- 部署：PM2 reload，readiness ready=true/jobHealthy=true
+
+**风险/待优化**
+- prose 首字 ~3s 是 LLM provider TTFT（首轮 prompt cache miss），后续轮 cache hit 会快——BFF 层已无延迟可优化，剩余在 provider 层。
+- 总时长波动（11s–16s for 66-94 字）是 LLM provider 生成速度，非 BFF 问题；如需进一步优化需换更快模型或调 provider 参数。
+- failed=2 是历史旧 job（retrying=0），不影响新链路。
+- 未 commit/push（等用户确认后 push）。

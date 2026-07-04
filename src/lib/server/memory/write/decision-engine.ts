@@ -144,7 +144,6 @@ export function buildMemoryWritePlan(options: {
           ...(diagnosis.childSelfProtection?.protectingWhat || []),
           ...(diagnosis.childSelfProtection?.surfaceBehavior || [])
         ],
-        likelyFamilyInteractionPatterns: diagnosisInteractionCycles.map(c => c.cycleName),
         learningSituationHypotheses: diagnosis.mainMechanismCandidates.map(m => m.mechanismName),
         emotionalPressureHypotheses: diagnosis.needsFurtherVerification,
         trustAndCommunicationHypotheses: diagnosis.handoffToMemoryAgent.patternsToUpdate,

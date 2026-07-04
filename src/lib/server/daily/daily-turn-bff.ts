@@ -77,7 +77,7 @@ async function generateDailyProse(
   const prosePayload = buildDailyProsePayload(output, userText)
   const task = buildDailyProseTask(output)
 
-  return requireTextStream(combinedProseSystem(), task, prosePayload, onDelta)
+  return requireTextStream(combinedProseSystem(), task, prosePayload, onDelta, { maxTokens: 1024 })
 }
 
 export async function runDailyTurnBff(args: {
@@ -130,15 +130,16 @@ export async function runDailyTurnBff(args: {
   let visibleFilled: DailySection[] = []
   let tProseFirst: number | null = null
 
-  const ACTIONS_PAUSE_MS = 300
+  const ACTIONS_PAUSE_MS = 0
 
   if (isSafety) {
     finalText = await generateDailyProse(output, userText, args.onDelta)
     finalText = clampProse(finalText, proseMode)
   } else {
-    // Plan P2：prose 真流式 → prose_complete → 单次 marker 流式
-    // （1 次 LLM 生成全部 visible section，按 ---section:id--- 标记增量触发 start/delta/complete，
-    //  无 50ms 节流、无 N 次 LLM，section 首字紧跟 prose 完成）。
+    // Plan P3：prose 与 section LLM 真并行（两者都只依赖 output，互不依赖）。
+    // section 事件缓冲到 prose_complete 之后才 flush 给前端（保证 UI 顺序：prose 完→section 首字）。
+    // 收益：section LLM 的 TTFT 与 prose 流式重叠，prose 完成时 section 首字已就绪或即将就绪，
+    //       不再"prose 全打完才开始 section LLM 的 TTFT"。
     const policyApplied = applySectionPolicy(
       [...visibleSkeletons, ...hiddenSkeletons],
       args.recentSectionIds || [],
@@ -147,37 +148,60 @@ export async function runDailyTurnBff(args: {
     const visibleAfterPolicy = policyApplied.filter((s) => !s.hidden)
     const hiddenAfterPolicy = policyApplied.filter((s) => s.hidden)
 
+    // section 事件 gate：prose 未完成时缓冲，prose 完成后直接发
+    let proseDone = false
+    const sectionEventBuffer: Array<() => void> = []
+    const emitSection = (fn: () => void) => {
+      if (proseDone) fn()
+      else sectionEventBuffer.push(fn)
+    }
+
+    const completedSections = new Map<string, DailySection>()
+    let sectionPromise: Promise<{ sections: DailySection[]; taskTitle?: string }> | null = null
+
+    if (visibleAfterPolicy.length) {
+      const streamCallbacks: SectionStreamCallbacks = {
+        onSectionStart: (section) => emitSection(() => args.onSectionStart?.(section)),
+        onSectionDelta: (id, text) => emitSection(() => args.onSectionDelta?.(id, text)),
+        onSectionComplete: (section) => {
+          completedSections.set(section.id, section)
+          emitSection(() => args.onSectionComplete?.(section))
+        },
+      }
+      // 并行启动 section LLM（不 await，让它与 prose 同时跑）
+      sectionPromise = streamDailySectionCopy(visibleAfterPolicy, output, userText, streamCallbacks)
+        .catch((err) => {
+          // marker 流式失败或部分 section 缺失：已完成的有效，未完成发 section_error 并保留骨架
+          const message = err instanceof Error ? err.message : '这部分未生成'
+          for (const sk of visibleAfterPolicy) {
+            if (!completedSections.has(sk.id)) {
+              emitSection(() => args.onSectionError?.(sk.id, message))
+            }
+          }
+          return { sections: visibleAfterPolicy.map((sk) => completedSections.get(sk.id) ?? sk) }
+        })
+    }
+
+    // prose 流式（await）—— 与 section LLM 并行
     finalText = await generateDailyProse(output, userText, (delta) => {
       if (tProseFirst === null) tProseFirst = Date.now()
       args.onDelta?.(delta)
     })
     finalText = clampProse(finalText, proseMode)
     args.onProseComplete?.()
+    proseDone = true
 
-    if (visibleAfterPolicy.length) {
-      // 捕获已完成 section，供 marker 流式整体/部分失败时兜底（已完成的有效，未完成发 error）
-      const completedSections = new Map<string, DailySection>()
-      const streamCallbacks: SectionStreamCallbacks = {
-        onSectionStart: args.onSectionStart,
-        onSectionDelta: args.onSectionDelta,
-        onSectionComplete: (section) => {
-          completedSections.set(section.id, section)
-          args.onSectionComplete?.(section)
-        },
-      }
+    // flush 缓冲的 section 事件（prose_complete 后立即发已就绪的 section 首字）
+    for (const fn of sectionEventBuffer) fn()
+    sectionEventBuffer.length = 0
+
+    if (sectionPromise) {
       try {
-        const result = await streamDailySectionCopy(visibleAfterPolicy, output, userText, streamCallbacks)
+        const result = await sectionPromise
         visibleFilled = result.sections
         taskTitleFromSections = result.taskTitle
         llmSectionCopyUsed = true
-      } catch (err) {
-        // marker 流式失败或部分 section 缺失：已完成的有效，未完成发 section_error 并保留骨架
-        const message = err instanceof Error ? err.message : '这部分未生成'
-        for (const sk of visibleAfterPolicy) {
-          if (!completedSections.has(sk.id)) {
-            args.onSectionError?.(sk.id, message)
-          }
-        }
+      } catch {
         visibleFilled = visibleAfterPolicy.map((sk) => completedSections.get(sk.id) ?? sk)
       }
     } else {

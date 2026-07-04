@@ -148,7 +148,7 @@ export async function streamDailySectionCopy(
     sectionSkeletons: skeletons.map((s) => ({ id: s.id, label: s.label, kind: s.kind, hidden: s.hidden })),
   }, (delta) => {
     tracker.feed(delta)
-  })
+  }, { maxTokens: 2048 })
 
   return tracker.finalize()
 }

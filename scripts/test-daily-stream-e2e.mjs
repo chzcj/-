@@ -72,6 +72,16 @@ if (finalEvt) {
   assert(typeof finalEvt.traceId === 'string', `final.traceId 存在 (${finalEvt.traceId?.slice(0,20)})`)
   console.log(`  final: text=${finalEvt.text.length}字 sections=${finalEvt.sections?.length} actions=${finalEvt.actions?.length} traceId=${finalEvt.traceId?.slice(0,24)}`)
 
+  // timing 验证：proseFirstMs（首字）+ sectionsMs（section 完成）
+  const t = finalEvt.timing
+  if (t) {
+    console.log(`  timing: orchestration=${t.orchestrationMs}ms proseFirst=${t.proseFirstMs}ms parallel=${t.parallelMs}ms sections=${t.sectionsMs}ms total=${t.totalMs}ms`)
+    assert(typeof t.orchestrationMs === 'number', 'timing.orchestrationMs 存在')
+    assert(typeof t.proseFirstMs === 'number', 'timing.proseFirstMs 存在（首字时间）')
+    // section 完成时间应 < orchestration + prose 全程 + section LLM 全程（并行后应明显快于串行）
+    assert(t.sectionsMs > 0, 'timing.sectionsMs > 0')
+  }
+
   // 6. memory-status 查得到该 traceId
   console.log(`\n3. GET /api/daily/memory-status?traceId=${finalEvt.traceId?.slice(0,24)}`)
   const ms = await req(`/api/daily/memory-status?traceId=${finalEvt.traceId}`, undefined, { method: 'GET' })

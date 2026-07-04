@@ -35,7 +35,9 @@ export async function runProfileRewrite(tenant: TenantId): Promise<void> {
   const stageSummaries = progress?.stageSummaries || []
   const crossEntryEvidence = evidenceNetwork?.crossEntryEvidenceMap || []
   const candidateMechanisms = evidenceNetwork?.candidateMechanismMatrix || []
-  const primaryProfile = structureModel?.primaryConditionalProfile || prevBuilt?.coreJudgment || ''
+  // 条件画像合一：ChildStructureModel.primaryConditionalProfile 是成型对象（ConditionalProfile | null），
+  // 统一取 .childTendency 字符串，与 built_profile_snapshots.coreJudgment 同为文本，避免把对象塞进 LLM material。
+  const primaryProfile = structureModel?.primaryConditionalProfile?.childTendency || prevBuilt?.coreJudgment || ''
 
   const material = {
     prevCoreJudgment: prevBuilt?.coreJudgment || '',
