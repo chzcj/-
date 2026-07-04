@@ -24,9 +24,8 @@ import {
   combinedProseSystem,
   fillDailySectionCopy,
   parentFacingPromptCacheInfo,
-  streamDailySectionCopy,
 } from '@/lib/server/daily/parent-facing-copy'
-import type { SectionStreamCallbacks } from '@/lib/server/daily/section-stream'
+import { streamProseAndSections } from '@/lib/server/daily/prose-section-stream'
 import { requireTextStream } from '@/lib/server/daily/llm-required'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import { createId } from '@/lib/storage/storageIds'
@@ -137,10 +136,10 @@ export async function runDailyTurnBff(args: {
     finalText = await generateDailyProse(output, userText, args.onDelta)
     finalText = clampProse(finalText, proseMode)
   } else {
-    // Plan P3：prose 与 section LLM 真并行（两者都只依赖 output，互不依赖）。
-    // section 事件缓冲到 prose_complete 之后才 flush 给前端（保证 UI 顺序：prose 完→section 首字）。
-    // 收益：section LLM 的 TTFT 与 prose 流式重叠，prose 完成时 section 首字已就绪或即将就绪，
-    //       不再"prose 全打完才开始 section LLM 的 TTFT"。
+    // 合并 prose + visible section 为一次 LLM 调用（streamProseAndSections）。
+    // 收益：消除 prose 与 section 两次并发请求在 provider 侧排队等待（实测 prose 完成后
+    // section 首字要再等 7.6s），prose 完成后 section marker 紧接流式，真正无缝衔接。
+    // 顺序天然保证：LLM 先输出 prose，再按 visibleAfterPolicy 顺序输出 section marker + 内容。
     const policyApplied = applySectionPolicy(
       [...visibleSkeletons, ...hiddenSkeletons],
       args.recentSectionIds || [],
@@ -149,72 +148,39 @@ export async function runDailyTurnBff(args: {
     const visibleAfterPolicy = policyApplied.filter((s) => !s.hidden)
     const hiddenAfterPolicy = policyApplied.filter((s) => s.hidden)
 
-    // section 事件 gate：prose 未完成时缓冲，prose 完成后直接发
-    let proseDone = false
-    const sectionEventBuffer: Array<() => void> = []
-    const emitSection = (fn: () => void) => {
-      if (proseDone) fn()
-      else sectionEventBuffer.push(fn)
-    }
-
     const completedSections = new Map<string, DailySection>()
-    let sectionPromise: Promise<{ sections: DailySection[]; taskTitle?: string }> | null = null
 
-    if (visibleAfterPolicy.length) {
-      const streamCallbacks: SectionStreamCallbacks = {
-        onSectionStart: (section) => emitSection(() => args.onSectionStart?.(section)),
-        onSectionDelta: (id, text) => emitSection(() => args.onSectionDelta?.(id, text)),
-        onSectionComplete: (section) => {
-          completedSections.set(section.id, section)
-          emitSection(() => args.onSectionComplete?.(section))
-        },
-      }
-      // 并行启动 section LLM（不 await，让它与 prose 同时跑）
-      sectionPromise = streamDailySectionCopy(visibleAfterPolicy, output, userText, streamCallbacks)
-        .catch((err) => {
-          // marker 流式失败或部分 section 缺失：已完成的有效，未完成发 section_error 并保留骨架
-          const message = err instanceof Error ? err.message : '这部分未生成'
-          for (const sk of visibleAfterPolicy) {
-            if (!completedSections.has(sk.id)) {
-              emitSection(() => args.onSectionError?.(sk.id, message))
-            }
-          }
-          return { sections: visibleAfterPolicy.map((sk) => completedSections.get(sk.id) ?? sk) }
-        })
-    }
-
-    // hidden section 预取：与 visible section + prose 三路并行（不阻塞前台，final 前完成即可）。
+    // hidden section 预取：与主调用并行（不阻塞前台，final 前完成即可）。
     // 用户点开"深度展开"时 hidden 文案已就绪，直接呈现，不再现场等 LLM。
     if (hiddenAfterPolicy.length) {
       hiddenPromise = fillDailySectionCopy(hiddenAfterPolicy, output, userText)
         .catch(() => ({ sections: hiddenAfterPolicy }))
     }
 
-    // prose 流式（await）—— 与 section LLM 并行
-    finalText = await generateDailyProse(output, userText, (delta) => {
-      if (tProseFirst === null) tProseFirst = Date.now()
-      args.onDelta?.(delta)
-    })
-    finalText = clampProse(finalText, proseMode)
-    args.onProseComplete?.()
-    proseDone = true
-
-    // flush 缓冲的 section 事件（prose_complete 后立即发已就绪的 section 首字）
-    for (const fn of sectionEventBuffer) fn()
-    sectionEventBuffer.length = 0
-
-    if (sectionPromise) {
-      try {
-        const result = await sectionPromise
-        visibleFilled = result.sections
-        taskTitleFromSections = result.taskTitle
-        llmSectionCopyUsed = true
-      } catch {
-        visibleFilled = visibleAfterPolicy.map((sk) => completedSections.get(sk.id) ?? sk)
+    // 一次 LLM 调用：prose 流式 → prose_complete → section 紧接流式
+    const mainResult = await streamProseAndSections(
+      output,
+      userText,
+      visibleAfterPolicy,
+      {
+        onProseDelta: (delta) => {
+          if (tProseFirst === null) tProseFirst = Date.now()
+          args.onDelta?.(delta)
+        },
+        onProseComplete: () => args.onProseComplete?.(),
+        onSectionStart: (section) => args.onSectionStart?.(section),
+        onSectionDelta: (id, text) => args.onSectionDelta?.(id, text),
+        onSectionComplete: (section) => {
+          completedSections.set(section.id, section)
+          args.onSectionComplete?.(section)
+        },
+        onSectionError: (id, msg) => args.onSectionError?.(id, msg),
       }
-    } else {
-      visibleFilled = []
-    }
+    )
+    finalText = mainResult.prose
+    visibleFilled = mainResult.sections
+    taskTitleFromSections = mainResult.taskTitle
+    llmSectionCopyUsed = true
 
     hiddenSkeletons.length = 0
     hiddenSkeletons.push(...hiddenAfterPolicy)

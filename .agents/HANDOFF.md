@@ -543,3 +543,24 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - rehearsal marker 格式依赖 LLM 遵守 `---reaction---`/`---rest---`，已做前缀+清理健壮性，但 LLM 极端偏离时 fallback 到 reaction 全文。
 - failed=2 是历史旧 job，不影响新链路。
 - 未 commit/push（等用户确认后 push）。
+
+## 2026-07-05 05:30 | Cursor | daily 流式无缝衔接
+
+**做了什么**
+- 新增 `src/lib/server/daily/prose-section-stream.ts`：合并 prose + visible section 为一次 LLM 调用（marker 流式：prose → `---section:id---` 紧接 section）
+- 改 `src/lib/server/daily/daily-turn-bff.ts`：非 safety 分支用 `streamProseAndSections` 替代 `generateDailyProse` + `streamDailySectionCopy` 两次并发调用；hidden section 仍由 `fillDailySectionCopy` 并行预取
+- 改 `scripts/test-daily-stream-e2e.mjs`：流式 reader 测 section_start 相对 prose_complete 延迟
+
+**为什么**
+- 实测：原 prose 与 section 两次并发 LLM 请求到 provider，section 被 prose 排队，prose_complete 后 section 首字还要等 7630ms
+- 合并后一次调用，prose 完成后 section marker 紧接流式，实测 section_start 相对 prose_complete 延迟 = 0ms（无缝）
+- 顺序天然保证：LLM 按 visibleSkeletons 顺序输出 marker，前台可见 section 永远先于 hidden（hidden 走并行预取）
+
+**验证**
+- typecheck ✓ / build ✓ / 部署 ✓ / readiness ready:true
+- e2e：事件首达 start=9ms delta=6070ms prose_complete=6467ms section_start=6467ms（0ms 无缝）section_delta=6467ms
+- 15 通过 0 失败
+
+**风险**
+- 合并 system prompt 更长（parentFacingStyle+dailyDialogueOrchestration+parentFacingCopy），但稳定前缀可 prompt cache
+- 第 3 个 section 偶尔无流式 section_complete 事件（内容在 finalize 时补全，sections_complete/final 仍完整）

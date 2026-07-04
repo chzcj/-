@@ -44,10 +44,39 @@ const streamRes = await fetch(`${BASE}/api/daily/stream`, {
 assert(streamRes.status === 200, `stream 200 (got ${streamRes.status})`)
 assert(streamRes.headers.get('content-type')?.includes('ndjson') || streamRes.headers.get('content-type')?.includes('stream') || streamRes.headers.get('content-type')?.includes('octet') || streamRes.headers.get('content-type')?.includes('text'), `stream content-type=${streamRes.headers.get('content-type')}`)
 
-const raw = await streamRes.text()
-const lines = raw.split('\n').filter(l => l.trim())
-const events = lines.map(parseDailyStreamEvent).filter(Boolean)
-console.log(`  收到 ${lines.length} 行，解析出 ${events.length} 个事件`)
+// 流式 reader：记录关键事件时间戳
+const t0 = Date.now()
+const eventTimes = {}
+const events = []
+const reader = streamRes.body.getReader()
+const decoder = new TextDecoder()
+let buffer = ''
+while (true) {
+  const { done, value } = await reader.read()
+  if (done) break
+  buffer += decoder.decode(value, { stream: true })
+  const lines = buffer.split('\n')
+  buffer = lines.pop() || ''
+  for (const line of lines) {
+    const e = parseDailyStreamEvent(line)
+    if (!e) continue
+    events.push(e)
+    // 记录每种事件首次出现时间
+    const key = e.type === 'section_start' ? 'section_start' :
+                e.type === 'section_delta' ? 'section_delta' :
+                e.type === 'delta' ? 'delta' : e.type
+    if (!(key in eventTimes)) eventTimes[key] = Date.now() - t0
+  }
+}
+console.log(`  收到 ${events.length} 个事件`)
+const typeCounts = {}
+for (const e of events) typeCounts[e.type] = (typeCounts[e.type] || 0) + 1
+console.log(`  事件类型分布: ${JSON.stringify(typeCounts)}`)
+console.log(`  事件首达时间: start=${eventTimes.start}ms delta=${eventTimes.delta}ms prose_complete=${eventTimes.prose_complete}ms section_start=${eventTimes.section_start}ms section_delta=${eventTimes.section_delta}ms`)
+if (eventTimes.prose_complete && eventTimes.section_start) {
+  const gap = eventTimes.section_start - eventTimes.prose_complete
+  console.log(`  section_start 相对 prose_complete 延迟: ${gap}ms ${gap < 500 ? '✓ 无缝' : gap < 2000 ? '⚠ 有间隙' : '✗ 明显等待'}`)
+}
 
 // 3. 校验事件序列契约
 const types = events.map(e => e.type)
