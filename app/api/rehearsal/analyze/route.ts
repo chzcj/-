@@ -1,5 +1,5 @@
 import { fail, ok } from '@/lib/api-response'
-import { callFastJson } from '@/lib/server/ark-agents'
+import { callFastJson, callFastTextStream, isFastAIEnabled } from '@/lib/server/ark-agents'
 import { generateRehearsal } from '@/lib/server/store'
 import { rehearsalAnalyzeSchema } from '@/lib/schemas'
 import { resolveTenant } from '@/lib/server/memory/tenant'
@@ -8,6 +8,8 @@ import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval
 import { createId } from '@/lib/storage/storageIds'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { recordFeatureTurn } from '@/lib/server/memory/turn-event'
+import { createRehearsalStreamTracker, buildRehearsalStreamTask } from '@/lib/server/rehearsal/rehearsal-stream'
+import type { RehearsalStreamEvent } from '@/types/rehearsal-stream'
 
 type ProfileAwareRehearsal = {
   childLikelyHearing: string
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
   if (parentText && mode !== 'conflict' && (fromSpecialFeature || profileContext || hasRehearsalCtx)) {
     try {
       const ctx = (profileContext || {}) as RehearsalProfileContext
-      const packet = await buildDailyDialogueRetrievalPacket(parentText, tenant).catch(() => undefined)
+      const packet = await buildDailyDialogueRetrievalPacket(parentText, tenant, { fast: true }).catch(() => undefined)
       const pastSimilarTalks = (packet?.recentRelatedEvents || []).slice(0, 3)
       const memHypotheses = ctx.pendingHypotheses?.length ? ctx.pendingHypotheses : (packet?.pendingHypotheses || [])
 
@@ -85,12 +87,11 @@ export async function POST(request: Request) {
       ].filter(Boolean).join('\n')
 
       if (profileSummary.trim() || fromSpecialFeature) {
-        const aiResult = await callFastJson<Partial<ProfileAwareRehearsal>>(
-          `你是 ChildOS 的沟通预演 Agent。你只做画像感知的亲子沟通预演。
-
-${profileSummary}
-
-请判断家长这句话在这个孩子画像里会被怎样接收，并模拟孩子可能的口头回复。
+        // 流式 NDJSON：reaction（孩子回复）逐字流出，其余字段 final JSON。
+        // 收益：用户 ~3s 看到 reaction 首字逐字出现，不必等 8s 完整 JSON。
+        // prompt cache 优化：system 只保留稳定规则（可 cache），动态 profileSummary 移到 user payload。
+        const encoder = new TextEncoder()
+        const system = `你是 ChildOS 的沟通预演 Agent。你只做画像感知的亲子沟通预演。
 
 规则：
 - 家长发来的就是一段完整自述：他这次真正想达成什么、最担心孩子怎么反应、谈话前发生了什么，可能都内联在这段话里——请主动从中识别并使用，不要因为没有单独字段就忽略。
@@ -98,59 +99,94 @@ ${profileSummary}
 - 必须使用画像中的机制、保护策略或家庭循环。
 - 不要泛泛说"多鼓励少批评"。
 - 不要说家长控制欲强、孩子就是懒。
-- **possibleChildReaction.immediateReaction** 必须是孩子听到家长话后可能说出口的回复（对话体，可用引号，20-60字），禁止写成给家长的建议句。
-- **childLikelyHearing** 写孩子内心怎么理解家长的话（分析，不是孩子原话）。
-- **saferVersion** 写一句家长可以直接说的更稳版本（仅用于结束页建议，模拟对话中不展示）。
-- **closingAdvice** 结合本轮预演对话，给家长 2-3 句针对性沟通建议（总结预演中的卡点 + 下一步怎么试），禁止泛泛鸡汤。
-- taskTitle 是从 saferVersion 提炼的"今晚要试"任务标题，祈使句式 6–24 字，描述动作而非照抄台词。好例："今晚用这句更稳的话跟他试一次"、"先不提成绩，用这句话开场试试"。坏例（禁止）：直接复制 saferVersion 原话、或写"理解您不问不放心"这种共情句。
-- **dailyToneDetected**：若家长像在「交流页」向 AI 倾诉/分析（长叙述、问怎么办、讲今天发生了什么），而非对孩子说的话，则为 true。
-- **dailyToneReminder**：dailyToneDetected 为 true 时，一句简练提醒（≤40字）：正在预演，请只回复你会对孩子说的话。
-- **showSuggestedWording**：当已试够几种说法（parentRoundCount≥2 且 saferVersion 有参考价值）时为 true。
-- **suggestedWordingHint**：showSuggestedWording 为 true 时，给家长一句可直接试的 softer 说法（20-50字），不同于 saferVersion 时可更短。
+- childLikelyHearing 写孩子内心怎么理解家长的话（分析，不是孩子原话）。
+- saferVersion 写一句家长可以直接说的更稳版本（仅用于结束页建议，模拟对话中不展示）。
+- closingAdvice 结合本轮预演对话，给家长 2-3 句针对性沟通建议（总结预演中的卡点 + 下一步怎么试），禁止泛泛鸡汤。
+- taskTitle 是从 saferVersion 提炼的"今晚要试"任务标题，祈使句式 6–24 字，描述动作而非照抄台词。
+- dailyToneDetected：若家长像在「交流页」向 AI 倾诉/分析（长叙述、问怎么办、讲今天发生了什么），而非对孩子说的话，则为 true。
+- dailyToneReminder：dailyToneDetected 为 true 时，一句简练提醒（≤40字）：正在预演，请只回复你会对孩子说的话。
+- showSuggestedWording：当已试够几种说法（parentRoundCount≥2 且 saferVersion 有参考价值）时为 true。
+- suggestedWordingHint：showSuggestedWording 为 true 时，给家长一句可直接试的 softer 说法（20-50字）。`
 
-只输出 JSON，字段固定为：
-childLikelyHearing: string
-likelyTriggeredMechanisms: string[]
-possibleChildReaction: { immediateReaction:string, innerReaction:string, behaviorRisk:string }
-riskPoints: string[]
-saferVersion: string
-whyThisIsSafer: string
-avoidPhrases: string[]
-usedProfileEvidence: string[]
-closingAdvice: string
-taskTitle: string
-dailyToneDetected: boolean
-dailyToneReminder: string
-showSuggestedWording: boolean
-suggestedWordingHint: string`,
-          { parentMessage: parentText, profileContext: profileSummary.slice(0, 1500), parentRoundCount }
-        ).catch(() => undefined)
+        return new Response(
+          new ReadableStream({
+            async start(controller) {
+              const send = (evt: RehearsalStreamEvent) =>
+                controller.enqueue(encoder.encode(`${JSON.stringify(evt)}\n`))
+              try {
+                send({ type: 'start', traceId })
 
-        const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx, parentRoundCount)
-        if (fromSpecialFeature) {
-          // 预演过程不写记忆；仅记录 TurnEvent 供审计。任务反馈后再 memory_write。
-        }
-        recordFeatureTurn({
-          traceId, tenant, mode: 'communication_rehearsal',
-          userMessage: parentText,
-          assistantReply: normalized.possibleChildReaction?.immediateReaction || normalized.childLikelyHearing,
-          specializedContextPack: {
-            rehearsalContext: rc, mode, fromSpecialFeature, profileAware: true,
-            retrievedFacts: {
-              profileSummary: profileSummary.slice(0, 1500),
-              pastSimilarTalks,
-              childModels: packet?.relevantChildStructureModels || [],
-              pendingHypotheses: memHypotheses
+                const tracker = createRehearsalStreamTracker({
+                  onReactionDelta: (delta) => send({ type: 'reaction_delta', delta }),
+                })
+
+                const raw = await callFastTextStream(
+                  system,
+                  {
+                    task: buildRehearsalStreamTask(),
+                    parentMessage: parentText,
+                    profileContext: profileSummary.slice(0, 1500),
+                    parentRoundCount,
+                  },
+                  (delta) => tracker.feed(delta),
+                  { maxTokens: 1200 }
+                )
+
+                const { reaction, restJson } = tracker.finalize()
+                // 合并：restJson（LLM 结构化字段）+ reaction（流式段，回填 immediateReaction）
+                const aiResult: Partial<ProfileAwareRehearsal> = {
+                  ...(restJson || {}),
+                  possibleChildReaction: {
+                    immediateReaction: reaction || (restJson as { possibleChildReaction?: { immediateReaction?: string } })?.possibleChildReaction?.immediateReaction || '',
+                    innerReaction: (restJson as { possibleChildReaction?: { innerReaction?: string } })?.possibleChildReaction?.innerReaction || '',
+                    behaviorRisk: (restJson as { possibleChildReaction?: { behaviorRisk?: string } })?.possibleChildReaction?.behaviorRisk || '',
+                  },
+                }
+                const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx, parentRoundCount)
+
+                recordFeatureTurn({
+                  traceId, tenant, mode: 'communication_rehearsal',
+                  userMessage: parentText,
+                  assistantReply: normalized.possibleChildReaction?.immediateReaction || normalized.childLikelyHearing,
+                  specializedContextPack: {
+                    rehearsalContext: rc, mode, fromSpecialFeature, profileAware: true,
+                    retrievedFacts: {
+                      profileSummary: profileSummary.slice(0, 1500),
+                      pastSimilarTalks,
+                      childModels: packet?.relevantChildStructureModels || [],
+                      pendingHypotheses: memHypotheses
+                    }
+                  }
+                })
+
+                send({
+                  type: 'final',
+                  data: {
+                    ...normalized,
+                    traceId,
+                    profileAware: true,
+                    uiMode: 'result_view',
+                    schemaVersion: 'childos.rehearsal.profile-aware.v1',
+                  },
+                  traceId,
+                })
+                controller.close()
+              } catch (error) {
+                console.error(`[rehearsal/stream] traceId=${traceId}:`, error)
+                send({ type: 'error', code: 'REHEARSAL_STREAM_FAILED', message: '这次没有模拟出来，可以再试一次。' })
+                controller.close()
+              }
             }
+          }),
+          {
+            headers: {
+              'Content-Type': 'application/x-ndjson; charset=utf-8',
+              'Cache-Control': 'no-cache, no-transform',
+              Connection: 'keep-alive',
+              'X-Accel-Buffering': 'no',
+            },
           }
-        })
-        return ok({
-          ...normalized,
-          traceId,
-          profileAware: true,
-          uiMode: 'result_view', // 5.3：有原话→已可预演→结果展示
-          schemaVersion: 'childos.rehearsal.profile-aware.v1'
-        })
+        )
       }
     } catch {}
   }
@@ -164,7 +200,8 @@ suggestedWordingHint: string`,
         `你是 ChildOS 的冲突复盘 agent。家长贴了一段亲子冲突对话。分析这段对话：
 要求：headline 一句话概括冲突核心；explanation 解释家长和孩子的真实互动机制；escalationSentence 指出最容易让冲突升级的一句话；childMayHear 说明孩子可能怎么听成这句话；suggestedReplacement 给一句更稳的替换说法。
 只输出 JSON，不输出 Markdown 或解释。`,
-        { dialogue: parentText }
+        { dialogue: parentText },
+        { maxTokens: 1000 }
       ).catch(() => undefined)
 
       if (result?.headline) {
@@ -187,7 +224,8 @@ suggestedWordingHint: string`,
         `你是 ChildOS 的沟通预演 agent。家长说了一句准备对孩子说的话。分析这句话：
 要求：headline 一句话概括家长表达的关键问题；explanation 解释家长想表达的和孩子可能接收的差异；childMayHear 列出 2-3 条孩子可能的接收方式；stuckPoint 指出最容易卡住的地方；suggestedWording 给一句更有连接感的替换说法。
 只输出 JSON，不输出 Markdown 或解释。`,
-        { parentText }
+        { parentText },
+        { maxTokens: 1000 }
       ).catch(() => undefined)
 
       if (result?.headline) {

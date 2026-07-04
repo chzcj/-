@@ -10,6 +10,7 @@ import {
   SimulationSystemHintBubble,
 } from '@/components/rehearsal/SimulationSecondMeBubble'
 import type { RehearsalAnalyzeData } from '@/components/rehearsal/RehearsalOutput'
+import { parseRehearsalStreamEvent } from '@/types/rehearsal-stream'
 import {
   CUSTOM_SCENE,
   REHEARSAL_SCENES,
@@ -164,42 +165,144 @@ export default function RehearsalPage() {
           parentRoundCount: round + 1,
         }),
       })
-      const json = await res.json()
-      setFeed((prev) => prev.filter((item) => item.type !== 'thinking'))
 
-      if (json.ok && json.data) {
-        const data = json.data as RehearsalAnalyzeData & { traceId?: string }
-        if (data.traceId) setRehearsalTraceId(data.traceId)
-        const reply = mapAnalyzeToSecondMe(data)
-        setEndData(data)
-        if (reply.dailyToneReminder) {
-          setFeed((prev) => [...prev, { type: 'system_hint', text: reply.dailyToneReminder! }])
-        }
-        setFeed((prev) => [...prev, { type: 'child', ...reply }])
-        setStatusText(
-          reply.hintTitle.includes('松动') || reply.hintTitle.includes('具体')
-            ? '当前状态：孩子开始谈条件，有一点松动'
-            : '当前状态：孩子仍有防御，需要先降压力'
-        )
-        setRound((r) => r + 1)
-        setRoundsSinceCheckpoint((c) => {
-          const next = c + 1
-          if (next >= CHECKPOINT_EVERY) {
-            setShowCheckpoint(true)
-            return 0
+      // 流式 NDJSON（profile-aware 路径）vs JSON（conflict/basic 旧路径）
+      const ct = res.headers.get('content-type') || ''
+      if (ct.includes('ndjson') && res.body) {
+        // 移除 thinking
+        setFeed((prev) => prev.filter((item) => item.type !== 'thinking'))
+        let reactionAccum = ''
+        let finalData: (RehearsalAnalyzeData & { traceId?: string }) | null = null
+        let childBubbleInserted = false
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        while (true) {
+          const { done, value: chunk } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(chunk, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+          for (const line of lines) {
+            const evt = parseRehearsalStreamEvent(line)
+            if (!evt) continue
+            if (evt.type === 'reaction_delta') {
+              reactionAccum += evt.delta
+              if (!childBubbleInserted) {
+                childBubbleInserted = true
+                setFeed((prev) => [
+                  ...prev,
+                  {
+                    type: 'child',
+                    childText: reactionAccum,
+                    hintTitle: '他可能是这样听到的',
+                    hintText: '…',
+                  },
+                ])
+              } else {
+                setFeed((prev) => {
+                  const next = [...prev]
+                  for (let i = next.length - 1; i >= 0; i--) {
+                    if (next[i].type === 'child') {
+                      next[i] = { ...next[i], childText: reactionAccum } as FeedItem
+                      break
+                    }
+                  }
+                  return next
+                })
+              }
+            } else if (evt.type === 'final') {
+              finalData = evt.data as RehearsalAnalyzeData & { traceId?: string }
+            } else if (evt.type === 'error') {
+              setFeed((prev) => [
+                ...prev,
+                {
+                  type: 'child',
+                  childText: '……（这次没有模拟出来，你可以换一句更轻的试试）',
+                  hintTitle: '预演暂时中断',
+                  hintText: evt.message || '网络或分析服务暂时不可用。',
+                },
+              ])
+              setLoading(false)
+              return
+            }
           }
-          return next
-        })
+        }
+
+        if (finalData) {
+          const data = finalData
+          if (data.traceId) setRehearsalTraceId(data.traceId)
+          const reply = mapAnalyzeToSecondMe(data)
+          setEndData(data)
+          // 用 final 完整字段替换流式占位（补全 hearing/hint/suggested）
+          setFeed((prev) => {
+            const next = [...prev]
+            for (let i = next.length - 1; i >= 0; i--) {
+              if (next[i].type === 'child') {
+                next[i] = { type: 'child', ...reply } as FeedItem
+                break
+              }
+            }
+            return next
+          })
+          if (reply.dailyToneReminder) {
+            setFeed((prev) => [...prev, { type: 'system_hint', text: reply.dailyToneReminder! }])
+          }
+          setStatusText(
+            reply.hintTitle.includes('松动') || reply.hintTitle.includes('具体')
+              ? '当前状态：孩子开始谈条件，有一点松动'
+              : '当前状态：孩子仍有防御，需要先降压力'
+          )
+          setRound((r) => r + 1)
+          setRoundsSinceCheckpoint((c) => {
+            const next = c + 1
+            if (next >= CHECKPOINT_EVERY) {
+              setShowCheckpoint(true)
+              return 0
+            }
+            return next
+          })
+        }
       } else {
-        setFeed((prev) => [
-          ...prev,
-          {
-            type: 'child',
-            childText: '……（这次没有模拟出来，你可以换一句更轻的试试）',
-            hintTitle: '预演暂时中断',
-            hintText: json.error?.message || '网络或分析服务暂时不可用。',
-          },
-        ])
+        // 旧 JSON 路径（conflict/basic）
+        const json = await res.json()
+        setFeed((prev) => prev.filter((item) => item.type !== 'thinking'))
+
+        if (json.ok && json.data) {
+          const data = json.data as RehearsalAnalyzeData & { traceId?: string }
+          if (data.traceId) setRehearsalTraceId(data.traceId)
+          const reply = mapAnalyzeToSecondMe(data)
+          setEndData(data)
+          if (reply.dailyToneReminder) {
+            setFeed((prev) => [...prev, { type: 'system_hint', text: reply.dailyToneReminder! }])
+          }
+          setFeed((prev) => [...prev, { type: 'child', ...reply }])
+          setStatusText(
+            reply.hintTitle.includes('松动') || reply.hintTitle.includes('具体')
+              ? '当前状态：孩子开始谈条件，有一点松动'
+              : '当前状态：孩子仍有防御，需要先降压力'
+          )
+          setRound((r) => r + 1)
+          setRoundsSinceCheckpoint((c) => {
+            const next = c + 1
+            if (next >= CHECKPOINT_EVERY) {
+              setShowCheckpoint(true)
+              return 0
+            }
+            return next
+          })
+        } else {
+          setFeed((prev) => [
+            ...prev,
+            {
+              type: 'child',
+              childText: '……（这次没有模拟出来，你可以换一句更轻的试试）',
+              hintTitle: '预演暂时中断',
+              hintText: json.error?.message || '网络或分析服务暂时不可用。',
+            },
+          ])
+        }
       }
     } catch {
       setFeed((prev) => prev.filter((item) => item.type !== 'thinking'))

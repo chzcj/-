@@ -129,6 +129,7 @@ export async function runDailyTurnBff(args: {
   let finalText = ''
   let visibleFilled: DailySection[] = []
   let tProseFirst: number | null = null
+  let hiddenPromise: Promise<{ sections: DailySection[]; taskTitle?: string }> | null = null
 
   const ACTIONS_PAUSE_MS = 0
 
@@ -182,6 +183,13 @@ export async function runDailyTurnBff(args: {
         })
     }
 
+    // hidden section 预取：与 visible section + prose 三路并行（不阻塞前台，final 前完成即可）。
+    // 用户点开"深度展开"时 hidden 文案已就绪，直接呈现，不再现场等 LLM。
+    if (hiddenAfterPolicy.length) {
+      hiddenPromise = fillDailySectionCopy(hiddenAfterPolicy, output, userText)
+        .catch(() => ({ sections: hiddenAfterPolicy }))
+    }
+
     // prose 流式（await）—— 与 section LLM 并行
     finalText = await generateDailyProse(output, userText, (delta) => {
       if (tProseFirst === null) tProseFirst = Date.now()
@@ -229,10 +237,10 @@ export async function runDailyTurnBff(args: {
   if (!isSafety) args.onActions?.(actions)
   const tSections = Date.now()
 
-  // 后台异步：填充 hidden section 文案（不阻塞前台已发的 sections/actions）
-  if (!isSafety && hiddenSkeletons.length) {
+  // hidden section：与 visible/prose 并行预取已完成，合并结果（不阻塞前台已发的 sections/actions）。
+  if (!isSafety && hiddenPromise) {
     try {
-      const hiddenFilled = await fillDailySectionCopy(hiddenSkeletons, output, userText)
+      const hiddenFilled = await hiddenPromise
       const byId = new Map(hiddenFilled.sections.map((s) => [s.id, s]))
       sections = sections.map((s) => byId.get(s.id) ?? s)
       // 再发一次 sections 事件，前端把 hidden 内容合并进去（供"查看深度展开"使用）

@@ -513,3 +513,33 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 总时长波动（11s–16s for 66-94 字）是 LLM provider 生成速度，非 BFF 问题；如需进一步优化需换更快模型或调 provider 参数。
 - failed=2 是历史旧 job（retrying=0），不影响新链路。
 - 未 commit/push（等用户确认后 push）。
+
+## 2026-07-05 05:10 | Cursor | hidden section 并行预取 + rehearsal 流式化
+
+**做了什么**
+- hidden section 并行预取（`daily-turn-bff.ts`）：原 hidden 在 actions 后串行 `await fillDailySectionCopy`（阻塞 final + 用户点开时可能仍在生成）。改为与 visible section + prose 三路并行启动（`hiddenPromise` 在 prose 并行块启动），final 前 await（此时大概率已完成）。用户点开"深度展开"时 hidden 文案已就绪，直接呈现。
+- rehearsal 流式化（`app/api/rehearsal/analyze/route.ts` + `app/rehearsal/page.tsx`）：原 rehearsal 非流式（`await res.json()`），用户等 8.4s 完整 JSON 才看到任何输出。改为 NDJSON 流式：
+  - 新建 `src/types/rehearsal-stream.ts`（RehearsalStreamEvent 共享契约）+ `src/lib/server/rehearsal/rehearsal-stream.ts`（marker 流式解析器）
+  - 后端 profile-aware 路径改流式 Response：LLM marker 输出 `---reaction---`（孩子回复，逐字流式）+ `---rest---`（其余字段 JSON），后端按 marker 分流，发 reaction_delta 事件，final 事件含完整 data
+  - 前端 sendSimulationText 改流式 reader：reaction_delta 逐字渲染 child bubble，final 时用完整字段替换占位
+  - 兼容旧 JSON 路径（conflict/basic 模式仍走 JSON）
+- rehearsal prompt cache 优化：system 原含动态 profileSummary（每轮变，cache miss，TTFT 7.6s），改为 system 只保留稳定规则，profileSummary 移到 user payload。reaction 首字 7.6s→4.6s（provider 波动 4.6-7.3s）。
+- rehearsal retrieval 改 fast 模式（跳向量检索，rehearsal 不需深度检索）+ max_tokens 1200。
+- marker 健壮性：LLM 可能输出 `---rest`（少尾部 `---`），用前缀 `---rest` 匹配；reaction 末尾 `---` 残留在 feed 时清理。
+
+**为什么**
+- 用户要求 hidden section 预先生成、点开直接呈现：原串行阻塞 final 且点开时可能未完成，并行预取解决。
+- 用户问 rehearsal 输出慢：根因是非流式 JSON（等完整 8.4s）+ system 含动态内容 cache miss。流式化让 reaction 逐字出现（4-7s 首字），system 稳定可 cache。
+
+**验证**
+- npm run typecheck ✓ / npm run build ✓
+- audit:memory-contract ✓（16/16）/ test-daily-contract.mjs ✓（22/22）
+- daily e2e 15/15 ✓（hidden 并行未破坏，sections=3 actions=2，timing total=12598ms）
+- rehearsal 流式 smoke ✓：content-type=ndjson，reaction 逐字流出，final data 完整，首字 4.6-7.3s（provider 波动），总 9-12s
+- 部署：PM2 reload，readiness ready=true/jobHealthy=true
+
+**风险/待优化**
+- reaction 首字 4.6-7.3s 波动是 LLM provider TTFT（首轮 cache miss + provider 速度），BFF 层已最优（流式+稳定 system+max_tokens）；如需更快需换更快模型。
+- rehearsal marker 格式依赖 LLM 遵守 `---reaction---`/`---rest---`，已做前缀+清理健壮性，但 LLM 极端偏离时 fallback 到 reaction 全文。
+- failed=2 是历史旧 job，不影响新链路。
+- 未 commit/push（等用户确认后 push）。
