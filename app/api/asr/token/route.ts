@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   if (!appid || !secretId || !secretKey) {
     // 原 error 为裸字符串、不符契约；改用 fail（标准 {code,message,retriable}）。
-    return fail('ASR_UNCONFIGURED', 'ASR 服务未配置。', undefined, 503);
+    return fail('ASR_UNCONFIGURED', '语音暂时不可用，可以先打字输入。', undefined, 503);
   }
 
   const timestamp = Math.floor(Date.now() / 1000);

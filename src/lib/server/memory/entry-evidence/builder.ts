@@ -78,16 +78,10 @@ function assemblePack(ai: AiEntryEvidence, payload: EntryEvidencePayload): Entry
     decomposedInput: {
       verifiableFacts: arr(d.verifiableFacts).length > 0 ? arr(d.verifiableFacts) : (payload.facts || [rawText]),
       childBehaviors: arr(d.childBehaviors),
-      childQuotes: arr(d.childQuotes),
-      parentQuotes: arr(d.parentQuotes).length > 0 ? arr(d.parentQuotes) : [rawText],
       parentActions: arr(d.parentActions),
       triggerPoints: arr(d.triggerPoints),
-      timePlacePeople: [],
-      parentEmotions: [],
       parentEvaluations: arr(d.parentEvaluations),
-      parentAssumptions: arr(d.parentAssumptions),
       parentGoals: arr(d.parentGoals),
-      backgroundFactors: [],
       missingInformation: arr(d.missingInformation).length > 0 ? arr(d.missingInformation) : (payload.hypotheses || []),
     },
     candidateMechanisms: (ai.candidateMechanisms || [])

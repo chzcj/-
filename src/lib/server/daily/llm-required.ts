@@ -14,7 +14,7 @@ export class DailyLlmRequiredError extends Error {
   }
 }
 
-const DEFAULT_RETRIES = 3
+const DEFAULT_RETRIES = 2
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))

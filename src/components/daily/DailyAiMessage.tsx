@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DailyAction, DailySection, DailyThinkingChip } from '@/types/daily-message'
 import type { DailyCards } from '@/types/database'
 import { saveTask } from '@/lib/storage/taskStorage'
@@ -27,7 +27,7 @@ function pickTaskTitle(text: string, sections?: DailySection[], taskTitle?: stri
   return (fallback || '今晚先这样试').slice(0, 48)
 }
 
-const REVEAL_INTERVAL_MS = 160
+const REVEAL_INTERVAL_MS = 70
 
 export function DailyParentBubble({ text }: { text: string }) {
   return (
@@ -44,11 +44,27 @@ type DailyAiMessageProps = {
   actions?: DailyAction[]
   cards?: DailyCards
   streaming?: boolean
+  sectionsComplete?: boolean
   thinkingChips?: DailyThinkingChip[]
   showThinking?: boolean
   showActions?: boolean
   animateSections?: boolean
+  proseComplete?: boolean
+  sectionErrors?: string[]
+  interrupted?: boolean
+  /** 家长可见的「这轮记住了没」文案（已记住/这次先记在对话里…），来自 memory_ledger */
+  memoryLabel?: string
+  onRetrySection?: (sectionId: string) => void
+  onDeepExpand?: () => void
   onFollowUpText?: (seed: string) => void
+}
+
+const MEMORY_LABEL_TEXT: Record<string, string> = {
+  remembered: '已记住',
+  organizing: '正在整理记忆…',
+  'in对话': '这次先记在对话里',
+  failed: '记忆整理失败，稍后会重试',
+  unknown: '',
 }
 
 export function DailyAiMessage({
@@ -58,17 +74,25 @@ export function DailyAiMessage({
   actions: actionsProp,
   cards,
   streaming,
+  sectionsComplete = true,
+  proseComplete = true,
+  sectionErrors,
+  interrupted,
   thinkingChips,
   showThinking,
   showActions = true,
   animateSections = true,
+  memoryLabel,
   onFollowUpText,
+  onRetrySection,
+  onDeepExpand,
 }: DailyAiMessageProps) {
   const router = useRouter()
   const [taskSaved, setTaskSaved] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
   const [revealedIds, setRevealedIds] = useState<Set<string>>(() => new Set())
   const [animatingId, setAnimatingId] = useState<string | null>(null)
+  const revealTimerRef = useRef<number | undefined>()
 
   const sections = useMemo(() => {
     if (sectionsProp?.length) return sectionsProp
@@ -78,41 +102,64 @@ export function DailyAiMessage({
   const actions = actionsProp?.length ? actionsProp : []
 
   const visibleSectionOrder = useMemo(
-    () => sections.filter((s) => !s.hidden || expandedIds.has(s.id)).map((s) => s.id),
+    () =>
+      sections
+        .filter((s) => !s.hidden || expandedIds.has(s.id))
+        .filter((s) => s.streamingText !== undefined || s.paragraphs?.length || s.items?.length || s.quotes?.length)
+        .map((s) => s.id),
     [sections, expandedIds]
   )
 
   const sectionRevealKey = visibleSectionOrder.join('|')
 
   useEffect(() => {
-    if (streaming) {
+    // sections 早到时（streaming 仍为 true）也要逐张揭示，让家长尽快看到要点。
+    if (revealTimerRef.current) {
+      window.clearInterval(revealTimerRef.current)
+      revealTimerRef.current = undefined
+    }
+    if (visibleSectionOrder.length === 0) {
       setRevealedIds(new Set())
       setAnimatingId(null)
       return
     }
-    if (!animateSections || visibleSectionOrder.length === 0) {
+    if (!animateSections || sections.some((s) => s.streamingText !== undefined)) {
       setRevealedIds(new Set(visibleSectionOrder))
       setAnimatingId(null)
       return
     }
 
-    setRevealedIds(new Set())
-    setAnimatingId(null)
-    let i = 0
-    const timer = window.setInterval(() => {
-      if (i >= visibleSectionOrder.length) {
-        window.clearInterval(timer)
-        setAnimatingId(null)
-        return
-      }
-      const id = visibleSectionOrder[i]
-      i += 1
-      setAnimatingId(id)
-      setRevealedIds((prev) => new Set([...prev, id]))
-    }, REVEAL_INTERVAL_MS)
+    // 只对"新出现"的 section 做揭示动画，已揭示的保留，避免流式增量重置。
+    setRevealedIds((prev) => {
+      const newIds = visibleSectionOrder.filter((id) => !prev.has(id))
+      if (newIds.length === 0) return prev
+      let i = 0
+      revealTimerRef.current = window.setInterval(() => {
+        if (i >= newIds.length) {
+          if (revealTimerRef.current) {
+            window.clearInterval(revealTimerRef.current)
+            revealTimerRef.current = undefined
+          }
+          setAnimatingId(null)
+          return
+        }
+        const id = newIds[i]
+        i += 1
+        setAnimatingId(id)
+        setRevealedIds((cur) => new Set([...cur, id]))
+      }, REVEAL_INTERVAL_MS)
+      return prev
+    })
+  }, [animateSections, sectionRevealKey, visibleSectionOrder])
 
-    return () => window.clearInterval(timer)
-  }, [streaming, animateSections, sectionRevealKey, visibleSectionOrder])
+  useEffect(() => {
+    return () => {
+      if (revealTimerRef.current) {
+        window.clearInterval(revealTimerRef.current)
+        revealTimerRef.current = undefined
+      }
+    }
+  }, [])
 
   const handleAction = useCallback(
     (action: DailyAction) => {
@@ -121,7 +168,16 @@ export function DailyAiMessage({
           const ids = action.payload?.sectionIds || []
           const deepSections = sections.filter((s) => ids.includes(s.id) || s.hidden)
           stashDailyDeepSections(deepSections, text, traceId)
-          router.push('/understanding-card?source=daily')
+          if (onDeepExpand) {
+            onDeepExpand()
+          } else {
+            router.push('/understanding-card?source=daily')
+          }
+          break
+        }
+        case 'how_to_speak': {
+          const q = traceId ? `?traceId=${encodeURIComponent(traceId)}` : ''
+          router.push(`/daily/how-to-speak${q}`)
           break
         }
         case 'rehearsal': {
@@ -166,42 +222,54 @@ export function DailyAiMessage({
           break
       }
     },
-    [onFollowUpText, router, sections, taskSaved, text, traceId]
+    [onDeepExpand, onFollowUpText, router, sections, taskSaved, text, traceId]
   )
 
-  const showActionStrip = showActions && !streaming && actions.length > 0
+  const sectionErrorSet = useMemo(() => new Set(sectionErrors || []), [sectionErrors])
+
+  const showActionStrip = showActions && sectionsComplete && actions.length > 0
+  const memoryLabelText = memoryLabel ? MEMORY_LABEL_TEXT[memoryLabel] || '' : ''
 
   return (
-    <DailyBubbleShell
-      prose={text}
-      sections={sections}
-      streaming={streaming}
-      thinkingChips={thinkingChips}
-      showThinking={showThinking}
-      revealedIds={revealedIds}
-      expandedIds={expandedIds}
-      animateSections={animateSections}
-      animatingId={animatingId}
-      actions={
-        showActionStrip ? (
-          <div className="suggestion-strip">
-            {actions.map((action) => {
-              const label = action.kind === 'task' && taskSaved ? '已保存到任务' : action.label
-              return (
-                <button
-                  key={action.id}
-                  type="button"
-                  className={action.primary ? 'pill primary' : 'pill'}
-                  disabled={action.kind === 'task' && taskSaved}
-                  onClick={() => handleAction(action)}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-        ) : null
-      }
-    />
+    <>
+      <DailyBubbleShell
+        prose={text}
+        sections={sections}
+        streaming={streaming}
+        proseComplete={proseComplete}
+        thinkingChips={thinkingChips}
+        showThinking={showThinking}
+        revealedIds={revealedIds}
+        expandedIds={expandedIds}
+        animateSections={animateSections}
+        animatingId={animatingId}
+        sectionErrors={sectionErrorSet}
+        onRetrySection={onRetrySection}
+        interrupted={interrupted}
+        actions={
+          showActionStrip ? (
+            <div className="suggestion-strip">
+              {actions.map((action) => {
+                const label = action.kind === 'task' && taskSaved ? '已保存到任务' : action.label
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    className={action.primary ? 'pill primary' : 'pill'}
+                    disabled={action.kind === 'task' && taskSaved}
+                    onClick={() => handleAction(action)}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null
+        }
+      />
+      {memoryLabelText && !streaming ? (
+        <div className="memory-label-tag" data-label={memoryLabel}>{memoryLabelText}</div>
+      ) : null}
+    </>
   )
 }

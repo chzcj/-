@@ -75,6 +75,7 @@ export type InputTypeLabel =
   | 'ask_summary'
   | 'upload_material'
   | 'high_risk_signal'
+  | 'risk_followup'
   | 'casual_chat'
 
 export type DailyMemoryImpact = 'increase_strength' | 'decrease_strength' | 'narrow_scope' | 'new_mechanism' | 'no_change' | 'safety_record'
@@ -174,16 +175,10 @@ export interface EntryEvidencePack {
   decomposedInput: {
     verifiableFacts: string[]
     childBehaviors: string[]
-    childQuotes: string[]
-    parentQuotes: string[]
     parentActions: string[]
     triggerPoints: string[]
-    timePlacePeople: string[]
-    parentEmotions: string[]
     parentEvaluations: string[]
-    parentAssumptions: string[]
     parentGoals: string[]
-    backgroundFactors: string[]
     missingInformation: string[]
   }
   candidateMechanisms: EntryCandidateMechanism[]
@@ -394,10 +389,6 @@ export interface DailyInteractionUpdate {
   newInput: string
   classification: InputClassification
   matchedMechanisms: string[]
-  relatedEvidence: string[]
-  recommendedResponseLogic: string
-  memoryImpact: DailyMemoryImpact
-  updatedTargets: string[]
   timestamp: string
   createdAt: string
   sourceEventId?: string  // traceId：贯穿 userMessage→memory write→episode→job 的可追溯链路
@@ -550,11 +541,57 @@ export interface OrchestrationOutput {
 // 由同步的 OrchestrationOutput 纯函数装配，零额外 LLM；前端在 AI 回复后渲染。
 // 全部自然语言、家长可读，不含字段名/置信度/机制名（P0 红线）。
 export interface DailyCards {
-  judgmentDelta?: string                                                    // 本轮判断变化，仅真有变化/新方向时给
-  understandingCard?: { tier: '初版' | '标准' | '深度'; reading: string }   // 孩子理解卡，档位按成熟度
+  judgmentDelta?: string
+  understandingCard?: { tier: '初版' | '标准' | '深度'; reading: string }
+  /** 本轮判断依据（来自已存证据/事件，家长可读） */
+  evidenceBasis?: string
+  /** 低置信 / 需追问时的结构化追问卡 */
+  followUp?: { question: string; distinction?: string }
+  /** 深度原因折叠区（来自检索上下文，非重复气泡正文） */
+  deepAnalysis?: { title: string; points: string[] }
+  /** 高/低置信分流：影响 AI 组件组合 */
+  confidenceMode?: 'high' | 'low'
+  /** 下一步建议展开时的方向提示（来自路由/检索） */
+  adviceSeed?: string
+  /** 本轮动态选中的附加组件（最多 3 个，由规则引擎按意图+置信度决定） */
+  activeComponents?: Array<
+    | 'follow_up'
+    | 'judgment_delta'
+    | 'evidence'
+    | 'deep_reading'
+    | 'deep_analysis'
+    | 'advice_hint'
+    | 'linked_areas'
+    | 'action_rehearsal'
+    | 'action_task'
+  >
+  /** BFF 结构化 section（hi-fi 多段气泡） */
+  sections?: import('@/types/daily-message').DailySection[]
+  /** BFF 底部操作 pill */
+  actions?: import('@/types/daily-message').DailyAction[]
 }
 
-// 每轮前台对话的输入+输出快照（交付文档 7.2 TurnEvent）。按 traceId 持久化，
+/** 家长待试任务（独立 user_tasks 层，可关联 sourceTraceId） */
+export interface UserTask {
+  taskId: string
+  familyId: string
+  childId: string
+  title: string
+  source: string
+  status: string
+  sourceTraceId?: string
+  observation?: string
+  feedback?: {
+    completed?: string
+    effect?: string
+    reaction?: string
+    note?: string
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+// 每轮前台对话的输入+输出快照
 // 实现 7.1 字段闭环可追溯 / 13.1 可复现审计——给定 traceId 可取回「喂给 Agent 的上下文 + Agent 产出」。
 // daily 主入口由 buildTurnEvent 填满 daily 专属字段；其它前台功能由 buildFeatureTurnEvent 填核心字段
 // + specializedContextPackSnapshot（专项输入包），daily 专属字段留空（故下列为可选）。
@@ -589,6 +626,10 @@ export interface RetrievedContext {
   matchedMechanisms: string[]
   recentDiagnosis: string[]
   parentNarrativePattern: string[]
+  /** 入口采集 / 历史事件中的孩子原话或近原话 */
+  childQuotes: string[]
+  /** 四模块具体事实直喂（verifiableFacts/childBehaviors/triggerPoints），前端 AI 直读不思考 */
+  entryFacts: string[]
 }
 
 /* ================================================================
@@ -653,6 +694,10 @@ export interface DailyDialogueRetrievalPacket {
   recentRelatedEvents: string[]
   pendingHypotheses: string[]
   possibleCounterEvidence: string[]
+  childQuotes: string[]
+  /** 四模块采集的具体事实直喂（verifiableFacts/childBehaviors/triggerPoints 合并去重，前端 AI 直读） */
+  entryFacts: string[]
+  familyInteractionPatterns: string[]
   parentNarrativePattern: Record<string, unknown>
   recommendedHandling: {
     canExplainWithExistingModel: boolean

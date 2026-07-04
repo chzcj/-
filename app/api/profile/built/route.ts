@@ -1,6 +1,9 @@
 import { ok, fail, failFromError } from '@/lib/api-response'
+import { getCurrentUser } from '@/lib/server/auth'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { saveBuiltProfileSnapshot, getLatestBuiltProfileSnapshot, type BuiltProfileSnapshot } from '@/lib/server/memory/database-manager'
+import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
+import { setUserOnboardingComplete } from '@/lib/server/db'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 
 /* ================================================================
@@ -11,8 +14,19 @@ import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 export async function GET(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
   const tenant = await resolveTenant()
+  const user = await getCurrentUser()
   const snapshot = await getLatestBuiltProfileSnapshot(tenant).catch(() => null)
-  return ok({ snapshot })
+  const humanized = snapshot
+    ? {
+        ...snapshot,
+        coreJudgment: humanizeBuiltJudgment(snapshot.coreJudgment, {
+          deepMechanism: snapshot.deepMechanism,
+          supportFocus: snapshot.supportFocus,
+        }),
+      }
+    : null
+  const onboardingComplete = Boolean(user?.onboardingComplete) || Boolean(humanized?.coreJudgment?.trim())
+  return ok({ snapshot: humanized, onboardingComplete })
 }
 
 export async function POST(request: Request) {
@@ -21,12 +35,16 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const s = body?.snapshot
     if (!s || typeof s.coreJudgment !== 'string' || !s.coreJudgment.trim()) {
-      return fail('BAD_SNAPSHOT', '快照内容缺失', undefined, 400)
+      return fail('BAD_SNAPSHOT', '画像内容不完整，请重新生成。', undefined, 400)
     }
     const tenant = await resolveTenant()
+    const user = await getCurrentUser()
     const snapshot: BuiltProfileSnapshot = {
       completeness: typeof s.completeness === 'number' ? s.completeness : 0,
-      coreJudgment: String(s.coreJudgment),
+      coreJudgment: humanizeBuiltJudgment(String(s.coreJudgment), {
+        deepMechanism: typeof s.deepMechanism === 'string' ? s.deepMechanism : '',
+        supportFocus: typeof s.supportFocus === 'string' ? s.supportFocus : undefined,
+      }),
       deepMechanism: typeof s.deepMechanism === 'string' ? s.deepMechanism : '',
       supportFocus: typeof s.supportFocus === 'string' ? s.supportFocus : undefined,
       evidence: Array.isArray(s.evidence)
@@ -49,7 +67,10 @@ export async function POST(request: Request) {
       updatedAt: new Date().toISOString(),
     }
     await saveBuiltProfileSnapshot(snapshot, tenant)
-    return ok({ saved: true })
+    if (user?.userId) {
+      await setUserOnboardingComplete(user.userId, true)
+    }
+    return ok({ saved: true, onboardingComplete: true })
   } catch (error) {
     return failFromError(error)
   }

@@ -1,0 +1,32 @@
+---
+description: 代码更新后默认部署到 yujian.yihe.site
+alwaysApply: true
+---
+
+# 默认部署（育见 hi-fi 主站）
+
+产品以 **hi-fi 四 Tab 主流程** 为准：`/login` → `/profile/build/*` → `/daily` | `/tasks` | `/rehearsal` | `/family-profile`。
+
+## 每次完成可上线的前端/全栈改动后
+
+在回复用户前，除非用户明确说「先不部署」，否则按顺序执行：
+
+1. `npm run typecheck`
+2. `npm run build`
+3. 确认本机已设置部署变量（勿写入 Git）：
+   - `SSH_HOST`（如 `ubuntu@81.70.228.8`）
+   - `SSH_PASS`
+   - `AUTH_TOKEN`（与 `.env.local` 的 `INTERNAL_API_TOKEN` 一致）
+4. `npm run deploy`（即 `deploy.sh`：rsync → 上传 `.env.local` → install → build → PM2 重启）
+5. 验证：`curl -s https://yujian.yihe.site/api/readiness` 中 `ready: true`
+
+若部署变量缺失或部署失败，在回复中说明阻塞原因与已完成的本地验证，不要静默跳过。
+
+## UI 约定
+
+- 新功能页面优先使用 `HiFiMainShell` / `HiFiBuildShell`，不要恢复旧 `AppShell` + `BottomNavTabs` 紫色心镜布局。
+- 旧路由（`/home`、`/problem/*`、`/observation` 等）由 `middleware.ts` 重定向到 `/daily`，无需再迁移 UI。
+
+## 收工留言
+
+部署成功后，在 `.agents/HANDOFF.md` 追加一行：部署时间、验证结果、主要变更摘要。

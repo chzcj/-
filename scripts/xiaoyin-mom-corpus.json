@@ -1,0 +1,6 @@
+{
+  "manifest": "scripts/xiaoyin-mom-corpus/manifest.json",
+  "testDefault": "CORPUS_PHASE=hifi npm run test:xiaoyin-corpus",
+  "testLegacy": "CORPUS_PHASE=legacy npm run test:xiaoyin-corpus",
+  "adaptCommand": "npm run corpus:adapt"
+}

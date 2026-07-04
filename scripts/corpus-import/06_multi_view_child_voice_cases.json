@@ -1,0 +1,918 @@
+{
+  "datasetName": "06_multi_view_child_voice_cases_expanded",
+  "description": "多视角校正：22条孩子原话，含老师信息有/无。",
+  "cases": [
+    {
+      "caseId": "mv_001",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他就是拖，写完了还不珍惜时间。",
+      "childOriginalWords": "我快点写完也没用，她后面肯定还让我背别的。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长关注拖延",
+          "孩子认为写完后仍会加任务"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "任务无结束感",
+          "孩子对加码有预期"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "必须说老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_002",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他考差了还一副无所谓。",
+      "childOriginalWords": "随便，反正我也就这样了。",
+      "teacherOrSchoolInfo": {
+        "teacherFeedback": "班主任说他最近考试后不主动看卷子，但上课被点名时会低头躲开。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子表面无所谓",
+          "老师反馈考后回避卷子/被点名低头"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "失败退路保护",
+          "能力感低"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "引用班主任反馈：不主动看卷子、被点名低头",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_003",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他上课不认真，坐第一排都人在心不在。",
+      "childOriginalWords": "老师一问我我就紧张，我也不是不想会。",
+      "teacherOrSchoolInfo": {
+        "teacherFeedback": "化学老师说他基础题有时能跟，但一到方程式配平就明显慢，提问时声音很小。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子说老师问就紧张",
+          "老师反馈配平慢且提问声音小"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "学校提问压力",
+          "能力暴露焦虑"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "引用化学老师具体事实",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_004",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他手机瘾太大，一有空就拿手机。",
+      "childOriginalWords": "手机是我唯一能自己决定什么时候开始、什么时候停的东西。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长认为手机瘾",
+          "孩子说手机是唯一自控时间"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "手机作为可控时间",
+          "休息边界不稳定"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_005",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他就是嘴上答应，后面不动。",
+      "childOriginalWords": "我说知道了，是因为我再说也没用，她还是会继续讲。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长看到答应不行动",
+          "孩子说明答应是为了结束说教"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "表面配合—实际撤退",
+          "说教过载"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_006",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他不愿意背书，抽查就烦。",
+      "childOriginalWords": "我怕她一抽我就发现我不会，然后又要讲我不用心。",
+      "teacherOrSchoolInfo": {
+        "teacherFeedback": "英语老师说他听写前会翻书，但不愿意主动到老师处过关。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子怕抽查暴露不会",
+          "老师说听写前翻书但不主动过关"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "抽查暴露压力",
+          "羞耻回避"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "引用英语老师反馈",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_007",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他不想承担责任，男孩子一点担当没有。",
+      "childOriginalWords": "我不是不想让她轻松，我只是觉得我现在自己都搞不定。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长期待担当",
+          "孩子表达自己搞不定"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "责任压力",
+          "能力感不足"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_008",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他把问题都推给老师严、同学抄答案。",
+      "childOriginalWords": "老师真的很严，班上有人抄，我认真写慢了还会被说。",
+      "teacherOrSchoolInfo": {
+        "teacherFeedback": "班主任承认班里订正要求比较紧，但未确认抄答案情况。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子说老师严/有人抄",
+          "老师确认订正要求紧但未确认抄答案"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "学校现实需分辨",
+          "外归因与事实混合"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "引用确认和未确认边界",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_009",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他完全没有计划，什么都等我催。",
+      "childOriginalWords": "我一看到一堆任务就乱，不知道先写哪个，哪个都来不及。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子描述任务多导致启动混乱"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "启动组织困难",
+          "任务过载"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_010",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他不跟我说学校，问就关门。",
+      "childOriginalWords": "我一说学校，她最后都会问作业、老师、成绩，我就不想说了。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长问学校转向学习检查",
+          "孩子因此不想说"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "表达后被安排/检查",
+          "沟通通道受损"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_011",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他在补课也不认真。",
+      "childOriginalWords": "补课老师讲得很快，我前面没懂，后面坐着就像听天书。",
+      "teacherOrSchoolInfo": {
+        "teacherFeedback": "补课老师说他后半段注意力差，前半段基础题跟得慢。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子说听不懂后坐着",
+          "补课老师反馈后半段注意力差且基础慢"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "能力卡点导致走神",
+          "补课不匹配"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "引用补课老师反馈",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_012",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他怕吃苦，体育也不练。",
+      "childOriginalWords": "他们一笑我跑得慢，我就不想去了。",
+      "teacherOrSchoolInfo": {
+        "teacherFeedback": "体育老师说他训练出勤不稳定，短跑项目信心不足。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子因同学笑跑慢而回避",
+          "体育老师反馈出勤不稳/短跑信心不足"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "同伴羞耻",
+          "逃避暴露"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "引用体育老师反馈",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_013",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他和哥哥姐姐聊就开心，跟我就不说。",
+      "childOriginalWords": "他们不会一上来就说我以前怎样，也不会马上加一堆任务。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子认为外部不会翻旧账/加任务"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "外部低压力关系有效",
+          "妈妈沟通高压"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_014",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他每次说随便，我就气。",
+      "childOriginalWords": "我说随便是因为我不知道怎么弄好，说努力我也怕做不到。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子将随便解释为不知道如何变好/怕做不到"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "失败退路保护",
+          "自我效能低"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_015",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他就是骗我，说背了其实没有。",
+      "childOriginalWords": "我背了一点，但不熟。我怕说不熟，她又要让我重新背很多。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子承认只背一点不熟",
+          "怕说不熟会被要求重背很多"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "不透明来自加码预期",
+          "任务无结束感"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_016",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他一点不珍惜我花的钱。",
+      "childOriginalWords": "我知道妈妈花钱了，所以我更怕我学不好，越怕越不想去。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子知道花钱并因此压力更大"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "愧疚压力",
+          "补课压力"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_017",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他做作业太敷衍，字乱得不行。",
+      "childOriginalWords": "我想快点写完，不然她回来又要看，我越想快越乱。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子想快点写完避免妈妈检查",
+          "字乱与急有关"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "检查预期导致质量下降",
+          "逃离任务"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_018",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他不愿意复盘，学完就算。",
+      "childOriginalWords": "复盘就是把我不会的再拿出来丢脸一遍。",
+      "teacherOrSchoolInfo": {
+        "teacherFeedback": "物理老师说他错题本空得多，愿意做新题，不愿意订正旧题。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子把复盘体验为丢脸",
+          "老师反馈错题本空/愿做新题不愿订正"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "复盘暴露失败",
+          "旧错回避"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "引用物理老师事实",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_019",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他对我态度不好，我一说他就烦。",
+      "childOriginalWords": "她一皱眉我就知道后面要开始讲很久。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子预判妈妈皱眉后会长时间说教"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "预期性防御",
+          "说教过载"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_020",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他今天主动问题了，是不是有点进步？",
+      "childOriginalWords": "我问的时候其实很怕她说你怎么这都不会，但她今天没说，所以我还敢继续问。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子主动求助取决于妈妈不评价",
+          "家长今日未说怎么这都不会"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "低评价支持有效",
+          "求助通道可修复"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_021",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他不想去学校，不知道是不是偷懒。",
+      "childOriginalWords": "我不是不想去，我怕今天又被老师当众问。",
+      "teacherOrSchoolInfo": {
+        "teacherFeedback": "班主任说近期没有请假记录，但孩子被提问时确实容易低头。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子怕当众提问",
+          "老师确认提问时低头"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "学校提问焦虑"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "引用班主任：无请假但提问低头",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    },
+    {
+      "caseId": "mv_022",
+      "targetFeature": "multi_view",
+      "inputMode": "text",
+      "parentPreviousDescription": "妈妈说：他觉得我不信任他，可他确实经常糊弄。",
+      "childOriginalWords": "她说信我，但每次都要看。那不叫信。",
+      "teacherOrSchoolInfo": null,
+      "hiddenGroundTruth": {
+        "facts": [
+          "母亲口头信任但行为检查",
+          "孩子不认可口头信任"
+        ],
+        "parentEmotion": [],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "信任行为不一致",
+          "检查冲突"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "如果缺老师信息，老师视角必须诚实说不清楚"
+      },
+      "expectedGoodResponse": [
+        "分别呈现家长视角、孩子可能体验、老师/学校视角",
+        "老师信息没有时诚实说不清楚",
+        "有老师信息时引用真实事实",
+        "不把孩子原话过度心理化",
+        "指出需要验证的生活事实"
+      ],
+      "badResponseSignals": [
+        "没有老师信息却编老师视角",
+        "把孩子原话当绝对事实",
+        "直接责怪家长或孩子",
+        "忽略孩子原话中的边界请求",
+        "泛泛建议沟通"
+      ],
+      "teacherViewExpectation": "老师视角不清楚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000
+    }
+  ]
+}

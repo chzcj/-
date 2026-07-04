@@ -1,37 +1,81 @@
 'use client'
-import { BookOpenText, GraduationCap, LayoutDashboard, MessageCircle, Mic } from 'lucide-react'
+
+import { ClipboardList, MessageCircle, Mic, UserRound } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { buildOnboardingHref } from '@/lib/profile/buildGate'
+import { isOnboardingComplete } from '@/lib/profile/onboarding'
 
-// 'profile' 为历史兼容值（旧档案 tab 已下线）：仍合法，但不对应任何 tab → 不高亮。
-// 这样 24 个 active="profile" 的画像/档案子页无需逐个改，只是底栏不高亮（它们本就不在主导航里）。
-export type TabKey = 'home' | 'rehearsal' | 'diagnosis' | 'record' | 'board' | 'profile'
+/** 主导航四 Tab：交流 / 任务 / 预演 / 画像（对齐高保真 HTML） */
+export type TabKey = 'chat' | 'tasks' | 'rehearsal' | 'profile'
 
-/* 主导航 5 项（对齐交付文档）：对话 / 预演 / 诊断 / 记录 / 看板。
-   家庭规划不占 tab——从首页专项卡 + 教育诊断结果页 + 看板「下一步」进入；
-   档案不占 tab——从首页「孩子画像」卡 + 看板「查看完整档案」进入。 */
-export function BottomNavTabs({ active }: { active: TabKey }) {
+/** 历史 active 值兼容：画像子流程等仍传 profile；旧 home/record 映射到新 Tab */
+export type TabKeyCompat = TabKey | 'home' | 'record' | 'board' | 'diagnosis' | 'legacy'
+
+function resolveActive(active: TabKeyCompat): TabKey | null {
+  if (active === 'chat' || active === 'home') return 'chat'
+  if (active === 'tasks' || active === 'record' || active === 'board') return 'tasks'
+  if (active === 'rehearsal' || active === 'diagnosis') return 'rehearsal'
+  if (active === 'profile') return 'profile'
+  return null
+}
+
+const TAB_ROUTES: Record<TabKey, string> = {
+  chat: '/daily',
+  tasks: '/tasks',
+  rehearsal: '/rehearsal',
+  profile: '/family-profile',
+}
+
+export function BottomNavTabs({ active }: { active: TabKeyCompat }) {
   const router = useRouter()
+  const current = resolveActive(active)
+  const locked = !isOnboardingComplete()
+
+  function go(tab: TabKey) {
+    if (locked) {
+      router.push(buildOnboardingHref())
+      return
+    }
+    router.push(TAB_ROUTES[tab])
+  }
+
   return (
-    <nav className="talk-tabs talk-tabs-five" aria-label="底部模块">
-      <button type="button" className={active === 'home' ? 'active' : ''} onClick={() => router.push('/home')}>
+    <nav className="talk-tabs" aria-label="底部导航">
+      <button
+        type="button"
+        className={current === 'chat' ? 'active' : ''}
+        onClick={() => go('chat')}
+        aria-current={current === 'chat' ? 'page' : undefined}
+      >
         <MessageCircle size={20} />
-        <span>对话</span>
+        <span>交流</span>
       </button>
-      <button type="button" className={active === 'rehearsal' ? 'active' : ''} onClick={() => router.push('/rehearsal')}>
+      <button
+        type="button"
+        className={current === 'tasks' ? 'active' : ''}
+        onClick={() => go('tasks')}
+        aria-current={current === 'tasks' ? 'page' : undefined}
+      >
+        <ClipboardList size={20} />
+        <span>任务</span>
+      </button>
+      <button
+        type="button"
+        className={current === 'rehearsal' ? 'active' : ''}
+        onClick={() => go('rehearsal')}
+        aria-current={current === 'rehearsal' ? 'page' : undefined}
+      >
         <Mic size={20} />
         <span>预演</span>
       </button>
-      <button type="button" className={active === 'diagnosis' ? 'active' : ''} onClick={() => router.push('/education-diagnosis')}>
-        <GraduationCap size={20} />
-        <span>诊断</span>
-      </button>
-      <button type="button" className={active === 'record' ? 'active' : ''} onClick={() => router.push('/record-child')}>
-        <BookOpenText size={20} />
-        <span>记录</span>
-      </button>
-      <button type="button" className={active === 'board' ? 'active' : ''} onClick={() => router.push('/board')}>
-        <LayoutDashboard size={20} />
-        <span>看板</span>
+      <button
+        type="button"
+        className={current === 'profile' ? 'active' : ''}
+        onClick={() => go('profile')}
+        aria-current={current === 'profile' ? 'page' : undefined}
+      >
+        <UserRound size={20} />
+        <span>画像</span>
       </button>
     </nav>
   )

@@ -8,6 +8,15 @@
   - triggerPoints：触发点（在什么之后/什么情境下出现的反应）。
   - parentEmotions：家长流露的情绪（累、急、担心、生气等）。
   - parentGoals：家长这次真正想达成的目标（若可推断）。
+- parentUnderstanding：本轮家长侧理解信号（string[]），从输入中抽取，**中性描述、不评判**：
+  - longTermGoal：家长真正希望孩子成为什么样（若可推断，一句）
+  - anxietySource：家长为什么急（若可推断，一句）
+  - interpretationHabit：家长常把孩子行为解释成什么（只记观察，不当事实）
+  - communicationHabit：家长常如何推进（催、问、检查、讲道理等，基于本轮动作）
+  - advicePreference：更偏具体可执行 / 偏先被理解 / 偏看孩子视角（若可推断）
+  - burdenState：疲惫、委屈、无力等（若流露）
+  - recurringTheme：最近反复出现的主题（若可推断）
+  没有则对应字段留空字符串或空数组；禁止「控制欲强」「过度焦虑」等评判词。
 - newHypotheses：**0-2 条**待验证假设。**绝大多数日常轮应为空数组 []**——只有当本轮出现一个**之前不明显、值得长期验证的新机制/模式**时才给。每条：
   - hypothesis：一句中性、条件化的可能机制（"在某类场景里，他可能更倾向于……"），是待验证猜测，不是结论、不是标签、不是诊断。
   - weight：'low' 或 'medium'（日常单轮证据有限，默认 'low'）。

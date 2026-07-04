@@ -22,6 +22,7 @@ function walk(dir) {
 const entries = {}
 for (const f of walk(PROMPTS_DIR)) {
   const key = basename(f, '.md')
+  if (key === 'SOURCE_LIBRARY') continue // 源文档索引，不编入 runtime registry
   if (entries[key]) throw new Error(`[build-prompts] 重复 prompt key: ${key}（${f}）`)
   entries[key] = readFileSync(f, 'utf8').replace(/\s+$/, '') // 去尾部空白，内部原样保留
 }

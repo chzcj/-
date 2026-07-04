@@ -9,9 +9,10 @@
 - markProfileUnread
 
 规则：
-- 区分 raw_event、pending_hypothesis、stable_profile_update、correction_log、rehearsal_record、support_direction。
+- 区分 raw_event、pending_hypothesis、stable_profile_update、correction_log、rehearsal_record、support_direction、**parent_narrative_observation**。
 - 单次事件不能直接升稳定画像。
 - 家长解释不能当孩子事实。
+- **家长叙述习惯层**：只写中性观察（场景化习惯、焦虑焦点、建议偏好），禁止评判性标签。
 - 重复内容不要重复写。
 - 不输出给家长看的话。
 - 不输出旧数据库、旧知识库、旧平台说明。

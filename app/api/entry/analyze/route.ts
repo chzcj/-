@@ -4,7 +4,6 @@ import { fastAiFailureMessage, runEntryFollowUp, runEntrySummary } from '@/lib/s
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
-
 const TITLE_MAP: Record<string, string> = {
   daily: '日常节奏',
   homework: '学习作业',
@@ -54,6 +53,19 @@ export async function POST(request: Request) {
           hypotheses: Array.isArray(result.pendingHypotheses) ? result.pendingHypotheses : [],
           tenant,
         }, `entry_evd_${tenant.familyId}_${tenant.childId}_${episodeId}`, `entry_${entryType}`)
+      }
+
+      // 四模块完成（final summary 提交）→ 立即触发深度机制复核（独立 build-done idem key，
+      // 不等每日桶；让新用户四模块填完即产出理论根因机制 + parent_narrative，前端 AI 立刻能读到）。
+      // entry_evidence 链也会触发（每日桶），双保险；runDeepMechanismReview 信息不足时 no-op。
+      if (entryType === 'final') {
+        const dayBucket = new Date().toISOString().slice(0, 10)
+        void enqueueJob(
+          'deep_mechanism_review',
+          { tenant },
+          `deep_mechanism:build:${tenant.familyId}:${tenant.childId}:${dayBucket}`,
+          `entry_${entryType}`
+        ).catch((err) => console.warn('[entry/analyze] deep_mechanism build-done 入队失败:', err))
       }
 
       if (!result?.mainJudgment) {

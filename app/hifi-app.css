@@ -1255,6 +1255,56 @@
   line-height: var(--text-small-lh);
 }
 
+.hifi-app-root .profile-data-card {
+  cursor: pointer;
+  transition: outline-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.hifi-app-root .profile-data-card h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hifi-app-root .card-chevron {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.hifi-app-root .profile-data-card.expanded {
+  outline: 2px solid rgba(111, 166, 95, 0.28);
+}
+
+.hifi-app-root .card-progress-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.hifi-app-root .progress-bar-track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(111, 159, 86, 0.12);
+  overflow: hidden;
+}
+
+.hifi-app-root .progress-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green-deep), var(--green));
+  transition: width 280ms var(--ease-out-quart);
+}
+
+.hifi-app-root .progress-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hifi-app-root .page.page-entering .hero-card,
   .hifi-app-root .page.page-entering .section,

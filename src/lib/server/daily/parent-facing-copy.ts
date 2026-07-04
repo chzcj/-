@@ -9,7 +9,12 @@ import {
   assertParentFacingText,
   filterParentFacingList,
 } from '@/lib/server/daily/parent-facing-filter'
-import { requireFastJson } from '@/lib/server/daily/llm-required'
+import { requireFastJson, requireTextStream } from '@/lib/server/daily/llm-required'
+import {
+  buildSectionStreamTask,
+  createSectionStreamTracker,
+  type SectionStreamCallbacks,
+} from '@/lib/server/daily/section-stream'
 
 type SectionCopyPatch = {
   id: string
@@ -25,7 +30,7 @@ type SectionCopyResponse = {
   taskTitle?: string
 }
 
-const PROMPT_CACHE_VERSION = 'parent-facing-v5-parent-understanding'
+const PROMPT_CACHE_VERSION = 'parent-facing-v6-trim-sp'
 
 function stableHash(text: string): string {
   return createHash('sha256').update(text).digest('hex').slice(0, 16)
@@ -86,9 +91,7 @@ export async function fillDailySectionCopy(
     },
     {
       // section 文案常因 2048 默认值在段落中途截断（如"…交流发生在他…"），提到 3072 给足空间。
-      maxTokens: 3072,
-      // 段落完整性校验：每个 paragraph 必须以句号/问号/感叹号/闭合引号收尾，半句触发重试。
-      validate: validateSectionCompleteness,
+      maxTokens: 2048,
     }
   )
 
@@ -103,6 +106,51 @@ export async function fillDailySectionCopy(
 
   const taskTitle = (result.taskTitle || '').trim()
   return { sections, taskTitle: taskTitle || undefined }
+}
+
+/** 单个 section 真流式（Plan P 并行 buffer 用） */
+export async function streamSingleSectionCopy(
+  skeleton: DailySection,
+  output: OrchestrationOutput,
+  userText: string,
+  onDelta?: (delta: string) => void
+): Promise<string> {
+  const payload = buildDailyProsePayload(output, userText)
+  const { buildSingleSectionTask } = await import('@/lib/server/daily/section-buffer')
+  const task = buildSingleSectionTask(skeleton)
+
+  return requireTextStream(
+    sectionCopySystem(),
+    task,
+    {
+      ...payload,
+      sectionSkeleton: { id: skeleton.id, label: skeleton.label, kind: skeleton.kind, hidden: skeleton.hidden },
+    },
+    onDelta
+  )
+}
+
+/** 单流 marker 格式填充可见 section（legacy fallback） */
+export async function streamDailySectionCopy(
+  skeletons: DailySection[],
+  output: OrchestrationOutput,
+  userText: string,
+  callbacks: SectionStreamCallbacks
+): Promise<{ sections: DailySection[]; taskTitle?: string }> {
+  if (!skeletons.length) return { sections: skeletons }
+
+  const payload = buildDailyProsePayload(output, userText)
+  const task = buildSectionStreamTask(skeletons)
+  const tracker = createSectionStreamTracker(skeletons, callbacks)
+
+  await requireTextStream(sectionCopySystem(), task, {
+    ...payload,
+    sectionSkeletons: skeletons.map((s) => ({ id: s.id, label: s.label, kind: s.kind, hidden: s.hidden })),
+  }, (delta) => {
+    tracker.feed(delta)
+  })
+
+  return tracker.finalize()
 }
 
 /** 段落完整性校验：禁止 LLM 停在半句（如"…交流发生在他…"）。末尾必须是句号/问号/感叹号/闭合引号。 */

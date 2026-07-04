@@ -15,7 +15,11 @@ export default function ConflictPage() {
 
   function handleSubmit(text: string, _mode: InputMode) {
     if (!text.trim() || loading) return
-    if (!hasProfile()) { alert('请先建立孩子画像'); router.push('/profile/build'); return }
+    if (!hasProfile()) {
+      alert('请先完成五个入口建档，冲突复盘会更准。')
+      router.push('/profile/build')
+      return
+    }
     setLoading(true)
     setTimeout(() => { setLoading(false); router.push('/conflict/result?text=' + encodeURIComponent(text.trim())) }, 500)
   }
@@ -36,7 +40,7 @@ export default function ConflictPage() {
         </div>
         <BottomNavTabs active="rehearsal" />
       </div>
-      <BottomVoiceBar state={loading ? 'transcribing' : 'idle'} hint="把刚才那次争吵，尽量原样告诉我" disabled={loading} elevated onSubmit={handleSubmit} />
+      <BottomVoiceBar state={loading ? 'transcribing' : 'idle'} hint="按住说话，尽量按原话复述" disabled={loading} elevated onSubmit={handleSubmit} />
     </AppShell>
   )
 }

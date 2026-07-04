@@ -18,10 +18,12 @@ type ProfileAwareRehearsal = {
   whyThisIsSafer: string
   avoidPhrases: string[]
   usedProfileEvidence: string[]
-  /** 从 saferVersion 提炼的"今晚要试"任务标题（祈使句式），供任务卡片直接使用，避免照抄台词原话。 */
   taskTitle?: string
-  /** 结合预演对话的针对性沟通建议（结束页展示） */
   closingAdvice?: string
+  showSuggestedWording?: boolean
+  dailyToneDetected?: boolean
+  suggestedWordingHint?: string
+  dailyToneReminder?: string
 }
 
 type RehearsalProfileContext = {
@@ -55,6 +57,7 @@ export async function POST(request: Request) {
   /* profile-aware 路径：标准入口(fromSpecialFeature)默认画像感知，从服务端记忆检索；
      或有前端画像/家长采集的预演上下文亦进入。画像优先用前端传入，缺失则从记忆检索。 */
   const rc = (rehearsalContext || {}) as { parentGoal?: string; parentWorry?: string; whatHappenedBeforeTalk?: string }
+  const parentRoundCount = typeof body.parentRoundCount === 'number' ? body.parentRoundCount : 0
   const hasRehearsalCtx = Boolean(rc.parentGoal || rc.parentWorry || rc.whatHappenedBeforeTalk)
   // 路由级 traceId/tenant：贯穿 TurnEvent 快照与采集写回（强字段闭环），各结果路径共享。
   const tenant = await resolveTenant()
@@ -100,6 +103,10 @@ ${profileSummary}
 - **saferVersion** 写一句家长可以直接说的更稳版本（仅用于结束页建议，模拟对话中不展示）。
 - **closingAdvice** 结合本轮预演对话，给家长 2-3 句针对性沟通建议（总结预演中的卡点 + 下一步怎么试），禁止泛泛鸡汤。
 - taskTitle 是从 saferVersion 提炼的"今晚要试"任务标题，祈使句式 6–24 字，描述动作而非照抄台词。好例："今晚用这句更稳的话跟他试一次"、"先不提成绩，用这句话开场试试"。坏例（禁止）：直接复制 saferVersion 原话、或写"理解您不问不放心"这种共情句。
+- **dailyToneDetected**：若家长像在「交流页」向 AI 倾诉/分析（长叙述、问怎么办、讲今天发生了什么），而非对孩子说的话，则为 true。
+- **dailyToneReminder**：dailyToneDetected 为 true 时，一句简练提醒（≤40字）：正在预演，请只回复你会对孩子说的话。
+- **showSuggestedWording**：当已试够几种说法（parentRoundCount≥2 且 saferVersion 有参考价值）时为 true。
+- **suggestedWordingHint**：showSuggestedWording 为 true 时，给家长一句可直接试的 softer 说法（20-50字），不同于 saferVersion 时可更短。
 
 只输出 JSON，字段固定为：
 childLikelyHearing: string
@@ -111,11 +118,15 @@ whyThisIsSafer: string
 avoidPhrases: string[]
 usedProfileEvidence: string[]
 closingAdvice: string
-taskTitle: string`,
-          { parentMessage: parentText, profileContext: profileSummary.slice(0, 1500) }
+taskTitle: string
+dailyToneDetected: boolean
+dailyToneReminder: string
+showSuggestedWording: boolean
+suggestedWordingHint: string`,
+          { parentMessage: parentText, profileContext: profileSummary.slice(0, 1500), parentRoundCount }
         ).catch(() => undefined)
 
-        const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx)
+        const normalized = normalizeProfileAwareResult(aiResult, parentText, ctx, parentRoundCount)
         if (fromSpecialFeature) {
           // 预演过程不写记忆；仅记录 TurnEvent 供审计。任务反馈后再 memory_write。
         }
@@ -202,9 +213,20 @@ taskTitle: string`,
 function normalizeProfileAwareResult(
   value: Partial<ProfileAwareRehearsal> | undefined,
   parentText: string,
-  ctx: RehearsalProfileContext
+  ctx: RehearsalProfileContext,
+  parentRoundCount = 0
 ): ProfileAwareRehearsal {
   const fallback = buildProfileAwareFallback(parentText, ctx)
+  const saferVersion = nonEmpty(value?.saferVersion, fallback.saferVersion)
+  const dailyToneDetected =
+    typeof value?.dailyToneDetected === 'boolean'
+      ? value.dailyToneDetected
+      : detectDailyTone(parentText)
+  const showSuggestedWording =
+    typeof value?.showSuggestedWording === 'boolean'
+      ? value.showSuggestedWording
+      : parentRoundCount >= 2 && Boolean(saferVersion)
+
   return {
     childLikelyHearing: nonEmpty(value?.childLikelyHearing, fallback.childLikelyHearing),
     likelyTriggeredMechanisms: nonEmptyArray(value?.likelyTriggeredMechanisms, fallback.likelyTriggeredMechanisms),
@@ -214,13 +236,30 @@ function normalizeProfileAwareResult(
       behaviorRisk: nonEmpty(value?.possibleChildReaction?.behaviorRisk, fallback.possibleChildReaction.behaviorRisk),
     },
     riskPoints: nonEmptyArray(value?.riskPoints, fallback.riskPoints),
-    saferVersion: nonEmpty(value?.saferVersion, fallback.saferVersion),
+    saferVersion,
     whyThisIsSafer: nonEmpty(value?.whyThisIsSafer, fallback.whyThisIsSafer),
     avoidPhrases: nonEmptyArray(value?.avoidPhrases, fallback.avoidPhrases),
     usedProfileEvidence: nonEmptyArray(value?.usedProfileEvidence, fallback.usedProfileEvidence),
     taskTitle: value?.taskTitle?.trim() || undefined,
     closingAdvice: value?.closingAdvice?.trim() || undefined,
+    dailyToneDetected,
+    dailyToneReminder: dailyToneDetected
+      ? nonEmpty(
+          value?.dailyToneReminder,
+          '预演里我在扮演孩子，请只回复你会对孩子说的那句话。'
+        )
+      : undefined,
+    showSuggestedWording,
+    suggestedWordingHint: showSuggestedWording
+      ? nonEmpty(value?.suggestedWordingHint, saferVersion)
+      : undefined,
   }
+}
+
+function detectDailyTone(parentText: string): boolean {
+  const t = parentText.replace(/\s/g, '')
+  if (t.length < 48) return false
+  return /今天|昨晚|孩子今天|怎么办|分析一下|帮我看|发生了什么|情绪|作业拖延/.test(t)
 }
 
 function buildProfileAwareFallback(parentText: string, ctx: RehearsalProfileContext): ProfileAwareRehearsal {

@@ -1,49 +1,73 @@
 'use client'
-import { ArrowRight, Camera, Eye, MessageCircle, Mic } from 'lucide-react'
+
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { AppShell } from '@/components/layout/AppShell'
-import { BottomNavTabs } from '@/components/layout/BottomNavTabs'
-import { PageHeader } from '@/components/ui/PageHeader'
+import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
+import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
 import { getLatestProfile } from '@/lib/storage/profileStorage'
 
 export default function VerifyPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<ReturnType<typeof getLatestProfile>>(null)
-  useEffect(() => { setProfile(getLatestProfile()) }, [])
+
+  useEffect(() => {
+    setProfile(getLatestProfile())
+  }, [])
+
   if (!profile) {
-    return (<AppShell><div className="page without-voice with-bottom-tabs">
-      <PageHeader title="待验证观察点" showBack onBack={() => router.push('/profile/result')} />
-      <div className="result-card card" style={{ marginTop: 20, textAlign: 'center', padding: 32 }}>
-        <div className="result-title">还没有画像</div></div></div></AppShell>)
-  }
-  return (
-    <AppShell>
-      <div className="page without-voice with-bottom-tabs">
-        <PageHeader title="后面再观察什么" showBack onBack={() => router.push('/profile/result')} />
-        <div style={{ fontSize: 14, color: '#6E6E73', marginBottom: 16 }}>
-          画像已经够用了，但下面几件事再看清一点，会让后面的判断更准
-        </div>
-        {profile.verificationPoints?.map((v) => (
-          <div key={v.id} className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 12, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)' }}>
-            <div style={{ fontSize: 15, fontWeight: 650, color: '#1D1D1F', marginBottom: 6 }}>{v.title}</div>
-            <div style={{ fontSize: 14, lineHeight: 1.5, color: '#6E6E73' }}>{v.description}</div>
-          </div>
-        ))}
-        <div style={{ fontSize: 13, color: '#A1A1A6', textAlign: 'center', marginBottom: 14, marginTop: 8 }}>
-          这些不是要你立刻改变做法，只是后面多留意
-        </div>
-        <button type="button" className="primary-button"
-          onClick={() => router.push('/rehearsal')}
-          style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600 }}>
-          进入沟通预演 <ArrowRight size={18} style={{ marginLeft: 6 }} />
+    return (
+      <HiFiMainShell activeTab="profile">
+        <button type="button" className="quiet-button" onClick={() => router.push('/profile/result')}>
+          <ArrowLeft size={16} /> 返回
         </button>
-        <NavTabs />
-      </div>
-    </AppShell>
+        <section className="section">
+          <div className="profile-block">
+            <h3>还没有画像</h3>
+          </div>
+        </section>
+      </HiFiMainShell>
+    )
+  }
+
+  const points = profile.verificationPoints || []
+
+  return (
+    <OnboardingGuard>
+      <HiFiMainShell activeTab="profile">
+        <button type="button" className="quiet-button" onClick={() => router.push('/profile/result')}>
+          <ArrowLeft size={16} /> 返回
+        </button>
+
+        <article className="hero-card compact">
+          <span className="module-kicker">待验证</span>
+          <h2 className="hero-title">后面再观察什么</h2>
+          <p className="hero-copy">画像已经够用了，但下面几件事再看清一点，会让后面的判断更准。</p>
+        </article>
+
+        <section className="section">
+          {points.length > 0 ? (
+            points.map((v) => (
+              <div key={v.id} className="profile-block">
+                <h3>{v.title}</h3>
+                <p>{v.description}</p>
+              </div>
+            ))
+          ) : (
+            <div className="profile-block">
+              <h3>暂无待验证点</h3>
+              <p className="hint-text">继续交流和预演，系统会逐步补充需要观察的方向。</p>
+            </div>
+          )}
+        </section>
+
+        <p className="hint-text boundary-note">这些不是要你立刻改变做法，只是后面多留意。</p>
+
+        <button type="button" className="primary-button wide-button" onClick={() => router.push('/rehearsal')}>
+          进入沟通预演
+          <ArrowRight size={18} />
+        </button>
+      </HiFiMainShell>
+    </OnboardingGuard>
   )
-}
-function NavTabs() {
-  const router = useRouter()
-  return <BottomNavTabs active="profile" />
 }

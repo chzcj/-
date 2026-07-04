@@ -1,0 +1,264 @@
+{
+  "datasetName": "07_weekly_review_observations",
+  "description": "周报测试：4周观察记录，每周15-16条，覆盖旧问题、改善、复发、反证、新线索。",
+  "weeks": [
+    {
+      "caseId": "week_01",
+      "targetFeature": "weekly_review",
+      "inputMode": "observation_array",
+      "observations": [
+        "周一：他说作业写完了，我一查数学有两题空着，英语订正没动，后来吵了。",
+        "周二：我没检查，只问需不需要帮忙，他拿了一道化学题来问我。",
+        "周三：他背单词又临时背，背完怕我抽查，说你别突然问。",
+        "周四：吃饭时我没提学习，他主动讲了同学一个笑话。",
+        "周五：睡前刷手机停不下来，收的时候脸很臭，但没有大吵。",
+        "周六：补课前很烦，说周末也没自己的时间。",
+        "周六晚：我说只抽十个单词，过完不加，他一开始不信，后面完成了七八个。",
+        "周日：出去打球回来心情好一点，晚上写作业还是慢但没那么烦。",
+        "周日夜：我差点加化学，忍住了，关系还算平稳。",
+        "补充：老师说他订正拖，但这周没有新的大冲突。",
+        "补充：他跟哥哥姐姐聊天后愿意整理桌面一次。",
+        "补充：我发现自己一说以后怎么办，他就沉默。",
+        "补充：奶奶说了句你别气你妈，他脸色不好。",
+        "补充：他睡前还是会说妈妈晚安。",
+        "补充：我这周两次忍住没讲大道理。"
+      ],
+      "hiddenGroundTruth": {
+        "patterns": [
+          "检查/抽查触发防御",
+          "明确不加任务时可配合"
+        ],
+        "counterEvidence": [
+          "非学习关系仍有连接",
+          "运动后状态改善"
+        ],
+        "nextObservationPoints": [
+          "完成后是否真的停止",
+          "抽查前后的情绪变化",
+          "外部沟通后能否迁移到家庭"
+        ]
+      },
+      "expectedGoodResponse": [
+        "headline不能写成更懒了/更叛逆了",
+        "总结重复模式和反证",
+        "指出一条关键观察",
+        "给下周1-3个观察点",
+        "不评判家长或孩子"
+      ],
+      "badResponseSignals": [
+        "只总结流水账",
+        "忽略反证和改善",
+        "给一堆建议",
+        "贴标签",
+        "没有形成趋势"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/weekly-report",
+      "api": {
+        "method": "POST",
+        "path": "/api/profile/weekly-review",
+        "body": {
+          "observations": "<observations>"
+        }
+      }
+    },
+    {
+      "caseId": "week_02",
+      "targetFeature": "weekly_review",
+      "inputMode": "observation_array",
+      "observations": [
+        "周一：老师反馈订正又没交，我回家路上很火，晚上还是说重了。",
+        "周一夜：他说你永远不会满足，我当时很受伤。",
+        "周二：我向他道歉，说今天只看英语听写错的十个，他没炸。",
+        "周三：他主动说英语听写可能不好，让我别生气。",
+        "周三晚：我只说回来看看错在哪，他没有躲。",
+        "周四：他刷手机说只是听歌，我看到其实在刷视频，说他骗，吵了。",
+        "周五：他说周五以前能玩，现在又变，觉得我说话不算数。",
+        "周五晚：我承认规则改了，他没顶嘴，只说那你以后别乱说。",
+        "周六：数学补课回来脑子满，躺了半小时，我没马上催。",
+        "周六晚：情绪比以前补课后好一点，但作业只写了一半。",
+        "周日：我安排了两小时空白时间，他前半段刷视频，后半段自己整理了书包。",
+        "周日夜：他问我一道物理题，我忍住没说基础差。",
+        "补充：哥哥姐姐说先搞懂一道题，他比较接受。",
+        "补充：我一想升学就想加任务。",
+        "补充：这一周手机冲突比作业冲突更明显。",
+        "补充：他仍然睡得晚，基本11点半以后。"
+      ],
+      "hiddenGroundTruth": {
+        "patterns": [
+          "老师反馈触发家长复发",
+          "手机规则不稳定引发不信任"
+        ],
+        "counterEvidence": [
+          "孩子能主动预告听写不好",
+          "一题策略更能接受"
+        ],
+        "nextObservationPoints": [
+          "周五手机边界是否固定",
+          "补课后恢复时间是否足够",
+          "家长是否能不说骗"
+        ]
+      },
+      "expectedGoodResponse": [
+        "headline不能写成更懒了/更叛逆了",
+        "总结重复模式和反证",
+        "指出一条关键观察",
+        "给下周1-3个观察点",
+        "不评判家长或孩子"
+      ],
+      "badResponseSignals": [
+        "只总结流水账",
+        "忽略反证和改善",
+        "给一堆建议",
+        "贴标签",
+        "没有形成趋势"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/weekly-report",
+      "api": {
+        "method": "POST",
+        "path": "/api/profile/weekly-review",
+        "body": {
+          "observations": "<observations>"
+        }
+      }
+    },
+    {
+      "caseId": "week_03",
+      "targetFeature": "weekly_review",
+      "inputMode": "observation_array",
+      "observations": [
+        "周一：我没进房间查，只设七点半开始，他差不多到了时间坐下。",
+        "周一晚：十点多他说还有一道题不会。",
+        "周二：我看他本子空着，没忍住进去说了两句，又吵。",
+        "周二夜：他说我一看到你皱眉就知道你要讲很久。",
+        "周三：我问他学校，他说没什么；我没有追问，后来他自己说体育课被点名丢人。",
+        "周四：体育老师催练，他说怕练不好，我只提明天练十分钟，他没炸。",
+        "周五：小测比上次好一点，我没有说但是，只说说明你不是完全不行。",
+        "周五晚：他表情轻松一点，但我心里很想趁热打铁。",
+        "周六：我没忍住说那明天多加一点，他立刻说你又这样。",
+        "周六夜：我意识到改善后加码会坏事。",
+        "周日：打球回来心情好，主动帮我搬货。",
+        "周日饭后：我夸他帮忙，他笑了一下。",
+        "补充：他对外部哥哥姐姐还是更愿意说化学卡点。",
+        "补充：妹妹背英语时他脸色不好，我忍住没比较。",
+        "补充：这周出现了学校体育/同伴羞耻新线索。",
+        "补充：作业速度仍慢，但主动求助次数比前两周多。"
+      ],
+      "hiddenGroundTruth": {
+        "patterns": [
+          "低检查下启动改善",
+          "改善后加码引发回撤"
+        ],
+        "counterEvidence": [
+          "主动求助增加",
+          "体育线索显示并非单纯懒"
+        ],
+        "nextObservationPoints": [
+          "改善后不加码能否维持",
+          "学校羞耻线索",
+          "兄妹比较是否减少"
+        ]
+      },
+      "expectedGoodResponse": [
+        "headline不能写成更懒了/更叛逆了",
+        "总结重复模式和反证",
+        "指出一条关键观察",
+        "给下周1-3个观察点",
+        "不评判家长或孩子"
+      ],
+      "badResponseSignals": [
+        "只总结流水账",
+        "忽略反证和改善",
+        "给一堆建议",
+        "贴标签",
+        "没有形成趋势"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/weekly-report",
+      "api": {
+        "method": "POST",
+        "path": "/api/profile/weekly-review",
+        "body": {
+          "observations": "<observations>"
+        }
+      }
+    },
+    {
+      "caseId": "week_04",
+      "targetFeature": "weekly_review",
+      "inputMode": "observation_array",
+      "observations": [
+        "周一：他说我不是不想好，就是开始时脑子乱，不知道先做哪个。",
+        "周一晚：我只让他选第一科，他选数学，做了半页。",
+        "周二：他背完一页问我会不会加，我说不加，他才愿意继续。",
+        "周三：我工作忙没管，回来发现作业写了但字很乱，我没有马上发火。",
+        "周四：老师说化学有一道题他主动问了，我回来只转述正反馈。",
+        "周五：睡前手机仍拖，但我提前说到点收，不讨论学习，他虽然不高兴但收了。",
+        "周六：补课前还是烦，说脑子满；我留了下午一小时不安排。",
+        "周六下午：他先刷视频，后来睡了一会儿，晚上没那么炸。",
+        "周日：我想讲男孩子担当，忍住了，只说今天把书包整理好，他做了。",
+        "周日夜：我们没有大吵，他说妈妈你也早点睡。",
+        "补充：我这周失败一次，路过看到本子空又进去查。",
+        "补充：成功三次，分别是不加任务、不讲未来、只问卡点。",
+        "补充：安全风险这周没有再出现，只说累。",
+        "补充：手机问题还在，但不全是学习逃避，睡前最明显。",
+        "补充：他对明确结束边界的信任还不稳定，会反复问真的假的。",
+        "补充：下周想观察如果只保持同量不加码，会不会更稳。"
+      ],
+      "hiddenGroundTruth": {
+        "patterns": [
+          "明确结束边界提高配合",
+          "未来责任话题减少后冲突降低"
+        ],
+        "counterEvidence": [
+          "家长仍会路过检查复发",
+          "睡前手机仍拖"
+        ],
+        "nextObservationPoints": [
+          "同量保持一周",
+          "手机睡前规则",
+          "孩子对不加任务的信任恢复"
+        ]
+      },
+      "expectedGoodResponse": [
+        "headline不能写成更懒了/更叛逆了",
+        "总结重复模式和反证",
+        "指出一条关键观察",
+        "给下周1-3个观察点",
+        "不评判家长或孩子"
+      ],
+      "badResponseSignals": [
+        "只总结流水账",
+        "忽略反证和改善",
+        "给一堆建议",
+        "贴标签",
+        "没有形成趋势"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/weekly-report",
+      "api": {
+        "method": "POST",
+        "path": "/api/profile/weekly-review",
+        "body": {
+          "observations": "<observations>"
+        }
+      }
+    }
+  ],
+  "schemaVersion": "2026-06-12",
+  "targetRoute": "/weekly-report",
+  "targetApi": "/api/profile/weekly-review"
+}

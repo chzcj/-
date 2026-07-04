@@ -1,0 +1,3537 @@
+{
+  "datasetName": "01_profile_build_inputs",
+  "description": "四模块首次建模语料（由五入口 zip 适配）：daily→homework→communication(含原情绪压力)→family；每模块多轮自然输入，供 entry/analyze + summary + final + synthesis 链路测试。",
+  "schemaVersion": "2026-06-12",
+  "persona": {
+    "parentName": "小尹妈妈",
+    "childNickname": "小尹",
+    "childAge": "14",
+    "childGrade": "初二"
+  },
+  "buildOrder": [
+    "daily",
+    "homework",
+    "communication",
+    "family"
+  ],
+  "legacyMapping": {
+    "daily_phone_rhythm": "daily",
+    "learning_homework": "homework",
+    "parent_child_communication": "communication",
+    "emotion_pressure": "communication",
+    "family_environment": "family"
+  },
+  "modules": [
+    {
+      "entryType": "daily",
+      "title": "孩子平时怎么过",
+      "route": "/profile/build/daily",
+      "roundCount": 10,
+      "rounds": [
+        {
+          "caseId": "entry_phone_002_r01",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "今天我回家看到他又在看电视，我在家一个多小时，他基本没动。手机我收了，他就跑厕所，一待就是二十多分钟。我婆婆还说上午也是，在厕所里不知道背书还是玩什么。我说你自己看着办，他嘴上嗯一下，后面还是拖。我有时候真觉得手机电视把他魂都勾走了，可是我也怕我一说他又炸。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子看电视一个多小时",
+              "手机被收后去厕所较久",
+              "奶奶反馈上午也在厕所久待",
+              "家长只说自己看着办但孩子继续拖"
+            ],
+            "parentEmotion": [
+              "烦躁",
+              "担心冲突",
+              "无奈"
+            ],
+            "parentEvaluation": [
+              "手机电视勾走魂",
+              "他还是拖"
+            ],
+            "likelyMechanisms": [
+              "手机/电视作为可控时间",
+              "厕所躲避",
+              "休息边界不稳定"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分手机是逃避学习、恢复出口还是即时反馈依赖"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 1,
+          "stage": "entry",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_phone_002_r02",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "他不是只有学习前才玩。周末如果没有安排，他也能刷视频刷很久，游戏倒不是天天打，更多是短视频、看动漫、聊天。有时候我让他出去运动，他也不太想，除非有人约。他说手机里轻松，不用想那么多。我听了也不是完全不懂，但一想到他作业背书都没弄好，我又不能真让他一直轻松。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "无任务时孩子也能刷视频很久",
+              "主要是短视频、动漫、聊天",
+              "有人约才愿意运动",
+              "孩子说手机里轻松不用想太多"
+            ],
+            "parentEmotion": [
+              "矛盾",
+              "担心",
+              "理解一点"
+            ],
+            "parentEvaluation": [
+              "不能一直轻松"
+            ],
+            "likelyMechanisms": [
+              "即时反馈依赖候选",
+              "手机作为恢复出口",
+              "社交/娱乐替代现实活动"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分手机本身依赖与学习压力后的补偿"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 2,
+          "stage": "followup",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_phone_002_r03",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "昨天我试了一下，先让他玩二十分钟手机，说好到点放下。前面还可以，到点他也放了，但坐下写没多久又开始摸来摸去，说想听歌。我一看他那个样子就烦，说你能不能专注点。他马上不高兴，说我都放下了你还讲。我后面想想，好像我确实又把前面的约定搅乱了。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长允许孩子先玩20分钟手机",
+              "孩子到点放下手机",
+              "写作业不久想听歌",
+              "家长批评专注导致孩子不满"
+            ],
+            "parentEmotion": [
+              "懊恼",
+              "烦躁",
+              "自我怀疑"
+            ],
+            "parentEvaluation": [
+              "能不能专注点"
+            ],
+            "likelyMechanisms": [
+              "规则执行后家长追加评价",
+              "约定稳定性问题",
+              "短期改善后被批评打断"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证手机规则是否稳定执行且不附加批评"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 3,
+          "stage": "followup",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_phone_002_r04",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "也有反过来的情况。上周六他出去打球回来心情明显好一点，晚上写作业虽然慢，但没那么烦。我以前觉得周末时间那么宝贵，打球浪费时间，现在看他出去一趟回来确实人松一点。可问题是周末补课、订正、背书都在那儿，哪有那么多空给他安排运动。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "周六打球后情绪变好",
+              "晚上写作业仍慢但烦躁减少",
+              "家长认为周末任务多难安排运动"
+            ],
+            "parentEmotion": [
+              "松动",
+              "纠结"
+            ],
+            "parentEvaluation": [
+              "周末时间宝贵",
+              "打球浪费时间"
+            ],
+            "likelyMechanisms": [
+              "运动/户外作为恢复资源",
+              "周末被任务占满",
+              "反证：非手机恢复有效"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "已提供手机外恢复方式反证，应纳入画像"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 4,
+          "stage": "followup",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_phone_002_r05",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "睡前手机最难弄。他说白天都被安排了，晚上就想看一下。我说看十分钟，结果十分钟变二十分钟，二十分钟变半小时。收的时候他不一定大吵，有时候就是脸很臭，躺床上翻来翻去。我也怕他睡晚，可我越催他越不睡。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "睡前手机时间容易延长",
+              "孩子理由是白天都被安排了",
+              "收手机后不一定大吵但情绪差",
+              "催睡反而更难睡"
+            ],
+            "parentEmotion": [
+              "担忧",
+              "无奈"
+            ],
+            "parentEvaluation": [
+              "越催越不睡"
+            ],
+            "likelyMechanisms": [
+              "睡前手机作为补偿性自由",
+              "边界执行困难",
+              "白天自由不足迁移到睡前"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分睡前手机是规则问题还是白天自由不足补偿"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 5,
+          "stage": "followup",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_phone_002_r06",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "我也不是不给他手机。以前周五晚上是让他玩的，不做额外作业。后来成绩太差，我就觉得周五也不能完全放了，至少把前面欠的补一点。他就说每次都是这样，说好的周五能玩，后面又变。我听了也火，因为我又不是为了自己。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "以前周五晚上允许玩手机且无额外作业",
+              "成绩下降后家长改为周五补欠账",
+              "孩子说说好的又变",
+              "家长认为自己是为孩子好"
+            ],
+            "parentEmotion": [
+              "被误解",
+              "愤怒",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "又不是为了自己"
+            ],
+            "likelyMechanisms": [
+              "放手—重新管控反复",
+              "自由时间不稳定",
+              "承诺变化导致失望"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "已间接回答自由时间不稳定，禁止重复追问"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 6,
+          "stage": "followup",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_phone_002_r07",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "有时候他看手机也不是特别开心，就是机械地刷。我问他好看吗，他说一般。我说一般你还看，他说不知道干嘛。我就觉得更可怕，他连自己想干嘛都不知道。可是我让他看纪录片、读书、运动，他又说我连放松都要安排。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子机械刷手机且称一般",
+              "孩子说不知道干嘛",
+              "家长建议纪录片/读书/运动",
+              "孩子认为放松也被安排"
+            ],
+            "parentEmotion": [
+              "担忧",
+              "困惑"
+            ],
+            "parentEvaluation": [
+              "更可怕",
+              "不知道干嘛"
+            ],
+            "likelyMechanisms": [
+              "低自主娱乐能力",
+              "放松也被家长安排",
+              "手机即时反馈依赖"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证孩子是否有自选低压力活动"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 7,
+          "stage": "followup",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_phone_002_r08",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "今天我没收手机，只是说你自己安排，七点半前开始写。结果他六点多刷了一会儿，七点半左右真的坐下了，但我忍住没查。到九点他出来喝水，我问了一句写到哪了，他说差不多。我没追。最后十点多他自己说还有一题不会。这个算不算有点进步？不过我不确定是不是偶然。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长未收手机，只设开始时间",
+              "孩子七点半左右坐下写",
+              "家长没有追查",
+              "孩子十点多主动说有一题不会"
+            ],
+            "parentEmotion": [
+              "惊喜",
+              "不确定"
+            ],
+            "parentEvaluation": [
+              "可能偶然"
+            ],
+            "likelyMechanisms": [
+              "清晰边界替代全面控制",
+              "反证：低检查下主动求助",
+              "手机不一定必然失控"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应记录为反证和短期改善"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 8,
+          "stage": "followup",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_phone_002_r09",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "可是第二天又回去了。他说昨天都还可以，今天想再玩一会儿。我说昨天是因为你做到了，今天也要做到。他就开始讲条件，后面又拖到很晚。我发现我一给他一点空间，他就想扩大，我一收紧他又说我不信任他。这中间的度我真的拿不住。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "改善次日孩子要求延长手机时间",
+              "家长要求继续做到昨天标准",
+              "孩子讲条件并拖到很晚",
+              "家长在空间和收紧之间摇摆"
+            ],
+            "parentEmotion": [
+              "无力",
+              "困惑",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "一给空间就扩大",
+              "度拿不住"
+            ],
+            "likelyMechanisms": [
+              "改善后复发",
+              "规则稳定性挑战",
+              "家长执行边界不稳"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证可执行手机边界而非继续解释原因"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 9,
+          "stage": "followup",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_phone_002_r10",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "还有个情况，外面的哥哥姐姐跟他说晚上聊一下，他手机就能放得痛快一点，好像那个聊天对他来说比刷视频有意思。我说同样是学习，你怎么就听他们的，他笑一下不说话。我心里其实挺不是滋味，但也说明他不是完全离不开手机。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "外部哥哥姐姐约聊天时孩子更容易放下手机",
+              "孩子对妈妈质问笑而不答",
+              "家长感到不是滋味",
+              "家长意识到孩子不是完全离不开手机"
+            ],
+            "parentEmotion": [
+              "酸楚",
+              "松动",
+              "不甘"
+            ],
+            "parentEvaluation": [
+              "他不是完全离不开手机"
+            ],
+            "likelyMechanisms": [
+              "外部低压力关系有效",
+              "手机可替代性存在",
+              "亲子关系绑定学习压力"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应更新孩子对外部关系开放性证据"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "daily",
+          "legacyEntryId": "daily_phone_rhythm",
+          "legacyEntryName": "日常节奏/手机入口",
+          "roundIndex": 10,
+          "stage": "followup",
+          "route": "/profile/build/daily",
+          "followUpRoute": "/profile/build/daily/follow-up",
+          "summaryRoute": "/profile/build/daily/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "daily",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "entryType": "homework",
+      "title": "学习和作业怎么进行",
+      "route": "/profile/build/homework",
+      "roundCount": 10,
+      "rounds": [
+        {
+          "caseId": "entry_learning_001_r01",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "浩轩老师，我真的不知道怎么讲他了。小尹现在学习就是完全没有主动性，单词背过又忘，化学方程式前一天说会了，第二天一抽查还是卡在那里。他嘴上一直说知道了、听你的、等会儿就弄，可后面人就不动了。我也不是非要逼他，他初二了，前面落这么多，我不盯一下他真的更糟。昨晚我下班回来已经很累了，还陪他把英语和化学过了一遍，他一被查到不会就烦躁，嘴里一直碎碎念，说烦死了。我看他那个样子又气又心疼。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "单词和化学方程式背诵反复不过关",
+              "孩子常说知道了/听你的但行动滞后",
+              "家长下班后陪孩子抽查英语和化学",
+              "孩子被查到不会后烦躁碎碎念"
+            ],
+            "parentEmotion": [
+              "焦虑",
+              "疲惫",
+              "不甘心",
+              "心疼"
+            ],
+            "parentEvaluation": [
+              "没主动性",
+              "不盯更糟",
+              "不用心"
+            ],
+            "likelyMechanisms": [
+              "检查/抽查导致暴露压力",
+              "表面配合—实际撤退",
+              "家长评价和事实分离"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分卡在启动、能力暴露，还是完成后的任务延续"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 1,
+          "stage": "entry",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_learning_001_r02",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "你问做完作业后还有没有别的安排，这个我也不知道算不算别的。学校作业写完了当然还要订正错题，英语单词也得背，化学方程式不背升学怎么办？我不是额外给他找事情，是他前面欠太多了。其实他要是早一点把这些弄好，我也不会后面再说。他现在就是拖到很晚，最后什么都临时糊弄一下，还怪我抽查。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "作业后还有订正错题、背英语、背化学方程式",
+              "家长认为这些不是额外安排而是欠账补齐",
+              "孩子拖到很晚后临时糊弄",
+              "孩子会怪家长抽查"
+            ],
+            "parentEmotion": [
+              "着急",
+              "自我辩解",
+              "无奈"
+            ],
+            "parentEvaluation": [
+              "他前面欠太多",
+              "临时糊弄",
+              "怪我抽查"
+            ],
+            "likelyMechanisms": [
+              "任务无结束感",
+              "家长合理化加码",
+              "完成不等于结束"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "已经间接回答作业后不能真正结束，应输出判断差量而非重复追问"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 2,
+          "stage": "followup",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_learning_001_r03",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "不过也不是完全没有好一点的时候。前天你们哥哥姐姐跟他说了以后，他自己把桌子收了一下，也主动拿了英语出来看。我没有马上去查他，只是问了一句需不需要我帮他报单词，他说先不用。那天倒是没有吵，后来他睡前还跟我说妈妈晚安。我也知道他不是坏孩子，就是这种好状态维持不住，一到我真正要看结果的时候，他又开始躲。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "外部哥哥姐姐沟通后孩子整理桌面并主动看英语",
+              "家长当天没有立即检查",
+              "当天未争吵且孩子睡前表达亲近",
+              "好状态难持续"
+            ],
+            "parentEmotion": [
+              "欣慰",
+              "不敢相信",
+              "担心复发"
+            ],
+            "parentEvaluation": [
+              "不是坏孩子",
+              "好状态维持不住"
+            ],
+            "likelyMechanisms": [
+              "外部低压力关系仍有开放性",
+              "反证：孩子可在低检查状态下主动",
+              "亲子检查节点触发撤退"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证低检查/明确边界时孩子主动性是否更稳定"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 3,
+          "stage": "followup",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_learning_001_r04",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "昨天又不行了。我让他把物理和数学错题补一下，他说知道了，结果我十点多一看，英语做了两页，物理数学都没动。我真的火大，他还说他以为今天不用弄。我说前面不是讲得很清楚吗？他说我讲的太多他记不住。其实我也承认我说起来会多，可我不说他又不做。你说这怎么弄？",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长安排物理数学错题",
+              "孩子只做英语未做物理数学",
+              "孩子解释以为不用弄/家长说太多记不住",
+              "家长承认自己说得多"
+            ],
+            "parentEmotion": [
+              "愤怒",
+              "委屈",
+              "矛盾"
+            ],
+            "parentEvaluation": [
+              "他不做",
+              "他说太多记不住"
+            ],
+            "likelyMechanisms": [
+              "指令过载",
+              "表面答应—实际撤退",
+              "家长说教密度高"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分孩子是真忘、任务过载，还是用答应结束冲突"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 4,
+          "stage": "followup",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_learning_001_r05",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "还有一个细节，我不知道算不算。他特别怕我突然抽查。有时候我只是走到房间门口，他就说你又要干嘛。我说我就看看，他就一脸不耐烦。可是他自己背书的时候又不读出声，拿着资料低着头，我不知道他是在背还是在发呆。妹妹回来大声背英语，他反而更烦。我不是非要比较，就是我看着他那样真的忍不住。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子怕家长突然抽查",
+              "家长走到房间门口孩子反应防御",
+              "孩子背书不出声且状态难判断",
+              "妹妹大声背英语引发孩子烦躁"
+            ],
+            "parentEmotion": [
+              "焦虑",
+              "忍不住",
+              "困惑"
+            ],
+            "parentEvaluation": [
+              "他是在背还是发呆",
+              "不是非要比较"
+            ],
+            "likelyMechanisms": [
+              "检查触发评价防御",
+              "兄妹比较隐性压力",
+              "学习暴露风险"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证孩子对抽查/被看见不会的反应"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 5,
+          "stage": "followup",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_learning_001_r06",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "你说让我别一直盯，我也试过。上周有一天我到店里忙，没管他，结果回来发现他作业是写了，但字乱七八糟，错的也没订正。我问他，他说写了就行。我真是又气又怕，怕我一放手他就滑下去。所以我有时候说不管了，后面又忍不住，这个我承认。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长尝试不盯一天",
+              "孩子完成作业但质量差且未订正",
+              "家长因质量差重新担心",
+              "家长承认说不管后又忍不住"
+            ],
+            "parentEmotion": [
+              "害怕",
+              "矛盾",
+              "自责"
+            ],
+            "parentEvaluation": [
+              "写了就行",
+              "一放手就滑下去"
+            ],
+            "likelyMechanisms": [
+              "承诺放手—再次控制",
+              "质量标准不清",
+              "家长焦虑驱动复管"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "已给出承诺不稳定证据，避免穷追，应判断差量"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 6,
+          "stage": "followup",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_learning_001_r07",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "今天他回来倒是先坐下写了一会儿，这个我也要说公道话。大概四十分钟吧，没拿手机。我在厨房也没进去看。后来我进去问他需不需要帮忙，他拿了一道数学题问我，不过我讲着讲着就忍不住说你前面基础不牢，他脸马上就垮下来了，说算了算了。我后面也后悔，我本来是想帮他。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子回家先写约四十分钟未拿手机",
+              "家长未立即进房检查",
+              "家长讲题时提到基础不牢",
+              "孩子情绪转低并说算了"
+            ],
+            "parentEmotion": [
+              "后悔",
+              "懊恼",
+              "小心翼翼"
+            ],
+            "parentEvaluation": [
+              "我本来想帮他"
+            ],
+            "likelyMechanisms": [
+              "帮助转评价",
+              "低压力支持可行但易滑向批评",
+              "反证：孩子能主动求助"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分帮助语言是否被孩子听成否定"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 7,
+          "stage": "followup",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_learning_001_r08",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "他有时候也会跟我说，妈妈你别讲那么多，你一讲我就更烦。我说我不讲你又不懂，他就说你们大人都这样。其实我心里也知道他听不进去长篇大道理，但我看他错在那里不说又憋得慌。我不是要打击他，我只是想让他明白问题严重。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子明确表达妈妈讲太多会更烦",
+              "家长知道长篇道理无效但忍不住",
+              "家长意图是让孩子明白严重性"
+            ],
+            "parentEmotion": [
+              "憋闷",
+              "焦虑",
+              "自我辩解"
+            ],
+            "parentEvaluation": [
+              "不说又不懂",
+              "不是打击"
+            ],
+            "likelyMechanisms": [
+              "讲道理过载",
+              "评价防御",
+              "家长严重性传递带来压力"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证哪类话最容易触发孩子烦躁"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 8,
+          "stage": "followup",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_learning_001_r09",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "有时候我真的觉得他骗我。他说背了，我一问就不会；说写完了，我一看漏了好多。可是你说他完全不想好也不是，他考差了也会难受，也会说下次要好一点。就是过两天又回到原样。我现在最怕的就是他那个临时抱佛脚，晚上十二点还在翻单词，看着好像急了，但其实前面时间都耗掉了。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子说背了但抽查不会，说写完但漏很多",
+              "孩子考差后会难受并短暂反思",
+              "反思不能持续",
+              "孩子临考前深夜翻单词"
+            ],
+            "parentEmotion": [
+              "焦虑",
+              "失望",
+              "担心"
+            ],
+            "parentEvaluation": [
+              "骗我",
+              "临时抱佛脚"
+            ],
+            "likelyMechanisms": [
+              "失败后短暂反思",
+              "努力无效感",
+              "假努力/临时补救"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分欺骗、能力不足还是避免暴露"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 9,
+          "stage": "followup",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_learning_001_r10",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "今晚稍微好一点。我提前跟他说，今天只把英语这二十个单词过一遍，过完不加了。他一开始还不信，问我真的不加吗。我说真的，他才愿意坐下来。虽然中间还是磨，但最后过了十五个，我也没再加。睡前他状态比前几天好一点。这是不是说明我以前确实说太多、弄太满？我也不是不想改，就是怕一松他又掉。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长提前设定只过20个单词且不加任务",
+              "孩子不信会真的不加",
+              "孩子完成15个且睡前状态较好",
+              "家长担心一松又掉"
+            ],
+            "parentEmotion": [
+              "松动",
+              "担心",
+              "自我反思"
+            ],
+            "parentEvaluation": [
+              "怕一松他又掉"
+            ],
+            "likelyMechanisms": [
+              "明确结束边界改善配合",
+              "孩子对不加任务不信任",
+              "反证支持无结束感假设"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "已出现强反证/支持证据，应更新画像而非追问同类问题"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "homework",
+          "legacyEntryId": "learning_homework",
+          "legacyEntryName": "学习/作业入口",
+          "roundIndex": 10,
+          "stage": "followup",
+          "route": "/profile/build/homework",
+          "followUpRoute": "/profile/build/homework/follow-up",
+          "summaryRoute": "/profile/build/homework/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "homework",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "entryType": "communication",
+      "title": "你们通常怎么沟通",
+      "route": "/profile/build/communication",
+      "roundCount": 20,
+      "rounds": [
+        {
+          "caseId": "entry_comm_003_r01",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "我跟他说话他现在基本就是知道了知道了。你问他听懂没，他说听懂了；问他做不做，他说做。可是真到后面还是不动。我说你别光嘴上答应，他就沉默，或者回房间。我真的不是想天天吵，我有时候也会写信跟他道歉，说妈妈以后少说一点，可过几天看到他又拖，我又忍不住。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子常说知道了但不行动",
+              "家长提醒别光答应后孩子沉默或回房间",
+              "家长曾写信道歉承诺少说",
+              "看到拖延后家长复发"
+            ],
+            "parentEmotion": [
+              "无奈",
+              "自责",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "光嘴上答应"
+            ],
+            "likelyMechanisms": [
+              "表面答应—实际撤退",
+              "承诺放手—再次控制—孩子失望"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分答应是接纳还是结束冲突"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 1,
+          "stage": "entry",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_comm_003_r02",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "奶奶有时候也会说他，说你看你把你妈气的。妹妹偶尔也会说哥哥你怎么又这样。我知道他们也是心疼我，但小尹听了就脸很难看。有一次他说你们都觉得是我的错。我当时还说那本来你也有问题啊，现在想想可能话又重了。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "奶奶会说孩子气妈妈",
+              "妹妹偶尔责怪哥哥",
+              "孩子听后脸色难看并说你们都觉得是我的错",
+              "家长承认回应可能重了"
+            ],
+            "parentEmotion": [
+              "后悔",
+              "委屈",
+              "心疼"
+            ],
+            "parentEvaluation": [
+              "本来你也有问题"
+            ],
+            "likelyMechanisms": [
+              "家庭系统共同强化愧疚压力",
+              "孩子被集体归责",
+              "情绪防御"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证家庭其他成员是否加剧孩子愧疚/防御"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 2,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_comm_003_r03",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "他和你们聊天就不一样，回来会说哥哥姐姐讲得还可以，有时候还笑。我问他跟我怎么不说，他说跟你说了也没用，你后面还是要管。我听了其实很难受。我也不是不改，我是真的改不了那么快。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子愿意和外部哥哥姐姐聊天",
+              "孩子对妈妈说说了也没用/后面还是要管",
+              "家长难受并承认改不了很快"
+            ],
+            "parentEmotion": [
+              "受伤",
+              "委屈",
+              "自我反思"
+            ],
+            "parentEvaluation": [
+              "不是不改"
+            ],
+            "likelyMechanisms": [
+              "外部低压力关系仍有开放性",
+              "孩子对妈妈承诺失望",
+              "关系沟通渠道受损"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "已明确说明孩子对妈妈不信任边界，应判断差量"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 3,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_comm_003_r04",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "有时候我想好好说，结果说着说着又变成教育。比如我本来只是想问他今天学校怎么样，他说没什么，我就顺口问作业多不多、老师有没有讲重点、单词背了没。他马上就说你看你又来了。我当时还觉得他态度差，但后来一想，我好像确实三句话就绕到学习。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长想聊学校但很快转向作业/老师/单词",
+              "孩子说你又来了",
+              "家长意识到自己三句话绕到学习"
+            ],
+            "parentEmotion": [
+              "尴尬",
+              "自责",
+              "困惑"
+            ],
+            "parentEvaluation": [
+              "他态度差"
+            ],
+            "likelyMechanisms": [
+              "亲子沟通被学习议题占据",
+              "孩子预期妈妈会转向检查",
+              "表达后被安排"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证母子非学习沟通频率"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 4,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_comm_003_r05",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "他不是完全不尊重我。每天睡前如果没有吵架，他会说妈妈晚安，有时候还会叫我早点休息。他也知道我辛苦。就是一到学习我们就像两个人都变了，我怕他废，他怕我开始讲。平时他还会开玩笑，学习一提就僵。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子睡前会说晚安并关心妈妈休息",
+              "孩子知道妈妈辛苦",
+              "亲子关系在非学习场景尚可",
+              "学习话题一提就僵"
+            ],
+            "parentEmotion": [
+              "心疼",
+              "矛盾",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "怕他废"
+            ],
+            "likelyMechanisms": [
+              "关系基础仍在",
+              "学习话题污染亲子关系",
+              "愧疚型配合"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应记录边界：不是全面亲子破裂"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 5,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_comm_003_r06",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "上次吵得很厉害后，我写了很长一段话给他，说妈妈以后不强制你，你自己安排。我写的时候是真心的。他看了也哭了，说他也不想这样。可是第二天晚上我看到他又在磨，我就提醒了几句，后来又变成吵架。他后来就说妈妈你每次都这样。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长吵架后写信承诺不强制",
+              "孩子看后哭并说不想这样",
+              "次日家长因磨蹭再次提醒并吵架",
+              "孩子说妈妈每次都这样"
+            ],
+            "parentEmotion": [
+              "自责",
+              "难过",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "我写的时候是真心"
+            ],
+            "likelyMechanisms": [
+              "承诺放手—复发",
+              "孩子失望",
+              "修复失败导致信任下降"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "高强度证据，不能继续问是否反悔"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 6,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_comm_003_r07",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "我也会被他气到口不择言。比如他说随便，我就会说你以后怎么办，难道要一辈子这样？我知道这样说可能不好，可我那一刻真的急。他听了不是顶嘴，就是沉默。沉默更让我慌，我就会继续说。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子说随便时家长会讲未来后果",
+              "孩子听后顶嘴或沉默",
+              "孩子沉默会让家长更慌并继续说"
+            ],
+            "parentEmotion": [
+              "急",
+              "慌",
+              "后悔"
+            ],
+            "parentEvaluation": [
+              "一辈子这样怎么办"
+            ],
+            "likelyMechanisms": [
+              "灾难化未来语言",
+              "沉默触发家长升级",
+              "孩子沉默防御"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证孩子沉默后家长是否能停住"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 7,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_comm_003_r08",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "今天有个反证。他放学回来主动跟我说体育老师又催他们练，我没有马上说你必须去练，只说那你自己怎么想。他说他不想被老师点名，但也怕练不好。我听了以后忍住没讲大道理，只说那我们先看明天能不能练十分钟。他没有炸。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子主动提体育老师催练",
+              "家长未立即要求必须练",
+              "孩子表达怕被点名也怕练不好",
+              "家长提出先练十分钟，孩子未爆发"
+            ],
+            "parentEmotion": [
+              "小心",
+              "惊喜"
+            ],
+            "parentEvaluation": [
+              "忍住没讲大道理"
+            ],
+            "likelyMechanisms": [
+              "低压力倾听有效",
+              "孩子可表达真实顾虑",
+              "反证：孩子并非完全不沟通"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应纳入新沟通机制证据"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 8,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_comm_003_r09",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "不过我也怕这样太慢。你们说慢慢来，我能理解，可升学不是等人的。我一想到还有几个月，就会忍不住想把所有问题一次说清楚。他就最烦我说一堆，说听不进去。我现在有时候话到嘴边，又不知道该不该说。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长理解慢慢来但被中考时间压力激活",
+              "家长想一次说清所有问题",
+              "孩子最烦家长说一堆",
+              "家长开始犹豫是否说"
+            ],
+            "parentEmotion": [
+              "急迫",
+              "克制困难",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "中考不等人"
+            ],
+            "likelyMechanisms": [
+              "时间压力驱动说教",
+              "家长想修复但易复发",
+              "沟通剂量问题"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "追问不必要，适合给沟通边界/预演"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 9,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_comm_003_r10",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "他现在有时候会绕开我，直接问你们哥哥姐姐今天要干嘛。我一方面开心，说明他愿意动；一方面又有点失落，感觉我这个妈妈说什么都没用了。但我也知道可能是我以前说太多，他对我这条线已经烦了。这个我愿意承认一点。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子会绕开妈妈直接问外部哥哥姐姐任务",
+              "家长既开心又失落",
+              "家长承认自己以前说太多导致孩子烦"
+            ],
+            "parentEmotion": [
+              "失落",
+              "欣慰",
+              "反思"
+            ],
+            "parentEvaluation": [
+              "我说什么都没用"
+            ],
+            "likelyMechanisms": [
+              "外部支持成为缓冲",
+              "妈妈通道过载",
+              "自我认知松动"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应推动家庭沟通模型更新"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "parent_child_communication",
+          "legacyEntryName": "亲子沟通入口",
+          "roundIndex": 10,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r01",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "他每次考得不好，当天会反思，说下次要认真，也会有点后悔。可是过不了几天又回去了。我问他是不是不想好，他又说不是。有一次还说自己都是负面情绪，我问他是不是心理有问题，他说不知道，反正烦。我当时吓了一跳，又怕他只是随口说。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子考后会短暂反思后悔",
+              "维持几天后回到原样",
+              "孩子说自己都是负面情绪/不知道是不是心理有问题",
+              "家长担心是否玩笑"
+            ],
+            "parentEmotion": [
+              "担心",
+              "害怕",
+              "迷茫"
+            ],
+            "parentEvaluation": [
+              "过几天又回去"
+            ],
+            "likelyMechanisms": [
+              "努力无效感",
+              "情绪风险边界",
+              "不做心理诊断"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "安全边界：确认风险表达频率、强度和是否有自伤内容"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 11,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r02",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "他说随便的时候我最受不了。比如我说你这样升学怎么办，他就说随便，反正就这样。我知道他不一定真的不在乎，他考试前也会临时抱佛脚，晚上翻单词翻到很晚。但他嘴上那个无所谓真的让我火大，好像我一个人在急。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子说随便/反正就这样",
+              "考试前仍会临时抱佛脚",
+              "家长感到自己一个人急"
+            ],
+            "parentEmotion": [
+              "愤怒",
+              "孤独",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "无所谓",
+              "一个人在急"
+            ],
+            "likelyMechanisms": [
+              "失败退路保护",
+              "表面无所谓但仍在意",
+              "家长被无所谓激怒"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分真放弃还是用无所谓保护自尊"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 12,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r03",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "他也会愧疚。有时候吵完以后，他会说妈妈你别气了，或者让我早点休息。上次我付钱不进去看电影，他还说不差这二十块，让我一起去。我知道他心不坏，所以我更难受。你说他明明懂，为什么就是做不到？",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子吵后会安慰妈妈别气/早点休息",
+              "看电影时孩子让妈妈一起去",
+              "家长认为孩子心不坏但做不到"
+            ],
+            "parentEmotion": [
+              "心疼",
+              "难受",
+              "困惑"
+            ],
+            "parentEvaluation": [
+              "明明懂为什么做不到"
+            ],
+            "likelyMechanisms": [
+              "愧疚型配合",
+              "道德理解与行动能力分离",
+              "情感连接仍在"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应避免重复问是否愧疚，转向行动卡点"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 13,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r04",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "他现在对自己没什么信心。以前说考万中有八成，现在说五成，我笑他年少轻狂，他也笑。但我能感觉他不是开玩笑，他心里知道自己落下了。只是你要他真的坐下来补，他又烦。好像一面对那些不会的东西，他就想躲。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子对考万中的自信从八成降到五成",
+              "孩子知道自己落下",
+              "面对不会的内容会烦并想躲"
+            ],
+            "parentEmotion": [
+              "担心",
+              "惋惜"
+            ],
+            "parentEvaluation": [
+              "没信心",
+              "想躲"
+            ],
+            "likelyMechanisms": [
+              "能力感下滑",
+              "失败暴露压力",
+              "面对不会即逃避"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证遇到不会时的具体反应"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 14,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r05",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "今天他说老师一问他就紧张，怕自己答不出来。我以前以为他就是上课不认真，现在听他说这个，我又有点心软。可是心软归心软，知识点不会也是事实呀。你看他坐第一排，人也在教室，心不在。到底是紧张导致学不好，还是学不好才紧张，我也分不清。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子说老师一问就紧张，怕答不出",
+              "家长过去认为上课不认真",
+              "孩子坐第一排但心不在",
+              "家长无法区分紧张与学不好因果"
+            ],
+            "parentEmotion": [
+              "困惑",
+              "心软",
+              "担心"
+            ],
+            "parentEvaluation": [
+              "心不在",
+              "知识点不会"
+            ],
+            "likelyMechanisms": [
+              "学校提问压力",
+              "能力暴露焦虑",
+              "因果未明需验证"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "需要学校/老师场景事实，避免直接诊断"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 15,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r06",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "有一天他状态还可以，跟妹妹开玩笑，吃饭也正常。我一提到晚上背化学，他整个人就垮了，说能不能不要一吃饭就说这些。我当时也不是故意的，就是怕忘了。后来想想，他不是整个人都抑郁那种，是学习这块一碰就变。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子非学习场景会开玩笑、吃饭正常",
+              "家长吃饭时提背化学孩子状态变差",
+              "孩子说不要一吃饭就说这些",
+              "家长意识到学习话题触发变化"
+            ],
+            "parentEmotion": [
+              "自省",
+              "担心"
+            ],
+            "parentEvaluation": [
+              "不是整个人都抑郁"
+            ],
+            "likelyMechanisms": [
+              "情绪问题场景化",
+              "学习触发压力",
+              "边界：非全局情绪低落"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应记录边界，避免过度心理化"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 16,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r07",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "昨晚我说话重了，他后来很久没出来。我担心就敲门，他说想一个人待一会儿。我又问你是不是怪妈妈，他说没有，就是累。我当时特别想继续问清楚，但又怕越问越糟。这个时候我到底该不该让他自己待？",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长说重话后孩子久不出来",
+              "孩子要求一个人待一会儿",
+              "孩子说不怪妈妈只是累",
+              "家长想追问但担心恶化"
+            ],
+            "parentEmotion": [
+              "担心",
+              "内疚",
+              "不确定"
+            ],
+            "parentEvaluation": [
+              "想问清楚"
+            ],
+            "likelyMechanisms": [
+              "情绪恢复空间需求",
+              "家长焦虑驱动追问",
+              "安全边界需温和确认"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分需要独处恢复还是存在安全风险"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 17,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r08",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "今天有一点好，他主动跟我说英语听写可能不会太好，让我别太生气。我没有马上批评，只说知道了，回来我们看错在哪。他反而没有躲。以前他可能会直接说不知道、随便。这个变化我想记录一下。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子主动预告英语听写可能不好",
+              "家长没有马上批评",
+              "孩子未躲避",
+              "相较以前随便/不知道有变化"
+            ],
+            "parentEmotion": [
+              "欣慰",
+              "谨慎"
+            ],
+            "parentEvaluation": [
+              "变化想记录"
+            ],
+            "likelyMechanisms": [
+              "低评价回应促进表达",
+              "反证：失败前可主动暴露",
+              "信任微恢复"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应写入记忆作为改善证据"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 18,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r09",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "可是我情绪一上来就做不到那么稳。今天老师说他作业订正又没交，我在店里看到消息火一下就上来了，回家路上脑子里都在想怎么说他。我知道应该平静，可我怕我平静了他就觉得没事。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "老师反馈作业订正未交",
+              "家长看到消息后一路酝酿批评",
+              "家长知道应平静但怕孩子觉得没事"
+            ],
+            "parentEmotion": [
+              "愤怒",
+              "焦虑",
+              "控制困难"
+            ],
+            "parentEvaluation": [
+              "怕平静就没事"
+            ],
+            "likelyMechanisms": [
+              "家长情绪调节困难",
+              "严重性传递依赖批评",
+              "老师反馈触发家庭高压"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "适合沟通预演，不需继续追问大量事实"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 19,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_emotion_004_r10",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "你们昨晚跟他聊完，他出来心情还可以，说哥哥姐姐没有骂他，是帮他想办法。我听了挺感动的。我就希望他能慢慢相信自己，不要每次一错就觉得完了。但我也怕你们说轻了，他又不当回事。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "外部沟通后孩子说哥哥姐姐没有骂他而是帮他想办法",
+              "孩子心情较好",
+              "家长期望孩子相信自己",
+              "家长担心说轻了孩子不当回事"
+            ],
+            "parentEmotion": [
+              "感动",
+              "担心",
+              "矛盾"
+            ],
+            "parentEvaluation": [
+              "怕不当回事"
+            ],
+            "likelyMechanisms": [
+              "外部低评价支持有效",
+              "家长严厉/轻松摇摆",
+              "能力感修复需求"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应记录外部支持有效与家长担忧"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "communication",
+          "legacyEntryId": "emotion_pressure",
+          "legacyEntryName": "情绪压力入口",
+          "roundIndex": 20,
+          "stage": "followup",
+          "route": "/profile/build/communication",
+          "followUpRoute": "/profile/build/communication/follow-up",
+          "summaryRoute": "/profile/build/communication/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "communication",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "entryType": "family",
+      "title": "家里怎么一起支持他",
+      "route": "/profile/build/family",
+      "roundCount": 10,
+      "rounds": [
+        {
+          "caseId": "entry_family_005_r01",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "我有时候觉得他性格像他爸爸家那边，比较安逸，容易满足。我不是说安逸一定不好，但男孩子以后总归要有责任担当吧。他爸爸走得早，我一个人带他们这么多年，不可能什么都替他扛一辈子。我也不是天天拿这个压他，就是偶尔会说，你以后要靠自己，妈妈也会老。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长认为孩子像父亲家那边安逸",
+              "家长强调男孩子要责任担当",
+              "父亲早逝，母亲独自带孩子多年",
+              "家长偶尔说以后要靠自己/妈妈会老"
+            ],
+            "parentEmotion": [
+              "焦虑",
+              "不甘",
+              "生存压力"
+            ],
+            "parentEvaluation": [
+              "比较安逸",
+              "男孩子要担当"
+            ],
+            "likelyMechanisms": [
+              "生存型责任期待",
+              "男孩担当投射",
+              "前台不能说创伤投射"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "低压力了解家庭责任语言出现频率和孩子反应"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 1,
+          "stage": "entry",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_family_005_r02",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "我不是要他现在养家，也不是说他爸爸不在就一定要他怎样。我只是觉得，人要有本事，将来才不会被人看不起。我开店这么多年，什么人都见过，靠别人真的靠不住。所以我才希望他读书认真一点，至少以后有选择。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长否认要孩子现在养家",
+              "家长强调有本事才不被看不起",
+              "家长开店多年见过复杂社会",
+              "家长将读书与未来选择绑定"
+            ],
+            "parentEmotion": [
+              "自我辩解",
+              "防御",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "靠别人靠不住",
+              "以后有选择"
+            ],
+            "likelyMechanisms": [
+              "生存焦虑驱动学习期待",
+              "责任期待合理化",
+              "社会经验影响教育语言"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "已间接说明期待来源，勿追问创伤"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 2,
+          "stage": "followup",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_family_005_r03",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "他有时候听我说这些会沉默。我以为他懂，后来你们说可能压力大，我也想过是不是我说多了。但我真的没有天天说，而且我也会道歉。我对孩子有求必应，补课、资料、老师，该花的钱我都花了。我要是真不爱他，何必这么累？",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子听责任类话会沉默",
+              "家长反思可能说多但否认频繁",
+              "家长强调会道歉且有求必应",
+              "家长投入补课资料老师"
+            ],
+            "parentEmotion": [
+              "委屈",
+              "自证",
+              "不安"
+            ],
+            "parentEvaluation": [
+              "我很爱他",
+              "没有天天说"
+            ],
+            "likelyMechanisms": [
+              "高投入后的不甘心",
+              "家长自我叙事强",
+              "孩子沉默可能压力信号"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "问具体话出现时孩子动作而非评判家长"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 3,
+          "stage": "followup",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_family_005_r04",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "你们是我最后的希望了，这话我不是随便说。以前各种补课也花了不少钱，数学、英语，一对一小课都弄过。不能说完全没用，但他心态不变，换再好的老师也没用。我现在就是希望你们能把他心里那股劲带起来。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长把外部团队视为最后希望",
+              "过去花钱补数学英语一对一小课",
+              "家长认为补课部分有用但心态不变无用",
+              "家长期待外部带起孩子劲头"
+            ],
+            "parentEmotion": [
+              "期待",
+              "绝望感",
+              "依赖外援"
+            ],
+            "parentEvaluation": [
+              "最后希望",
+              "心态不变没用"
+            ],
+            "likelyMechanisms": [
+              "外部老师成为新控制支点风险",
+              "高投入不甘心",
+              "求外援型"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "确认家长期望是改变心态还是增加任务"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 4,
+          "stage": "followup",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_family_005_r05",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "家庭这块也复杂。奶奶心疼他，有时候我说他，她会帮他说几句，但有时候又会怪他气我。爸爸不在，家里很多事我只能自己做主。小尹其实也尊重我，不是那种很坏的孩子。就是学习这块我越想拉他，他越像一团棉花。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "奶奶有时护孩子有时责怪孩子气妈妈",
+              "父亲缺位，家里由母亲做主",
+              "孩子尊重妈妈且非坏孩子",
+              "学习上妈妈越拉孩子越软抵抗"
+            ],
+            "parentEmotion": [
+              "疲惫",
+              "矛盾",
+              "心疼"
+            ],
+            "parentEvaluation": [
+              "一团棉花"
+            ],
+            "likelyMechanisms": [
+              "父母一方缺位",
+              "家庭权威集中",
+              "软抵抗"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "区分家庭规则一致性与母子单线压力"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 5,
+          "stage": "followup",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_family_005_r06",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "反证也有。我女儿相对就好一些，同样是我管，她虽然也嫌我烦，但成绩和习惯比他稳定。我有时候就想，是不是还是他自己问题更多？不过女儿也会说我说话急，说我管起来让人压抑。我听了也不是没感觉。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "女儿在同样家庭中相对成绩习惯稳定",
+              "女儿也嫌妈妈烦但更稳定",
+              "女儿反馈妈妈说话急/管起来压抑",
+              "家长用女儿作为反证思考孩子个体差异"
+            ],
+            "parentEmotion": [
+              "困惑",
+              "防御",
+              "反思"
+            ],
+            "parentEvaluation": [
+              "还是他自己问题更多"
+            ],
+            "likelyMechanisms": [
+              "孩子个体差异边界",
+              "家长沟通压力跨孩子存在",
+              "反证不能全归因家庭"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应纳入边界：孩子自身自控差也存在"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 6,
+          "stage": "followup",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_family_005_r07",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "我有时会讲自己以前多难，也不是想让他有负担，就是想让他知道人不能太安逸。可是他好像听这些就更不想说话。我说你将来要有担当，他不顶嘴，就是嗯一下。这个嗯到底是懂了还是不想听，我也分不清。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长会讲自己过去困难和不能安逸",
+              "孩子听后更沉默",
+              "家长说将来有担当时孩子嗯一下",
+              "家长无法判断孩子理解还是不想听"
+            ],
+            "parentEmotion": [
+              "困惑",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "不是想让他有负担"
+            ],
+            "likelyMechanisms": [
+              "责任语言导致沉默",
+              "愧疚压力",
+              "表面应答不代表接纳"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "验证责任语言后孩子后续行动/情绪变化"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 7,
+          "stage": "followup",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_family_005_r08",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "最近我试着少说担当这些话，只讲今天具体怎么做。他反而没那么烦。我说今晚只看英语听写错的十个，不讲以后，也不讲升学。他虽然还是拖，但没有那种脸马上黑下来的感觉。这个对我也有提醒。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长减少担当/未来话题",
+              "只讲当天具体任务",
+              "孩子虽然拖但烦躁减轻",
+              "家长得到提醒"
+            ],
+            "parentEmotion": [
+              "谨慎乐观",
+              "自省"
+            ],
+            "parentEvaluation": [
+              "对我有提醒"
+            ],
+            "likelyMechanisms": [
+              "减少未来压力改善情绪",
+              "具体低范围任务更可接受",
+              "反证支持责任语言压力"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应更新有效沟通方式"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 8,
+          "stage": "followup",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_family_005_r09",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "voice_like_text",
+          "parentText": "不过我心里还是会急。别人家有爸爸能管，有人能分担，我这边什么都要我来。我要上班、开店、管妹妹、管他学习。很多时候我不是想控制，是我没有后路。他如果自己能靠住一点，我也不至于这么紧。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "母亲承担上班开店、管两个孩子和学习",
+              "父亲缺位导致无分担",
+              "家长觉得没有后路",
+              "家长期望孩子靠住一点"
+            ],
+            "parentEmotion": [
+              "委屈",
+              "压迫感",
+              "孤立"
+            ],
+            "parentEvaluation": [
+              "不是想控制",
+              "没有后路"
+            ],
+            "likelyMechanisms": [
+              "家长控制来自生存压力",
+              "高投入高焦虑",
+              "需要前台保留善意"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "已提供深层家庭压力证据，但前台避免直接贴标签"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 9,
+          "stage": "followup",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        },
+        {
+          "caseId": "entry_family_005_r10",
+          "targetFeature": "profile_build_entry",
+          "inputMode": "text",
+          "parentText": "今天小尹主动说妈妈你不要太累，我当时差点哭。他不是没良心的孩子，我知道。可能我最难放下的就是，我觉得他明明懂我，却还是做不到。我现在愿意试试你说的，先别老讲未来，先让他把一件事做完后真的停下来看看。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "孩子主动关心妈妈不要太累",
+              "家长确认孩子有良心",
+              "家长愿意减少未来压力话术",
+              "家长愿意测试完成一件事后真正停止"
+            ],
+            "parentEmotion": [
+              "感动",
+              "松动",
+              "期待"
+            ],
+            "parentEvaluation": [
+              "明明懂却做不到"
+            ],
+            "likelyMechanisms": [
+              "家长改变窗口",
+              "孩子有情感连接",
+              "测试结束感边界"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应写入画像和下一步实验"
+          },
+          "expectedGoodResponse": [
+            "不直接采信家长标签",
+            "先从家长自然叙事中提取事实",
+            "指出一个判断差量，而不是泛泛建议",
+            "如需追问，最多问一个低误判生活事实问题",
+            "不把隐藏机制名直接暴露给家长"
+          ],
+          "badResponseSignals": [
+            "直接说孩子懒或家长控制欲强",
+            "泛泛建议多鼓励少批评",
+            "一口气问很多问题",
+            "重复追问家长已经间接回答过的问题",
+            "暴露任务无结束感/低成本共存等机制名或置信度"
+          ],
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 15000,
+          "expectedFullResponseMs": 60000,
+          "entryType": "family",
+          "legacyEntryId": "family_environment",
+          "legacyEntryName": "关系/家庭环境入口",
+          "roundIndex": 10,
+          "stage": "followup",
+          "route": "/profile/build/family",
+          "followUpRoute": "/profile/build/family/follow-up",
+          "summaryRoute": "/profile/build/family/summary",
+          "api": {
+            "method": "POST",
+            "path": "/api/entry/analyze",
+            "body": {
+              "entryType": "family",
+              "stage": "entry",
+              "entryText": "<parentText>",
+              "priorContext": "<prior rounds combined>"
+            },
+            "summary": {
+              "stage": "summary",
+              "entryText": "<all rounds combined>"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "finalFollowUp": {
+    "caseId": "final_followup_001",
+    "targetFeature": "profile_build_final",
+    "route": "/profile/build/final-follow-up",
+    "api": {
+      "method": "POST",
+      "path": "/api/entry/analyze",
+      "body": {
+        "entryType": "final",
+        "stage": "entry",
+        "entryText": "<parentText>"
+      }
+    },
+    "parentText": "如果只能再补一个最关键的，我想说是「检查」这件事。我一检查他就烦，觉得不信任他；我不检查他就糊弄，作业看着写了其实没写完。我试过只问进度不翻本子，他还是拖。我也试过约定时间不管过程，到点还是没完成。我不是想当警察，是真的不知道还能怎么管。你们要是能给一个我能做得到的办法就好了，别让我再天天坐到半夜。",
+    "hiddenGroundTruth": {
+      "facts": [
+        "检查引发冲突",
+        "不检查会糊弄",
+        "家长尝试过多种边界"
+      ],
+      "shouldAskFollowup": true
+    }
+  },
+  "synthesisHint": {
+    "api": {
+      "method": "POST",
+      "path": "/api/synthesis"
+    },
+    "route": "/profile/generating",
+    "crossCuttingSupplementSource": "finalFollowUp.parentText"
+  }
+}

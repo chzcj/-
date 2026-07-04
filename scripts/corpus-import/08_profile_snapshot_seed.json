@@ -1,0 +1,316 @@
+{
+  "datasetName": "08_profile_snapshot_seed_expanded",
+  "description": "画像跨设备持久化测试：v1首次五入口后，v2两周输入后，v3出现反证和改善后。",
+  "snapshots": [
+    {
+      "caseId": "profile_v1",
+      "targetFeature": "profile_snapshot",
+      "inputMode": "profile_seed",
+      "version": "v1",
+      "stage": "首次五入口后",
+      "profileSnapshot": {
+        "coreJudgment": "小尹表面是拖延、敷衍和没主动性，但更关键的是：学习在他心里已经和检查、抽查、补欠账、妈妈的焦虑绑定在一起，导致他一边想好，一边用拖延保护自己。",
+        "completeness": {
+          "learning_homework": 0.8,
+          "daily_phone_rhythm": 0.6,
+          "parent_child_communication": 0.7,
+          "emotion_pressure": 0.55,
+          "family_environment": 0.6
+        },
+        "evidence": [
+          "作业后常有订正、背诵、化学方程式等后续任务",
+          "孩子常说知道了/听你的但后面不动",
+          "抽查不会时烦躁碎碎念",
+          "外部哥哥姐姐沟通后更愿意整理桌面和看英语",
+          "家长多次说不管他真的不行"
+        ],
+        "verificationPoints": [
+          "完成后若明确不加任务，配合度是否提升",
+          "手机是否在无学习压力时也失控",
+          "孩子对学校提问/老师评价的真实压力",
+          "妈妈承诺放手后复发频率"
+        ],
+        "childSecondMe": {
+          "childTendency": "表面答应，内在撤退；对低压力外部关系仍开放；遇到不会时更容易烦躁而非求助。",
+          "notLabel": "不是简单懒或坏，也不能排除自控弱和基础薄弱。"
+        },
+        "familyCycles": [
+          "妈妈怕他掉下去→加检查和任务→孩子预期写完也不会结束→拖延敷衍→妈妈更焦虑→继续加码"
+        ],
+        "parentCommunicationModel": {
+          "style": "高投入、自证强、容易用未来责任和妈妈辛苦来传递严重性；愿意反思但容易因学习反馈复发。",
+          "risk": "前台不能说控制欲/创伤投射，要说用心可能被孩子体验成压力链。"
+        },
+        "counterEvidence": [
+          "孩子非学习时仍会说晚安、关心妈妈",
+          "外部老师介入后短期状态较好",
+          "孩子确实存在基础欠账和自控弱"
+        ],
+        "confidenceMap": {
+          "任务无结束感": 0.72,
+          "检查暴露压力": 0.68,
+          "手机即时反馈依赖": 0.42,
+          "责任期待压力": 0.55,
+          "学校能力卡点": 0.38
+        },
+        "nextBestQuestions": [
+          "他做完一项后，家里能否真的停止不加新任务？",
+          "他遇到不会时最常见动作是什么？",
+          "同样提醒由妈妈和外部哥哥姐姐说，反应差多少？"
+        ]
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "作业后常有订正、背诵、化学方程式等后续任务",
+          "孩子常说知道了/听你的但后面不动",
+          "抽查不会时烦躁碎碎念",
+          "外部哥哥姐姐沟通后更愿意整理桌面和看英语",
+          "家长多次说不管他真的不行"
+        ],
+        "parentEmotion": [
+          "高焦虑",
+          "高投入",
+          "自证"
+        ],
+        "parentEvaluation": [
+          "不自觉",
+          "没内驱力",
+          "假努力"
+        ],
+        "likelyMechanisms": [
+          "任务无结束感",
+          "检查暴露压力",
+          "表面配合—实际撤退"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "继续验证旧机制与反证"
+      },
+      "expectedGoodResponse": [
+        "DB-first取回画像",
+        "首页显示孩子画像·去查看",
+        "profile/result能根据画像生成当前版本",
+        "能区分已验证证据和待验证点",
+        "新输入能更新v2/v3而非重置"
+      ],
+      "badResponseSignals": [
+        "跨设备丢失画像",
+        "把隐藏机制直接展示给家长",
+        "不引用证据",
+        "忽略反证",
+        "版本覆盖错误"
+      ],
+      "expectedLatencyClass": "slow",
+      "shouldStream": false,
+      "expectedFirstVisibleTextMs": 15000,
+      "expectedFullResponseMs": 60000
+    },
+    {
+      "caseId": "profile_v2",
+      "targetFeature": "profile_snapshot",
+      "inputMode": "profile_seed",
+      "version": "v2",
+      "stage": "两周日常输入后",
+      "profileSnapshot": {
+        "coreJudgment": "画像从“孩子拖延”推进为：小尹的学习启动困难很大一部分来自对后续检查、加码和讲道理的预期；当任务边界小、完成后不加、妈妈不立刻评价时，他出现过主动求助和较平稳配合。",
+        "completeness": {
+          "learning_homework": 0.9,
+          "daily_phone_rhythm": 0.75,
+          "parent_child_communication": 0.85,
+          "emotion_pressure": 0.7,
+          "family_environment": 0.7
+        },
+        "evidence": [
+          "孩子明确说快点写完也没用，后面肯定还有别的",
+          "只抽十个单词且不加时，他能完成且不炸",
+          "未检查只问需不需要帮忙时，孩子主动拿化学题来问",
+          "老师反馈会触发妈妈回家加码和情绪升级",
+          "周末补课后孩子说脑子满，周末没有自己的时间"
+        ],
+        "verificationPoints": [
+          "低任务边界能否持续一周",
+          "睡前手机是否主要补偿白天自由不足",
+          "家长能否在老师反馈后不临时扩展任务",
+          "孩子学校同伴/老师提问压力是否更强"
+        ],
+        "childSecondMe": {
+          "childTendency": "对“被看见不会”很敏感；如果帮助不带评价，仍能靠近；如果完成后被加码，会迅速回撤。",
+          "notLabel": "不能把所有拖延都归为家庭压力，仍有计划能力弱、手机自控弱。"
+        },
+        "familyCycles": [
+          "老师/成绩反馈→妈妈焦虑升高→临时补订正/背诵→孩子觉得没有尽头→手机/拖延/沉默增加",
+          "短期改善→妈妈担心飘→趁热打铁→孩子说你又这样→信任下降"
+        ],
+        "parentCommunicationModel": {
+          "style": "家长能记录反证，愿意尝试不加任务；但遇到成绩/老师反馈时执行能力下降。高频表达是我不是逼他、他不管不行、我已经很累。",
+          "risk": "避免让她觉得被指责，应把变化设计得很小、很可执行。"
+        },
+        "counterEvidence": [
+          "打球和非学习聊天能改善情绪",
+          "孩子主动预告听写不好并未躲避",
+          "孩子帮助妈妈搬货，非学习责任感存在"
+        ],
+        "confidenceMap": {
+          "任务无结束感": 0.86,
+          "检查暴露压力": 0.78,
+          "手机即时反馈依赖": 0.52,
+          "责任期待压力": 0.63,
+          "学校能力卡点": 0.58,
+          "家长执行复发": 0.8
+        },
+        "nextBestQuestions": [
+          "如果连续3天完成后不加，孩子是否更愿意开始？",
+          "老师反馈当天，妈妈是否能只处理一项？",
+          "孩子对手机的需求是睡前补偿还是全日失控？"
+        ]
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子明确说快点写完也没用，后面肯定还有别的",
+          "只抽十个单词且不加时，他能完成且不炸",
+          "未检查只问需不需要帮忙时，孩子主动拿化学题来问",
+          "老师反馈会触发妈妈回家加码和情绪升级",
+          "周末补课后孩子说脑子满，周末没有自己的时间"
+        ],
+        "parentEmotion": [
+          "高焦虑",
+          "高投入",
+          "自证"
+        ],
+        "parentEvaluation": [
+          "不自觉",
+          "没内驱力",
+          "假努力"
+        ],
+        "likelyMechanisms": [
+          "任务无结束感",
+          "检查暴露压力",
+          "表面配合—实际撤退"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "继续验证旧机制与反证"
+      },
+      "expectedGoodResponse": [
+        "DB-first取回画像",
+        "首页显示孩子画像·去查看",
+        "profile/result能根据画像生成当前版本",
+        "能区分已验证证据和待验证点",
+        "新输入能更新v2/v3而非重置"
+      ],
+      "badResponseSignals": [
+        "跨设备丢失画像",
+        "把隐藏机制直接展示给家长",
+        "不引用证据",
+        "忽略反证",
+        "版本覆盖错误"
+      ],
+      "expectedLatencyClass": "slow",
+      "shouldStream": false,
+      "expectedFirstVisibleTextMs": 15000,
+      "expectedFullResponseMs": 60000
+    },
+    {
+      "caseId": "profile_v3",
+      "targetFeature": "profile_snapshot",
+      "inputMode": "profile_seed",
+      "version": "v3",
+      "stage": "出现反证和改善后",
+      "profileSnapshot": {
+        "coreJudgment": "最新画像应从‘问题解释’转向‘可改变条件’：小尹并非没有行动入口。明确结束边界、少讲未来责任、低评价帮助、运动恢复和外部低压力关系，都能让他短时恢复主动；难点在于家长焦虑复发和孩子对承诺稳定性的信任尚未重建。",
+        "completeness": {
+          "learning_homework": 0.95,
+          "daily_phone_rhythm": 0.82,
+          "parent_child_communication": 0.9,
+          "emotion_pressure": 0.82,
+          "family_environment": 0.78
+        },
+        "evidence": [
+          "孩子要求背完一页后不加才愿意背",
+          "妈妈不讲中考责任、只说整理书包时孩子完成",
+          "低评价反馈后孩子主动问题次数增加",
+          "打球、搬货、非学习聊天显示孩子并非全局无力",
+          "家长仍有路过看到本子空就忍不住检查的复发"
+        ],
+        "verificationPoints": [
+          "不加码实验是否能持续两周",
+          "孩子对妈妈承诺的信任是否随稳定执行改善",
+          "学校体育/同伴羞耻是否影响学习自信",
+          "睡前手机是否随白天固定自由时间改善"
+        ],
+        "childSecondMe": {
+          "childTendency": "需要小范围、可收尾、低评价的任务入口；在被尊重和不被加码的情境中，会出现求助和合作。",
+          "notLabel": "仍需训练启动、复盘和手机边界；不能用单次改善断定已经好了。"
+        },
+        "familyCycles": [
+          "稳定小边界→孩子愿意尝试→妈妈看到改善想加码→孩子警觉→若妈妈守住不加，信任微恢复；若加码，旧循环复发"
+        ],
+        "parentCommunicationModel": {
+          "style": "家长已能识别自己‘忍不住加一点’是关键失败点；适合给具体一句话和动作，不适合给大计划。",
+          "risk": "如果输出过多建议，会再次变成家长加码工具。"
+        },
+        "counterEvidence": [
+          "孩子短期改善真实存在",
+          "外部关系不是替代妈妈，而是过渡支架",
+          "家长能在部分场景忍住比较和未来施压"
+        ],
+        "confidenceMap": {
+          "任务无结束感": 0.9,
+          "检查暴露压力": 0.82,
+          "手机即时反馈依赖": 0.48,
+          "责任期待压力": 0.72,
+          "学校能力卡点": 0.62,
+          "家长执行复发": 0.84,
+          "可改变条件": 0.76
+        },
+        "nextBestQuestions": [
+          "本周只观察：完成后不加是否能做到5次？",
+          "睡前手机结束规则是否能固定3天？",
+          "孩子主动求助后，妈妈是否能只回答不评价？"
+        ]
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子要求背完一页后不加才愿意背",
+          "妈妈不讲中考责任、只说整理书包时孩子完成",
+          "低评价反馈后孩子主动问题次数增加",
+          "打球、搬货、非学习聊天显示孩子并非全局无力",
+          "家长仍有路过看到本子空就忍不住检查的复发"
+        ],
+        "parentEmotion": [
+          "高焦虑",
+          "高投入",
+          "自证"
+        ],
+        "parentEvaluation": [
+          "不自觉",
+          "没内驱力",
+          "假努力"
+        ],
+        "likelyMechanisms": [
+          "任务无结束感",
+          "检查暴露压力",
+          "表面配合—实际撤退"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "继续验证旧机制与反证"
+      },
+      "expectedGoodResponse": [
+        "DB-first取回画像",
+        "首页显示孩子画像·去查看",
+        "profile/result能根据画像生成当前版本",
+        "能区分已验证证据和待验证点",
+        "新输入能更新v2/v3而非重置"
+      ],
+      "badResponseSignals": [
+        "跨设备丢失画像",
+        "把隐藏机制直接展示给家长",
+        "不引用证据",
+        "忽略反证",
+        "版本覆盖错误"
+      ],
+      "expectedLatencyClass": "slow",
+      "shouldStream": false,
+      "expectedFirstVisibleTextMs": 15000,
+      "expectedFullResponseMs": 60000
+    }
+  ]
+}

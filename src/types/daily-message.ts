@@ -12,11 +12,14 @@ export type DailySection = {
   note?: string
   /** 默认折叠（深度分析 / 孩子视角） */
   hidden?: boolean
+  /** 流式生成中的累积正文（未完成前 UI 展示） */
+  streamingText?: string
 }
 
 export type DailyActionKind =
   | 'expand_sections'
   | 'rehearsal'
+  | 'how_to_speak'
   | 'task'
   | 'follow_up_text'
   | 'navigate'

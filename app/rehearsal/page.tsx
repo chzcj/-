@@ -7,6 +7,7 @@ import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
 import {
   SimulationParentBubble,
   SimulationSecondMeBubble,
+  SimulationSystemHintBubble,
 } from '@/components/rehearsal/SimulationSecondMeBubble'
 import type { RehearsalAnalyzeData } from '@/components/rehearsal/RehearsalOutput'
 import {
@@ -22,11 +23,20 @@ type SimulationStep = 'entry' | 'confirm' | 'active' | 'end'
 
 type FeedItem =
   | { type: 'parent'; text: string }
-  | { type: 'child'; childText: string; hintTitle: string; hintText: string }
+  | {
+      type: 'child'
+      childText: string
+      hintTitle: string
+      hintText: string
+      suggestedTitle?: string
+      suggestedText?: string
+    }
+  | { type: 'system_hint'; text: string }
   | { type: 'thinking' }
 
+const CHECKPOINT_EVERY = 4
+
 function mapAnalyzeToSecondMe(data: RehearsalAnalyzeData) {
-  // 气泡主文 = 孩子可能的口头回复（模拟对话），不是给家长的改说法。
   const childText =
     data.possibleChildReaction?.immediateReaction?.trim() ||
     '……（孩子暂时没有接话）'
@@ -38,7 +48,16 @@ function mapAnalyzeToSecondMe(data: RehearsalAnalyzeData) {
     data.explanation ||
     '可以继续换一句更轻的开口方式。'
 
-  return { childText, hintTitle, hintText }
+  return {
+    childText,
+    hintTitle,
+    hintText,
+    suggestedTitle: data.showSuggestedWording ? '您可以这样说' : undefined,
+    suggestedText: data.showSuggestedWording
+      ? data.suggestedWordingHint || data.saferVersion || data.suggestedWording
+      : undefined,
+    dailyToneReminder: data.dailyToneDetected ? data.dailyToneReminder : undefined,
+  }
 }
 
 export default function RehearsalPage() {
@@ -51,6 +70,8 @@ export default function RehearsalPage() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(false)
   const [round, setRound] = useState(0)
+  const [roundsSinceCheckpoint, setRoundsSinceCheckpoint] = useState(0)
+  const [showCheckpoint, setShowCheckpoint] = useState(false)
   const [endData, setEndData] = useState<RehearsalAnalyzeData | null>(null)
   const [taskSaved, setTaskSaved] = useState(false)
   const [tonightSaved, setTonightSaved] = useState(false)
@@ -107,6 +128,8 @@ export default function RehearsalPage() {
   function enterRehearsal() {
     const scene = selectedScene
     setRound(0)
+    setRoundsSinceCheckpoint(0)
+    setShowCheckpoint(false)
     setEndData(null)
     setTaskSaved(false)
     setTonightSaved(false)
@@ -138,6 +161,7 @@ export default function RehearsalPage() {
         body: JSON.stringify({
           parentText: `【预演场景：${sceneTitle}】\n场景摘要：${summary}\n家长说：${value}`,
           fromSpecialFeature: true,
+          parentRoundCount: round + 1,
         }),
       })
       const json = await res.json()
@@ -148,16 +172,21 @@ export default function RehearsalPage() {
         if (data.traceId) setRehearsalTraceId(data.traceId)
         const reply = mapAnalyzeToSecondMe(data)
         setEndData(data)
+        if (reply.dailyToneReminder) {
+          setFeed((prev) => [...prev, { type: 'system_hint', text: reply.dailyToneReminder! }])
+        }
         setFeed((prev) => [...prev, { type: 'child', ...reply }])
         setStatusText(
           reply.hintTitle.includes('松动') || reply.hintTitle.includes('具体')
             ? '当前状态：孩子开始谈条件，有一点松动'
             : '当前状态：孩子仍有防御，需要先降压力'
         )
-        setRound((r) => {
-          const next = r + 1
-          if (next >= 4) {
-            window.setTimeout(() => setStep('end'), 700)
+        setRound((r) => r + 1)
+        setRoundsSinceCheckpoint((c) => {
+          const next = c + 1
+          if (next >= CHECKPOINT_EVERY) {
+            setShowCheckpoint(true)
+            return 0
           }
           return next
         })
@@ -194,6 +223,9 @@ export default function RehearsalPage() {
     setSummary(REHEARSAL_SCENES[0].summary)
     setSceneTitle(REHEARSAL_SCENES[0].title)
     setFeed([])
+    setRound(0)
+    setRoundsSinceCheckpoint(0)
+    setShowCheckpoint(false)
     setEndData(null)
     setTaskSaved(false)
     setTonightSaved(false)
@@ -337,6 +369,9 @@ export default function RehearsalPage() {
             <div className="simulation-feed" id="simulationFeed">
               {feed.map((item, index) => {
                 if (item.type === 'parent') return <SimulationParentBubble key={index} text={item.text} />
+                if (item.type === 'system_hint') {
+                  return <SimulationSystemHintBubble key={index} text={item.text} />
+                }
                 if (item.type === 'thinking') {
                   return (
                     <div key={index} className="message-row ai">
@@ -356,12 +391,38 @@ export default function RehearsalPage() {
                     childText={item.childText}
                     hintTitle={item.hintTitle}
                     hintText={item.hintText}
+                    suggestedTitle={item.suggestedTitle}
+                    suggestedText={item.suggestedText}
                   />
                 )
               })}
               <div ref={feedEndRef} />
             </div>
           </section>
+
+          {showCheckpoint ? (
+            <div className="rehearsal-checkpoint-backdrop" role="dialog" aria-modal="true">
+              <div className="rehearsal-checkpoint-card">
+                <h3>这轮预演可以先停在这里</h3>
+                <p>你可以继续换说法练几轮，也可以结束并查看这次预演的总结。</p>
+                <div className="rehearsal-checkpoint-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      setShowCheckpoint(false)
+                      setRoundsSinceCheckpoint(0)
+                    }}
+                  >
+                    继续演练
+                  </button>
+                  <button type="button" className="primary-button" onClick={() => setStep('end')}>
+                    结束演练
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className={`simulation-layout${step === 'end' ? '' : ' hidden'}`} id="simulationEnd">

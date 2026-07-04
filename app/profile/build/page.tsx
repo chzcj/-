@@ -1,14 +1,18 @@
 'use client'
 
-import { ArrowRight, Camera, CheckCircle2, ChevronRight, Eye, Lightbulb, MessageCircle, Mic, Users } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { ArrowRight, CheckCircle2, ChevronRight, Eye, Lightbulb, MessageCircle, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { AppShell } from '@/components/layout/AppShell'
-import { BottomNavTabs } from '@/components/layout/BottomNavTabs'
-import { PageHeader } from '@/components/ui/PageHeader'
+import { useEffect, useMemo, useState } from 'react'
+import { HiFiBuildHero } from '@/components/profile/HiFiBuildHero'
+import { HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { entryConfigs } from '@/data/entryConfig'
-import { getAllEntryStatuses, getEntryStatus } from '@/lib/storage/entryStorage'
-import type { BuildEntryStatus, EntryType } from '@/types/storage'
+import { BUILD_ENTRY_COUNT } from '@/data/entryConfig'
+import { isOnboardingComplete } from '@/lib/profile/onboarding'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
+import { getAllEntryStatuses } from '@/lib/storage/entryStorage'
+import type { BuildEntryType } from '@/lib/profile/buildEntries'
+import type { BuildEntryStatus } from '@/types/storage'
 
 const statusLabels: Record<BuildEntryStatus, string> = {
   not_started: '未开始',
@@ -16,94 +20,108 @@ const statusLabels: Record<BuildEntryStatus, string> = {
   completed: '已完成',
 }
 
+const entryIcons: Record<BuildEntryType, ReactNode> = {
+  daily: <Eye size={22} />,
+  homework: <Lightbulb size={22} />,
+  communication: <MessageCircle size={22} />,
+  family: <Users size={22} />,
+}
+
 export default function ProfileBuildPage() {
   const router = useRouter()
-  const [statuses, setStatuses] = useState<Record<EntryType, BuildEntryStatus>>(
-    {} as Record<EntryType, BuildEntryStatus>
-  )
+  const onboarding = !isOnboardingComplete()
+  const [childName, setChildName] = useState('孩子')
+  const [statuses, setStatuses] = useState(() => getAllEntryStatuses())
+
+  useEffect(() => {
+    const syncChild = () => setChildName(getChildDisplayName())
+    syncChild()
+    window.addEventListener('focus', syncChild)
+    return () => window.removeEventListener('focus', syncChild)
+  }, [])
 
   useEffect(() => {
     setStatuses(getAllEntryStatuses())
   }, [])
 
-  function refreshStatuses() {
-    setStatuses(getAllEntryStatuses())
-  }
-
-  useEffect(() => {
-    refreshStatuses()
-  }, [router])
-
-  const allCompleted = entryConfigs.every((e) => statuses[e.type] === 'completed')
+  const completedCount = useMemo(
+    () => entryConfigs.filter((e) => statuses[e.type] === 'completed').length,
+    [statuses]
+  )
+  const allCompleted = completedCount === BUILD_ENTRY_COUNT
+  const nextEntry = entryConfigs.find((e) => statuses[e.type] !== 'completed')
 
   return (
-    <AppShell>
-      <div className="page without-voice with-bottom-tabs">
-        <PageHeader title="建立孩子画像" showBack onBack={() => router.push('/home')} />
+    <HiFiBuildShell
+      topTitle={onboarding ? `认识${childName}` : '补充画像'}
+      stepLabel={`四模块 · ${completedCount}/${BUILD_ENTRY_COUNT}`}
+      progress={28 + completedCount * 14}
+      onBack={onboarding ? undefined : () => router.push('/family-profile')}
+      actions={
+        allCompleted
+          ? [
+              {
+                label: onboarding ? '四模块够了，生成孩子画像' : '更新孩子画像',
+                icon: <ArrowRight size={18} />,
+                onClick: () => router.push('/profile/build/final-follow-up'),
+              },
+            ]
+          : nextEntry
+            ? [
+                {
+                  label: onboarding ? `从${nextEntry.title}开始` : '继续补充',
+                  icon: <ArrowRight size={18} />,
+                  onClick: () => router.push(`/profile/build/${nextEntry.type}`),
+                },
+              ]
+            : []
+      }
+    >
+      <HiFiBuildHero
+        kicker={onboarding ? '开始使用育见' : '补充画像'}
+        title={onboarding ? `讲四个模块的真实片段，建立${childName}的画像` : '补充更多真实片段'}
+        copy={
+          onboarding
+            ? '每类大约 3～5 分钟，尽量讲 30 秒以上的真实过程。日常 → 作业 → 沟通 → 家庭，按顺序完成即可。'
+            : '不用分析原因，讲真实片段就行。'
+        }
+      />
 
-        <div style={{ fontSize: 14, color: '#6E6E73', marginBottom: 16, lineHeight: 1.6 }}>
-          先收 5 类真实片段，再生成孩子画像
-        </div>
-
-        <div className="stack" style={{ marginBottom: 16 }}>
+      <section className="section">
+        <p className="section-title">四模块 · {completedCount}/{BUILD_ENTRY_COUNT}</p>
+        <div className="entry-list">
           {entryConfigs.map((entry) => {
             const status = statuses[entry.type] || 'not_started'
-            const iconEl =
-              entry.type === 'study' ? <Lightbulb size={22} /> :
-              entry.type === 'routine' ? <Eye size={22} /> :
-              entry.type === 'communication' ? <MessageCircle size={22} /> :
-              entry.type === 'emotion' ? <Camera size={22} /> :
-              <Users size={22} />
             return (
               <button
                 key={entry.type}
                 type="button"
-                className="entry-card"
+                className={`entry-row${status === 'completed' ? ' completed' : ''}`}
                 onClick={() => router.push(`/profile/build/${entry.type}`)}
               >
-                <div className="icon-box">{iconEl}</div>
-                <span className="entry-title" style={{ display: 'block' }}>
-                  {entry.title}
-                  {status === 'completed' ? (
-                    <span style={{ color: '#4f9f72', fontSize: 12, fontWeight: 600, marginLeft: 8 }}>
-                      <CheckCircle2 size={14} style={{ display: 'inline', verticalAlign: -2, marginRight: 3 }} />
-                      已完成
+                <span className="entry-icon">{entryIcons[entry.type]}</span>
+                <span className="entry-copy">
+                  <span className="entry-title">
+                    {entry.title}
+                    <span className={`entry-status status-${status}`}>
+                      {status === 'completed' ? (
+                        <>
+                          <CheckCircle2 size={14} />
+                          已完成
+                        </>
+                      ) : (
+                        statusLabels[status]
+                      )}
                     </span>
-                  ) : null}
+                  </span>
+                  <span className="entry-desc">{entry.hubDesc}</span>
                 </span>
-                <ChevronRight size={18} color="#A1A1A6" />
+                <ChevronRight size={18} color="var(--muted)" />
               </button>
             )
           })}
         </div>
-
-        <div style={{ fontSize: 13, color: '#A1A1A6', textAlign: 'center', marginBottom: 20 }}>
-          不用分析原因 讲真实片段就行
-        </div>
-
-        {allCompleted ? (
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => router.push('/profile/build/final-follow-up')}
-            style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600 }}
-          >
-            生成孩子画像
-            <ArrowRight size={18} style={{ marginLeft: 6 }} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => router.push('/profile/build/study')}
-            style={{ width: '100%', borderRadius: 999, height: 52, fontSize: 16, fontWeight: 600 }}
-          >
-            从学习与作业开始
-          </button>
-        )}
-
-        <BottomNavTabs active="profile" />
-      </div>
-    </AppShell>
+      </section>
+    </HiFiBuildShell>
   )
 }

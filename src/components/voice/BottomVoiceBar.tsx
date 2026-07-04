@@ -9,12 +9,13 @@ import { PrimaryButton, SecondaryButton } from '@/components/controls/Buttons';
 interface BottomVoiceBarProps {
   state?: VoiceState;
   hint: string;
+  placeholder?: string;
   disabled?: boolean;
   elevated?: boolean;
   onSubmit: (text: string, mode: 'voice' | 'text') => void;
 }
 
-export function BottomVoiceBar({ state = 'idle', hint, disabled, elevated = false, onSubmit }: BottomVoiceBarProps) {
+export function BottomVoiceBar({ state = 'idle', hint, placeholder, disabled, elevated = false, onSubmit }: BottomVoiceBarProps) {
   const voice = useTencentAsrInput();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [text, setText] = useState('');
@@ -85,7 +86,7 @@ export function BottomVoiceBar({ state = 'idle', hint, disabled, elevated = fals
                   submitText();
                 }
               }}
-              placeholder="也可以直接打字，把最真实的情况说出来。"
+              placeholder={placeholder || '也可以直接打字，把最真实的情况说出来。'}
               disabled={disabled}
             />
             <div className="voice-dock-submit-row">

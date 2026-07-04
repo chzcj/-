@@ -333,11 +333,17 @@ export const CONDITIONAL_PROFILE_TEMPLATE =
    Maturity → Entry Coverage 判断
    ================================================================ */
 export function determineMaturityLevel(entryCompletion: Record<EntryName, boolean>, hasProfile: boolean, interactionCount: number): MaturityLevel {
-  const completedCount = Object.values(entryCompletion).filter(Boolean).length
+  const coreEntries: EntryName[] = [
+    'daily_rhythm_phone',
+    'learning_homework',
+    'parent_child_communication',
+    'relationship_environment',
+  ]
+  const completedCount = coreEntries.filter((k) => entryCompletion[k]).length
 
   if (completedCount === 0) return 'L0'
-  if (completedCount < 5) return 'L1'
-  if (completedCount === 5 && !hasProfile) return 'L2'
+  if (completedCount < 4) return 'L1'
+  if (completedCount === 4 && !hasProfile) return 'L2'
   if (hasProfile && interactionCount < 5) return 'L3'
   return 'L4'
 }

@@ -10,7 +10,7 @@ import type {
 } from '@/types/database'
 import { createId } from '@/lib/storage/storageIds'
 import { callFastJson } from '@/lib/server/ark-agents'
-import { agentPrompts } from '@/lib/server/agent-prompts'
+import { buildProfileSynthesisSystem } from '@/lib/server/profile-build-prompts'
 
 /* ================================================================
    Synthesis Pipeline — 多入口综合建模 Agent 编排
@@ -129,30 +129,35 @@ export async function runSynthesisPipeline(input: SynthesisInput): Promise<Synth
      keyGaps: p.decomposedInput.missingInformation.slice(0, 2),
    }))
 
-  const taskPrompt = `你有 ${completedCount} 个入口的证据材料。请进行跨入口综合分析。
+  const taskPrompt = `四模块首次画像综合建模（daily / homework / communication / family）。请进行跨模块综合分析。
 
 核心任务：
-1. 找出跨多个入口重复出现的孩子行为模式和家长触发动作
-2. 找出跨场景的孩子保护策略（这些策略在不同入口里表面行为不同，但功能相同）
+1. 找出跨多个模块重复出现的孩子行为模式和家长触发动作
+2. 找出跨场景的孩子保护策略（表面行为不同、功能相同）
 3. 识别家庭互动循环（家长动作→孩子接收→孩子反应→家长解读→家长强化）
-4. 生成条件化孩子结构模型草案（不能是标签，必须是"在X条件下更容易Y"）
+4. 生成条件化孩子结构模型草案（"在X条件下更容易Y"）
 5. 准备给深层诊断 Agent 的诊断材料包
 
 规则：
-- 不能把家长评价（"不自觉""没内驱力""安逸"）写成孩子事实
-- 不能停在"启动困难""评价敏感""压力较大"这些中间变量
-- 要找不同表面行为背后的共同功能
-- 每个跨入口关联必须有具体证据来源和入口出处
-- candidateMechanismMatrix 里至少要有 5 条，每条必须有 mechanismName、supportingEvidence、overallStrength
-- crossEntryEvidenceMap 里至少要有 6 条跨入口关联
+- 不能把家长评价写成孩子事实
+- 不能停在中间变量
+- crossEntryEvidenceMap **3–4 条**即可，每条必须有具体证据
+- candidateMechanismMatrix **3–4 条**即可，每条 2 条 supportingEvidence
 - 输出完整 JSON，不要省略字段${input.crossCuttingSupplement ? `
 
-家长在五入口之后补充的一个综合关键点（请在综合判断时重点纳入，但同样不能当成既定结论）：
-${input.crossCuttingSupplement}` : ''}`;
+家长四模块收尾补充（重点纳入，仍作假设检验）：
+${input.crossCuttingSupplement.slice(0, 800)}` : ''}`;
 
   const aiResult = await callFastJson<AiSynthesisOutput>(
-    agentPrompts.multiEntrySynthesis,
-    { task: taskPrompt, entryPacks: entrySummaries, completedCount, maturityLevel: input.maturityLevel }
+    buildProfileSynthesisSystem(),
+    {
+      task: taskPrompt,
+      entryPacks: entrySummaries,
+      completedCount,
+      maturityLevel: input.maturityLevel,
+      moduleKeys: ['daily', 'homework', 'communication', 'family'],
+    },
+    { maxTokens: Number(process.env.FAST_AI_SYNTHESIS_MAX_TOKENS || 3500) }
   ).catch(() => undefined as AiSynthesisOutput | undefined)
 
   const aiOutput = aiResult
@@ -253,7 +258,8 @@ ${input.crossCuttingSupplement}` : ''}`;
   const allFacts = packs.flatMap(p => p.decomposedInput.verifiableFacts)
   const allParentEvals = packs.flatMap(p => p.decomposedInput.parentEvaluations)
   const allMissing = packs.flatMap(p => p.decomposedInput.missingInformation)
-  const allChildQuotes = packs.flatMap(p => p.decomposedInput.childQuotes)
+  // childQuotes 已从 entry packs 移除（dead extraction）；保留为空数组以兼容下游字段。
+  const allChildQuotes: string[] = []
 
   const suggestedMechanisms = mechanismMatrix
     .filter(m => m.shouldPromoteToDiagnosis)
@@ -350,7 +356,8 @@ function buildFallbackCrossEntry(packs: EntryEvidencePack[], completedCount: num
   const allBehaviors = packs.flatMap(p => p.decomposedInput.childBehaviors)
   const allParentActions = packs.flatMap(p => p.decomposedInput.parentActions)
   const allChildReactions = packs.flatMap(p => p.decomposedInput.childBehaviors)
-  const allChildQuotes = packs.flatMap(p => p.decomposedInput.childQuotes)
+  // childQuotes 已从 entry packs 移除（dead extraction）。
+  const allChildQuotes: string[] = []
   const allParentEvals = packs.flatMap(p => p.decomposedInput.parentEvaluations)
 
   return {

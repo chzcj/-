@@ -1,0 +1,1616 @@
+{
+  "datasetName": "05_family_planner_cases",
+  "description": "家庭综合规划扩展版：2条模糊输入+25条清晰失败节点。",
+  "cases": [
+    {
+      "caseId": "planner_fuzzy_001",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "孩子学习不行，你帮我规划一下。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "只有笼统需求"
+        ],
+        "parentEmotion": [
+          "焦虑"
+        ],
+        "parentEvaluation": [
+          "学习不行"
+        ],
+        "likelyMechanisms": [
+          "信息不足"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "追问失败节点，actions=[]",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 0,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "未知",
+      "parentExecutionCapacity": "未知",
+      "childCapacity": "未知",
+      "pastFailurePoint": "未知",
+      "planningRange": "未知",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_fuzzy_002",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "我就想让他这个月赶上来，英语化学物理都不行，你给我安排一个详细计划吧。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长想补多科详细计划"
+        ],
+        "parentEmotion": [
+          "急迫"
+        ],
+        "parentEvaluation": [
+          "都不行"
+        ],
+        "likelyMechanisms": [
+          "信息不足",
+          "计划过密风险"
+        ],
+        "shouldAskFollowup": true,
+        "expectedFollowupPurpose": "先问最先失败的一段，不直接排计划",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 0,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "未知",
+      "parentExecutionCapacity": "家长期望高但执行未知",
+      "childCapacity": "孩子承受力未知",
+      "pastFailurePoint": "未知",
+      "planningRange": "一个月",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_001",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "我加班没人盯，计划就崩。晚上八点多回家，一看他前面没动，我就火大，然后所有安排都挤到晚上。想规划一周，但我平时真的没法全程看着。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长加班晚回",
+          "孩子白天/傍晚未启动",
+          "晚上挤压任务并吵架"
+        ],
+        "parentEmotion": [
+          "火大",
+          "疲惫"
+        ],
+        "parentEvaluation": [
+          "没动"
+        ],
+        "likelyMechanisms": [
+          "无人盯启动崩",
+          "晚上突击"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "给1-3个低监督动作",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "工作日晚8点后可投入30-40分钟；周日晚上在家",
+      "parentExecutionCapacity": "中等，容易急，不能白天盯",
+      "childCapacity": "能完成小任务，但独立启动弱",
+      "pastFailurePoint": "白天无人盯，晚上突击导致吵架",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_002",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "孩子一坐下就烦，尤其是背单词和化学方程式。我一说先背一点，他就说烦死了。今晚我只想让他别炸，能动一点就行。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "背单词/化学一开始烦",
+          "家长想今晚不炸"
+        ],
+        "parentEmotion": [
+          "小心",
+          "急"
+        ],
+        "parentEvaluation": [
+          "烦死了"
+        ],
+        "likelyMechanisms": [
+          "启动情绪高",
+          "暴露压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "今晚只稳启动不求量",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "今晚20分钟",
+      "parentExecutionCapacity": "低，家长容易一急就讲多",
+      "childCapacity": "低，背诵一开始就烦",
+      "pastFailurePoint": "一坐下进入背诵就情绪爆",
+      "planningRange": "今晚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_003",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "之前计划太多做不完，列了语数英物化，结果他看清单就说不可能。最后一项都没好好做。我想重新做个周末计划，别又排满。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "过去多科清单过多",
+          "孩子看到不可能",
+          "最终没有好好做"
+        ],
+        "parentEmotion": [
+          "反思"
+        ],
+        "parentEvaluation": [
+          "做不完"
+        ],
+        "likelyMechanisms": [
+          "计划过载"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "限制1-2项可完成任务",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "周六下午2小时，周日晚1小时",
+      "parentExecutionCapacity": "中等，能守住不加任务需要提醒",
+      "childCapacity": "中低，看长清单会崩",
+      "pastFailurePoint": "任务清单过长导致放弃",
+      "planningRange": "周末",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_004",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "手机规则一执行就吵。说好十分钟，到点他还想看，我一收就僵。可是完全不管又停不下来。想要一个今晚睡前能执行的办法。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "手机十分钟到点难收",
+          "收手机关系僵",
+          "不管停不下"
+        ],
+        "parentEmotion": [
+          "焦虑"
+        ],
+        "parentEvaluation": [
+          "停不下来"
+        ],
+        "likelyMechanisms": [
+          "手机边界冲突"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "只设计睡前结束边界",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "睡前15分钟沟通窗口",
+      "parentExecutionCapacity": "中低，容易上纲上线",
+      "childCapacity": "中等，能放但会拖延",
+      "pastFailurePoint": "睡前手机边界执行冲突",
+      "planningRange": "今晚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_005",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "周末安排太满，孩子反弹。周六数学英语，周日还有化学，回来还要订正。他说周末没有自己的时间。这个周末我想试着松一点，但又怕浪费。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "周末多门补课和订正",
+          "孩子说没时间",
+          "家长想松但怕浪费"
+        ],
+        "parentEmotion": [
+          "纠结"
+        ],
+        "parentEvaluation": [
+          "怕浪费"
+        ],
+        "likelyMechanisms": [
+          "周末无自由",
+          "恢复时间不足"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "先留固定不被收回的恢复时间",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "周末可调出半天，但家长焦虑",
+      "parentExecutionCapacity": "中等，能尝试但怕空着",
+      "childCapacity": "中低，若全自由可能刷手机",
+      "pastFailurePoint": "周末全学习导致反弹",
+      "planningRange": "周末",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_006",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "睡前拖延很严重，洗澡、收书包、手机都拖，最后又晚睡。我想规划一个睡前流程，不要搞到十二点。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "洗澡收书包手机拖延",
+          "经常12点睡"
+        ],
+        "parentEmotion": [
+          "担心"
+        ],
+        "parentEvaluation": [
+          "拖"
+        ],
+        "likelyMechanisms": [
+          "睡前边界不清"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "规划最小睡前流程",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "睡前40分钟",
+      "parentExecutionCapacity": "中等，能提醒但怕唠叨",
+      "childCapacity": "中低，睡前自控弱",
+      "pastFailurePoint": "睡前流程无边界",
+      "planningRange": "今晚到一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_007",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "老师突然反馈订正没交，我就乱了。本来今晚想让他正常写，现在又想把订正补上。每次老师一说，我就加任务，然后吵。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "老师反馈订正没交",
+          "家长冲动加任务",
+          "临时加码导致吵"
+        ],
+        "parentEmotion": [
+          "愤怒",
+          "焦虑"
+        ],
+        "parentEvaluation": [
+          "乱了"
+        ],
+        "likelyMechanisms": [
+          "老师反馈触发旧机制"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "先稳情绪和单项补救",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "今晚30分钟",
+      "parentExecutionCapacity": "低，老师反馈后情绪上头",
+      "childCapacity": "低，临时加任务易炸",
+      "pastFailurePoint": "老师反馈触发加码",
+      "planningRange": "今晚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_008",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "考试前一周了，我想让他把英语单词、化学方程式、物理错题都过一遍。可是我知道这样肯定又做不完。能不能给个不崩的安排？",
+      "hiddenGroundTruth": {
+        "facts": [
+          "考前想补三科",
+          "家长知道会做不完"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "克制"
+        ],
+        "parentEvaluation": [
+          "不崩"
+        ],
+        "likelyMechanisms": [
+          "考前优先级",
+          "计划过载风险"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "建立优先级和结束边界",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "每天晚上30-45分钟；周末2小时",
+      "parentExecutionCapacity": "中等，容易临时加码",
+      "childCapacity": "中低，考前焦虑且拖",
+      "pastFailurePoint": "考前计划过满",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_009",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "假期规划每次失败。上午说学习，最后起床慢；下午说复习，结果电视手机；晚上我回来又开始吵。假期想做一个能坚持三天的，不要一开始就废。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "假期起床慢/电视手机/晚上吵",
+          "白天缺学习监督"
+        ],
+        "parentEmotion": [
+          "无力"
+        ],
+        "parentEvaluation": [
+          "一开始就废"
+        ],
+        "likelyMechanisms": [
+          "假期结构缺失"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "先设计三天最小结构",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "假期每天晚上家长在；白天老人看生活不管学习",
+      "parentExecutionCapacity": "中低，白天无法监督",
+      "childCapacity": "低，假期自控差",
+      "pastFailurePoint": "假期日程过密且无人执行",
+      "planningRange": "假期前三天",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_010",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "孩子短期改善后就松掉。前两天还可以，一夸他就飘，第三天又回去。我不知道改善后该不该加一点巩固。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "短期改善后复发",
+          "家长想加量巩固"
+        ],
+        "parentEmotion": [
+          "纠结"
+        ],
+        "parentEvaluation": [
+          "飘"
+        ],
+        "likelyMechanisms": [
+          "改善后加码风险"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "维持同量不加码的计划",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "每天20分钟",
+      "parentExecutionCapacity": "中等，容易趁热打铁",
+      "childCapacity": "中低，改善后需要恢复",
+      "pastFailurePoint": "改善后家长加码/孩子松掉",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_011",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "他开始前最难，坐到桌前就磨。我想今晚只解决开始，不要求质量。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子坐桌前磨",
+          "家长只想解决开始"
+        ],
+        "parentEmotion": [
+          "务实"
+        ],
+        "parentEvaluation": [
+          "磨"
+        ],
+        "likelyMechanisms": [
+          "启动支架需求"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "1个启动动作",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "今晚15分钟",
+      "parentExecutionCapacity": "中等",
+      "childCapacity": "中低，启动困难",
+      "pastFailurePoint": "启动前拖延",
+      "planningRange": "今晚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_012",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "他检查时最烦。我不是不检查不放心，但一查就吵。能不能规划一个不吵的检查方式？",
+      "hiddenGroundTruth": {
+        "facts": [
+          "检查触发吵架",
+          "家长不查不放心"
+        ],
+        "parentEmotion": [
+          "焦虑"
+        ],
+        "parentEvaluation": [
+          "不放心"
+        ],
+        "likelyMechanisms": [
+          "检查暴露压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "限制检查范围和不加任务",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "每晚10分钟检查",
+      "parentExecutionCapacity": "中低，容易展开讲",
+      "childCapacity": "中等，能接受小范围",
+      "pastFailurePoint": "检查变批评导致吵",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_013",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "他背书不出声，我不知道他到底背没背。我要他读出声，他就烦。这个怎么安排？",
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子背书不出声",
+          "家长要求出声导致烦"
+        ],
+        "parentEmotion": [
+          "困惑"
+        ],
+        "parentEvaluation": [
+          "不知道背没背"
+        ],
+        "likelyMechanisms": [
+          "背诵暴露压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "设计非羞辱化过关方式",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "晚间20分钟",
+      "parentExecutionCapacity": "中等",
+      "childCapacity": "中低，背诵抗拒",
+      "pastFailurePoint": "背诵方式冲突",
+      "planningRange": "今晚/一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_014",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "我想让他每天给我汇报进度，但又怕变成我查他。他自己又不主动说。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "想建立进度汇报",
+          "担心变检查"
+        ],
+        "parentEmotion": [
+          "谨慎"
+        ],
+        "parentEvaluation": [
+          "不主动"
+        ],
+        "likelyMechanisms": [
+          "信任与信息透明"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "低压汇报格式",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "每天睡前5分钟",
+      "parentExecutionCapacity": "中等，能坚持短汇报",
+      "childCapacity": "中等，讨厌被查但可说简短",
+      "pastFailurePoint": "汇报变检查",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_015",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "家里老人总插嘴，我管学习时奶奶一会儿护他，一会儿又说他气我。每次场面更乱。想规划家庭分工。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "奶奶护/责交替",
+          "妈妈管学习场面乱"
+        ],
+        "parentEmotion": [
+          "烦",
+          "无力"
+        ],
+        "parentEvaluation": [
+          "场面乱"
+        ],
+        "likelyMechanisms": [
+          "规则不一致"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "先定一个家庭分工边界",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "晚间妈妈管学习；奶奶在家",
+      "parentExecutionCapacity": "低到中，家人一致性弱",
+      "childCapacity": "中低，容易借老人缓冲",
+      "pastFailurePoint": "家庭规则不一致",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_016",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "我晚上只能陪妹妹和他其中一个。妹妹也要管，小尹又更麻烦。我一分身，两个都乱。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长需管两个孩子",
+          "时间不足"
+        ],
+        "parentEmotion": [
+          "疲惫"
+        ],
+        "parentEvaluation": [
+          "两个都乱"
+        ],
+        "likelyMechanisms": [
+          "家庭资源不足"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "不增加家长负担的轮换方案",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "晚上1小时给两个孩子",
+      "parentExecutionCapacity": "中低，精力有限",
+      "childCapacity": "小尹中低；妹妹中等",
+      "pastFailurePoint": "家长精力不足",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_017",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "他周五想玩手机，我以前答应过，后来又改了。现在想重新定周五规则，不要再说话不算数。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "周五手机承诺反复",
+          "孩子不信任"
+        ],
+        "parentEmotion": [
+          "内疚"
+        ],
+        "parentEvaluation": [
+          "说话不算数"
+        ],
+        "likelyMechanisms": [
+          "自由边界重建"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "固定小边界并不临时收回",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "周五晚上1小时可谈",
+      "parentExecutionCapacity": "中等，需守约",
+      "childCapacity": "中等，期待周五自由",
+      "pastFailurePoint": "周五规则反复导致不信任",
+      "planningRange": "周五/一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_018",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "他作业质量差，写了也像没写。我想提高质量，但一提高质量就变成检查和吵。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "作业质量差",
+          "提高质量导致吵"
+        ],
+        "parentEmotion": [
+          "焦虑"
+        ],
+        "parentEvaluation": [
+          "像没写"
+        ],
+        "likelyMechanisms": [
+          "质量标准与结束感"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "只选一个质量标准",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "每晚20分钟",
+      "parentExecutionCapacity": "中等",
+      "childCapacity": "中低，质量要求易压垮",
+      "pastFailurePoint": "质量标准不清/检查冲突",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_019",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "他不愿意去体育训练，说会被老师点名，也怕练不好。升学要考体育，我不能完全随他。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子怕体育被点名/练不好",
+          "中考体育压力"
+        ],
+        "parentEmotion": [
+          "担心"
+        ],
+        "parentEvaluation": [
+          "不能随他"
+        ],
+        "likelyMechanisms": [
+          "体育自卑/暴露压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "低暴露练习计划",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "每周2次，每次15-30分钟",
+      "parentExecutionCapacity": "中等",
+      "childCapacity": "低，体育自卑",
+      "pastFailurePoint": "体育训练暴露压力",
+      "planningRange": "两周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_020",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "我想让外部哥哥姐姐继续介入，但又怕他以后离不开你们。怎么规划从外部陪伴到自己做？",
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子愿意外部沟通",
+          "家长怕依赖"
+        ],
+        "parentEmotion": [
+          "期待",
+          "担心"
+        ],
+        "parentEvaluation": [
+          "离不开"
+        ],
+        "likelyMechanisms": [
+          "外部支持过渡"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "外部支架逐步撤离",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "每晚可外部沟通10-20分钟",
+      "parentExecutionCapacity": "中等",
+      "childCapacity": "中等，愿意听外部",
+      "pastFailurePoint": "外援依赖/妈妈沟通失效",
+      "planningRange": "两周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_021",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "今天他主动问题，我想抓住机会多讲点，但又怕讲多了他以后不问。这个机会怎么用？",
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子主动问题",
+          "家长想多讲又怕吓退"
+        ],
+        "parentEmotion": [
+          "克制困难"
+        ],
+        "parentEvaluation": [
+          "抓住机会"
+        ],
+        "likelyMechanisms": [
+          "主动求助保护"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "保护求助通道",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "今晚10分钟",
+      "parentExecutionCapacity": "中等，容易讲多",
+      "childCapacity": "中等，主动求助但敏感",
+      "pastFailurePoint": "帮助变讲道理",
+      "planningRange": "今晚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_022",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "孩子说不想听我讲未来。我想一周都不讲升学、责任这些，看看会不会好一点。你帮我设计观察点。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子不想听未来话题",
+          "家长愿意一周不讲"
+        ],
+        "parentEmotion": [
+          "尝试"
+        ],
+        "parentEvaluation": [
+          "看看"
+        ],
+        "likelyMechanisms": [
+          "责任语言减量实验"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "给观察点而非任务表",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "一周",
+      "parentExecutionCapacity": "中等，能尝试但易复发",
+      "childCapacity": "中等",
+      "pastFailurePoint": "未来责任话题触发",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_023",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "我计划总失败，因为我自己晚上太累了。我不可能每天陪到十一点。有没有适合我这种执行力一般的？",
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长执行力一般",
+          "无法每天陪到11点"
+        ],
+        "parentEmotion": [
+          "疲惫"
+        ],
+        "parentEvaluation": [
+          "执行力一般"
+        ],
+        "likelyMechanisms": [
+          "家长负担过高"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "降低家长投入要求",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "工作日20分钟；周末半天",
+      "parentExecutionCapacity": "低到中",
+      "childCapacity": "中低",
+      "pastFailurePoint": "计划依赖家长长时间陪伴",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_024",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "老师说他订正拖，我想让他每天只交一项订正。这样会不会太少？",
+      "hiddenGroundTruth": {
+        "facts": [
+          "老师反馈订正拖",
+          "家长想每天一项"
+        ],
+        "parentEmotion": [
+          "担心太少"
+        ],
+        "parentEvaluation": [
+          "太少"
+        ],
+        "likelyMechanisms": [
+          "小量稳定优先"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "确认小量稳定",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "每天15分钟",
+      "parentExecutionCapacity": "中等",
+      "childCapacity": "中低",
+      "pastFailurePoint": "订正任务堆积",
+      "planningRange": "一周",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    },
+    {
+      "caseId": "planner_025",
+      "targetFeature": "family_planner",
+      "inputMode": "text",
+      "parentText": "我想今晚不谈学习，只修复关系。但又怕他觉得我默认他今天没完成也没事。",
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长想不谈学习修复关系",
+          "担心孩子误会没后果"
+        ],
+        "parentEmotion": [
+          "纠结"
+        ],
+        "parentEvaluation": [
+          "默认没事"
+        ],
+        "likelyMechanisms": [
+          "关系修复需要与任务分离"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "只规划关系修复，不混任务",
+        "plannerExpected": {
+          "actionsShouldBeEmpty": false,
+          "maxActions": 3,
+          "primaryPlanningPrinciple": "先稳边界，不排满任务"
+        }
+      },
+      "expectedGoodResponse": [
+        "模糊输入不直接给计划",
+        "清晰失败节点下只给1-3个动作",
+        "先稳一个边界",
+        "不增加家庭负担",
+        "考虑家长执行能力和孩子承受力"
+      ],
+      "badResponseSignals": [
+        "给密集时间表",
+        "忽略过去失败点",
+        "让家长继续加码",
+        "动作超过3个",
+        "只讲大道理"
+      ],
+      "familyAvailableTime": "今晚晚饭后20分钟",
+      "parentExecutionCapacity": "中等，能忍但怕没后果",
+      "childCapacity": "中等，关系还在但学习防御",
+      "pastFailurePoint": "关系修复与规则混在一起",
+      "planningRange": "今晚",
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/family-planner",
+      "api": {
+        "method": "POST",
+        "path": "/api/family-planner",
+        "body": {
+          "text": "<parentText>"
+        }
+      }
+    }
+  ],
+  "schemaVersion": "2026-06-12",
+  "targetRoute": "/family-planner",
+  "targetApi": "/api/family-planner"
+}

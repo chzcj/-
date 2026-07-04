@@ -5,9 +5,11 @@ export function requestId() {
   return `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const JSON_UTF8 = { headers: { 'Content-Type': 'application/json; charset=utf-8' } } as const;
+
 export function ok<T>(data: T, id = requestId()): Response {
   const body: ApiResult<T> = { ok: true, data, requestId: id };
-  return Response.json(body);
+  return Response.json(body, JSON_UTF8);
 }
 
 // 统一失败响应。errorType/retriable 默认按 HTTP 状态码推（429/503→可重试，4xx→校验不重试），可用 opts 覆盖。
@@ -31,7 +33,7 @@ export function fail(
       },
       requestId: requestId()
     },
-    { status }
+    { status, ...JSON_UTF8 }
   );
 }
 
@@ -50,7 +52,7 @@ export function failFromError(error: unknown): Response {
       },
       requestId: requestId()
     },
-    { status: c.status }
+    { status: c.status, ...JSON_UTF8 }
   );
 }
 

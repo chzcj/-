@@ -13,7 +13,8 @@ import type {
 } from '@/types/database'
 import { createId } from '@/lib/storage/storageIds'
 import { callFastJson } from '@/lib/server/ark-agents'
-import { agentPrompts } from '@/lib/server/agent-prompts'
+import { buildProfileDiagnosisSystem } from '@/lib/server/profile-build-prompts'
+import { sanitizeForParent } from '@/lib/server/daily/profile-sanitize'
 
 /* ================================================================
    Diagnosis Pipeline — 深层诊断 Agent 编排
@@ -149,12 +150,25 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
 输出完整 JSON，所有字段必填。`;
 
   const aiResult = await callFastJson<AiDiagnosisOutput>(
-    agentPrompts.deepDiagnosis,
-    { task: taskPrompt, mechanismSummaries, crossEntryEvidence, interactionPatterns, protectiveStrategies, facts: facts.slice(0, 10), surfaceProblem: input.surfaceProblem, parentSurfaceJudgment: input.parentSurfaceJudgment }
+    buildProfileDiagnosisSystem(),
+    {
+      task: taskPrompt,
+      taskType,
+      mechanismSummaries,
+      crossEntryEvidence,
+      interactionPatterns,
+      protectiveStrategies,
+      facts: facts.slice(0, 8),
+      surfaceProblem: input.surfaceProblem,
+      parentSurfaceJudgment: input.parentSurfaceJudgment,
+    },
+    { maxTokens: Number(process.env.FAST_AI_DIAGNOSIS_MAX_TOKENS || 2800) }
   ).catch(() => undefined as AiDiagnosisOutput | undefined)
 
   const ai = aiResult
-  const aiConditionalProfiles = normalizeStringArray(ai?.secondMeConditionalProfile)
+  const aiConditionalProfiles = normalizeStringArray(ai?.secondMeConditionalProfile).map((p) =>
+    sanitizeForParent(p)
+  )
   const aiLoops = Array.isArray(ai?.familyInteractionLoops) ? ai.familyInteractionLoops : []
   const aiPrimaryChain = normalizeMechanismChain(ai?.primaryMechanismChain)
 
@@ -216,7 +230,9 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
 
   const conditionalProfile = aiConditionalProfiles.join('\n\n') || buildConditionalProfile(input, facts, mechanismSummaries.map(m => m.name).join('、'))
 
-  const parentCorrection = ai?.parentMisjudgmentCorrection || buildParentCorrection(input, mechanismSummaries.map(m => m.name).join('、'))
+  const parentCorrection = sanitizeForParent(
+    ai?.parentMisjudgmentCorrection || buildParentCorrection(input, mechanismSummaries.map(m => m.name).join('、'))
+  )
 
   const handoffToMemory: MemoryHandoff = {
     stableProfileCandidates: maturityLevel >= 'L3' ? [conditionalProfile] : [],

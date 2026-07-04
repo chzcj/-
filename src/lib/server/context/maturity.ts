@@ -115,11 +115,14 @@ export function getCurrentMaturityState(tenant?: TenantId): ContextMaturityState
 
 function mapLegacyEntryToNew(legacy: string): EntryName | null {
   const mapping: Record<string, EntryName> = {
+    daily: 'daily_rhythm_phone',
+    homework: 'learning_homework',
+    communication: 'parent_child_communication',
+    family: 'relationship_environment',
     study: 'learning_homework',
     routine: 'daily_rhythm_phone',
-    communication: 'parent_child_communication',
-    emotion: 'emotional_stress',
-    environment: 'relationship_environment'
+    emotion: 'parent_child_communication',
+    environment: 'relationship_environment',
   }
   return mapping[legacy] || null
 }

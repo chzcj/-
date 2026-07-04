@@ -91,9 +91,9 @@ export function VoiceFieldButton({
           height: compact ? 32 : 36,
           padding: compact ? '0 12px' : '0 14px',
           borderRadius: 999,
-          border: '1px solid rgba(110,106,248,0.22)',
-          background: voice.isListening ? '#6E6AF8' : 'rgba(110,106,248,0.06)',
-          color: voice.isListening ? '#fff' : '#6E6AF8',
+          border: '1px solid rgba(111,159,86,0.22)',
+          background: voice.isListening ? 'var(--brand)' : 'rgba(111,159,86,0.08)',
+          color: voice.isListening ? '#fff' : 'var(--green-deep)',
           fontSize: compact ? 12 : 13,
           fontWeight: 600,
           cursor: disabled ? 'default' : 'pointer',
@@ -107,7 +107,7 @@ export function VoiceFieldButton({
 
       {/* 录音中实时回显识别文本 */}
       {voice.isListening && voice.liveTranscript ? (
-        <div style={{ fontSize: 13, lineHeight: 1.5, color: '#6E6E73' }}>{voice.liveTranscript}</div>
+        <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)' }}>{voice.liveTranscript}</div>
       ) : null}
       {/* 连不上 ASR / 权限失败时的可见降级提示（绝不静默） */}
       {voice.error ? (

@@ -1,207 +1,501 @@
 'use client'
-import { useRouter } from 'next/navigation'
-import { Suspense, useEffect, useRef, useState } from 'react'
-import { AppShell } from '@/components/layout/AppShell'
-import { PageHeader } from '@/components/ui/PageHeader'
-import { BottomVoiceBar } from '@/components/voice/BottomVoiceBar'
+
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { HiFiInputZone } from '@/components/hifi/HiFiInputZone'
+import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
+import { HiFiMascot } from '@/components/hifi/HiFiMascot'
+import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
+import { DailyAiMessage, DailyParentBubble } from '@/components/daily/DailyAiMessage'
+import { DailyDeepExpandCard } from '@/components/daily/DailyDeepExpandCard'
 import type { InputMode } from '@/types/childos'
-import type { DailyCards } from '@/types/database'
+import type { DailyThinkingChip } from '@/types/daily-message'
+import type { DailyAction, DailySection } from '@/types/daily-message'
+import {
+  clearDailyPending,
+  loadDailyThread,
+  peekDailyPending,
+  readDailyStream,
+  saveDailyThread,
+  type DailyTurn,
+} from '@/lib/daily/dailyStreamClient'
+import { collectRecentSectionIds } from '@/lib/daily/dailyThreadUtils'
+import { pushAccountSyncToServer } from '@/lib/account/accountSync'
+import { useStreamBuffer } from '@/hooks/useStreamBuffer'
 
-type Turn = { role: 'parent' | 'ai'; text: string; cards?: DailyCards; linkedAreas?: string[] }
+const STARTER_CHIPS = ['作业拖延', '情绪爆发', '顶嘴冲突', '手机使用']
 
-/* ================================================================
-   新版日常对话 —— 主入口（合并深度复盘，交付文档 4）。
-   家长每轮输入经 /api/daily/stream 流式回复；越聊越懂靠后台记忆而非会话缓冲。
-   ================================================================ */
-
-// AI 回复后的家长可读卡片（交付文档 4.5）：判断变化内联小卡 + 折叠理解卡 + 关联领域 chips。
-// 都不打断对话；无内容则不渲染。文案均来自后台 cards（家长可读，不含字段/置信度/机制名）。
-function AiTurnExtras({ cards, linkedAreas }: { cards?: DailyCards; linkedAreas?: string[] }) {
-  const delta = cards?.judgmentDelta?.trim()
-  const uc = cards?.understandingCard
-  const areas = (linkedAreas || []).filter(Boolean)
-  if (!delta && !uc && areas.length === 0) return null
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-      {delta ? (
-        <div className="card" style={{ padding: 14, borderRadius: 16, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 4 }}>判断有更新</div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: '#1D1D1F' }}>{delta}</div>
-        </div>
-      ) : null}
-
-      {uc?.reading ? (
-        <details>
-          <summary style={{ fontSize: 13, color: '#6E6AF8', cursor: 'pointer', listStyle: 'none', padding: '2px 0' }}>
-            当前对孩子的理解 · {uc.tier} ›
-          </summary>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: '#1D1D1F', marginTop: 8, padding: '12px 14px', borderRadius: 14, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
-            {uc.reading}
-          </div>
-        </details>
-      ) : null}
-
-      {areas.length > 0 ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {areas.map((a) => (
-            <span key={a} className="chip" style={{ fontSize: 11, background: 'rgba(110,106,248,0.06)', color: '#6E6AF8', border: '1px solid rgba(110,106,248,0.12)' }}>{a}</span>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
+function mergeSectionList(existing: DailySection[] | undefined, patch: DailySection): DailySection[] {
+  const list = [...(existing || [])]
+  const idx = list.findIndex((s) => s.id === patch.id)
+  if (idx >= 0) list[idx] = { ...list[idx], ...patch }
+  else list.push(patch)
+  return list
 }
 
+function patchStreamingSection(
+  existing: DailySection[] | undefined,
+  id: string,
+  text: string
+): DailySection[] {
+  const list = [...(existing || [])]
+  const idx = list.findIndex((s) => s.id === id)
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], streamingText: text }
+  }
+  return list
+}
+
+/** 加载时占位：真实 chips 由 /api/profile/hub（daily-refresh Agent 写入）返回；未到前不展示假模板 */
+const LOADING_THINKING_CHIPS: DailyThinkingChip[] = [
+  { label: '当前理解', text: '还在了解' },
+  { label: '高频场景', text: '还在了解' },
+  { label: '学习特点', text: '还在了解' },
+  { label: '互动特点', text: '还在了解' },
+]
+
 function DailyDialogueContent() {
-  const router = useRouter()
-  const [turns, setTurns] = useState<Turn[]>([])
-  const [streaming, setStreaming] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [turns, setTurns] = useState<DailyTurn[]>(() => loadDailyThread())
+  const [threadReady, setThreadReady] = useState(false)
+  const [thinkingSeed, setThinkingSeed] = useState<DailyThinkingChip[]>(LOADING_THINKING_CHIPS)
+  // inputReady：家长能否立即发送下一条。sections+actions 都到 → 立即 true（不必等 hidden/final）。
+  const [inputReady, setInputReady] = useState(true)
+  const [queuedCount, setQueuedCount] = useState(0)
   const startedRef = useRef(false)
   const threadEndRef = useRef<HTMLDivElement>(null)
+  const queueRef = useRef<string[]>([])
+  const streamAbortRef = useRef<AbortController | null>(null)
+  const activeIdRef = useRef('')
 
-  // 一轮对话：追加家长消息 → 流式拿 AI 回复。
-  async function runTurn(text: string) {
-    const value = text.trim()
-    if (!value || loading) return
-    setTurns((prev) => [...prev, { role: 'parent', text: value }])
-    setLoading(true)
-    setStreaming('')
-    try {
-      const res = await fetch('/api/daily/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: value }),
-      })
-      let acc = ''
-      let finalCards: DailyCards | undefined
-      let finalLinked: string[] | undefined
-      if (res.body) {
-        const reader = res.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-        while (true) {
-          const { done, value: chunk } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(chunk, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
-          for (const line of lines) {
-            if (!line.trim()) continue
-            try {
-              const evt = JSON.parse(line)
-              if (evt.type === 'delta') { acc += evt.delta; setStreaming(acc) }
-              else if (evt.type === 'final') {
-                if (evt.text) acc = evt.text
-                if (evt.cards && typeof evt.cards === 'object') finalCards = evt.cards as DailyCards
-                if (Array.isArray(evt.linkedAreas)) finalLinked = evt.linkedAreas
-              }
-            } catch {}
-          }
-        }
-      }
-      const reply = acc.trim() || '我先记下了，你可以继续说说当时的具体情形。'
-      setTurns((prev) => [...prev, { role: 'ai', text: reply, cards: finalCards, linkedAreas: finalLinked }])
-    } catch {
-      setTurns((prev) => [...prev, { role: 'ai', text: '这次没整理成功，可以再说一次。' }])
-    } finally {
-      setLoading(false)
-      setStreaming('')
-    }
-  }
+  // rAF 合并高频流式 setState，降低 prose/section delta 的重渲染抖动。
+  const proseBuffer = useStreamBuffer<string>(
+    (acc) => patchTurn(activeIdRef.current, { text: acc, showThinking: false })
+  )
+  const sectionBuffer = useStreamBuffer<{ id: string; text: string }>(
+    (d) => patchTurn(activeIdRef.current, (t) => ({ sections: patchStreamingSection(t.sections, d.id, d.text) }))
+  )
 
-  // 进入页面：消费首页带来的首条输入。
-  useEffect(() => {
-    if (startedRef.current) return
-    startedRef.current = true
-    // sessionStorage 在隐私/无痕模式下访问可能抛异常，整体兜底，避免首条输入读取失败导致页面崩。
-    try {
-      const raw = window.sessionStorage.getItem('childos_daily_pending')
-      if (raw) {
-        window.sessionStorage.removeItem('childos_daily_pending')
-        const pending = JSON.parse(raw) as { text: string }
-        if (pending.text?.trim()) void runTurn(pending.text)
-      }
-    } catch {}
+  /** 按 traceId 更新单条 turn（支持 functional patch，便于 section 流式合并）。 */
+  const patchTurn = useCallback(
+    (traceId: string, patch: Partial<DailyTurn> | ((turn: DailyTurn) => Partial<DailyTurn>)) => {
+      setTurns((prev) =>
+        prev.map((t) => {
+          if (t.traceId !== traceId) return t
+          const nextPatch = typeof patch === 'function' ? patch(t) : patch
+          return { ...t, ...nextPatch }
+        })
+      )
+    },
+    []
+  )
+
+  const flushQueue = useCallback(() => {
+    const next = queueRef.current.shift()
+    setQueuedCount(queueRef.current.length)
+    if (next) void runTurn(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    threadEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [turns, streaming])
+  async function runTurn(text: string) {
+    const value = text.trim()
+    if (!value) return
 
-  function handleSubmit(text: string, _mode: InputMode) {
-    void runTurn(text)
+    streamAbortRef.current?.abort()
+    const abortController = new AbortController()
+    streamAbortRef.current = abortController
+
+    setInputReady(false)
+    clearDailyPending()
+
+    const pendingId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    activeIdRef.current = pendingId
+    setTurns((prev) => [
+      ...prev,
+      { role: 'parent', text: value },
+      {
+        role: 'ai',
+        text: '',
+        traceId: pendingId,
+        streaming: true,
+        showThinking: true,
+        thinkingChips: thinkingSeed,
+        proseComplete: false,
+        sectionsComplete: false,
+      },
+    ])
+
+    try {
+      const recentSectionIds = collectRecentSectionIds(turns, 3)
+      const warmTurn = turns.some((t) => t.role === 'parent')
+      const res = await fetch('/api/daily/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: value, recentSectionIds, warmTurn }),
+        signal: abortController.signal,
+      })
+
+      const activeId = { current: pendingId }
+
+      const result = await readDailyStream(
+        res,
+        (acc) => proseBuffer.schedule(acc),
+        (chips) => patchTurn(activeIdRef.current, { thinkingChips: chips, showThinking: true }),
+        (sections: DailySection[]) => patchTurn(activeIdRef.current, { sections }),
+        (actions: DailyAction[]) => {
+          patchTurn(activeIdRef.current, { actions })
+          setInputReady(true)
+          flushQueue()
+        },
+        (traceId: string) => {
+          activeId.current = traceId
+          activeIdRef.current = traceId
+          patchTurn(pendingId, { traceId })
+        },
+        {
+          onProseComplete: () => {
+            proseBuffer.flushNow()
+            patchTurn(activeIdRef.current, { proseComplete: true })
+          },
+          onSectionStart: (section) => {
+            patchTurn(activeIdRef.current, (t) => ({
+              sections: mergeSectionList(t.sections, { ...section, streamingText: '' }),
+            }))
+          },
+          onSectionDelta: (id, st) => {
+            sectionBuffer.schedule({ id, text: st })
+          },
+          onSectionComplete: (section) => {
+            sectionBuffer.flushNow()
+            patchTurn(activeIdRef.current, (t) => ({
+              sections: mergeSectionList(t.sections, { ...section, streamingText: undefined }),
+              sectionErrors: (t.sectionErrors || []).filter((eid) => eid !== section.id),
+            }))
+          },
+          onSectionError: (id) => {
+            sectionBuffer.flushNow()
+            patchTurn(activeIdRef.current, (t) => ({
+              sectionErrors: [...new Set([...(t.sectionErrors || []), id])],
+              sections: mergeSectionList(t.sections, {
+                id,
+                label: t.sections?.find((s) => s.id === id)?.label || id,
+                kind: 'paragraphs',
+                streamingText: undefined,
+              }),
+            }))
+          },
+        },
+        (sections) => {
+          proseBuffer.flushNow()
+          sectionBuffer.flushNow()
+          patchTurn(activeIdRef.current, { sections, sectionsComplete: true })
+        },
+        abortController.signal
+      )
+
+      if (abortController.signal.aborted) {
+        proseBuffer.flushNow()
+        sectionBuffer.flushNow()
+        patchTurn(activeId.current, {
+          streaming: false,
+          interrupted: true,
+          showThinking: false,
+        })
+        setInputReady(true)
+        return
+      }
+
+      const realTraceId = result.traceId || pendingId
+      proseBuffer.flushNow()
+      sectionBuffer.flushNow()
+      if (result.httpError || result.streamError) {
+        patchTurn(realTraceId, {
+          streaming: false,
+          showThinking: false,
+          text: result.httpError || result.streamError || '这次没有整理成功，可以再试一次。',
+        })
+        setInputReady(true)
+        flushQueue()
+        return
+      }
+
+      const reply = result.acc.trim()
+      if (!reply) {
+        patchTurn(realTraceId, {
+          streaming: false,
+          showThinking: false,
+          text: '这次没有整理成功，可以再试一次。',
+        })
+        setInputReady(true)
+        flushQueue()
+        return
+      }
+
+      patchTurn(realTraceId, {
+        streaming: false,
+        showThinking: false,
+        thinkingChips: undefined,
+        text: reply,
+        cards: result.finalCards,
+        sections: result.finalSections ?? result.finalCards?.sections,
+        actions: result.finalActions ?? result.finalCards?.actions,
+        linkedAreas: result.finalLinked,
+        sectionsComplete: true,
+        proseComplete: true,
+      })
+      pushAccountSyncToServer()
+      // 兜底：若 actions 事件因故未到，final 时再解锁一次
+      setInputReady(true)
+      flushQueue()
+
+      // 家长可见「这轮记住了没」：延迟查 memory_ledger（job_queue 按 traceId），
+      // 让 memory_write job 有时间入队 + 落库。失败静默，不阻塞阅读。
+      const labelTraceId = result.traceId || realTraceId
+      window.setTimeout(() => {
+        fetch(`/api/daily/memory-status?traceId=${encodeURIComponent(labelTraceId)}`)
+          .then((r) => r.json())
+          .then((json: { ok?: boolean; data?: { status?: { label?: string } } }) => {
+            if (json?.ok && json.data?.status?.label) {
+              patchTurn(realTraceId, { memoryLabel: json.data.status.label })
+            }
+          })
+          .catch(() => {/* 静默 */})
+      }, 2000)
+    } catch (err) {
+      proseBuffer.flushNow()
+      sectionBuffer.flushNow()
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        patchTurn(pendingId, { streaming: false, interrupted: true, showThinking: false })
+      } else {
+        patchTurn(pendingId, {
+          streaming: false,
+          showThinking: false,
+          text: '这次没有整理成功，可以再试一次。',
+        })
+      }
+      setInputReady(true)
+      flushQueue()
+    }
   }
 
-  return (
-    <AppShell>
-      <div className="page with-raised-voice">
-        <PageHeader title="日常对话" showBack onBack={() => router.push('/home')} />
+  const retrySection = useCallback(
+    async (traceId: string, sectionId: string) => {
+      const turn = turns.find((t) => t.traceId === traceId)
+      const skeleton = turn?.sections?.find((s) => s.id === sectionId)
+      if (!skeleton) return
+      try {
+        const res = await fetch('/api/daily/section-retry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ traceId, sectionId, section: skeleton }),
+        })
+        const json = (await res.json()) as { ok?: boolean; data?: { section?: DailySection } }
+        if (json.ok && json.data?.section) {
+          patchTurn(traceId, (t) => ({
+            sections: mergeSectionList(t.sections, json.data!.section!),
+            sectionErrors: (t.sectionErrors || []).filter((id) => id !== sectionId),
+          }))
+        }
+      } catch {
+        /* keep error state */
+      }
+    },
+    [patchTurn, turns]
+  )
 
-        {turns.length === 0 && !loading ? (
-          <div style={{ fontSize: 14, color: '#6E6E73', lineHeight: 1.6, marginTop: 8 }}>
-            把最近最挂心的一个具体场景讲出来——冲突、作业、手机、成绩、沟通都可以。我会结合之前聊过的慢慢理解。
-          </div>
+  useEffect(() => {
+    let cancelled = false
+    // 登录触发：先调 daily-refresh Agent 把后台记忆库转成人话展示层，再读 hub。
+    void (async () => {
+      try {
+        await fetch('/api/account/daily-refresh', { method: 'POST' }).catch(() => {})
+      } catch {
+        /* 静默：refresh 失败不阻塞阅读 */
+      }
+      try {
+        const res = await fetch('/api/profile/hub')
+        const json = (await res.json()) as {
+          ok?: boolean
+          data?: {
+            coreJudgment?: string
+            behaviorSummary?: string
+            interactionPattern?: string
+            supportFocus?: string
+            effectiveStrategies?: string
+            thinkingChips?: DailyThinkingChip[]
+            refreshedAt?: string | null
+          }
+        }
+        if (cancelled || !json.ok || !json.data) return
+        const d = json.data
+        // 优先用 daily-refresh Agent 产出的人话 chips；没有则不写假模板，保持「还在了解」。
+        if (Array.isArray(d.thinkingChips) && d.thinkingChips.length > 0) {
+          setThinkingSeed(d.thinkingChips.slice(0, 4))
+        }
+      } catch {
+        /* 保持「还在了解」占位 */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/daily/thread?limit=15')
+        const json = (await res.json()) as { ok?: boolean; data?: { turns?: DailyTurn[] } }
+        if (!cancelled && json.ok && Array.isArray(json.data?.turns) && json.data.turns.length > 0) {
+          setTurns(json.data.turns)
+          saveDailyThread(json.data.turns)
+        }
+      } catch {
+        /* session fallback */
+      } finally {
+        if (!cancelled) setThreadReady(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!threadReady) return
+    saveDailyThread(turns)
+  }, [turns, threadReady])
+
+  useEffect(() => {
+    if (!threadReady) return
+    if (startedRef.current) return
+    startedRef.current = true
+    const pending = peekDailyPending()
+    if (pending) void runTurn(pending)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadReady])
+
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [turns])
+
+  function handleSubmit(text: string, _mode: InputMode) {
+    const value = text.trim()
+    if (!value) return
+    if (!inputReady) {
+      streamAbortRef.current?.abort()
+      void runTurn(value)
+      return
+    }
+    void runTurn(value)
+  }
+
+  function seedChip(chip: string) {
+    if (!inputReady) {
+      queueRef.current.push(`想聊聊和孩子有关的：${chip}`)
+      setQueuedCount(queueRef.current.length)
+      return
+    }
+    void runTurn(`想聊聊和孩子有关的：${chip}`)
+  }
+
+  const lastAiIndex = turns.reduce((idx, t, i) => (t.role === 'ai' ? i : idx), -1)
+  const anyStreaming = turns.some((t) => t.streaming)
+
+  return (
+    <OnboardingGuard>
+      <HiFiMainShell
+        activeTab="chat"
+        showInput
+        inputZone={
+          <HiFiInputZone
+            busy={!inputReady}
+            queuedCount={queuedCount}
+            onSubmit={handleSubmit}
+          />
+        }
+      >
+        {turns.length === 0 && !anyStreaming ? (
+        <article className="hero-card">
+          <h2 className="hero-title">直接讲孩子今天发生了什么</h2>
+          <p className="hero-copy">不用整理成问题，先把现场过程留下来。</p>
+          <HiFiMascot />
+        </article>
         ) : null}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-          {turns.map((t, i) => (
-            <div key={i} style={{ alignSelf: t.role === 'parent' ? 'flex-end' : 'flex-start', maxWidth: '86%', width: t.role === 'ai' ? '100%' : undefined }}>
-              <div
-                style={{
-                  alignSelf: t.role === 'parent' ? 'flex-end' : 'flex-start',
-                  fontSize: 15,
-                  lineHeight: 1.55,
-                  padding: '10px 14px',
-                  borderRadius: 16,
-                  background: t.role === 'parent' ? '#6E6AF8' : 'rgba(110,106,248,0.06)',
-                  color: t.role === 'parent' ? '#fff' : '#1D1D1F',
-                  border: t.role === 'parent' ? 'none' : '1px solid rgba(110,106,248,0.10)',
-                  display: 'inline-block'
-                }}
-              >
-                {t.text}
+        <div className={`chat-feed${turns.length ? ' has-thread' : ''}`}>
+          {turns.length === 0 && !anyStreaming ? (
+            <div className="message-row ai">
+              <div className="bubble">
+                <div className="bubble-section">
+                  <span className="section-label">你可以从这里开始</span>
+                  <div className="section-body">
+                    <p>直接讲今天发生了什么，或者先选一个方向：</p>
+                  </div>
+                </div>
+                <div className="suggestion-strip">
+                  {STARTER_CHIPS.map((chip) => (
+                    <button key={chip} type="button" className="pill" onClick={() => seedChip(chip)}>
+                      {chip}
+                    </button>
+                  ))}
+                </div>
               </div>
-              {t.role === 'ai' ? <AiTurnExtras cards={t.cards} linkedAreas={t.linkedAreas} /> : null}
-            </div>
-          ))}
-
-          {loading && streaming ? (
-            <div
-              style={{
-                alignSelf: 'flex-start', maxWidth: '86%', fontSize: 15, lineHeight: 1.55,
-                padding: '10px 14px', borderRadius: 16, background: 'rgba(110,106,248,0.06)',
-                color: '#1D1D1F', border: '1px solid rgba(110,106,248,0.10)',
-              }}
-            >
-              {streaming}
             </div>
           ) : null}
 
-          {loading && !streaming ? (
-            <div style={{ alignSelf: 'flex-start', fontSize: 13, color: '#9A9AA0', padding: '6px 4px' }}>
-              正在结合之前聊过的整理…
-            </div>
-          ) : null}
+          {turns.map((t, i) =>
+            t.role === 'parent' ? (
+              <DailyParentBubble key={i} text={t.text} />
+            ) : (
+              <div key={i} className="ai-turn-block">
+                <DailyAiMessage
+                  text={t.text}
+                  traceId={t.traceId}
+                  sections={t.sections}
+                  actions={t.actions}
+                  cards={t.cards}
+                  streaming={t.streaming}
+                  proseComplete={t.proseComplete ?? !t.streaming}
+                  sectionsComplete={t.sectionsComplete ?? !t.streaming}
+                  sectionErrors={t.sectionErrors}
+                  interrupted={t.interrupted}
+                  thinkingChips={t.thinkingChips}
+                  showThinking={t.showThinking}
+                  memoryLabel={t.memoryLabel}
+                  showActions={i === lastAiIndex}
+                  animateSections={i === lastAiIndex}
+                  onFollowUpText={(seed) => void runTurn(seed)}
+                  onRetrySection={
+                    t.traceId ? (sectionId) => void retrySection(t.traceId!, sectionId) : undefined
+                  }
+                  onDeepExpand={() => {
+                    if (t.traceId) patchTurn(t.traceId, { deepExpanded: true })
+                  }}
+                />
+                {t.deepExpanded ? (
+                  <DailyDeepExpandCard
+                    sections={(t.sections || []).filter((s) => s.hidden)}
+                    prose={t.text}
+                    traceId={t.traceId}
+                    onClose={() => {
+                      if (t.traceId) patchTurn(t.traceId, { deepExpanded: false })
+                    }}
+                  />
+                ) : null}
+              </div>
+            )
+          )}
+
           <div ref={threadEndRef} />
         </div>
-      </div>
-      <BottomVoiceBar
-        state={loading ? 'transcribing' : 'idle'}
-        hint="接着说，或讲一件新的事"
-        disabled={loading}
-        elevated
-        onSubmit={handleSubmit}
-      />
-    </AppShell>
+      </HiFiMainShell>
+    </OnboardingGuard>
   )
 }
 
 export default function DailyDialoguePage() {
   return (
-    <Suspense fallback={<AppShell><div className="page with-raised-voice" /></AppShell>}>
+    <Suspense fallback={null}>
       <DailyDialogueContent />
     </Suspense>
   )

@@ -119,7 +119,7 @@ function RehearsalInputPageContent() {
         )}
         {toast ? <div className="toast">{toast}</div> : null}
       </div>
-      <BottomVoiceBar state={loading ? 'transcribing' : 'idle'} hint={loading ? '正在整理...' : '把你准备说的话发来'} disabled={loading} elevated onSubmit={submit} />
+      <BottomVoiceBar state={loading ? 'transcribing' : 'idle'} hint={loading ? '正在整理…' : '按住说话，或点键盘输入'} disabled={loading} elevated onSubmit={submit} />
     </AppShell>
   );
 }

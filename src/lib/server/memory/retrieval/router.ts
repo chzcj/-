@@ -3,7 +3,8 @@ import type {
   DiagnosisRetrievalPacket,
   EntryCollectionRetrievalPacket,
   SynthesisRetrievalPacket,
-  EntryName
+  EntryName,
+  ParentNarrativePattern,
 } from '@/types/database'
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
 import { isEmbeddingEnabled, rankByRelevance } from '../embedding'
@@ -17,8 +18,13 @@ import {
   getConditionalProfiles,
   getPendingHypotheses,
   getFamilyInteractionCycles,
-  getDailyInteractionUpdates
+  getDailyInteractionUpdates,
+  getLatestBuiltProfileSnapshot,
+  getBuildProgress,
+  getMergedParentInputHistory,
+  getParentNarrativePattern,
 } from '../../memory/database-manager'
+import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
 
 /* ================================================================
    Retrieval Router — 检索路由
@@ -26,75 +32,187 @@ import {
 
 function promoteMaturity(
   currentLevel: ReturnType<typeof getCurrentMaturityState>['level'],
-  signals: { profiles?: number; hasModel?: boolean; hasNetwork?: boolean; packs?: number }
+  signals: {
+    profiles?: number
+    hasModel?: boolean
+    hasNetwork?: boolean
+    packs?: number
+    hasBuiltSnapshot?: boolean
+    completedEntries?: number
+    dailyUpdates?: number
+  }
 ) {
   if (signals.hasModel || (signals.profiles || 0) > 0) return 'L3' as const
+  if (signals.hasBuiltSnapshot && (signals.dailyUpdates || 0) >= 5) return 'L4' as const
+  if (signals.hasBuiltSnapshot) return 'L3' as const
   if (signals.hasNetwork || (signals.packs || 0) >= 3) return 'L2' as const
+  if ((signals.completedEntries || 0) >= 4) return 'L2' as const
+  if ((signals.dailyUpdates || 0) >= 3) return 'L2' as const
   return currentLevel
 }
 
-export async function buildDailyDialogueRetrievalPacket(query: string | undefined, tenant: TenantId): Promise<DailyDialogueRetrievalPacket> {
+function buildParentUnderstanding(
+  pattern: ParentNarrativePattern | null,
+  packs: Awaited<ReturnType<typeof getEntryEvidencePacks>>
+): Record<string, unknown> {
+  const parentGoals = [...new Set(packs.flatMap((p) => p.decomposedInput.parentGoals || []))].slice(0, 3)
+  const parentActions = [...new Set(packs.flatMap((p) => p.decomposedInput.parentActions || []))].slice(0, 4)
+
+  if (!pattern && parentGoals.length === 0 && parentActions.length === 0) {
+    return {}
+  }
+
+  return {
+    observations: pattern?.observations?.slice(0, 5) || [],
+    interactionImplications: pattern?.interactionImplications?.slice(0, 4) || [],
+    correctionReceptivity: pattern?.correctionReceptivity,
+    factProvisionAbility: pattern?.factProvisionAbility,
+    typicalParentGoals: parentGoals,
+    typicalParentActions: parentActions,
+  }
+}
+
+function parentNarrativeStrings(pattern: ParentNarrativePattern | null): string[] {
+  if (!pattern) return []
+  return [...(pattern.observations || []), ...(pattern.interactionImplications || [])].slice(0, 6)
+}
+
+export function flattenParentUnderstanding(packet: Record<string, unknown>): string[] {
+  const lines: string[] = []
+  for (const key of ['observations', 'interactionImplications', 'typicalParentGoals', 'typicalParentActions'] as const) {
+    const val = packet[key]
+    if (Array.isArray(val)) lines.push(...val.filter((x): x is string => typeof x === 'string'))
+  }
+  return lines.slice(0, 8)
+}
+
+export async function buildDailyDialogueRetrievalPacket(
+  query: string | undefined,
+  tenant: TenantId,
+  options?: { fast?: boolean }
+): Promise<DailyDialogueRetrievalPacket> {
   const maturity = getCurrentMaturityState(tenant)
-  const [profiles, packs, updates, hypotheses, network, model] = await Promise.all([
+  const [profiles, packs, updates, hypotheses, network, model, cycles, builtSnapshot, buildProgress, parentPattern] = await Promise.all([
     getConditionalProfiles(tenant),
     getEntryEvidencePacks(tenant),
     getDailyInteractionUpdates(tenant),
     getPendingHypotheses(tenant),
     getLatestEvidenceNetwork(tenant),
-    getLatestChildStructureModel(tenant)
+    getLatestChildStructureModel(tenant),
+    getFamilyInteractionCycles(tenant),
+    getLatestBuiltProfileSnapshot(tenant),
+    getBuildProgress(tenant),
+    getParentNarrativePattern(tenant),
   ])
+  const completedEntries = buildProgress?.completedEntries?.length || 0
   const effectiveLevel = promoteMaturity(maturity.level, {
     profiles: profiles.length,
     hasModel: Boolean(model),
     hasNetwork: Boolean(network),
-    packs: packs.length
+    packs: packs.length,
+    hasBuiltSnapshot: Boolean(builtSnapshot?.coreJudgment),
+    completedEntries,
+    dailyUpdates: updates.length,
   })
 
-  // 候选事实池：全部历史日常事件。
-  const allEvents = updates.map(u => u.newInput).filter((t): t is string => Boolean(t))
+  // 候选事实池：daily_updates + turn_events 合并，避免只写 TurnEvent 未写 L9 时丢历史。
+  const inputHistory = await getMergedParentInputHistory(tenant, 100)
+  const allEvents = inputHistory.map((h) => h.text).filter(Boolean)
 
-  // 三级降级链：① 三层语义检索(Episode场景包) → ② 应用层 rankByRelevance → ③ 取最近。
+  // 三级降级链：① Episode 语义检索 → ② 向量精排 → ③ 取最近。
+  // warm 轮（fast）：跳过 embedding 检索，直接用最近对话，省 2–5s。
   let recentEvents: string[]
   let supportingEvidence: string[]
-  const pack = query ? await retrieveContextPack(query, { familyId: tenant.familyId, childId: tenant.childId }) : undefined
-  if (pack) {
-    // ① Episode 召回：summary 作为支撑证据，叠加高价值 Atom（孩子原话/反证等）
-    const episodeTexts = pack.episodes.map(e => e.summary)
-    const highValueAtomTexts = pack.episodes
-      .flatMap(e => e.atoms.filter(a => a.isHighValue).map(a => a.content))
-      .concat(pack.extraHighValueAtoms.map(a => a.content))
-    recentEvents = episodeTexts.length > 0 ? episodeTexts : allEvents.slice(-10)
-    supportingEvidence = [...episodeTexts.slice(0, 3), ...highValueAtomTexts.slice(0, 2)].slice(0, 5)
-    if (supportingEvidence.length === 0) supportingEvidence = allEvents.slice(-5)
-  } else if (query && isEmbeddingEnabled() && allEvents.length > 0) {
-    // ② 应用层向量精排（对 DailyUpdate.newInput）
-    const ranked = await rankByRelevance(query, allEvents, (e) => e, 10)
-    recentEvents = ranked.map(r => r.item)
-    supportingEvidence = ranked.slice(0, 5).map(r => r.item)
-  } else {
-    // ③ 取最近
-    recentEvents = allEvents.slice(-10)
+  const fast = options?.fast === true
+  if (fast) {
+    recentEvents = allEvents.slice(-8)
     supportingEvidence = allEvents.slice(-5)
+  } else {
+    const pack = query ? await retrieveContextPack(query, { familyId: tenant.familyId, childId: tenant.childId }) : undefined
+    if (pack) {
+      const episodeTexts = pack.episodes.map(e => e.summary)
+      const highValueAtomTexts = pack.episodes
+        .flatMap(e => e.atoms.filter(a => a.isHighValue).map(a => a.content))
+        .concat(pack.extraHighValueAtoms.map(a => a.content))
+      recentEvents = episodeTexts.length > 0 ? episodeTexts : allEvents.slice(-10)
+      supportingEvidence = [...episodeTexts.slice(0, 3), ...highValueAtomTexts.slice(0, 2)].slice(0, 5)
+      if (supportingEvidence.length === 0) supportingEvidence = allEvents.slice(-5)
+    } else if (query && isEmbeddingEnabled() && allEvents.length > 0) {
+      const ranked = await rankByRelevance(query, allEvents, (e) => e, 10)
+      recentEvents = ranked.map(r => r.item)
+      supportingEvidence = ranked.slice(0, 5).map(r => r.item)
+    } else {
+      recentEvents = allEvents.slice(-10)
+      supportingEvidence = allEvents.slice(-5)
+    }
   }
 
   const profileTexts = profiles.map(p => p.childTendency)
+  // childQuotes/parentQuotes 已从 entry packs 移除（dead extraction，永远空）。
+  // 保留 retrieval packet 字段为空数组以兼容 diagnosis/synthesis 读取链（不破坏下游）。
+  const childQuotes: string[] = []
+  // 具体事实直喂：四模块采集的 verifiableFacts/childBehaviors/triggerPoints 合并去重，
+  // 让前端 AI 直接读到"错题本只抄答案"这类具体场景，而不是只拿 episode 摘要。
+  const entryFacts = [
+    ...new Set(
+      packs.flatMap(p => [
+        ...(p.decomposedInput.verifiableFacts || []),
+        ...(p.decomposedInput.childBehaviors || []),
+        ...(p.decomposedInput.triggerPoints || []),
+      ]).filter(Boolean)
+    ),
+  ].slice(0, 6)
+  const familyInteractionPatterns = cycles
+    .map((c) => {
+      const parts = [c.cycleName, c.parentTriggerAction, c.childReaction].filter(Boolean)
+      return parts.join('：').trim()
+    })
+    .filter(Boolean)
+    .slice(0, 4)
 
   const matchingProfile = model?.primaryConditionalProfile?.childTendency || null
+  const relevantChildStructureModels = [...profileTexts]
+  if (relevantChildStructureModels.length === 0 && builtSnapshot?.coreJudgment) {
+    relevantChildStructureModels.push(
+      humanizeBuiltJudgment(builtSnapshot.coreJudgment, {
+        deepMechanism: builtSnapshot.deepMechanism,
+        supportFocus: builtSnapshot.supportFocus,
+        mechanism: network?.candidateMechanismMatrix?.[0]?.mechanismName,
+      })
+    )
+  }
+  if (relevantChildStructureModels.length === 0 && builtSnapshot?.deepMechanism) {
+    relevantChildStructureModels.push(builtSnapshot.deepMechanism)
+  }
+  if (relevantChildStructureModels.length === 0 && matchingProfile) {
+    relevantChildStructureModels.push(matchingProfile)
+  }
+
+  const builtEvidence = (builtSnapshot?.evidence || [])
+    .map((e) => e.evidenceText || e.explanation)
+    .filter(Boolean)
+    .slice(0, 3) as string[]
 
   return {
     retrievalPurpose: 'daily_dialogue',
     contextMaturityLevel: effectiveLevel,
     currentInputClassification: 'insufficient',
-    relevantChildStructureModels: profileTexts.length > 0 ? profileTexts : (matchingProfile ? [matchingProfile] : []),
-    matchedMechanisms: network?.candidateMechanismMatrix?.filter(m => m.overallStrength === 'high').map(m => m.mechanismName) || [],
-    supportingEvidence,
+    relevantChildStructureModels,
+    matchedMechanisms: network?.candidateMechanismMatrix?.filter(m => m.overallStrength !== 'low').map(m => m.mechanismName) || [],
+    supportingEvidence: supportingEvidence.length > 0 ? supportingEvidence : builtEvidence.length > 0 ? builtEvidence : allEvents.slice(-5),
     recentRelatedEvents: recentEvents,
     pendingHypotheses: hypotheses.map(h => h.hypothesis),
     possibleCounterEvidence: [],
-    parentNarrativePattern: {},
+    childQuotes,
+    entryFacts,
+    familyInteractionPatterns,
+    parentNarrativePattern: buildParentUnderstanding(parentPattern, packs),
     recommendedHandling: {
-      canExplainWithExistingModel: profiles.length > 0 || (model?.primaryConditionalProfile != null),
-      shouldAskFollowup: effectiveLevel === 'L0' || effectiveLevel === 'L1',
+      canExplainWithExistingModel:
+        profiles.length > 0 ||
+        model?.primaryConditionalProfile != null ||
+        Boolean(builtSnapshot?.coreJudgment),
+      shouldAskFollowup: effectiveLevel === 'L0' || (effectiveLevel === 'L1' && !builtSnapshot?.coreJudgment),
       followupTarget: '',
       shouldTriggerResynthesis: false,
       shouldUpdateMemory: true,
@@ -130,8 +248,8 @@ export async function buildDiagnosisRetrievalPacket(tenant: TenantId): Promise<D
     mainMechanismCandidates: network?.candidateMechanismMatrix?.map(m => m.mechanismName) || [],
     crossEntryEvidenceNetwork: packs.map(p => `[${p.entryName}] ${p.rawInputSummary}`),
     highStrengthEvidence: network?.candidateMechanismMatrix?.filter(m => m.overallStrength === 'high').map(m => m.description) || [],
-    childQuotes: packs.flatMap(p => p.decomposedInput.childQuotes).filter(Boolean),
-    parentQuotes: packs.flatMap(p => p.decomposedInput.parentQuotes).filter(Boolean),
+    childQuotes: [],
+    parentQuotes: [],
     familyInteractionCycles: cycles.map(c => c.cycleName),
     childProtectiveStrategies: model?.dominantProtectiveStrategies || [],
     parentMisreadings: [],

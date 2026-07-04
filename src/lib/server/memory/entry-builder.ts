@@ -8,10 +8,13 @@ import type { EntryEvidencePack, EntryName } from '@/types/database'
    ================================================================ */
 
 export const LEGACY_TO_NEW: Record<string, EntryName> = {
+  daily: 'daily_rhythm_phone',
+  homework: 'learning_homework',
+  communication: 'parent_child_communication',
+  family: 'relationship_environment',
   study: 'learning_homework',
   routine: 'daily_rhythm_phone',
-  communication: 'parent_child_communication',
-  emotion: 'emotional_stress',
+  emotion: 'parent_child_communication',
   environment: 'relationship_environment',
 }
 
@@ -60,16 +63,10 @@ export function buildEntryPack(
     decomposedInput: {
       verifiableFacts: aiFacts.length > 0 ? aiFacts : data.rawTexts,
       childBehaviors: classified.childBehaviors,
-      childQuotes: [],
-      parentQuotes: data.rawTexts,
       parentActions: classified.parentActions,
       triggerPoints: classified.triggerPoints,
-      timePlacePeople: [],
-      parentEmotions: [],
       parentEvaluations: classified.parentEvaluations,
-      parentAssumptions: [],
       parentGoals: [],
-      backgroundFactors: [],
       missingInformation: aiHypotheses,
     },
     candidateMechanisms: data.stageSummary ? [{

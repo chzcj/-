@@ -9,6 +9,7 @@ import { runEntryEvidenceBuild, type EntryEvidencePayload } from '@/lib/server/m
 import { runModelReview } from '@/lib/server/memory/model-review/reviewer'
 import { runDailyDeep, type DailyDeepPayload } from '@/lib/server/memory/daily-deep/builder'
 import { runProfileRewrite } from '@/lib/server/profile-rewrite'
+import { runDeepMechanismReview } from '@/lib/server/memory/deep-mechanism/reviewer'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { MemoryWritePlan } from '@/types/database'
 
@@ -18,7 +19,7 @@ import type { MemoryWritePlan } from '@/types/database'
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite' | 'deep_mechanism_review'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
 interface DigestUpdatePayload { tenant: TenantId }
@@ -107,6 +108,14 @@ export function profileRewriteBucketKey(tenant: TenantId): string {
   return `profile_rewrite:${tenant.familyId}:${tenant.childId}:${epochBucket}`
 }
 
+/** 深度机制复核每日桶：每租户每天至多 1 次 deep_mechanism_review（覆盖 evidence_networks 机制层 +
+ *  写 parent_narrative_patterns）。四模块完成时由 build 路由用独立 idem key 立即触发（不等桶）。
+ *  runDeepMechanismReview 在信息严重不足时 no-op（不空跑 LLM），故桶超发安全。 */
+export function deepMechanismBucketKey(tenant: TenantId): string {
+  const dayBucket = new Date().toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
+  return `deep_mechanism:${tenant.familyId}:${tenant.childId}:${dayBucket}`
+}
+
 // 两个 handler。executeWritePlan/ingestEpisodeStrict 内绝不吞异常，异常上抛驱动重试。
 async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   if (jobType === 'memory_write') {
@@ -120,6 +129,9 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     if ((p.plan.pendingHypothesesToCreateOrUpdate?.length || 0) > 0) {
       await enqueueJob('model_review', { tenant: p.tenant }, modelReviewBucketKey(p.tenant), null)
     }
+    // 链式深度机制复核（每日桶）：覆盖 evidence_networks 机制层 + 写 parent_narrative_patterns。
+    // runDeepMechanismReview 信息不足时 no-op，桶超发安全。
+    await enqueueJob('deep_mechanism_review', { tenant: p.tenant }, deepMechanismBucketKey(p.tenant), null)
   } else if (jobType === 'episode_ingest') {
     const p = payload as EpisodeIngestPayload
     await ingestEpisodeStrict(p.text, p.ctx)
@@ -129,6 +141,12 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   } else if (jobType === 'entry_evidence') {
     const p = payload as EntryEvidencePayload
     await runEntryEvidenceBuild(p) // 后台深度拆解入口证据包，不吞异常驱动重试
+    // 采集后强制刷新 digest + model_review（双保险）：entry pack 写入后画像/看板需重建，
+    // 此前 entry_evidence 绕过 memory_write 链导致采集后画像不刷新。桶 key 幂等，今天已排则跳过。
+    await enqueueJob('digest_update', { tenant: p.tenant }, digestUpdateBucketKey(p.tenant), null)
+    await enqueueJob('model_review', { tenant: p.tenant }, modelReviewBucketKey(p.tenant), null)
+    // 采集后链式深度机制复核：entry pack 是机制原料，采集后应刷新机制层。
+    await enqueueJob('deep_mechanism_review', { tenant: p.tenant }, deepMechanismBucketKey(p.tenant), null)
   } else if (jobType === 'model_review') {
     const p = payload as DigestUpdatePayload
     await runModelReview(p.tenant) // 复核待验证假设：反证+置信度，幂等可重跑
@@ -141,6 +159,12 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     // 每 2 天登录触发：基于记忆层整体重写画像字段 → 链式 digest_update 刷新 brief/board。
     const p = payload as DigestUpdatePayload
     await runProfileRewrite(p.tenant)
+  } else if (jobType === 'deep_mechanism_review') {
+    // 深度机制复核：读全量记忆 → 五大生态系统+16家庭理论 → 覆盖 evidence_networks 机制层 +
+    // 写 pending_hypotheses + 写 parent_narrative_patterns（修复 dead write）。
+    // 触发：四模块完成立即（独立 idem key，不等桶）+ memory_write 链式每日桶 + 登录 forceCheck。
+    const p = payload as DigestUpdatePayload
+    await runDeepMechanismReview(p.tenant) // 信息不足时 no-op；不吞异常驱动重试
   }
 }
 
@@ -329,23 +353,31 @@ async function reclaimZombies(pool: pg.Pool): Promise<void> {
 async function tick(): Promise<void> {
   const pool = jobPool()
   if (!pool) return
+  const tickStart = Date.now()
   try {
     await ensureJobSchema(pool)
     await reclaimZombies(pool)
+    let ran = 0
     for (let i = 0; i < BATCH; i++) {
       if (!(await claimAndRunOne(pool))) break
+      ran++
     }
     // 积压/死信可观测，避免只入不出静默。
-    const bl = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM job_queue WHERE status IN ('pending','retrying')`)
-    const fl = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM job_queue WHERE status='failed'`)
+    const bl = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM job_queue WHERE status IN ('pending','retrying') AND job_type <> '__heartbeat__'`)
+    const fl = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM job_queue WHERE status='failed' AND job_type <> '__heartbeat__'`)
     if (bl.rows[0].n > 100) console.warn(`[jobs] 积压 ${bl.rows[0].n}`)
     if (fl.rows[0].n > 0) console.error(`[jobs] 死信 failed=${fl.rows[0].n}`)
+    // 独立 worker 心跳：证明本进程 poller 在动（web 关 poller 时不执行 tick，故不写）。
+    await writeWorkerHeartbeat(pool)
+    if (ran > 0) console.log(`[jobs] tick ran=${ran} backlog=${bl.rows[0].n} failed=${fl.rows[0].n} ms=${Date.now() - tickStart}`)
   } catch (err) {
     console.error('[jobs] tick 失败:', err)
   }
 }
 
 export function startJobPoller(): void {
+  // 显式开关：CHILDOS_ENABLE_JOB_POLLER=false 时本进程不跑 poller（由独立 worker 进程承担）。
+  if (process.env.CHILDOS_ENABLE_JOB_POLLER === 'false') return
   // dev 默认关（避免 HMR 闭包过期 + 多 worker）；显式 JOB_POLLER=true 可开。
   if (process.env.NODE_ENV !== 'production' && process.env.JOB_POLLER !== 'true') return
   if (!isDatabaseEnabled()) return
@@ -360,4 +392,118 @@ export function startJobPoller(): void {
   }, POLL_MS)
   g.__childosJobTimer.unref?.()
   console.log('[jobs] poller 已启动')
+}
+
+/* 独立 worker 心跳：每 tick 写一行 NOW()，readiness 据此判断 worker 是否真的在动。
+   用 pg 条件 upsert（单行），跨进程可见。web 进程不写（poller 关闭时 tick 不执行）。 */
+const HEARTBEAT_KEY = 'job_worker'
+
+async function writeWorkerHeartbeat(pool: pg.Pool): Promise<void> {
+  await pool.query(
+    `INSERT INTO job_queue (job_type, payload, idempotency_key, status, updated_at)
+     VALUES ('__heartbeat__', '{}'::jsonb, $1, 'succeeded', NOW())
+     ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO UPDATE SET updated_at = NOW()`,
+    [`heartbeat:${HEARTBEAT_KEY}`]
+  ).then(() => {/* ok */}).catch(err => console.warn('[jobs] 心跳写入失败:', err instanceof Error ? err.message : err))
+}
+
+export async function readWorkerHeartbeat(): Promise<{ at: string | null; ageMs: number | null }> {
+  const pool = jobPool()
+  if (!pool) return { at: null, ageMs: null }
+  await ensureJobSchema(pool).catch(() => {})
+  const r = await pool.query<{ updated_at: Date | string | null }>(
+    `SELECT updated_at FROM job_queue WHERE idempotency_key = $1`,
+    [`heartbeat:${HEARTBEAT_KEY}`]
+  ).catch(() => ({ rows: [] as { updated_at: Date | string | null }[] }))
+  const at = r.rows[0]?.updated_at
+  if (!at) return { at: null, ageMs: null }
+  const iso = at instanceof Date ? at.toISOString() : String(at)
+  const ageMs = Date.now() - new Date(iso).getTime()
+  return { at: iso, ageMs }
+}
+
+/** 全局积压/死信计数（readiness 门禁用，跨租户）。 */
+export async function getGlobalJobBacklog(): Promise<{ pending: number; retrying: number; failed: number } | undefined> {
+  const pool = jobPool()
+  if (!pool) return undefined
+  await ensureJobSchema(pool).catch(() => {})
+  const r = await pool.query<{ status: string; n: number }>(
+    `SELECT status, count(*)::int AS n FROM job_queue
+     WHERE status IN ('pending','retrying','failed') AND job_type <> '__heartbeat__'
+     GROUP BY status`
+  ).catch(() => ({ rows: [] as { status: string; n: number }[] }))
+  const out = { pending: 0, retrying: 0, failed: 0 }
+  for (const row of r.rows) {
+    if (row.status in out) (out as Record<string, number>)[row.status] = row.n
+  }
+  return out
+}
+
+/**
+ * 登录强制补跑（混合监督 B）：
+ * 1. 把本租户 failed 的 job 重置为 pending（上限 N），让 worker 重投。
+ * 2. 强制排队 digest_update + model_review（桶 key 幂等，今天已排则 ON CONFLICT 跳过）——
+ *    即使今天已跑过，只要有新 turn_events 也值得再检查（rebuildBrief 内 contentHash 短路兜底）。
+ */
+export async function forceLoginJobCheck(tenant: TenantId, maxReplay = 5): Promise<void> {
+  if (!isDatabaseEnabled()) return
+  const pool = jobPool()
+  if (!pool) return
+  await ensureJobSchema(pool).catch(() => {})
+
+  const fam = tenant.familyId
+  const FILTER = `COALESCE(payload->'tenant'->>'familyId', payload->'ctx'->>'familyId') = $1`
+  // 重投 failed（排除心跳行）
+  await pool.query(
+    `UPDATE job_queue SET status='pending', last_error=NULL, run_after=NOW(), updated_at=NOW()
+     WHERE status='failed' AND job_type <> '__heartbeat__' AND ${FILTER}
+     ORDER BY id DESC LIMIT $2`,
+    [fam, maxReplay]
+  ).catch(err => console.warn('[jobs] 登录补跑 failed 重投失败:', err))
+
+  // 强制排队 digest + model_review + deep_mechanism（桶幂等，已排则跳过）
+  await enqueueJob('digest_update', { tenant }, digestUpdateBucketKey(tenant), null).catch(() => {})
+  await enqueueJob('model_review', { tenant }, modelReviewBucketKey(tenant), null).catch(() => {})
+  await enqueueJob('deep_mechanism_review', { tenant }, deepMechanismBucketKey(tenant), null).catch(() => {})
+}
+
+/**
+ * memory_ledger（基于 job_queue 的 trace_id 查询）：家长可见「这轮记住了没」。
+ * job_queue 已按 trace_id 关联 memory_write + episode_ingest，无需单独建表。
+ */
+export type MemoryWriteStatus = {
+  traceId: string
+  memoryWrite?: { status: string; updatedAt: string }
+  episodeIngest?: { status: string; updatedAt: string }
+  /** 通俗文案：已记住 / 这次先记在对话里 / 正在整理 / 整理失败 */
+  label: 'remembered' | 'in对话' | 'organizing' | 'failed' | 'unknown'
+}
+
+export async function getMemoryWriteStatusByTrace(traceId: string): Promise<MemoryWriteStatus | undefined> {
+  const pool = jobPool()
+  if (!pool) return undefined
+  await ensureJobSchema(pool).catch(() => {})
+  const r = await pool.query<{ job_type: string; status: string; updated_at: Date | string }>(
+    `SELECT job_type, status, updated_at FROM job_queue
+     WHERE trace_id = $1 AND job_type IN ('memory_write','episode_ingest')
+     ORDER BY job_type, updated_at DESC`,
+    [traceId]
+  ).catch(() => ({ rows: [] as { job_type: string; status: string; updated_at: Date | string }[] }))
+
+  const status: MemoryWriteStatus = { traceId, label: 'unknown' }
+  const iso = (v: Date | string) => (v instanceof Date ? v.toISOString() : String(v))
+  for (const row of r.rows) {
+    if (row.job_type === 'memory_write') {
+      status.memoryWrite = { status: row.status, updatedAt: iso(row.updated_at) }
+    } else if (row.job_type === 'episode_ingest') {
+      status.episodeIngest = { status: row.status, updatedAt: iso(row.updated_at) }
+    }
+  }
+
+  const mw = status.memoryWrite?.status
+  if (mw === 'succeeded') status.label = 'remembered'
+  else if (mw === 'pending' || mw === 'running' || mw === 'retrying') status.label = 'organizing'
+  else if (mw === 'failed') status.label = 'failed'
+  else if (!mw) status.label = 'in对话' // 没排 memory_write = 轮次不值得进长期记忆，只在 turn_events 里
+  return status
 }

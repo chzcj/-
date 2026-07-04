@@ -20,14 +20,21 @@ export async function verifyAppApi(request: Request | NextRequest): Promise<bool
   if (hasValidInternalToken(request)) return true
   // 未配置任何内部 token 的本地开发：直通，便于联调。
   if (!internalToken() && process.env.NODE_ENV === 'development') return true
-  // 浏览器请求：必须同源，且会话真实有效（demo token 或 DB 中未过期 session）。
-  // 仅有 cookie 不算数——伪造的 childos_session 会在 getCurrentUser 校验失败而被拒。
-  if (!isSameOriginRequest(request)) return false
-  return (await getCurrentUser()) !== undefined
+
+  const user = await getCurrentUser()
+  if (user !== undefined) {
+    // 已登录：优先信任会话。部分 WebView 可能不带 Origin/Referer，不应因此拦 hydration。
+    const origin = request.headers.get('origin')
+    const referer = request.headers.get('referer')
+    if (!origin && !referer) return true
+    return isSameOriginRequest(request)
+  }
+
+  return false
 }
 
-// 管理员专用：在 verifyAppApi 基础上要求会话用户 isAdmin。内部 token / dev 直通不赋予管理员身份，
-// 必须是真实 admin 登录会话（demo 账号可由 DEMO_ADMIN/ADMIN_PHONES 提权，便于本地测面板）。
+// 管理员专用：在 verifyAppApi 基础上要求会话用户 isAdmin。内部 token / dev 直通不赋予管理员身份；
+// 必须是真实 admin 登录会话（ADMIN_PHONES 白名单）。Demo 会话永无 admin。
 export async function verifyAdminApi(request: Request | NextRequest): Promise<boolean> {
   if (!(await verifyAppApi(request))) return false
   const user = await getCurrentUser()

@@ -46,12 +46,13 @@ export function composeDailyActions(
 
   if (output.inputType === 'ask_advice') {
     actions.push({
-      id: 'open_rehearsal',
+      id: 'open_how_to_speak',
       label: '我现在怎么开口',
-      kind: 'rehearsal',
+      kind: 'how_to_speak',
       primary: !hiddenIds.length,
       payload: {
         seedText: fullText.split(/[。！？\n]/).find((s) => s.trim().length > 4)?.trim()?.slice(0, 24),
+        route: '/daily/how-to-speak',
       },
     })
     actions.push({
@@ -88,12 +89,13 @@ export function composeDailyActions(
     output.routingDecision.frontResponseType === 'model_based_explanation'
   ) {
     actions.push({
-      id: 'open_rehearsal',
+      id: 'open_how_to_speak',
       label: '我现在怎么开口',
-      kind: 'rehearsal',
+      kind: 'how_to_speak',
       primary: !hiddenIds.length,
       payload: {
         seedText: fullText.split(/[。！？\n]/).find((s) => s.trim().length > 4)?.trim()?.slice(0, 24),
+        route: '/daily/how-to-speak',
       },
     })
   }

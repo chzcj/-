@@ -1,0 +1,54 @@
+{
+  "version": "2026-06-12",
+  "source": "xiaoyin_mom_simulator_expanded_test_data.zip",
+  "adaptedBy": "scripts/adapt-xiaoyin-corpus.mjs",
+  "productSurface": "hifi",
+  "productFlow": {
+    "login": "/login",
+    "buildHub": "/profile/build",
+    "buildOrder": ["daily", "homework", "communication", "family"],
+    "mainTabs": [
+      { "label": "交流", "route": "/daily", "api": "/api/daily/stream" },
+      { "label": "任务", "route": "/tasks", "note": "纯 localStorage，无独立 API 语料" },
+      { "label": "预演", "route": "/rehearsal", "api": "/api/rehearsal/analyze" },
+      { "label": "画像", "route": "/family-profile", "apis": ["GET /api/profile/built", "GET /api/profile/snapshot", "GET /api/profile/weekly-review"] }
+    ],
+    "onboarding": ["/profile/build/intro", "/profile/build/basic", "/profile/build", "四模块", "/profile/generating", "/profile/result"]
+  },
+  "legacyToBuildEntryType": {
+    "daily_phone_rhythm": "daily",
+    "learning_homework": "homework",
+    "parent_child_communication": "communication",
+    "emotion_pressure": "communication",
+    "family_environment": "family"
+  },
+  "hifiTestOrder": [
+    "01_profile_build_inputs.json — 四模块 entry/followup/summary + final",
+    "/api/synthesis + /api/diagnosis + /api/profile/readiness",
+    "02_daily_dialogue_cases.json — 交流 Tab，模拟约 4 周日常输入",
+    "03_rehearsal_cases.json — 预演 Tab",
+    "profile 只读 — family-profile 页 GET built/snapshot/weekly-review"
+  ],
+  "legacyTestOrder": [
+    "04_education_diagnosis_cases.json — 旧 /education-diagnosis",
+    "05_family_planner_cases.json — 旧 /family-planner",
+    "06_multi_view_child_voice_cases.json — 旧 /multi-view",
+    "07_weekly_review_observations.json — 旧 POST 周报（画像页现用 GET 聚合）",
+    "08_profile_snapshot_seed.json — 画像种子断言"
+  ],
+  "testCommands": {
+    "hifiDefault": "npm run test:xiaoyin-corpus",
+    "legacyOnly": "CORPUS_PHASE=legacy npm run test:xiaoyin-corpus",
+    "everything": "CORPUS_PHASE=all npm run test:xiaoyin-corpus"
+  },
+  "files": {
+    "01_profile_build_inputs.json": { "surface": "hifi", "modules": 4, "rounds": 50, "finalFollowUp": 1 },
+    "02_daily_dialogue_cases.json": { "surface": "hifi", "cases": 60 },
+    "03_rehearsal_cases.json": { "surface": "hifi", "cases": 32 },
+    "04_education_diagnosis_cases.json": { "surface": "legacy", "samples": 3 },
+    "05_family_planner_cases.json": { "surface": "legacy", "cases": 27 },
+    "06_multi_view_child_voice_cases.json": { "surface": "legacy", "cases": 22 },
+    "07_weekly_review_observations.json": { "surface": "legacy", "weeks": 4 },
+    "08_profile_snapshot_seed.json": { "surface": "legacy", "snapshots": 3 }
+  }
+}

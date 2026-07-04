@@ -59,7 +59,7 @@ function RehearsalResultInner() {
     <div className="page without-voice with-bottom-tabs">
       <PageHeader title="沟通预演" showBack onBack={() => router.push('/rehearsal')} />
 
-      <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)', marginBottom: 16 }}>
+      <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(111,159,86,0.06)', border: '1px solid rgba(111,159,86,0.14)', marginBottom: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: '#A1A1A6', marginBottom: 4 }}>你原本想说</div>
         <div style={{ fontSize: 15, lineHeight: 1.5, color: '#1D1D1F', whiteSpace: 'pre-wrap' }}>{parentText}</div>
       </div>
@@ -75,10 +75,10 @@ function RehearsalResultInner() {
             </Section>
           ) : null}
           {pa.riskPoints?.length ? <ListSection title="容易踩的点" items={pa.riskPoints} /> : null}
-          <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.05)', border: '1px solid rgba(110,106,248,0.10)', marginTop: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>更建议这样开口</div>
+          <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(111,159,86,0.08)', border: '1px solid rgba(111,159,86,0.14)', marginTop: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand)', marginBottom: 8 }}>更建议这样开口</div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{pa.saferVersion}</div>
-            {pa.whyThisIsSafer ? <div style={{ fontSize: 13, lineHeight: 1.55, color: '#6E6E73', marginTop: 8 }}>{pa.whyThisIsSafer}</div> : null}
+            {pa.whyThisIsSafer ? <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--text-secondary)', marginTop: 8 }}>{pa.whyThisIsSafer}</div> : null}
           </div>
           {pa.avoidPhrases?.length ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
@@ -89,25 +89,25 @@ function RehearsalResultInner() {
       ) : r ? (
         <div className="card" style={{ padding: 22, borderRadius: 28, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)', marginBottom: 16 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#1D1D1F', marginBottom: 10, lineHeight: 1.4 }}>{r.headline}</div>
-          <div style={{ fontSize: 15, lineHeight: 1.6, color: '#6E6E73', marginBottom: 18 }}>{r.explanation}</div>
+          <div style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--text-secondary)', marginBottom: 18 }}>{r.explanation}</div>
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>孩子可能先听成</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand)', marginBottom: 8 }}>孩子可能先听成</div>
             {r.childMayHear.map((h, i) => (
               <div key={i} style={{ fontSize: 15, color: '#1D1D1F', padding: '6px 0', borderTop: i > 0 ? '1px solid rgba(29,29,31,0.04)' : 'none' }}>{h}</div>
             ))}
           </div>
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>更容易卡住的地方</div>
-            <div style={{ fontSize: 15, lineHeight: 1.55, color: '#6E6E73' }}>{r.stuckPoint}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand)', marginBottom: 6 }}>更容易卡住的地方</div>
+            <div style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--text-secondary)' }}>{r.stuckPoint}</div>
           </div>
-          <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.05)', border: '1px solid rgba(110,106,248,0.10)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>更建议这样开口</div>
+          <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(111,159,86,0.08)', border: '1px solid rgba(111,159,86,0.14)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand)', marginBottom: 8 }}>更建议这样开口</div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{r.suggestedWording}</div>
           </div>
         </div>
       ) : (
         <div className="card" style={{ padding: 22, borderRadius: 28, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)', marginBottom: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 15, color: '#6E6E73', marginBottom: 14 }}>这次预演没有成功，可以换一种说法再试一次。</div>
+          <div style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 14 }}>这次预演没有成功，可以换一种说法再试一次。</div>
           <button type="button" className="secondary-button" onClick={() => router.push('/rehearsal')}
             style={{ borderRadius: 999, height: 44, padding: '0 24px', fontSize: 14, fontWeight: 600 }}>重新预演</button>
         </div>
@@ -127,7 +127,7 @@ function RehearsalResultInner() {
 function Section({ title, children }: { title: string; children: string }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand)', marginBottom: 6 }}>{title}</div>
       <div style={{ fontSize: 15, lineHeight: 1.6, color: '#1D1D1F', whiteSpace: 'pre-wrap' }}>{children}</div>
     </div>
   )
@@ -136,7 +136,7 @@ function Section({ title, children }: { title: string; children: string }) {
 function ListSection({ title, items }: { title: string; items: string[] }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand)', marginBottom: 6 }}>{title}</div>
       <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {items.map((it, i) => <li key={i} style={{ fontSize: 14, lineHeight: 1.55, color: '#1D1D1F' }}>{it}</li>)}
       </ul>

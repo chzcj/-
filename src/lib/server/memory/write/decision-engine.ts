@@ -23,7 +23,8 @@ import {
   savePendingHypotheses,
   saveFamilyInteractionCycles,
   saveDailyInteractionUpdate,
-  saveRetrievalIndexes
+  saveRetrievalIndexes,
+  saveParentNarrativePattern,
 } from '../database-manager'
 import {
   buildIndexesForMaterial,
@@ -197,19 +198,26 @@ export function buildMemoryWritePlan(options: {
 }
 
 export async function executeWritePlan(plan: MemoryWritePlan, tenant: TenantId) {
-  if (plan.rawMaterialsToWrite.length > 0) {
+  // 死层开关：raw_materials / cleaned_facts / retrieval_indexes 写入后前台检索 router 从不读取
+  // （router 用 autoTagQuery 实时打标 + daily_updates/episodes/built 检索）。默认停写省 IO/token；
+  // 需要审计留痕时显式 CHILDOS_WRITE_DEAD_LAYERS=true。
+  const writeDeadLayers = process.env.CHILDOS_WRITE_DEAD_LAYERS === 'true'
+
+  if (writeDeadLayers && plan.rawMaterialsToWrite.length > 0) {
     await saveRawMaterials(plan.rawMaterialsToWrite, tenant)
     const materialIndexes = plan.rawMaterialsToWrite.map(m => buildIndexesForMaterial(m, tenant))
     await saveRetrievalIndexes(materialIndexes, tenant)
   }
 
-  if (plan.cleanedFactsToWrite.length > 0) {
+  if (writeDeadLayers && plan.cleanedFactsToWrite.length > 0) {
     await saveCleanedFacts(plan.cleanedFactsToWrite, tenant)
   }
 
   for (const pack of plan.entryEvidencePacksToUpdate) {
     await saveEntryEvidencePack(pack, tenant)
-    await saveRetrievalIndexes([buildIndexesForEvidencePack(pack, tenant)], tenant)
+    if (writeDeadLayers) {
+      await saveRetrievalIndexes([buildIndexesForEvidencePack(pack, tenant)], tenant)
+    }
   }
 
   for (const network of plan.crossEntryNetworksToUpdate) {
@@ -234,12 +242,20 @@ export async function executeWritePlan(plan: MemoryWritePlan, tenant: TenantId) 
     await saveFamilyInteractionCycles(plan.familyInteractionCyclesToCreateOrUpdate, tenant)
   }
 
-  for (const update of plan.dailyInteractionUpdatesToWrite) {
-    await saveDailyInteractionUpdate(update, tenant)
-    await saveRetrievalIndexes([buildIndexesForDailyUpdate(update, tenant)], tenant)
+  // parent_narrative_patterns：router 读 buildParentUnderstanding(parentPattern, packs)，
+  // 此前 executeWritePlan 漏写该层 → 永远 null，只靠 packs 兜底。补上写入路径。
+  for (const pattern of plan.parentNarrativePatternsToUpdate) {
+    await saveParentNarrativePattern(pattern, tenant)
   }
 
-  if (plan.retrievalTagsToAdd.length > 0) {
+  for (const update of plan.dailyInteractionUpdatesToWrite) {
+    await saveDailyInteractionUpdate(update, tenant)
+    if (writeDeadLayers) {
+      await saveRetrievalIndexes([buildIndexesForDailyUpdate(update, tenant)], tenant)
+    }
+  }
+
+  if (writeDeadLayers && plan.retrievalTagsToAdd.length > 0) {
     await saveRetrievalIndexes(plan.retrievalTagsToAdd, tenant)
   }
 }
@@ -252,10 +268,6 @@ export function createDailyUpdate(input: string, classification: InputClassifica
     newInput: input,
     classification,
     matchedMechanisms,
-    relatedEvidence: [],
-    recommendedResponseLogic: '',
-    memoryImpact: classification === 'counter_evidence' ? 'decrease_strength' : 'increase_strength',
-    updatedTargets: [],
     timestamp: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     sourceEventId

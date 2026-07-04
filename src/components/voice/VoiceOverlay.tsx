@@ -11,17 +11,34 @@ interface VoiceOverlayProps {
   title: string;
   description: string;
   loading?: boolean;
+  allowEmpty?: boolean;
+  emptyFinishLabel?: string;
+  finishLabel?: string;
   onCancel: () => void;
   onFinish: (text: string) => void;
 }
 
-export function VoiceOverlay({ open, title, description, loading, onCancel, onFinish }: VoiceOverlayProps) {
+export function VoiceOverlay({
+  open,
+  title,
+  description,
+  loading,
+  allowEmpty = false,
+  emptyFinishLabel = '先记不太像',
+  finishLabel = '结束并更新',
+  onCancel,
+  onFinish,
+}: VoiceOverlayProps) {
   const [text, setText] = useState('');
   const [rendered, setRendered] = useState(open);
   const voice = useTencentAsrInput();
 
   useEffect(() => {
-    if (open) { setRendered(true); return; }
+    if (open) {
+      setRendered(true);
+      setText('');
+      return;
+    }
     const timer = window.setTimeout(() => setRendered(false), 210);
     return () => window.clearTimeout(timer);
   }, [open]);
@@ -42,6 +59,9 @@ export function VoiceOverlay({ open, title, description, loading, onCancel, onFi
 
   if (!rendered) return null;
 
+  const canFinish = allowEmpty || Boolean(text.trim());
+  const primaryLabel = text.trim() ? finishLabel : emptyFinishLabel;
+
   return (
     <div className={`overlay ${open ? 'is-open' : 'is-closing'}`}>
       <div className="overlay-card">
@@ -58,8 +78,8 @@ export function VoiceOverlay({ open, title, description, loading, onCancel, onFi
             {voice.isListening ? '结束录音' : '语音输入'}
           </SecondaryButton>
           <SecondaryButton onClick={onCancel} disabled={loading}>取消</SecondaryButton>
-          <PrimaryButton onClick={() => !loading && onFinish(text.trim())}
-            disabled={!text.trim() || loading} loading={loading}>结束并更新</PrimaryButton>
+          <PrimaryButton onClick={() => !loading && canFinish && onFinish(text.trim())}
+            disabled={!canFinish || loading} loading={loading}>{primaryLabel}</PrimaryButton>
         </div>
       </div>
     </div>

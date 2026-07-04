@@ -5,8 +5,8 @@ import { AppShell } from '@/components/layout/AppShell'
 import { BottomNavTabs } from '@/components/layout/BottomNavTabs'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { BottomVoiceBar } from '@/components/voice/BottomVoiceBar'
-import { mockDailyObservationInsight } from '@/data/mockOutputs'
-import { createDailyObservation, getObservationCount } from '@/lib/storage/observationStorage'
+import { readDailyStream } from '@/lib/daily/dailyStreamClient'
+import { createDailyObservation } from '@/lib/storage/observationStorage'
 import type { InputMode } from '@/types/childos'
 
 export default function ObservationPage() {
@@ -14,7 +14,7 @@ export default function ObservationPage() {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [streaming, setStreaming] = useState('')
-  const [insight, setInsight] = useState<typeof mockDailyObservationInsight | null>(null)
+  const [insight, setInsight] = useState<{ insight: string; linkedAreas: string[]; note: string } | null>(null)
   const [error, setError] = useState('')
 
   async function handleSubmit(text: string, _mode: InputMode) {
@@ -30,36 +30,14 @@ export default function ObservationPage() {
         body: JSON.stringify({ text: text.trim() }),
       })
 
-      // 逐行读取 NDJSON 流：delta 累积展示，final 定稿
-      let acc = ''
-      let linkedAreas: string[] = []
-      if (res.body) {
-        const reader = res.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
-          for (const line of lines) {
-            if (!line.trim()) continue
-            try {
-              const evt = JSON.parse(line)
-              if (evt.type === 'delta') {
-                acc += evt.delta
-                setStreaming(acc)
-              } else if (evt.type === 'final') {
-                if (evt.text) acc = evt.text
-                if (Array.isArray(evt.linkedAreas)) linkedAreas = evt.linkedAreas
-              }
-            } catch {}
-          }
-        }
+      const { acc, finalLinked, streamError, httpError } = await readDailyStream(res, setStreaming)
+      const insightText = acc.trim()
+
+      if (httpError || streamError) {
+        setError(httpError || streamError || '解读暂时没成功，可以再试一次。')
+        return
       }
 
-      const insightText = acc.trim()
       // 没有 AI 解读（空流 / 后端降级）：不编造、不回退 mock，提示重试。
       if (!insightText) {
         setError('这次没有解读出来，可以再说一次。')
@@ -69,10 +47,10 @@ export default function ObservationPage() {
       createDailyObservation({
         rawText: text.trim(),
         insight: insightText,
-        linkedAreas,
+        linkedAreas: finalLinked || [],
         note: '',
       })
-      setInsight({ insight: insightText, linkedAreas, note: '' })
+      setInsight({ insight: insightText, linkedAreas: finalLinked || [], note: '' })
       setSaved(true)
     } catch {
       setError('解读暂时没成功，可以再试一次。')
@@ -119,7 +97,7 @@ export default function ObservationPage() {
 
         <BottomNavTabs active="record" />
       </div>
-      <BottomVoiceBar state={loading ? 'transcribing' : 'idle'} hint="今天孩子有哪一个小片段，值得记一下" disabled={loading} elevated onSubmit={handleSubmit} />
+      <BottomVoiceBar state={loading ? 'transcribing' : 'idle'} hint="按住说话，或点键盘输入" disabled={loading} elevated onSubmit={handleSubmit} />
     </AppShell>
   )
 }

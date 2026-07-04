@@ -7,9 +7,33 @@ import type { NextRequest } from 'next/server'
 // 路由内 verifyAppApi 再校验会话真实性（纵深防御）。
 const PUBLIC_PATHS = [
   '/login',
+  '/welcome',
   '/api/readiness',
   '/api/health',
 ]
+
+/** 新 UI 下线：重定向到主流程（交流/预演/画像） */
+const LEGACY_HIDDEN_PREFIXES = [
+  '/observation',
+  '/conflict',
+  '/record-child',
+  '/education-diagnosis',
+  '/child-voice',
+  '/multi-view',
+  '/weekly-report',
+  '/family-planner',
+  '/problem',
+  '/material-understanding',
+  '/advice-card',
+  '/understanding-card',
+  '/next-step',
+  '/done',
+  '/archive',
+  '/rehearsal/input',
+  '/rehearsal/result',
+]
+
+const LEGACY_REDIRECT = '/daily'
 
 // 内部 token（服务端脚本/监控用 Authorization: Bearer 或 x-api-key 调用，无 cookie）。
 // 与 auth-guard 同源：INTERNAL_API_TOKEN || FAST_AI_API_KEY。仅 token 已配置且精确匹配才放行。
@@ -31,6 +55,25 @@ function getExternalOrigin(request: NextRequest): string {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get('childos_session')?.value
+
+  if (pathname === '/home' || pathname === '/') {
+    const target = token ? LEGACY_REDIRECT : '/login'
+    return NextResponse.redirect(new URL(target, getExternalOrigin(request)))
+  }
+
+  if (
+    (pathname === '/understanding-card' || pathname.startsWith('/understanding-card/')) &&
+    request.nextUrl.searchParams.get('source') === 'daily'
+  ) {
+    if (!token && !hasValidInternalToken(request)) {
+      return NextResponse.redirect(new URL('/login', getExternalOrigin(request)))
+    }
+    return NextResponse.next()
+  }
+
+  if (LEGACY_HIDDEN_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return NextResponse.redirect(new URL(LEGACY_REDIRECT, getExternalOrigin(request)))
+  }
 
   const isApiPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
   const isStatic = pathname.startsWith('/_next') || pathname.startsWith('/favicon')

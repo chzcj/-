@@ -2,45 +2,67 @@
 
 import { useEffect } from 'react'
 
-/** iOS 键盘弹起时：只上移输入区，底栏始终贴屏幕底部。 */
+/**
+ * iOS/Android 软键盘：把 input-dock 钉在 visualViewport 底边（键盘顶），
+ * 并锁住 body 滚动，避免 Safari 把整页顶上去留空隙。
+ */
 export function useKeyboardOffset() {
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) return
 
-    let baseHeight = window.innerHeight
+    const vv = window.visualViewport
+    let scrollY = 0
 
     function isTextEditing() {
       const active = document.activeElement
-      return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')
+      return !!active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')
+    }
+
+    function clear() {
+      document.documentElement.style.setProperty('--keyboard-offset', '0px')
+      document.body.classList.remove('keyboard-open')
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      if (scrollY) window.scrollTo(0, scrollY)
+      scrollY = 0
     }
 
     function update() {
       if (!isTextEditing()) {
-        baseHeight = Math.max(baseHeight, window.innerHeight)
-        document.documentElement.style.setProperty('--keyboard-offset', '0px')
-        document.body.classList.remove('keyboard-open')
+        clear()
         return
       }
 
-      const vp = window.visualViewport!
-      const keyboardOffset = Math.max(0, baseHeight - vp.height - vp.offsetTop)
-      document.documentElement.style.setProperty('--keyboard-offset', `${keyboardOffset}px`)
-      document.body.classList.toggle('keyboard-open', keyboardOffset > 80)
+      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      const keyboardOpen = offset > 50
+
+      document.documentElement.style.setProperty('--keyboard-offset', `${offset}px`)
+      document.body.classList.toggle('keyboard-open', keyboardOpen)
+
+      if (keyboardOpen) {
+        if (document.body.style.position !== 'fixed') {
+          scrollY = window.scrollY
+          document.body.style.position = 'fixed'
+          document.body.style.top = `-${scrollY}px`
+          document.body.style.width = '100%'
+        }
+      }
     }
 
-    const vp = window.visualViewport
-    vp.addEventListener('resize', update)
-    vp.addEventListener('scroll', update)
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
     window.addEventListener('focusin', update)
-    window.addEventListener('focusout', update)
+    window.addEventListener('focusout', () => {
+      // iOS 键盘收起有延迟，避免过早 clear
+      window.setTimeout(update, 80)
+    })
 
     return () => {
-      vp.removeEventListener('resize', update)
-      vp.removeEventListener('scroll', update)
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
       window.removeEventListener('focusin', update)
-      window.removeEventListener('focusout', update)
-      document.documentElement.style.setProperty('--keyboard-offset', '0px')
-      document.body.classList.remove('keyboard-open')
+      clear()
     }
   }, [])
 }

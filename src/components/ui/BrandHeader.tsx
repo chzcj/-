@@ -1,6 +1,6 @@
 export function BrandHeader({
-  title = 'ChildOS 心镜',
-  badge = '清北成长样本库支持',
+  title = '育见',
+  badge = '懂你家孩子',
   avatarSrc,
 }: {
   title?: string
@@ -15,7 +15,7 @@ export function BrandHeader({
           width: 40,
           height: 40,
           borderRadius: 16,
-          background: 'linear-gradient(140deg, #6E6AF8 0%, #7E7AF8 50%, #8E8AF8 100%)',
+          background: 'linear-gradient(140deg, #8ab86a 0%, var(--brand) 55%, #5a8f42 100%)',
           color: '#fff',
           fontSize: 17,
           fontWeight: 700,
@@ -45,8 +45,8 @@ export function BrandHeader({
             height: 22,
             padding: '0 8px',
             borderRadius: 999,
-            background: 'rgba(110, 106, 248, 0.08)',
-            color: '#6E6AF8',
+            background: 'rgba(111, 159, 86, 0.12)',
+            color: 'var(--green-deep)',
             fontSize: 11,
             lineHeight: '16px',
             fontWeight: 500,

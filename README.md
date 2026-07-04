@@ -82,12 +82,35 @@ npm install
 npm run dev
 ```
 
-打开 `http://localhost:3000/home`
+打开 `http://localhost:3000/daily`（主 Tab 入口；`/home` 会自动重定向）
+
+### 本地数据库
+
+完整流程（登录、画像持久化、readiness）需要 PostgreSQL。若 `.env.local` 的 `DATABASE_URL` 指向 `127.0.0.1:5432` 而本机未启动数据库，`/api/readiness` 会返回 `ready: false`。
+
+快速启动（Docker）：
+
+```bash
+docker run -d --name childos-pg \
+  -e POSTGRES_PASSWORD=childos \
+  -e POSTGRES_DB=childos \
+  -p 5433:5432 pgvector/pgvector:pg16
+# .env.local 示例：DATABASE_URL=postgresql://postgres:childos@127.0.0.1:5433/childos
+```
+
+也可 SSH 隧道连线上库做联调（勿用于日常开发）。
 
 本地健康检查：
 
 ```bash
 curl -s http://localhost:3000/api/readiness | jq
+```
+
+质量检查（先 build 再 typecheck，避免 `.next/types` 过期）：
+
+```bash
+npm run check    # validate:env + build + typecheck
+npm run lint     # 需 eslint-config-next（npm install 后可用）
 ```
 
 ## 环境配置

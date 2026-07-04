@@ -10,8 +10,7 @@ import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { fail } from '@/lib/api-response'
 import { DailyLlmRequiredError } from '@/lib/server/daily/llm-required'
 import { createId } from '@/lib/storage/storageIds'
-
-const THINKING_THRESHOLD_MS = 1500
+import type { DailyStreamEvent } from '@/types/daily-stream'
 
 export async function POST(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
@@ -19,6 +18,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({} as Record<string, unknown>))
   const text = typeof body?.text === 'string' ? body.text.trim() : ''
   const maturityLevel = (body as { maturityLevel?: unknown })?.maturityLevel
+  const warmTurn = (body as { warmTurn?: unknown })?.warmTurn === true
   const recentSectionIds = Array.isArray((body as { recentSectionIds?: unknown }).recentSectionIds)
     ? ((body as { recentSectionIds: unknown[] }).recentSectionIds.filter((id) => typeof id === 'string') as string[])
     : []
@@ -30,14 +30,14 @@ export async function POST(request: Request) {
   const traceId = createId('trace')
   const encoder = new TextEncoder()
   const tenant = await resolveTenant()
+  const t0 = Date.now()
+  let firstDeltaAt: number | null = null
 
   return new Response(
     new ReadableStream({
       async start(controller) {
-        const send = (event: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
-        const t0 = Date.now()
+        const send = (event: DailyStreamEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
         let thinkingSent = false
-        let thinkingTimer: ReturnType<typeof setTimeout> | undefined
 
         const sendThinking = (output: Parameters<typeof buildThinkingChips>[0]) => {
           if (thinkingSent) return
@@ -54,25 +54,37 @@ export async function POST(request: Request) {
             tenant,
             traceId,
             recentSectionIds,
+            warmTurn,
+            onOrchestration: (output) => sendThinking(output),
             onDelta: (delta) => {
-              if (thinkingTimer) {
-                clearTimeout(thinkingTimer)
-                thinkingTimer = undefined
-              }
+              if (firstDeltaAt === null) firstDeltaAt = Date.now()
               send({ type: 'delta', delta })
             },
+            onProseComplete: () => {
+              send({ type: 'prose_complete' })
+            },
+            onSectionStart: (section) => {
+              send({ type: 'section_start', section })
+            },
+            onSectionDelta: (id, text) => {
+              send({ type: 'section_delta', id, text })
+            },
+            onSectionComplete: (section) => {
+              send({ type: 'section_complete', section })
+            },
+            onSectionError: (id, message) => {
+              send({ type: 'section_error', id, message: message || '这部分未生成' })
+            },
+            onSectionsComplete: (sections) => {
+              send({ type: 'sections_complete', sections })
+            },
+            onSections: (sections) => {
+              send({ type: 'sections', sections })
+            },
+            onActions: (actions) => {
+              send({ type: 'actions', actions })
+            },
           })
-
-          if (Date.now() - t0 >= THINKING_THRESHOLD_MS) {
-            sendThinking(result.output)
-          } else {
-            thinkingTimer = setTimeout(() => sendThinking(result.output), THINKING_THRESHOLD_MS - (Date.now() - t0))
-          }
-
-          if (thinkingTimer) {
-            clearTimeout(thinkingTimer)
-            thinkingTimer = undefined
-          }
 
           send({
             type: 'final',
@@ -83,7 +95,14 @@ export async function POST(request: Request) {
             cards: result.cards,
             traceId,
             runtime: result.runtime,
+            timing: result.timing,
           })
+
+          const totalMs = Date.now() - t0
+          const ttftMs = firstDeltaAt ? firstDeltaAt - t0 : null
+          console.info(
+            `[daily/stream] traceId=${traceId} ttft=${ttftMs}ms orchestration=${result.timing.orchestrationMs}ms proseFirst=${result.timing.proseFirstMs}ms sections=${result.timing.sectionsMs}ms total=${totalMs}ms rel=${result.output.relationshipToExistingModel.type} warmTurn=${warmTurn}`
+          )
 
           await saveTurnEvent(tenant, buildTurnEvent({
             output: result.output,
@@ -98,11 +117,15 @@ export async function POST(request: Request) {
             console.error(`[daily/stream] TurnEvent 快照写入失败 traceId=${traceId}:`, err)
           })
 
-          // L1 optional：编排判定「值得记」才写 memory_write（dailyInteractionUpdate + 检索索引）。
-          // L0 turn_event 已无条件写入（上文 saveTurnEvent）。insufficient（信息不足）与 safety 跳过 L1，
-          // 避免无信息轮次膨胀 memory_layer_items 检索池。L2 episode/L3 结构由深度展开/任务/建模触发。
+          // L1 选择性写入（省 token，防每轮都写）：
+          // - safety / insufficient：不写（已有 turn_event）
+          // - light_response（轻回应/寒暄）且原文 < 12 字：不写
+          // - 其余（有机制信号/反证/明确场景）：写 daily_update（便宜），memory_write 链式 digest/model_review
           const relType = result.output.relationshipToExistingModel.type
-          const shouldWriteL1 = !result.isSafety && relType !== 'insufficient'
+          const frontResponseType = result.output.routingDecision.frontResponseType
+          const isLight = frontResponseType === 'light_response'
+          const isShortGreeting = isLight && text.length < 12
+          const shouldWriteL1 = !result.isSafety && relType !== 'insufficient' && !isShortGreeting
           if (shouldWriteL1) {
             const writePlan = buildMemoryWritePlan({
               tenant,
@@ -115,7 +138,7 @@ export async function POST(request: Request) {
               )],
               rationale: {
                 whyUpdate: '日常对话调度完成',
-                whyNotPromoteSomeItems: result.output.routingDecision.frontResponseType === 'light_response' ? '轻回应，不升级为长期判断' : '',
+                whyNotPromoteSomeItems: isLight ? '轻回应，不升级为长期判断' : '',
                 riskOfOvergeneralization: '',
                 nextVerificationNeed: result.output.routingDecision.needFollowup ? result.output.routingDecision.followupQuestion : ''
               }
@@ -123,14 +146,17 @@ export async function POST(request: Request) {
             void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
           }
 
-          // episode_ingest / daily_deep / model_review 不再在每条日常消息无条件入队。
-          // episode 沉淀改为「深度展开」/「保存为今晚任务」时由对应接口主动触发（见 /api/daily/deep-expand、/api/tasks）。
-          // model_review 改为 memory_write 链式（有假设时）+ 每租户每日桶频控（queue.ts）。
-          // daily_deep 深拆能力并入 episode_ingest（episodeExtractor 扩展六维输出）。
+          // episode 选择性触发（向量抽取贵，不每轮）：仅反证等高价值日常轮主动 ingest，
+          // 让「刚聊的内容」尽快可被语义检索命中。深度展开/任务/采集另由对应接口触发。
+          if (!result.isSafety && relType === 'counter_evidence') {
+            void enqueueJob('episode_ingest', {
+              text,
+              ctx: { familyId: tenant.familyId, childId: tenant.childId, sourceEventId: traceId },
+            }, null, traceId).catch(err => console.warn('[daily/stream] counter_evidence episode 入队失败:', err))
+          }
 
           controller.close()
         } catch (error) {
-          if (thinkingTimer) clearTimeout(thinkingTimer)
           console.error(`[daily/stream] traceId=${traceId}:`, error)
           const isLlm = error instanceof DailyLlmRequiredError
           send({

@@ -1,3 +1,4 @@
+import { BUILD_ENTRY_ORDER, normalizeBuildEntryType, type BuildEntryType } from '@/lib/profile/buildEntries'
 import type { BuildEntryStatus, EntryType, LocalBuildSession, LocalEntryRecord, LocalFollowUpRecord, LocalStageSummary, SourceType } from '@/types/storage'
 import { DEFAULT_CHILD_ID, DEFAULT_FAMILY_ID } from './storageSeed'
 import { updateStorage, getStorage } from './localStorageService'
@@ -88,6 +89,46 @@ export function createStageSummary(input: {
   return record
 }
 
+/** 同一入口只保留最新阶段总结（避免重试重复、保证 synthesis 读到最新） */
+export function upsertStageSummary(input: {
+  entryType: string
+  mainJudgment: string
+  facts: string[]
+  pendingHypotheses: string[]
+  note?: string
+}) {
+  const now = new Date().toISOString()
+  const record: LocalStageSummary = {
+    id: createId('summary'),
+    familyId: DEFAULT_FAMILY_ID,
+    childId: DEFAULT_CHILD_ID,
+    buildSessionId: getOrCreateBuildSession().id,
+    ...input,
+    createdAt: now,
+    updatedAt: now,
+  }
+  updateStorage((current) => ({
+    ...current,
+    stageSummaries: [
+      ...current.stageSummaries.filter((s) => s.entryType !== input.entryType),
+      record,
+    ],
+  }))
+  return record
+}
+
+export function markBuildSessionCompleted() {
+  updateStorage((current) => ({
+    ...current,
+    buildSessions: current.buildSessions.map((s) => {
+      if (s.familyId === DEFAULT_FAMILY_ID && s.childId === DEFAULT_CHILD_ID) {
+        return { ...s, status: 'completed' as const, updatedAt: new Date().toISOString() }
+      }
+      return s
+    }),
+  }))
+}
+
 export function markEntryCompleted(entryType: EntryType) {
   updateStorage((current) => {
     const sessions = current.buildSessions.map((s) => {
@@ -103,36 +144,85 @@ export function markEntryCompleted(entryType: EntryType) {
   })
 }
 
-export function getEntryStatus(entryType: EntryType): BuildEntryStatus {
-  const storage = getStorage()
-  const session = storage.buildSessions.find(
-    (s) => s.familyId === DEFAULT_FAMILY_ID && s.childId === DEFAULT_CHILD_ID && s.status !== 'completed'
-  )
-  if (!session) return 'not_started'
-  if (session.completedEntries.includes(entryType)) return 'completed'
-  const hasEntries = storage.entryRecords.some((e) => e.entryType === entryType)
-  return hasEntries ? 'in_progress' : 'not_started'
-}
-
-export function getAllEntryStatuses(): Record<EntryType, BuildEntryStatus> {
-  const types: EntryType[] = ['study', 'routine', 'communication', 'emotion', 'environment']
-  const result = {} as Record<EntryType, BuildEntryStatus>
-  for (const type of types) {
+export function getAllEntryStatuses(): Record<BuildEntryType, BuildEntryStatus> {
+  const result = {} as Record<BuildEntryType, BuildEntryStatus>
+  for (const type of BUILD_ENTRY_ORDER) {
     result[type] = getEntryStatus(type)
   }
   return result
 }
 
+function legacyStatusesFor(type: BuildEntryType): string[] {
+  switch (type) {
+    case 'daily':
+      return ['daily', 'routine']
+    case 'homework':
+      return ['homework', 'study']
+    case 'communication':
+      return ['communication', 'emotion']
+    case 'family':
+      return ['family', 'environment']
+    default:
+      return [type]
+  }
+}
+
+function legacyTypesFor(type: BuildEntryType): string[] {
+  return legacyStatusesFor(type)
+}
+
 export function getLatestEntryRecord(entryType: string) {
+  const normalized = normalizeBuildEntryType(entryType)
+  const types = normalized ? legacyTypesFor(normalized) : [entryType]
   const storage = getStorage()
   return storage.entryRecords
-    .filter((r) => r.entryType === entryType)
+    .filter((r) => types.includes(r.entryType))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
 }
 
+export function getFollowUpRecordsForEntry(entryType: string) {
+  const normalized = normalizeBuildEntryType(entryType)
+  const types = normalized ? legacyTypesFor(normalized) : [entryType]
+  const storage = getStorage()
+  return storage.followUpRecords
+    .filter((r) => types.includes(r.entryType))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+}
+
+/** 入口首轮 + 各轮追问补充，供 AI 阶段总结 / 继续追问使用 */
+export function getCombinedEntryText(entryType: string): string {
+  const entry = getLatestEntryRecord(entryType)
+  if (!entry?.rawText?.trim()) return ''
+  const parts = [entry.rawText.trim()]
+  for (const followUp of getFollowUpRecordsForEntry(entryType)) {
+    const answer = followUp.userAnswer?.trim()
+    if (answer) parts.push(answer)
+  }
+  return parts.join('\n\n')
+}
+
 export function getLatestStageSummary(entryType: string) {
+  const normalized = normalizeBuildEntryType(entryType)
+  const types = normalized ? legacyTypesFor(normalized) : [entryType]
   const storage = getStorage()
   return storage.stageSummaries
-    .filter((s) => s.entryType === entryType)
+    .filter((s) => types.includes(s.entryType))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+}
+
+function isBuildEntry(value: string): value is BuildEntryType {
+  return (BUILD_ENTRY_ORDER as readonly string[]).includes(value)
+}
+
+export function getEntryStatus(entryType: EntryType): BuildEntryStatus {
+  const normalized = normalizeBuildEntryType(entryType) ?? (isBuildEntry(entryType) ? entryType : null)
+  if (!normalized) return 'not_started'
+  const storage = getStorage()
+  const session = storage.buildSessions.find(
+    (s) => s.familyId === DEFAULT_FAMILY_ID && s.childId === DEFAULT_CHILD_ID && s.status !== 'completed'
+  )
+  const aliases = legacyStatusesFor(normalized)
+  if (session?.completedEntries.some((e) => aliases.includes(e))) return 'completed'
+  const hasEntries = storage.entryRecords.some((e) => aliases.includes(e.entryType))
+  return hasEntries ? 'in_progress' : 'not_started'
 }

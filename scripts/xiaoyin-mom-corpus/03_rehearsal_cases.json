@@ -1,0 +1,2069 @@
+{
+  "datasetName": "03_rehearsal_cases",
+  "description": "沟通预演扩展版32条，覆盖原话为空、有原话、道歉复发、手机、作业、责任、考试等。",
+  "cases": [
+    {
+      "caseId": "reh_001",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你怎么一有空就玩手机？作业写完了吗你就玩。",
+      "parentGoal": "让孩子放下手机去学习",
+      "parentWorry": "担心他顶嘴说就玩一会儿",
+      "background": "睡前孩子拿手机刷视频，前一天说好只看十分钟但超时。",
+      "previousSimilarOutcome": "以前这样说后孩子会说你又来了，然后脸臭。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我只要休息就是错的，妈妈又要把空出来的时间变成学习。",
+        "刺痛点": [
+          "没有结束感",
+          "休息被否定",
+          "手机作为唯一可控时间"
+        ],
+        "saferDirection": "先承认他想放松，再把今晚边界说小：我不是来抢走全部手机，我们只把睡前结束时间定清楚。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "睡前孩子拿手机刷视频，前一天说好只看十分钟但超时。",
+          "以前这样说后孩子会说你又来了，然后脸臭。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "没有结束感",
+          "休息被否定",
+          "手机作为唯一可控时间"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你怎么一有空就玩手机？作业写完了吗你就玩。",
+          "worry": "担心他顶嘴说就玩一会儿",
+          "background": "睡前孩子拿手机刷视频，前一天说好只看十分钟但超时。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_002",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你又骗我说写完了。每次都是这样。",
+      "parentGoal": "让孩子承认没写完并补上",
+      "parentWorry": "担心他说我没有骗，是你自己要查",
+      "background": "孩子说作业写完，家长发现英语订正没动。",
+      "previousSimilarOutcome": "以前说骗后孩子立刻防御，开始沉默或顶嘴。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：妈妈已经定性我是骗子，不是在看哪里没对齐。",
+        "刺痛点": [
+          "被否定",
+          "被贴标签",
+          "检查暴露压力"
+        ],
+        "saferDirection": "把“骗”换成“我们对写完的标准不一样”，先对齐漏了哪一项。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子说作业写完，家长发现英语订正没动。",
+          "以前说骗后孩子立刻防御，开始沉默或顶嘴。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "被否定",
+          "被贴标签",
+          "检查暴露压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你又骗我说写完了。每次都是这样。",
+          "worry": "担心他说我没有骗，是你自己要查",
+          "background": "孩子说作业写完，家长发现英语订正没动。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_003",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "男孩子以后要有担当，你这样以后怎么办？",
+      "parentGoal": "激发责任感",
+      "parentWorry": "担心孩子无所谓或沉默",
+      "background": "家长想到父亲早逝，担心孩子未来靠不住。",
+      "previousSimilarOutcome": "以前讲责任后孩子会嗯一下但更沉默。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我不只是作业没做好，我整个人都不够靠得住。",
+        "刺痛点": [
+          "责任压力",
+          "未来灾难化",
+          "愧疚"
+        ],
+        "saferDirection": "先把责任降到今天的小行动：今晚你只需要把一件事做到收尾，不谈以后。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长想到父亲早逝，担心孩子未来靠不住。",
+          "以前讲责任后孩子会嗯一下但更沉默。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "责任压力",
+          "未来灾难化",
+          "愧疚"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "男孩子以后要有担当，你这样以后怎么办？",
+          "worry": "担心孩子无所谓或沉默",
+          "background": "家长想到父亲早逝，担心孩子未来靠不住。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_004",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "妈妈已经改了，你怎么还是这样？",
+      "parentGoal": "让孩子看到妈妈努力并配合",
+      "parentWorry": "担心孩子说你根本没改",
+      "background": "家长两天没进门检查，但孩子第三天又拖。",
+      "previousSimilarOutcome": "以前孩子说妈妈每次都这样，家长很受伤。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：你看，妈妈改了，所以现在问题全是你的。",
+        "刺痛点": [
+          "被归责",
+          "承诺放手后复发",
+          "失望"
+        ],
+        "saferDirection": "不拿自己的改变要求孩子立刻变，而是说：我这两天也在练习少查，我们一起看哪一步还卡。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长两天没进门检查，但孩子第三天又拖。",
+          "以前孩子说妈妈每次都这样，家长很受伤。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "被归责",
+          "承诺放手后复发",
+          "失望"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "妈妈已经改了，你怎么还是这样？",
+          "worry": "担心孩子说你根本没改",
+          "background": "家长两天没进门检查，但孩子第三天又拖。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_005",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你能不能主动一点，不要什么都等我催？",
+      "parentGoal": "让孩子自主开始作业",
+      "parentWorry": "担心孩子说知道了但不动",
+      "background": "孩子晚饭后磨蹭，家长已提醒多次。",
+      "previousSimilarOutcome": "以前这句话后孩子说知道了，行动仍慢。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：你又在说我不自觉，我再怎么解释也没用。",
+        "刺痛点": [
+          "被定义不自觉",
+          "启动困难被误判",
+          "表面答应"
+        ],
+        "saferDirection": "把人格评价换成启动支架：你现在只要选第一科，不要求一下子全做完。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子晚饭后磨蹭，家长已提醒多次。",
+          "以前这句话后孩子说知道了，行动仍慢。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "被定义不自觉",
+          "启动困难被误判",
+          "表面答应"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你能不能主动一点，不要什么都等我催？",
+          "worry": "担心孩子说知道了但不动",
+          "background": "孩子晚饭后磨蹭，家长已提醒多次。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_006",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "这次考成这样，你自己有什么打算？",
+      "parentGoal": "让孩子反思考试并制定计划",
+      "parentWorry": "担心他说随便",
+      "background": "小测成绩不理想，孩子前一晚临时抱佛脚。",
+      "previousSimilarOutcome": "以前考后会反思两天，后面又回到原样。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：你又要我交代失败原因，然后逼我保证。",
+        "刺痛点": [
+          "失败暴露",
+          "努力无效感",
+          "保证压力"
+        ],
+        "saferDirection": "先不问大计划，只问一处可修复的错：这次哪一题你觉得最不该丢，我们先看一题。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "小测成绩不理想，孩子前一晚临时抱佛脚。",
+          "以前考后会反思两天，后面又回到原样。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "失败暴露",
+          "努力无效感",
+          "保证压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "这次考成这样，你自己有什么打算？",
+          "worry": "担心他说随便",
+          "background": "小测成绩不理想，孩子前一晚临时抱佛脚。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_007",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "拿来我看看，不检查你肯定糊弄。",
+      "parentGoal": "确认作业质量",
+      "parentWorry": "担心孩子拒绝或烦躁",
+      "background": "孩子最近多次说写完但漏订正。",
+      "previousSimilarOutcome": "以前一说检查孩子就紧张，甚至说你永远不会满足。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：妈妈默认我会糊弄，检查不是帮我，是抓我。",
+        "刺痛点": [
+          "不被信任",
+          "检查压力",
+          "被预设有错"
+        ],
+        "saferDirection": "先申请一个小范围：我只看今天我们说好的这一项，看完不加新的。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子最近多次说写完但漏订正。",
+          "以前一说检查孩子就紧张，甚至说你永远不会满足。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "不被信任",
+          "检查压力",
+          "被预设有错"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "拿来我看看，不检查你肯定糊弄。",
+          "worry": "担心孩子拒绝或烦躁",
+          "background": "孩子最近多次说写完但漏订正。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_008",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "我不是来查你的，我想知道你卡在哪一步。",
+      "parentGoal": "降低防御，让孩子说困难",
+      "parentWorry": "担心孩子仍说没有",
+      "background": "孩子数学做一半停住，家长想介入但怕吵。",
+      "previousSimilarOutcome": "以前家长一问就变成讲基础不牢，孩子说算了。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：这次可能不是抓错，但仍会担心后面变讲道理。",
+        "刺痛点": [
+          "信任不足",
+          "帮助转评价风险"
+        ],
+        "saferDirection": "这句方向较安全，但后面要加边界：你说卡点就行，我今天不展开讲大道理。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子数学做一半停住，家长想介入但怕吵。",
+          "以前家长一问就变成讲基础不牢，孩子说算了。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "信任不足",
+          "帮助转评价风险"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "我不是来查你的，我想知道你卡在哪一步。",
+          "worry": "担心孩子仍说没有",
+          "background": "孩子数学做一半停住，家长想介入但怕吵。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_009",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你今天作业怎么又拖到这么晚？",
+      "parentGoal": "让孩子提高效率",
+      "parentWorry": "怕孩子说我也不想",
+      "background": "孩子九点半还没完成，家长担心睡眠。",
+      "previousSimilarOutcome": "以前问为什么拖会变争吵。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：妈妈只看见我慢，没看见我卡住。",
+        "刺痛点": [
+          "拖延标签",
+          "能力卡点被忽略"
+        ],
+        "saferDirection": "把为什么拖换成卡在哪个环节：开始、不会、还是怕我检查。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子九点半还没完成，家长担心睡眠。",
+          "以前问为什么拖会变争吵。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "拖延标签",
+          "能力卡点被忽略"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你今天作业怎么又拖到这么晚？",
+          "worry": "怕孩子说我也不想",
+          "background": "孩子九点半还没完成，家长担心睡眠。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_010",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你看妹妹都知道回来先背英语。",
+      "parentGoal": "刺激孩子向妹妹学习",
+      "parentWorry": "怕他说那你找妹妹去",
+      "background": "妹妹大声背英语，小尹在旁边脸色不好。",
+      "previousSimilarOutcome": "以前比较后孩子沉默或走开。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我在家里又输给妹妹。",
+        "刺痛点": [
+          "兄妹比较",
+          "位置感受损"
+        ],
+        "saferDirection": "不比较妹妹，只说今天你自己的目标：十个单词过完就停。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "妹妹大声背英语，小尹在旁边脸色不好。",
+          "以前比较后孩子沉默或走开。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "兄妹比较",
+          "位置感受损"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你看妹妹都知道回来先背英语。",
+          "worry": "怕他说那你找妹妹去",
+          "background": "妹妹大声背英语，小尹在旁边脸色不好。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_011",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你别总说随便，随便能解决问题吗？",
+      "parentGoal": "让孩子认真面对问题",
+      "parentWorry": "担心孩子继续摆烂",
+      "background": "孩子考差后说反正就这样。",
+      "previousSimilarOutcome": "以前家长追问会让孩子沉默。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：连我保护自己的话也被否定。",
+        "刺痛点": [
+          "失败退路保护",
+          "被逼表态"
+        ],
+        "saferDirection": "先接住：我听到你现在有点泄气，我们不谈全部，只看一处能改的。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子考差后说反正就这样。",
+          "以前家长追问会让孩子沉默。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "失败退路保护",
+          "被逼表态"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你别总说随便，随便能解决问题吗？",
+          "worry": "担心孩子继续摆烂",
+          "background": "孩子考差后说反正就这样。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_012",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你再这样手机我全部没收。",
+      "parentGoal": "控制手机时间",
+      "parentWorry": "怕孩子吵架或偷偷拿",
+      "background": "睡前刷视频停不下来，第二天起不来。",
+      "previousSimilarOutcome": "以前没收会关系僵。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：唯一能自己控制的时间也被抢走。",
+        "刺痛点": [
+          "可控时间被剥夺",
+          "手机冲突"
+        ],
+        "saferDirection": "从全部没收改成共同定结束点和替代恢复方式。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "睡前刷视频停不下来，第二天起不来。",
+          "以前没收会关系僵。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "可控时间被剥夺",
+          "手机冲突"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你再这样手机我全部没收。",
+          "worry": "怕孩子吵架或偷偷拿",
+          "background": "睡前刷视频停不下来，第二天起不来。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_013",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你老师都说你人在第一排心不在，你还找什么理由？",
+      "parentGoal": "让孩子承认上课不认真",
+      "parentWorry": "怕孩子说老师讲太快",
+      "background": "老师反馈孩子上课眼神飘。",
+      "previousSimilarOutcome": "以前引用老师批评后孩子反感。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：妈妈和老师站一起审我。",
+        "刺痛点": [
+          "被围攻",
+          "学校压力"
+        ],
+        "saferDirection": "先问具体卡点：老师讲到哪一类内容时最跟不上。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "老师反馈孩子上课眼神飘。",
+          "以前引用老师批评后孩子反感。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "被围攻",
+          "学校压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你老师都说你人在第一排心不在，你还找什么理由？",
+          "worry": "怕孩子说老师讲太快",
+          "background": "老师反馈孩子上课眼神飘。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_014",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你不要总怪老师严，别人怎么能学？",
+      "parentGoal": "阻止孩子外归因",
+      "parentWorry": "怕孩子说班上都抄答案",
+      "background": "孩子说老师严、同学抄答案，所以认真没用。",
+      "previousSimilarOutcome": "以前家长反驳后孩子不再说学校。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我说学校现实也会被否定。",
+        "刺痛点": [
+          "表达被否定",
+          "学校现实未被看见"
+        ],
+        "saferDirection": "先区分事实和选择：班里情况我们先听你说，再看你能抓住哪一点。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子说老师严、同学抄答案，所以认真没用。",
+          "以前家长反驳后孩子不再说学校。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "表达被否定",
+          "学校现实未被看见"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你不要总怪老师严，别人怎么能学？",
+          "worry": "怕孩子说班上都抄答案",
+          "background": "孩子说老师严、同学抄答案，所以认真没用。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_015",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你前面基础太差了，现在不补怎么行？",
+      "parentGoal": "让孩子接受补欠账",
+      "parentWorry": "怕孩子说又来了",
+      "background": "孩子不想订正错题，家长担心中考。",
+      "previousSimilarOutcome": "以前说基础差孩子脸垮。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我已经很差了，后面怎么补都很沉重。",
+        "刺痛点": [
+          "能力感下滑",
+          "补课压力"
+        ],
+        "saferDirection": "把基础差换成具体一小块：今天只补这一类错题，不扩大。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子不想订正错题，家长担心中考。",
+          "以前说基础差孩子脸垮。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "能力感下滑",
+          "补课压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你前面基础太差了，现在不补怎么行？",
+          "worry": "怕孩子说又来了",
+          "background": "孩子不想订正错题，家长担心中考。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_016",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "妈妈这么辛苦，你能不能懂事一点？",
+      "parentGoal": "唤起孩子体谅妈妈",
+      "parentWorry": "怕孩子沉默",
+      "background": "家长下班后陪到很晚，觉得孩子不珍惜。",
+      "previousSimilarOutcome": "以前说辛苦后孩子会愧疚但行动变化不久。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我学习不好就是对不起妈妈。",
+        "刺痛点": [
+          "愧疚压力",
+          "关系负担"
+        ],
+        "saferDirection": "把妈妈辛苦从要求中拿掉，改说我今天只需要你把进度说清楚。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长下班后陪到很晚，觉得孩子不珍惜。",
+          "以前说辛苦后孩子会愧疚但行动变化不久。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "愧疚压力",
+          "关系负担"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "妈妈这么辛苦，你能不能懂事一点？",
+          "worry": "怕孩子沉默",
+          "background": "家长下班后陪到很晚，觉得孩子不珍惜。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_017",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你昨天不是答应了吗？怎么又没做到？",
+      "parentGoal": "让孩子守承诺",
+      "parentWorry": "怕孩子说忘了",
+      "background": "孩子答应物理错题，第二天没动。",
+      "previousSimilarOutcome": "以前追问承诺会进入争吵。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：答应又成了新的证据来证明我不可靠。",
+        "刺痛点": [
+          "承诺压力",
+          "表面答应"
+        ],
+        "saferDirection": "先复盘承诺为什么失效：是太多、忘了、不会，还是不想面对。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子答应物理错题，第二天没动。",
+          "以前追问承诺会进入争吵。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "承诺压力",
+          "表面答应"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你昨天不是答应了吗？怎么又没做到？",
+          "worry": "怕孩子说忘了",
+          "background": "孩子答应物理错题，第二天没动。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_018",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "我不管你了，你自己看着办。",
+      "parentGoal": "让孩子感到后果并自觉",
+      "parentWorry": "怕孩子真的不管",
+      "background": "家长太累，说了这句又放不下。",
+      "previousSimilarOutcome": "以前说不管后不久又重新管，孩子说每次都这样。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：又是一次情绪话，后面还会回来查。",
+        "刺痛点": [
+          "承诺不稳定",
+          "情绪化边界"
+        ],
+        "saferDirection": "不要说不管，改成具体边界：今晚我只管开始时间，不管过程。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长太累，说了这句又放不下。",
+          "以前说不管后不久又重新管，孩子说每次都这样。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "承诺不稳定",
+          "情绪化边界"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "我不管你了，你自己看着办。",
+          "worry": "怕孩子真的不管",
+          "background": "家长太累，说了这句又放不下。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_019",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "今晚不许再看手机，必须把欠的都补完。",
+      "parentGoal": "考前补任务",
+      "parentWorry": "怕孩子直接炸",
+      "background": "考试前发现背诵欠账多。",
+      "previousSimilarOutcome": "以前临时补很多会拖到很晚。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：今晚没有尽头，肯定做不完。",
+        "刺痛点": [
+          "任务过载",
+          "无结束感"
+        ],
+        "saferDirection": "把全部欠账改成优先级：只补最影响明天的一项。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "考试前发现背诵欠账多。",
+          "以前临时补很多会拖到很晚。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "任务过载",
+          "无结束感"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "今晚不许再看手机，必须把欠的都补完。",
+          "worry": "怕孩子直接炸",
+          "background": "考试前发现背诵欠账多。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_020",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你别跟我讲条件。",
+      "parentGoal": "停止孩子讨价还价",
+      "parentWorry": "怕孩子一直磨手机时间",
+      "background": "孩子想延长手机时间。",
+      "previousSimilarOutcome": "以前拒绝讲条件后吵架。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我的需求没得谈。",
+        "刺痛点": [
+          "自主感被否定",
+          "手机边界冲突"
+        ],
+        "saferDirection": "给有限选择：你可以选先洗澡还是先收手机，但结束时间不变。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子想延长手机时间。",
+          "以前拒绝讲条件后吵架。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "自主感被否定",
+          "手机边界冲突"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你别跟我讲条件。",
+          "worry": "怕孩子一直磨手机时间",
+          "background": "孩子想延长手机时间。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_021",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你现在不努力，以后后悔都来不及。",
+      "parentGoal": "制造紧迫感",
+      "parentWorry": "怕孩子无所谓",
+      "background": "中考临近，家长想提醒严重性。",
+      "previousSimilarOutcome": "以前讲未来孩子沉默。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我现在已经快完了。",
+        "刺痛点": [
+          "灾难化未来",
+          "压力过大"
+        ],
+        "saferDirection": "把以后后悔改成今天可控：今晚只把明天最可能考的十个过掉。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "中考临近，家长想提醒严重性。",
+          "以前讲未来孩子沉默。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "灾难化未来",
+          "压力过大"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你现在不努力，以后后悔都来不及。",
+          "worry": "怕孩子无所谓",
+          "background": "中考临近，家长想提醒严重性。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_022",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你总不能一直靠哥哥姐姐吧？",
+      "parentGoal": "让孩子独立",
+      "parentWorry": "怕孩子依赖外部老师",
+      "background": "孩子更愿意听外部哥哥姐姐。",
+      "previousSimilarOutcome": "以前妈妈这样说孩子不接话。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：连我愿意接受帮助也被妈妈否定。",
+        "刺痛点": [
+          "外部支持被贬低",
+          "独立压力"
+        ],
+        "saferDirection": "先肯定愿意接受帮助，再约定把一个方法自己试一次。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子更愿意听外部哥哥姐姐。",
+          "以前妈妈这样说孩子不接话。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "外部支持被贬低",
+          "独立压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你总不能一直靠哥哥姐姐吧？",
+          "worry": "怕孩子依赖外部老师",
+          "background": "孩子更愿意听外部哥哥姐姐。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_023",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你是不是又在厕所玩手机？",
+      "parentGoal": "制止厕所躲避",
+      "parentWorry": "怕孩子说没有证据",
+      "background": "孩子常去厕所很久。",
+      "previousSimilarOutcome": "以前质问后孩子更防御。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：妈妈又来抓我。",
+        "刺痛点": [
+          "不信任",
+          "躲避空间"
+        ],
+        "saferDirection": "先说事实边界：厕所超过十五分钟我会提醒，不先定性你在玩。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子常去厕所很久。",
+          "以前质问后孩子更防御。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "不信任",
+          "躲避空间"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你是不是又在厕所玩手机？",
+          "worry": "怕孩子说没有证据",
+          "background": "孩子常去厕所很久。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_024",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你这样真让我失望。",
+      "parentGoal": "表达家长伤心",
+      "parentWorry": "怕孩子无所谓",
+      "background": "孩子说写完但漏很多。",
+      "previousSimilarOutcome": "以前说失望后孩子更沉默。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我这个人让妈妈失望，而不是这件事没做好。",
+        "刺痛点": [
+          "羞耻",
+          "关系压力"
+        ],
+        "saferDirection": "把失望换成具体影响：我现在不知道哪些是真的完成，我们先重新对齐标准。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子说写完但漏很多。",
+          "以前说失望后孩子更沉默。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "羞耻",
+          "关系压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你这样真让我失望。",
+          "worry": "怕孩子无所谓",
+          "background": "孩子说写完但漏很多。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_025",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你今天必须把周末落下的都补上。",
+      "parentGoal": "补周末欠账",
+      "parentWorry": "怕孩子说周末没时间",
+      "background": "周末补课多，订正未完成。",
+      "previousSimilarOutcome": "以前全部补上导致拖到深夜。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：今天又是一条没有尽头的任务链。",
+        "刺痛点": [
+          "无结束感",
+          "计划太满"
+        ],
+        "saferDirection": "从都补上改成三选一优先，只完成一项可收尾任务。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "周末补课多，订正未完成。",
+          "以前全部补上导致拖到深夜。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "无结束感",
+          "计划太满"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你今天必须把周末落下的都补上。",
+          "worry": "怕孩子说周末没时间",
+          "background": "周末补课多，订正未完成。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_026",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你有什么压力？我像你这么大比你苦多了。",
+      "parentGoal": "纠正孩子喊累",
+      "parentWorry": "怕孩子继续说累",
+      "background": "孩子说脑子满、周末也没自己的时间。",
+      "previousSimilarOutcome": "以前家长讲自己经历后孩子沉默。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我的累不配被承认。",
+        "刺痛点": [
+          "感受被否定",
+          "责任投射"
+        ],
+        "saferDirection": "先承认他的累，再谈今天最小任务。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子说脑子满、周末也没自己的时间。",
+          "以前家长讲自己经历后孩子沉默。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "感受被否定",
+          "责任投射"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你有什么压力？我像你这么大比你苦多了。",
+          "worry": "怕孩子继续说累",
+          "background": "孩子说脑子满、周末也没自己的时间。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_027",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "不要把问题都推给我和老师。",
+      "parentGoal": "让孩子承担责任",
+      "parentWorry": "怕孩子继续说老师严妈妈管",
+      "background": "孩子说老师严、妈妈一查就烦。",
+      "previousSimilarOutcome": "以前家长反驳外因后孩子关门。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我说任何不舒服都是推责任。",
+        "刺痛点": [
+          "表达被否定",
+          "责任拉扯"
+        ],
+        "saferDirection": "先分开：老师和妈妈这部分先听见，你自己能动的一小步我们也看。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子说老师严、妈妈一查就烦。",
+          "以前家长反驳外因后孩子关门。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "表达被否定",
+          "责任拉扯"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "不要把问题都推给我和老师。",
+          "worry": "怕孩子继续说老师严妈妈管",
+          "background": "孩子说老师严、妈妈一查就烦。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_028",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你今天表现不错，明天我们多加一点。",
+      "parentGoal": "趁热打铁",
+      "parentWorry": "怕孩子松掉",
+      "background": "孩子今天单词过得较好。",
+      "previousSimilarOutcome": "以前加码后孩子说你又这样。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我一好就会换来更多。",
+        "刺痛点": [
+          "改善后加码",
+          "不敢变好"
+        ],
+        "saferDirection": "把多加换成稳定：今天做到了就收住，明天仍只保持同样量。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子今天单词过得较好。",
+          "以前加码后孩子说你又这样。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "改善后加码",
+          "不敢变好"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你今天表现不错，明天我们多加一点。",
+          "worry": "怕孩子松掉",
+          "background": "孩子今天单词过得较好。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_029",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "我已经忍住没骂你了，你还要怎样？",
+      "parentGoal": "表达家长克制",
+      "parentWorry": "怕孩子不领情",
+      "background": "家长减少批评但孩子仍拖。",
+      "previousSimilarOutcome": "以前讲自己忍耐后孩子沉默。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：妈妈的克制也成了我必须回报的压力。",
+        "刺痛点": [
+          "被要求回报",
+          "愧疚压力"
+        ],
+        "saferDirection": "不让孩子为妈妈克制买单，只说我们看今天卡住的那一步。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "家长减少批评但孩子仍拖。",
+          "以前讲自己忍耐后孩子沉默。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "被要求回报",
+          "愧疚压力"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "我已经忍住没骂你了，你还要怎样？",
+          "worry": "怕孩子不领情",
+          "background": "家长减少批评但孩子仍拖。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_030",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "你如果真的想好，就拿行动证明。",
+      "parentGoal": "让孩子行动",
+      "parentWorry": "怕孩子说我知道了",
+      "background": "孩子多次说想好但做不到。",
+      "previousSimilarOutcome": "以前说证明后孩子答应但拖。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：我现在说什么都没用，必须立刻变好才算数。",
+        "刺痛点": [
+          "行动证明压力",
+          "能力感低"
+        ],
+        "saferDirection": "把证明变成小动作：先用五分钟打开第一题，不要求证明整个人。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子多次说想好但做不到。",
+          "以前说证明后孩子答应但拖。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "行动证明压力",
+          "能力感低"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "你如果真的想好，就拿行动证明。",
+          "worry": "怕孩子说我知道了",
+          "background": "孩子多次说想好但做不到。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_031",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "",
+      "parentGoal": "让孩子今晚少玩手机",
+      "parentWorry": "不知道怎么开口",
+      "background": "孩子睡前刷手机，家长想沟通但没有准备原话。",
+      "previousSimilarOutcome": "无。",
+      "hiddenExpected": {
+        "childLikelyHearing": "空原话，系统应先让家长补一句准备说的话，不能直接分析。",
+        "刺痛点": [
+          "空输入处理"
+        ],
+        "saferDirection": "提示家长补原话或给可选择开头。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子睡前刷手机，家长想沟通但没有准备原话。",
+          "无。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "空输入处理"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "",
+          "worry": "不知道怎么开口",
+          "background": "孩子睡前刷手机，家长想沟通但没有准备原话。",
+          "fromSpecialFeature": true
+        }
+      }
+    },
+    {
+      "caseId": "reh_032",
+      "targetFeature": "rehearsal_analyze",
+      "inputMode": "text",
+      "parentOriginalWords": "我想问问你今天卡在哪一步，如果不想说也可以，我们先不解决。",
+      "parentGoal": "低压力表达测试",
+      "parentWorry": "怕孩子真的不说",
+      "background": "孩子数学启动困难，家长想试低压力问法。",
+      "previousSimilarOutcome": "以前一问就变成检查，这次想改变。",
+      "hiddenExpected": {
+        "childLikelyHearing": "孩子可能听成：这次压力较低，但仍会观察妈妈后面会不会加码。",
+        "刺痛点": [
+          "信任待验证",
+          "低压力表达"
+        ],
+        "saferDirection": "方向安全，但要守住后续不加任务、不讲大道理。"
+      },
+      "hiddenGroundTruth": {
+        "facts": [
+          "孩子数学启动困难，家长想试低压力问法。",
+          "以前一问就变成检查，这次想改变。"
+        ],
+        "parentEmotion": [
+          "焦虑",
+          "想改变但怕失控"
+        ],
+        "parentEvaluation": [],
+        "likelyMechanisms": [
+          "信任待验证",
+          "低压力表达"
+        ],
+        "shouldAskFollowup": false,
+        "expectedFollowupPurpose": "有原话时应进入分析；空原话时才补原话"
+      },
+      "expectedGoodResponse": [
+        "分析孩子可能听成什么",
+        "指出原话里的刺痛点",
+        "给出更安全且符合小尹画像的替代表达",
+        "不写成普通鸡汤话术",
+        "保留家长真实目的"
+      ],
+      "badResponseSignals": [
+        "只说多鼓励少批评",
+        "替代话术过长像演讲",
+        "忽略孩子对检查/加码的敏感",
+        "直接指责家长",
+        "没有使用孩子画像"
+      ],
+      "expectedLatencyClass": "medium",
+      "shouldStream": true,
+      "expectedFirstVisibleTextMs": 10000,
+      "expectedFullResponseMs": 45000,
+      "route": "/rehearsal",
+      "api": {
+        "method": "POST",
+        "path": "/api/rehearsal/analyze",
+        "body": {
+          "parentText": "我想问问你今天卡在哪一步，如果不想说也可以，我们先不解决。",
+          "worry": "怕孩子真的不说",
+          "background": "孩子数学启动困难，家长想试低压力问法。",
+          "fromSpecialFeature": true
+        }
+      }
+    }
+  ],
+  "schemaVersion": "2026-06-12",
+  "targetRoute": "/rehearsal",
+  "targetApi": "/api/rehearsal/analyze"
+}

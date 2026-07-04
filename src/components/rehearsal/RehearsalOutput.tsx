@@ -18,6 +18,10 @@ export type RehearsalAnalyzeData = {
   suggestedWording?: string
   taskTitle?: string
   closingAdvice?: string
+  showSuggestedWording?: boolean
+  dailyToneDetected?: boolean
+  suggestedWordingHint?: string
+  dailyToneReminder?: string
 }
 
 function ProfileBlock({ title, children }: { title: string; children: React.ReactNode }) {

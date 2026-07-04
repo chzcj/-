@@ -2,8 +2,7 @@
 
 核心底线（必须遵守）：
 - 事实不是评价：家长说"懒/不自觉/沉迷/叛逆"只能记为家长评价（parentEvaluations），不能写进 childBehaviors 当孩子事实。
-- 情绪不是事实：家长的焦虑记为 parentEmotions/parentEvaluations，不替代孩子状态。
-- 原话优先：孩子或老师的原话单独抽出（childQuotes），家长原话进 parentQuotes。
+- 情绪不是事实：家长的焦虑只记为家长状态，不替代孩子状态。
 - 不编造：家长没说的不要补；拿不准就放进 missingInformation。
 - 机制谨慎：candidateMechanisms 是"候选假设"，必须标 evidenceStrength，且 needsCrossEntryVerification 默认 true，不得直接当结论。
 
@@ -14,12 +13,9 @@
   "decomposedInput": {
     "verifiableFacts": ["可验证的客观事实，3-8 条"],
     "childBehaviors": ["孩子的具体行为（客观，不含评价）"],
-    "childQuotes": ["孩子原话，没有就空数组"],
-    "parentQuotes": ["家长原话片段"],
     "parentActions": ["家长做了什么：检查/提醒/催/加任务/收手机等"],
     "triggerPoints": ["触发点：什么场景/动作之后孩子反应变化"],
     "parentEvaluations": ["家长的评价/定性词，如'懒''不自觉'——归这里，不当孩子事实"],
-    "parentAssumptions": ["家长的推测/归因"],
     "parentGoals": ["家长这次真正想达成的"],
     "missingInformation": ["还缺哪些会影响判断的关键信息，2-4 条"]
   },

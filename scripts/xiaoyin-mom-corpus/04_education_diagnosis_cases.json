@@ -1,0 +1,1323 @@
+{
+  "datasetName": "04_education_diagnosis_cases",
+  "description": "教育模式诊断：3个完整家庭运转样本，每个8-9轮。",
+  "samples": [
+    {
+      "sampleId": "A_junior3_exam_pressure",
+      "sampleName": "初二高压升学家庭",
+      "rounds": [
+        {
+          "caseId": "edu_A_r01",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "我们家教育是不是有问题？我感觉他越来越不爱学习。以前虽然拖，但还有点想法，现在就是嘴上说知道，后面不动。我也不知道是初二压力大，还是我管太多。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长笼统怀疑教育问题",
+              "孩子越来越不爱学习",
+              "嘴上知道但行动不动"
+            ],
+            "parentEmotion": [
+              "焦虑",
+              "困惑"
+            ],
+            "parentEvaluation": [
+              "不爱学习"
+            ],
+            "likelyMechanisms": [
+              "信息不足"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补充上学日流程"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "A_junior3_exam_pressure",
+          "roundNo": 1,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_A_r02",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "上学日他一般五点半多到家，先吃点东西，六点多吃饭，七点前后开始写作业。作业主要我管，奶奶只管吃喝。手机平时我收着，周五以前可以玩，现在不太敢放。作业写完我会看一下，英语单词和化学方程式也会抽查。睡觉经常十一点半以后，有时十二点。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "五点半到家",
+              "七点前后作业",
+              "妈妈管学习",
+              "手机平时收着",
+              "作业后检查和抽查",
+              "睡觉11点半到12点"
+            ],
+            "parentEmotion": [
+              "担心",
+              "自证"
+            ],
+            "parentEvaluation": [
+              "不敢放手机"
+            ],
+            "likelyMechanisms": [
+              "上学日学习链长",
+              "睡眠偏晚",
+              "妈妈单线管理"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补充周末/自由时间"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "A_junior3_exam_pressure",
+          "roundNo": 2,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_A_r03",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "周末基本都有补课，数学、英语，有时候化学也要补。周六上午补课，下午写作业订正，晚上有时候让他背书。周日如果我在家就会过一下前面欠的。朋友活动很少，打球偶尔有同学约才去。我不是不让他玩，是时间真的不够用。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "周末数学英语补课，有时化学",
+              "周六补课后作业订正背书",
+              "周日补欠账",
+              "朋友活动少，偶尔打球"
+            ],
+            "parentEmotion": [
+              "焦虑",
+              "自我辩解"
+            ],
+            "parentEvaluation": [
+              "时间不够用"
+            ],
+            "likelyMechanisms": [
+              "周末长期被学习占满",
+              "自由/运动不足"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补充假期流程"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "A_junior3_exam_pressure",
+          "roundNo": 3,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_A_r04",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "假期更麻烦，人在家时间长，我就觉得不能浪费。寒假我希望他每天有计划，上午作业，下午复习，晚上背诵。可他在家反而更容易看电视、躲厕所。我一催就吵。最后就是我累他也累。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "假期家长期望上午作业下午复习晚上背诵",
+              "孩子在家看电视/躲厕所",
+              "一催就吵",
+              "双方疲惫"
+            ],
+            "parentEmotion": [
+              "疲惫",
+              "急"
+            ],
+            "parentEvaluation": [
+              "不能浪费"
+            ],
+            "likelyMechanisms": [
+              "假期计划密集",
+              "可控时间争夺"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补充学校强度/老师评价"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "A_junior3_exam_pressure",
+          "roundNo": 4,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_A_r05",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "学校在县里算比较好的，班级也不错，我当初找了很多关系才进去。老师要求不低，班主任比较严。老师反馈他上课有时人在心不在，作业订正不及时。班上有孩子抄答案，他也会拿这个说事。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "学校/班级较强",
+              "班主任严",
+              "老师反馈注意力与订正问题",
+              "班上有抄答案现象"
+            ],
+            "parentEmotion": [
+              "不甘",
+              "担心"
+            ],
+            "parentEvaluation": [
+              "拿抄答案说事"
+            ],
+            "likelyMechanisms": [
+              "学校强度与评价压力",
+              "环境外因候选"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补充家长期望与家庭娱乐"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "A_junior3_exam_pressure",
+          "roundNo": 5,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_A_r06",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "家庭娱乐其实不多。我上班开店忙，回家基本就围着学习转。我们偶尔看电影、吃个夜宵，他也会开心。我的期待不算离谱吧，就是希望他考个好高中，以后有选择。男孩子总要能担事，不能一辈子靠别人。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家庭娱乐少",
+              "母亲忙，回家围绕学习",
+              "偶尔看电影夜宵孩子开心",
+              "期待好高中/有选择/男孩担事"
+            ],
+            "parentEmotion": [
+              "自证",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "期待不离谱"
+            ],
+            "likelyMechanisms": [
+              "家庭非学习连接不足",
+              "责任期待"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补充曾经调整失败"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "A_junior3_exam_pressure",
+          "roundNo": 6,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_A_r07",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "试过调整。说好我少管，让他自己安排，结果质量太差，我就又管回来。也试过每天计划表，第一天还行，第三天就乱。手机定时间也试过，一执行就吵。补课换过老师，短期有点用，后面又回去。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "试过放手但质量差后复管",
+              "计划表三天乱",
+              "手机规则执行吵",
+              "补课换老师短期有用后复发"
+            ],
+            "parentEmotion": [
+              "无力",
+              "挫败"
+            ],
+            "parentEvaluation": [
+              "后面又回去"
+            ],
+            "likelyMechanisms": [
+              "调整失败点：边界不稳/计划过密/规则执行冲突"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "信息足够，应该生成诊断"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "A_junior3_exam_pressure",
+          "roundNo": 7,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_A_r08",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "还有个补充：他不是所有时候都差。你们哥哥姐姐跟他聊，或者我只说一小件事不加任务，他会好一些。打球回来也会松一点。但只要老师一反馈，我一急，就容易又回到催、查、讲一堆。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "外部沟通有效",
+              "小任务不加码有效",
+              "打球后改善",
+              "老师反馈触发家长复发"
+            ],
+            "parentEmotion": [
+              "反思",
+              "希望"
+            ],
+            "parentEvaluation": [
+              "回到催查讲"
+            ],
+            "likelyMechanisms": [
+              "反证与改善条件",
+              "老师反馈触发旧机制"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应更新教育模式诊断与低成本调整方向"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "A_junior3_exam_pressure",
+          "roundNo": 8,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        }
+      ]
+    },
+    {
+      "sampleId": "B_weekend_tutoring_full",
+      "sampleName": "周末长期被补课占满家庭",
+      "rounds": [
+        {
+          "caseId": "edu_B_r01",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "我们家周末是不是安排太满了？我以前觉得周末就是补短板的，现在孩子一到周五就开始烦，说周末也没自己的时间。可是不补又怕落下。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长怀疑周末安排太满",
+              "孩子周五开始烦并说周末没时间",
+              "家长怕不补落下"
+            ],
+            "parentEmotion": [
+              "纠结"
+            ],
+            "parentEvaluation": [
+              "不补怕落下"
+            ],
+            "likelyMechanisms": [
+              "信息不足",
+              "周末压力线索"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补周末完整流程"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "B_weekend_tutoring_full",
+          "roundNo": 1,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_B_r02",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "周六上午数学小课，下午英语，晚上我会让他把学校作业先清一部分。周日上午有时候化学，有时候体育训练，下午订正错题。周日晚上整理书包、背单词。看起来不是每一分钟都满，但他自己觉得一直有事。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "周六数学英语",
+              "晚上作业",
+              "周日化学/体育",
+              "下午订正",
+              "晚上整理背单词"
+            ],
+            "parentEmotion": [
+              "自我辩解",
+              "担心"
+            ],
+            "parentEvaluation": [
+              "不是每分钟都满"
+            ],
+            "likelyMechanisms": [
+              "周末任务链",
+              "孩子主观无自由"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补朋友/户外/家庭娱乐"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "B_weekend_tutoring_full",
+          "roundNo": 2,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_B_r03",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "朋友活动很少，除非同学约打球。我以前会觉得打球耽误时间，但发现他打完回来心情好一点。家庭娱乐就是偶尔吃饭看电影，平时我店里忙，周末还要把学习补上，所以也没什么固定活动。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "朋友活动少",
+              "打球后情绪改善",
+              "家庭娱乐偶尔吃饭看电影",
+              "母亲店里忙，周末补学习"
+            ],
+            "parentEmotion": [
+              "松动",
+              "疲惫"
+            ],
+            "parentEvaluation": [
+              "耽误时间"
+            ],
+            "likelyMechanisms": [
+              "恢复资源不足",
+              "运动有效"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补上学日流程以判断补课是否叠加"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "B_weekend_tutoring_full",
+          "roundNo": 3,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_B_r04",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "上学日也不轻松。放学回来先吃饭，七点左右写作业，写完我会看质量。有时还要背诵。睡觉十一点多。也就是说周末确实是我用来补前面没做好的地方。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "上学日七点写作业",
+              "完成后看质量/背诵",
+              "睡觉十一点多",
+              "周末补上学日欠账"
+            ],
+            "parentEmotion": [
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "补前面没做好"
+            ],
+            "likelyMechanisms": [
+              "平日周末连续学习链"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补手机规则"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "B_weekend_tutoring_full",
+          "roundNo": 4,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_B_r05",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "手机周五晚上以前能玩，现在有时也不敢放。他会说你们大人说话不算数。我承认，因为他成绩下来了，我心里不踏实。周末如果看手机，时间一长我就会提醒，然后容易吵。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "周五手机自由被收回",
+              "孩子说大人说话不算数",
+              "成绩下降导致家长不踏实",
+              "周末手机提醒易吵"
+            ],
+            "parentEmotion": [
+              "内疚",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "不敢放"
+            ],
+            "likelyMechanisms": [
+              "自由边界不稳定",
+              "承诺变化"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补学校/老师强度"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "B_weekend_tutoring_full",
+          "roundNo": 5,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_B_r06",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "学校强度还可以，不是最夸张的那种，但初二了老师都会抓。老师说他作业质量不稳定，订正拖。其实他不是完全不会，有些东西就是不复盘，学完就算。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "学校强度中等但初三抓得紧",
+              "老师说作业质量不稳/订正拖",
+              "孩子不复盘"
+            ],
+            "parentEmotion": [
+              "担心"
+            ],
+            "parentEvaluation": [
+              "学完就算"
+            ],
+            "likelyMechanisms": [
+              "复盘习惯弱",
+              "质量不稳"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补家长执行能力和失败调整"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "B_weekend_tutoring_full",
+          "roundNo": 6,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_B_r07",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "我试过周末只安排上午，下午让他自己安排，但下午他刷手机刷很久，我就又觉得不行。也试过列清单，结果清单越列越多，最后大家都烦。我的执行能力说实话一般，一忙起来就靠晚上突击。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "试过周末半天自由但孩子刷手机久",
+              "清单越列越多",
+              "家长执行一般且忙时靠晚上突击"
+            ],
+            "parentEmotion": [
+              "诚实",
+              "无力"
+            ],
+            "parentEvaluation": [
+              "不行"
+            ],
+            "likelyMechanisms": [
+              "计划过载",
+              "家长执行能力不足",
+              "自由使用能力弱"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "足够诊断"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "B_weekend_tutoring_full",
+          "roundNo": 7,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_B_r08",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "这周我只留了周日下午两小时不安排，他一开始也没干什么，就躺着刷视频。后来晚上情绪倒没那么炸。我不知道这个空时间是不是也需要慢慢练，不然我看他躺着就想说。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "周日下午两小时不安排",
+              "孩子开始躺着刷视频",
+              "晚上情绪较稳定",
+              "家长难忍孩子躺着"
+            ],
+            "parentEmotion": [
+              "观察",
+              "克制困难"
+            ],
+            "parentEvaluation": [
+              "想说"
+            ],
+            "likelyMechanisms": [
+              "自由时间恢复需适应",
+              "短期改善"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "更新诊断和观察点"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "B_weekend_tutoring_full",
+          "roundNo": 8,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        }
+      ]
+    },
+    {
+      "sampleId": "C_single_parent_high_input",
+      "sampleName": "父母一方缺位/妈妈高投入家庭",
+      "rounds": [
+        {
+          "caseId": "edu_C_r01",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "我们家情况特殊，他爸爸很早就不在了。我一个人带两个孩子，很多事只能我扛。所以我对他会比较着急，希望他将来能独立。现在他越来越不爱听我说学习，我也不知道是不是我说多了。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "父亲早逝",
+              "母亲独自带两个孩子",
+              "家长期待孩子独立",
+              "孩子不爱听学习话题"
+            ],
+            "parentEmotion": [
+              "沉重",
+              "焦虑"
+            ],
+            "parentEvaluation": [
+              "说多了"
+            ],
+            "likelyMechanisms": [
+              "信息不足",
+              "父母一方缺位"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补家庭分工"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "C_single_parent_high_input",
+          "roundNo": 1,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_C_r02",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "家里主要我管学习，奶奶管生活，有时候奶奶会护他，有时候也会说他把我气的。妹妹偶尔也说哥哥不自觉。真正做决定的还是我，因为没人能替我分担。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "妈妈管学习",
+              "奶奶管生活且时护时责",
+              "妹妹也说哥哥不自觉",
+              "妈妈做决定"
+            ],
+            "parentEmotion": [
+              "孤立",
+              "压力"
+            ],
+            "parentEvaluation": [
+              "没人分担"
+            ],
+            "likelyMechanisms": [
+              "家庭共同归责",
+              "母亲权威集中"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补上学日流程"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "C_single_parent_high_input",
+          "roundNo": 2,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_C_r03",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "上学日我下班回来会问作业，能检查就检查。背书我会抽，因为不抽他就糊弄。手机我一般收。晚上常常弄到十一点多，吵的话更晚。我也知道这样不好，但我不管他真的不行。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "妈妈下班检查作业/抽背",
+              "手机收走",
+              "晚睡11点多，吵架更晚",
+              "家长认为不管不行"
+            ],
+            "parentEmotion": [
+              "疲惫",
+              "防御"
+            ],
+            "parentEvaluation": [
+              "糊弄",
+              "不管不行"
+            ],
+            "likelyMechanisms": [
+              "妈妈单线高压管理",
+              "睡眠不足"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补周末/假期"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "C_single_parent_high_input",
+          "roundNo": 3,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_C_r04",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "周末我在店里时他自己控制，往往电视手机多。我要是在家，就会把前面没弄好的补一补。假期我更紧张，觉得在家时间长，不利用好太可惜。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "周末母亲不在时电视手机多",
+              "母亲在家时补欠账",
+              "假期因时间长更紧张"
+            ],
+            "parentEmotion": [
+              "焦虑",
+              "矛盾"
+            ],
+            "parentEvaluation": [
+              "不利用可惜"
+            ],
+            "likelyMechanisms": [
+              "在场高控制/不在失控",
+              "假期压力"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补情绪支持和非学习关系"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "C_single_parent_high_input",
+          "roundNo": 4,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_C_r05",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "非学习的时候他其实还会跟我开玩笑，也会说妈妈晚安，让我早点休息。他心善，我知道。只是我一提学习，他就像关掉一样。以前他会跟我多说学校，现在少了。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "非学习时孩子与母亲有连接",
+              "孩子会晚安和关心妈妈",
+              "学习话题触发关闭",
+              "学校分享减少"
+            ],
+            "parentEmotion": [
+              "心疼",
+              "担心"
+            ],
+            "parentEvaluation": [
+              "一提学习关掉"
+            ],
+            "likelyMechanisms": [
+              "关系基础存在但学习污染",
+              "学校表达减少"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补学校环境"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "C_single_parent_high_input",
+          "roundNo": 5,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_C_r06",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "学校班级还可以，老师要求比较严。老师说他上课走神、订正拖。班里竞争也有，他以前觉得自己还行，现在没那么有信心。外面的哥哥姐姐跟他聊，他会说得多一点。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "学校老师严",
+              "反馈走神订正拖",
+              "班级竞争",
+              "孩子信心下降",
+              "外部沟通更多"
+            ],
+            "parentEmotion": [
+              "担心",
+              "失落"
+            ],
+            "parentEvaluation": [
+              "没信心"
+            ],
+            "likelyMechanisms": [
+              "学校竞争压力",
+              "外部低压关系"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补家长期望语言"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "C_single_parent_high_input",
+          "roundNo": 6,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_C_r07",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "我有时候会跟他说男孩子要有担当，妈妈不可能一直在。我也会讲我这些年不容易，但不是天天讲。我只是想让他知道人不能太安逸。可他听了多半沉默。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长说男孩担当/妈妈不会一直在",
+              "讲自己不容易",
+              "意图让孩子不安逸",
+              "孩子听后沉默"
+            ],
+            "parentEmotion": [
+              "自证",
+              "担心"
+            ],
+            "parentEvaluation": [
+              "不能太安逸"
+            ],
+            "likelyMechanisms": [
+              "责任期待",
+              "愧疚压力"
+            ],
+            "shouldAskFollowup": true,
+            "expectedFollowupPurpose": "补调整失败"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "C_single_parent_high_input",
+          "roundNo": 7,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_C_r08",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "调整失败最多就是我说放手，后来又忍不住。写信道歉也有，但后面复发。他现在会说你每次都这样。我听了很难受。其实我不是不想改，是一看到他慢，我就怕他掉下去。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "家长放手后复管",
+              "写信道歉后复发",
+              "孩子说你每次都这样",
+              "家长怕孩子掉下去"
+            ],
+            "parentEmotion": [
+              "难受",
+              "自责",
+              "恐惧"
+            ],
+            "parentEvaluation": [
+              "不是不想改"
+            ],
+            "likelyMechanisms": [
+              "承诺不稳",
+              "孩子失望",
+              "生存焦虑驱动控制"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "足够生成家庭模式分析"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "C_single_parent_high_input",
+          "roundNo": 8,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        },
+        {
+          "caseId": "edu_C_r09",
+          "targetFeature": "education_diagnosis",
+          "inputMode": "text",
+          "parentText": "最近有一个小变化：我不讲以后，只说今晚一件小事，他会稍微好一点。比如只整理书包、只过十个单词，不加，他能接受。但我一提升学、以后、责任，他就垮。",
+          "hiddenGroundTruth": {
+            "facts": [
+              "具体小事不加任务时孩子接受度提高",
+              "中考/以后/责任话题使孩子状态变差"
+            ],
+            "parentEmotion": [
+              "发现",
+              "谨慎"
+            ],
+            "parentEvaluation": [
+              "就垮"
+            ],
+            "likelyMechanisms": [
+              "低范围任务有效",
+              "责任未来话题触发压力"
+            ],
+            "shouldAskFollowup": false,
+            "expectedFollowupPurpose": "应更新低成本方向"
+          },
+          "expectedGoodResponse": [
+            "不直接诊断家庭有问题",
+            "从家庭运转事实分析环境",
+            "指出有利/不利因素并保留边界",
+            "给低成本调整方向",
+            "信息不足时引导补充"
+          ],
+          "badResponseSignals": [
+            "上来给家庭贴标签",
+            "只给鸡汤建议",
+            "忽略学校/周末/睡眠/运动",
+            "把所有问题归因家长",
+            "硬生成完整诊断"
+          ],
+          "sampleId": "C_single_parent_high_input",
+          "roundNo": 9,
+          "expectedLatencyClass": "medium",
+          "shouldStream": true,
+          "expectedFirstVisibleTextMs": 10000,
+          "expectedFullResponseMs": 45000,
+          "route": "/education-diagnosis",
+          "api": {
+            "method": "POST",
+            "path": "/api/education-diagnosis"
+          }
+        }
+      ]
+    }
+  ],
+  "schemaVersion": "2026-06-12",
+  "targetRoute": "/education-diagnosis",
+  "targetApi": "/api/education-diagnosis"
+}

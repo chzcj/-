@@ -24,6 +24,101 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 ```
 
 ---
+
+## 2026-07-04 18:25 | Cursor | 任务反馈返回体验
+
+**做了什么**
+- 任务反馈面板顶部增加「← 回到任务界面」显著返回按钮；已反馈任务右上角显示「已反馈」标签（替代底部「已保存」）。
+- 底部 dock：新反馈为「确认提交反馈」，提交成功后自动收起面板回到任务列表；已反馈且未修改时为「回到任务界面」可点返回。
+- 补充 `task-submit-dock` / `task-feedback-back` 样式，列表底部留白防遮挡。
+
+**验证**
+- `npm run typecheck` ✅ `npm run build` ✅
+- `npm run deploy` ✅ readiness `ready:true`（2026-07-04 18:32 UTC+8）
+
+## 2026-07-04 18:15 | Cursor | Daily 流式 Plan P + 语音蒙版 + 预演检查点 + 怎么开口指南
+
+**做了什么**
+- **Batch1 交流流式**：`section-buffer.ts` Plan P（prose 真流 → `prose_complete` → 并行预填 section buffer → 串行 flush）；`/api/daily/stream` 新事件 + `/api/daily/section-retry`；`daily/page.tsx` AbortController 打断 + phase 状态机；hi-fi section CSS / 深度展开等宽。
+- **Batch2 语音**：`HiFiInputZone` fixed 全屏蒙版 + hold 按钮 icon-only / user-select:none，录音不再顶起 feed。
+- **Batch3 预演**：每 4 轮 parent 发言检查点 modal（继续/结束）；`rehearsal/analyze` 增 `showSuggestedWording`/`dailyToneDetected`/`suggestedWordingHint`；`SimulationSecondMeBubble` 第三 hint-block + system hint 气泡。
+- **Batch4 怎么开口**：`POST /api/daily/how-to-speak` 轻量 LLM（2-4 条说法+理由）；`/daily/how-to-speak` 页（HiFiMainShell chat Tab）；action `how_to_speak` 留交流 Tab 不跳预演。
+
+**为什么**
+- 产品方案：交流真串行体感、可打断、预演不 surprise auto-end、指南独立轻量 API。
+
+**验证**
+- `npm run typecheck` ✅ `npm run build` ✅
+- 部署：`SSH_HOST` 未设置，本地 `npm run deploy` 阻塞；线上 readiness 仍为 `ready:true`（未推送本次变更）。
+
+**下一步/风险**
+- 设置 `SSH_HOST`/`SSH_PASS`/`AUTH_TOKEN` 后执行 `npm run deploy` 上线。
+- orchestration 冷启动 ~8-16s 仍为首字前主要延迟（独立项）。
+- 客户端 abort 后服务端 stream 可能仍跑完（未接 request.signal）。
+
+## 2026-07-04 13:30 | Cursor | 流式 section 2B + 深度展开 1B + 账号 UI + 排版
+
+**做了什么**
+- **2B section 流式**：新增 `section-stream.ts` + `streamDailySectionCopy`（marker `---section:id---` 单 LLM 流）；BFF/NDJSON 推 `section_start`/`section_delta`/`section_complete`/`sections_complete`；前端逐块更新 `streamingText`。
+- **3A actions 顺序**：`composeDailyActions` 仅在全部可见 section 流式结束后发出；`DailyAiMessage` 需 `sectionsComplete` 才展示动作条。
+- **1B 深度展开 inline**：新增 `DailyDeepExpandCard`，点「查看深度展开」在 AI 气泡下方插入卡片（hidden sections + 像/不太像反馈 + 可折叠），仍调 `/api/daily/deep-expand`；保留 `/understanding-card` 作 fallback。
+- **账号管理 UI**：`/family-profile` 账号区改为 hi-fi `setting-row` 白底 chevron 列表；`globals.css` 补样式。
+- **排版**：`.hifi-app-root`/`.hifi-build-root` 根字号 16px/1.5；`.section-body` line-height 对齐 1.68。
+
+**为什么**
+- 用户确认方案 1B / 2B / 3A：豆包式块内流式 + actions 后置 + 深度展开不跳页。
+
+**验证**
+- `npm run typecheck` ✅ `npm run build` ✅ `npm run deploy` ✅ readiness `ready:true`
+
+**下一步/风险**
+- LLM 若未严格输出 marker 格式，section 流式会 fallback 到空骨架（已有 catch）；可观察线上首几轮并微调 SP。
+- 极快点深度展开时 hidden section 可能尚未后台填完（与此前风险相同）。
+- 未 commit/push（等用户确认）。
+
+## 2026-07-04 12:20 | Cursor | 键盘真机修复 + thinking四宫格 + 加速 + SP精简
+
+**做了什么**
+- 键盘：input-dock fixed 贴底 + keyboard-offset + body 锁滚动 + interactiveWidget；删输入区 busy 文案。
+- thinking：气泡内四宫格立即展示；warmTurn 跳过向量检索；orchestration 完即推 thinking。
+- SP：parentFacingCopy / dailyDialogueOrchestration 示例压缩。
+
+**验证**：typecheck + build 通过；deploy 需 SSH 变量。
+
+---
+## 2026-07-04 12:36 | Cursor | 部署上线（键盘/thinking/加速/SP）
+
+**验证**：`npm run deploy` 成功；`readiness: ready`；PM2 yujian 重启正常。请在手机 Safari 验：①键盘弹起输入条贴键盘顶 ②四宫格 thinking ③第二条起回复变快。
+
+---
+## 2026-07-04 07:50 | Cursor | 手机键盘上浮修复 + 交流 AI 输出耗时实测
+
+**做了什么**
+- 修复手机版输入框键盘弹起上浮（用户截图：输入条+底栏浮在键盘上方留大块空白）。
+  - 根因：`app/hifi-app.css` 由 `scripts/scope-hifi-app-css.mjs` 自动生成，build 时被覆盖；且原 `body.keyboard-open .bottom-tabs-wrap` 选择器被 scoper 误写成 `.hifi-app-root body.keyboard-open …`（body 不可能是 .hifi-app-root 后代），永远不生效 → iOS 靠自身「滚动到焦点」把整个 shell 顶上去，产生空隙。
+  - 重写 `src/hooks/useKeyboardOffset.ts`：用 `visualViewport` 计算 `--app-vh`(=键盘以上可视高) 与 `--app-vp-top`，仅当 offset>80 才覆盖（桌面聚焦不误伤 920px 上限）。
+  - 在 `app/globals.css`（手维护、不被自动生成覆盖）追加：`body.keyboard-open .hifi-app-root .app-shell{position:fixed;top:var(--app-vp-top,0);height:var(--app-vh,100dvh)}` + `.bottom-tabs-wrap{display:none}`（键盘中隐藏底栏）。特异性 (0,3,1) 高于生成式规则。
+- 实测交流 AI 输出耗时（线上，已部署并行化版本）：
+  - 暖轮（关键）：发起到首字 prose ~6.7s，首字到首个 section+action ~4.5s（共 ~11.2s），hidden section 异步再 ~10s，整轮 ~21.5s。
+  - 瓶颈 = `runOrchestrationPipeline`（检索+分析 LLM）阻塞 ~6.7s 才出第一个字；section 文案 LLM ~4.5s（已与 prose 并行）。
+
+**为什么**
+- 键盘上浮是体感最差的移动端 bug；原修复因 CSS 被自动生成覆盖+选择器写错而完全失效。
+- 耗时实测给后续优化提供基线：要再快，主攻 orchestration 冷启动（6.7s 空窗）。
+
+**验证**
+- typecheck + build + 部署（ready:true）通过。
+- 浏览器模拟 iPhone 390×844：正常态 shell=844、底栏 766–844、input dock 694–766（紧贴底栏，无空隙）；模拟 keyboard-open(--app-vh=480)：shell→fixed/480、底栏 display:none、input dock 落在 408–480（=键盘顶部，无空隙）。规则已确认在部署 CSS 中。
+
+**下一步**
+- 交流冷启动优化（可选，需产品确认）：①warm 轮跳过/轻量化 orchestration（启发式路由）；②分析 LLM 换更快通道或降 token；③section 文案按条流式（首条 1–2s 出，而非等整批 ~4.5s）。任一改动都需保证不损输出质量。
+- 真机 iOS 验证键盘不上浮（桌面无法模拟软键盘，已用 visualViewport 方案，需用户手机确认）。
+
+**风险/冲突**
+- `app/hifi-app.css` 是自动生成文件，**不要手改**（build 会覆盖）；自定义 hi-fi CSS 请放 `app/globals.css` 或改 `scripts/scope-hifi-app-css.mjs` 的 overrides 块。
+- `useKeyboardOffset` 仅在 offset>80px 才注入 `--app-vh`，桌面/无软键盘环境回退 100dvh，不影响桌面 920px 居中布局。
+
+---
 ## 2026-07-04 02:52 | Cursor | 全面自检：真实调用验证 + 4 处隐患修复
 
 **做了什么（修复"看似改了实则没用"的隐患）**
@@ -312,3 +407,81 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **待观察**
 - 线上预演多轮后 closingAdvice 质量；键盘 fixed 布局在 iPhone Safari 实机；profile_rewrite 超 2 天登录静默重写效果。
+
+## 2026-07-04 06:10 | Cursor | 交流流式并行 + 画像页占位过滤 + 设置 modal 美化 + 死信清理
+
+**做了什么**
+- 交流 BFF 并行化：`daily-turn-bff.ts` 把 `generateDailyProse` 与 `fillDailySectionCopy(visible)` 改 `Promise.all`；hidden section 文案后台第二次 LLM 异步填，不阻塞前台。新增 `onSections`/`onActions` 回调，`/api/daily/stream` 发 `sections`/`actions` 流事件，前端 `dailyStreamClient` 透出 `earlySections/earlyActions` + `onStart`。
+- 交流前端 live-turn：`app/daily/page.tsx` 重写为按 traceId 实时 patch 的 live turn（取代 streaming 占位气泡），sections/actions 流式期间即渲染；`DailyBubbleShell`/`DailyAiMessage` 放宽 `!streaming` 门控；揭示间隔 160→70ms 且只对新 section 动画。
+- 输入队列：生成中打字不吞字，入队后 actions 一到自动发出；`HiFiInputZone` 加 `queuedCount` + "正在整理要点与建议…" 过渡提示（替代被删的"你也可以继续输入下一条"）。
+- section 去重软化：`section-policy.ts` 的 `filterRecentSectionIds` 兜底至少保留 1 条可见 section，修掉长对话里同 id 反复出现导致 section 全被剥光的空态。
+- 画像页占位过滤：`/api/profile/hub` 命中"从服务器记录恢复"等占位 coreJudgment 时，用 `getBuildProgress().stageSummaries` 拼一段真实过渡分析兜底。
+- 设置 modal 美化：`globals.css` 补全 `.edit-modal*` 全套样式（底部上拉/居中弹窗、毛玻璃背景、pill 选中态、圆角输入、品牌色保存按钮）。
+- 死信清理：删除 job_queue 157 条 `failed` 死信（corpus 测试遗留 model_review/daily_deep/episode_ingest，FAST_AI_EMPTY_OUTPUT）；现存 4037 全 succeeded。
+
+**为什么**
+- 用户反馈：正文快、section/action 慢（串行 fillDailySectionCopy 拖在正文后）；正文后无提示家长懵；生成中输入被吞；画像页显示无意义"从服务器记录恢复"占位；设置 modal 太丑。
+
+**验证**
+- `npm run typecheck` ✅ `npm run build` ✅ `npm run deploy` ✅ readiness `ready:true`
+- 浏览器实测：daily 输入后 sections/actions 正常渲染（深度分析卡+动作条）；"正在整理要点与建议…"提示出现；编辑个人资料 modal 样式正常（pill/输入/保存按钮）；画像页占位文案已消失；ASR `/api/asr/token` 返回 wss wsUrl + mic 权限 granted；pm2 日志全 `model=deepseek-v4-flash`；job 队列 4037 succeeded/0 failed。
+
+**下一步/风险**
+- orchestration 冷启动 ~8-16s（检索+分析 LLM）仍是首字前主要延迟，与本次改动无关，后续可单独优化（检索缓存/分析降级）。
+- hidden section 后台填充期间若家长极快点"查看深度展开"，可能拿到空骨架；通常阅读 prose+sections 后已填好，暂不改（按用户选 q1=a 后台异步预填）。
+- model_review 偶发 FAST_AI_EMPTY_OUTPUT（flash 返回空），非阻塞，留意。
+- 未 commit/push（等用户确认）。
+
+## 2026-07-04 20:38 | Cursor | hi-fi/流式/记忆体系 A–E 全量上线
+
+**做了什么（五批，均已部署）**
+- Batch A（Hi-fi）：regenerate hifi-app.css / hifi-build.css（画像 accordion、progress-bar 样式落盘）；basic hero mascot={false}；README 新增 UI 白名单。
+- Batch B（流式）：daily/page 接 useStreamBuffer（rAF 合并 prose/section delta setState）；DailySectionView 接 parseStreamingSectionBody（流式段落/列表增量解析）；orchestration pipeline 接 retrieval-session-cache（warmTurn 复用首轮检索 packet，不再只取 8 条文本）；stream/route 加 TTFT/总耗时日志。
+- Batch C（登录刷新）：新增 daily-refresh-agent.ts + POST /api/account/daily-refresh（LLM 把记忆库转人话 Thinking 四宫格 + 画像卡片，失败用真实字段兜底，不写假模板）；hub 返回 thinkingChips/portraitCards/refreshedAt；daily/page 去掉「提醒后易抗拒」等假 fallback，改用真实 chips，登录先调 refresh 再读 hub；family-profile 卡片优先用 portraitCards，标题显示「上次整理：时间」。
+- Batch D（Job 监督）：queue.ts 加 CHILDOS_ENABLE_JOB_POLLER 开关 + worker 心跳（job_queue heartbeat 行）+ getGlobalJobBacklog + forceLoginJobCheck（登录重投 failed + 强制排 digest/model_review）+ getMemoryWriteStatusByTrace（memory_ledger）；ecosystem.config.js 拆 yujian(web,3000,poller off) + yujian-jobs(worker,3010,poller on)；readiness 加 jobs 指标（workerAlive/heartbeat/backlog/failed），超阈值 ready=false；deploy.sh 改用 pm2 startOrReload ecosystem.config.js。
+- Batch E（记忆契约）：executeWritePlan 停写死层（raw_materials/cleaned_facts/retrieval_indexes，由 CHILDOS_WRITE_DEAD_LAYERS 开关，默认关）+ 补 saveParentNarrativePattern 写入（此前漏写）；entry_evidence job 链式 digest_update + model_review（修复采集后画像不刷新）；stream 选择性 L1 gate（light_response 短寒暄跳过 memory_write）+ counter_evidence 高价值轮 enqueue episode_ingest；新增 /api/daily/memory-status + 交流页「已记住/这次先记在对话里」标签；新增 scripts/audit-memory-contract.mjs + npm run audit:memory-contract（15 项契约全绿）。
+
+**验证**
+- npm run typecheck ✓ / npm run build ✓ / audit:memory-contract ✓
+- 线上 readiness: ready=true, workerAlive=true (heartbeat ~145–880ms), pending=0, failed=0
+- PM2: yujian(3000) + yujian-jobs(3010) 双进程 online
+
+**风险/待优化**
+- yujian-jobs 跑的是完整 Next server.js（复用编译产物），占 ~88MB、监听 3010 内网端口；后续可换独立 worker bundle 省内存。
+- readiness workerAlive 阈值=3×POLL_MS(9s)；worker 重启窗口内会短暂 ready=false（约一个 tick 周期）。
+- daily-refresh Agent 走 FAST_AI JSON；LLM 不可用时降级为真实字段兜底（不写假模板），但人话质量会下降。
+- episode 选择性触发目前只覆盖 counter_evidence；深度展开/任务/采集另由对应接口触发，符合省 token 设计。
+- 未 commit/push（等用户确认）。
+
+## 2026-07-04 22:45 | Cursor | daily 契约大修 Batch 0–7（流式/记忆/深度机制/字段去重/cache）
+
+**做了什么**
+- Batch 0 契约固定+现状映射：新建 `src/types/daily-stream.ts` 共享 `DailyStreamEvent`/`DailyTurnState`/`DailyStreamRequest`/`parseDailyStreamEvent`；前后端 emitter与parser 共用此类型（route.ts + dailyStreamClient.ts 已接线）；新增 `docs/contracts/` 5 份契约（daily-request / daily-stream-events / daily-state-machine / memory-write / memory-read）。
+- Batch 1 BFF 流式重构：`daily-turn-bff.ts` 删 N+1 LLM 调用 + 50ms 节流，改单次 marker 流式（`streamDailySectionCopy`），prose 完→section 首字无缝衔接；`section-buffer.ts` SECTION_DELTA_PACE_MS 默认 50→0。
+- Batch 2 前端 parser+状态机对齐：dailyStreamClient 用共享 `DailyStreamEvent`；状态机契约文档修正（输入框在 actions_ready 解锁，非 final）。
+- Batch 3 读写对齐：`router.ts` 直喂 entryFacts（verifiableFacts+childBehaviors+triggerPoints 合并去重 slice 6）进 retrieval packet；`matchedMechanisms` 阈值 `===high` → `!==low`（含 medium）；pipeline.ts/prose-context.ts/database.ts 同步 entryFacts 字段。
+- Batch 4 deep_mechanism agent：新增 `prompts/background/deepMechanismReview.md`（五大生态系统+16 家庭理论框架）+ `src/lib/server/memory/deep-mechanism/reviewer.ts`（normalize LLM 输出→MechanismType/MechanismScore/EntryName，写 evidence_networks + 合并 pending_hypotheses + 写 parent_narrative_patterns 修复死写）；queue.ts 加 `deep_mechanism_review` job + 每日桶幂等 + memory_write/entry_evidence 链式 + forceLoginJobCheck + 四模块完成时立即触发（`deep_mechanism:build:` key）。
+- Batch 5 字段去重：`EntryEvidencePack.decomposedInput` 13→7（删 childQuotes/parentQuotes/parentAssumptions/timePlacePeople/parentEmotions/backgroundFactors，孩子原话不再记忆省 token）；`DailyInteractionUpdate` 删 relatedEvidence/recommendedResponseLogic/memoryImpact/updatedTargets 4 字段；entry-builder.ts/entry-evidence builder.ts/router.ts/synthesis/pipeline.ts/decision-engine.ts/entryEvidenceBuilder.md 同步。
+- Batch 6 prompt cache 优化：`prose-context.ts` payload 重排——稳定前缀（packReadingGuide+retrievalPack 稳定子字段+writingRules）在前，动态后缀（userText/proseMode/recentEvents/pendingHypotheses/routing）在后；retrievalPack 内部也按稳定→动态排键序，同一家庭连续多轮命中 prompt cache 前缀。
+- Batch 7 端到端验证：typecheck ✓ / build ✓ / audit:memory-contract ✓（16 项全绿）/ 契约测试 `test-daily-contract.mjs` 22/22 ✓ / 真实 e2e `test-daily-stream-e2e.mjs`（测试账号 12234567890）12/12 ✓——323 行 NDJSON 全被 parser 识别、final payload 完整、memory-status 按 traceId 查到记忆写入。
+- 部署：PM2 reload yujian(3000)+yujian-jobs(3010)，readiness ready=true/workerAlive=true/pending=0/failed=0。
+
+**为什么**
+- 用户核心担忧：信息流断点（写了不读、名义有 job 实际不跑、流式慢）。本次按「契约施工」五根绳子（契约/类型/测试/traceId/真实调用链）逐批对齐，每批有 contract test 或 e2e 验证，杜绝工程幻觉。
+- 流式慢根因：N+1 LLM 调用 + 50ms 人为节流 → 单次 marker 流式 + 0 节流，prose→section 首字无缝。
+- 字段去重：孩子原话等 dead extraction 每次写入浪费 token，且后端 LLM 还会再加工可验证事实加重消耗 → 删 6 字段，保留具体事实（verifiableFacts/childBehaviors/triggerPoints）直喂前台 AI。
+- prompt cache：每轮重注入 SP 太贵 → payload 稳定前缀前置，跨轮命中缓存。
+
+**验证**
+- npm run typecheck ✓ / npm run build ✓
+- node scripts/audit-memory-contract.mjs ✓（16/16）
+- npx tsx scripts/test-daily-contract.mjs ✓（22/22 事件+状态机契约）
+- TEST_PHONE=12234567890 npx tsx scripts/test-daily-stream-e2e.mjs ✓（12/12 真实 stream + memory-status）
+- 线上 readiness: ready=true, workerAlive=true, pending=0, failed=0
+
+**风险/待优化**
+- ChildStructureModel.primaryConditionalProfile → id 重构延后（高风险，跨 diagnosis/synthesis/router 多读处，本轮不动避免误伤）。
+- e2e 测试账号 12234567890 无四模块数据，本次只验证 stream 链路；四模块后陌生家长首轮 retrieval 是否真读到 entryFacts 需配合 build 流程再测（router.ts 已直喂，代码层已对齐）。
+- prompt cache 实际命中率需观察 LLM provider 计费面板；retrievalPack 稳定子字段在同一会话内机制不变时才稳定。
+- deep_mechanism_review 首次跑会调一次完整 LLM（~2458 tok SP），后续走 cache。
+- 未 commit/push（等用户确认后 push）。

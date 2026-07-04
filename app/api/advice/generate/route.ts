@@ -2,7 +2,9 @@ import { fail, ok, waitMock } from '@/lib/api-response';
 import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { adviceGenerateSchema } from '@/lib/schemas';
 import { resolveTenant } from '@/lib/server/memory/tenant';
+import { recordFeatureTurn } from '@/lib/server/memory/turn-event';
 import { generateAdvice } from '@/lib/server/store';
+import { createId } from '@/lib/storage/storageIds';
 
 export async function POST(request: Request) {
   if (!(await verifyAppApi(request))) return authError();
@@ -14,6 +16,21 @@ export async function POST(request: Request) {
   const tenant = await resolveTenant();
   const card = await generateAdvice(parsed.data.conversationId, tenant);
   if (!card) return fail('CONVERSATION_NOT_FOUND', '我找不到刚刚那次整理了。', undefined, 404);
+
+  const traceId = createId('trace');
+  recordFeatureTurn({
+    traceId,
+    tenant,
+    mode: 'advice_card',
+    userMessage: `conversation:${parsed.data.conversationId}`,
+    assistantReply: card.intro || card.items?.[0]?.body || '',
+    specializedContextPack: {
+      adviceCard: card,
+      conversationId: parsed.data.conversationId,
+      cardId: parsed.data.cardId,
+    },
+    linkedAreas: [],
+  });
 
   return ok({ adviceId: card.adviceId, card });
 }

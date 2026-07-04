@@ -70,7 +70,7 @@ function ProblemStartPageContent() {
           <QuestionCard badge="先从一件小事开始" question={state?.firstPrompt.question || '最近有没有一件让你有点挂心的小事，想先和我说说？'} hint={state?.firstPrompt.hint} />
         )}
       </div>
-      <BottomVoiceBar state="idle" hint="按住说，或者点键盘打字" disabled={loading} onSubmit={submit} />
+      <BottomVoiceBar state="idle" hint="按住说话，或点键盘输入" disabled={loading} onSubmit={submit} />
     </AppShell>
   );
 }

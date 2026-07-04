@@ -2,6 +2,8 @@ import type { LocalEvidenceRecord, LocalProfileSnapshot, LocalVerificationPoint 
 import { DEFAULT_CHILD_ID, DEFAULT_FAMILY_ID } from './storageSeed'
 import { updateStorage, getStorage } from './localStorageService'
 import { createId } from './storageIds'
+import { markOnboardingComplete } from '@/lib/profile/onboarding'
+import { markBuildSessionCompleted } from '@/lib/storage/entryStorage'
 
 export function createProfileSnapshot(input: {
   completeness: number
@@ -49,6 +51,8 @@ export function createProfileSnapshot(input: {
     evidenceRecords: [...current.evidenceRecords, ...evidenceRecords],
     verificationPoints: [...current.verificationPoints, ...vpRecords],
   }))
+  markOnboardingComplete()
+  markBuildSessionCompleted()
   return { profile, evidence: evidenceRecords, verificationPoints: vpRecords }
 }
 

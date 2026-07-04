@@ -11,7 +11,8 @@ import type {
   DailyInteractionUpdate,
   RetrievalIndex,
   EntryName,
-  TurnEvent
+  TurnEvent,
+  UserTask,
 } from '@/types/database'
 import {
   isDatabaseEnabled,
@@ -117,7 +118,9 @@ function getItemId(layerName: string, value: unknown, t: TenantId): string {
       record.hypothesisId ||
       record.cycleId ||
       record.updateId ||
-      record.indexId
+      record.indexId ||
+      record.taskId ||
+      record.taskId
 
     if (typeof explicitId === 'string' && explicitId.trim()) return explicitId
     if (layerName === 'entry_evidence_packs' && typeof record.entryName === 'string') {
@@ -224,6 +227,56 @@ export async function getLatestBuiltProfileSnapshot(tenant: TenantId): Promise<B
   return (await readLayer<BuiltProfileSnapshot>('built_profile_snapshots', tenant)).slice(-1)[0] || null
 }
 
+export type RemoteBuildState = {
+  introSeen: boolean
+  basicInfoDone: boolean
+  completedEntries: string[]
+  stageSummaries: Array<{
+    entryType: string
+    mainJudgment: string
+    facts: string[]
+    pendingHypotheses: string[]
+    note?: string
+  }>
+  updatedAt: string
+}
+
+export async function saveBuildProgress(state: RemoteBuildState, tenant: TenantId) {
+  await replaceLayer(
+    'build_progress',
+    [toItem('build_progress', state, tenant, `${tenant.familyId}:${tenant.childId}:latest`)],
+    tenant
+  )
+}
+
+export async function getBuildProgress(tenant: TenantId): Promise<RemoteBuildState | null> {
+  return (await readLayer<RemoteBuildState>('build_progress', tenant)).slice(-1)[0] || null
+}
+
+export type AccountClientBackup = {
+  version: 'account.client.v1'
+  dailyThread: Array<{
+    role: 'parent' | 'ai'
+    text: string
+    cards?: unknown
+    linkedAreas?: string[]
+  }>
+  storage: Record<string, unknown> | null
+  updatedAt: string
+}
+
+export async function saveAccountClientBackup(backup: AccountClientBackup, tenant: TenantId) {
+  await replaceLayer(
+    'account_client_backup',
+    [toItem('account_client_backup', backup, tenant, `${tenant.familyId}:${tenant.childId}:latest`)],
+    tenant
+  )
+}
+
+export async function getAccountClientBackup(tenant: TenantId): Promise<AccountClientBackup | null> {
+  return (await readLayer<AccountClientBackup>('account_client_backup', tenant)).slice(-1)[0] || null
+}
+
 export async function saveConditionalProfile(profile: ConditionalProfile, tenant: TenantId) {
   await upsertLayer('conditional_profiles', [toItem('conditional_profiles', profile, tenant)], tenant)
 }
@@ -305,7 +358,84 @@ export async function getTurnEventByTraceId(tenant: TenantId, traceId: string): 
 
 export async function listTurnEvents(tenant: TenantId, limit = 50): Promise<TurnEvent[]> {
   const all = await readLayer<TurnEvent>('turn_events', tenant)
-  return all.slice(-limit).reverse() // 最近的在前
+  return all
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .slice(-limit)
+    .reverse()
+}
+
+/* ================================================================
+   UserTask：家长待试任务（跨设备，关联 sourceTraceId）
+   ================================================================ */
+export async function getUserTasks(tenant: TenantId): Promise<UserTask[]> {
+  return readLayer<UserTask>('user_tasks', tenant)
+}
+
+export async function saveUserTasks(tasks: UserTask[], tenant: TenantId) {
+  await replaceLayer(
+    'user_tasks',
+    tasks.map((task) => toItem('user_tasks', task, tenant, task.taskId)),
+    tenant
+  )
+}
+
+export async function getUserTaskById(tenant: TenantId, taskId: string): Promise<UserTask | null> {
+  if (typeof window === 'undefined' && isDatabaseEnabled()) {
+    return (await loadMemoryLayerItemById<UserTask>('user_tasks', taskId, tenant.familyId, tenant.childId)) || null
+  }
+  const all = await getUserTasks(tenant)
+  return all.find((t) => t.taskId === taskId) || null
+}
+
+export type ParentInputRecord = {
+  text: string
+  timestamp: string
+  source: 'daily_update' | 'turn_event'
+  traceId?: string
+}
+
+/** 合并 daily_updates + turn_events，保证历史家长输入可被检索召回 */
+export async function getMergedParentInputHistory(
+  tenant: TenantId,
+  limit = 80
+): Promise<ParentInputRecord[]> {
+  const [updates, turns] = await Promise.all([
+    getDailyInteractionUpdates(tenant),
+    readLayer<TurnEvent>('turn_events', tenant),
+  ])
+
+  const byText = new Map<string, ParentInputRecord>()
+
+  for (const u of updates) {
+    const text = u.newInput?.trim()
+    if (!text) continue
+    const timestamp = u.timestamp || u.createdAt || ''
+    byText.set(text, {
+      text,
+      timestamp,
+      source: 'daily_update',
+      traceId: u.sourceEventId,
+    })
+  }
+
+  for (const t of turns) {
+    const text = t.userMessage?.trim()
+    if (!text) continue
+    const timestamp = t.createdAt || ''
+    const prev = byText.get(text)
+    if (!prev || timestamp >= prev.timestamp) {
+      byText.set(text, {
+        text,
+        timestamp,
+        source: 'turn_event',
+        traceId: t.traceId,
+      })
+    }
+  }
+
+  return [...byText.values()]
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    .slice(-limit)
 }
 
 /* ================================================================
