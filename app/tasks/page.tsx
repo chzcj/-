@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
-import { TaskFeedbackPanel } from '@/components/tasks/TaskFeedbackPanel'
+import { TaskFeedbackPanel, taskStatusVariant } from '@/components/tasks/TaskFeedbackPanel'
 import {
   fetchTasksFromServer,
   updateTaskFeedback,
@@ -14,6 +14,7 @@ import {
 function taskStatus(task: TaskItem) {
   if (task.status) return task.status
   if (task.observation || task.feedback?.completed === '是') return '已完成'
+  if (task.feedback?.completed === '否') return '进行中'
   return '待执行'
 }
 
@@ -21,7 +22,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [savingId, setSavingId] = useState<string | null>(null)
   const taskListRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -45,29 +46,31 @@ export default function TasksPage() {
     setSelectedId((prev) => (prev === taskId ? null : taskId))
   }
 
-  function backToTaskList() {
-    setSelectedId(null)
-    window.requestAnimationFrame(() => {
-      taskListRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-    })
-  }
-
-  async function handleFeedbackSubmit(taskId: string, feedback: TaskFeedback, status: string) {
-    if (submitting) return
-    setSubmitting(true)
+  async function handleFeedbackChange(taskId: string, feedback: TaskFeedback, status: string) {
+    setSavingId(taskId)
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              feedback,
+              status,
+              observation: feedback.note?.trim() || t.observation,
+            }
+          : t
+      )
+    )
     try {
       await updateTaskFeedback(taskId, feedback, status)
-      const items = await fetchTasksFromServer()
-      setTasks(items)
     } finally {
-      setSubmitting(false)
+      setSavingId(null)
     }
   }
 
   return (
     <OnboardingGuard>
       <HiFiMainShell activeTab="tasks">
-        <section className={`section${selectedId ? ' tasks-section-with-dock' : ''}`}>
+        <section className="section">
           <h2 className="section-title">今晚待试</h2>
           <p className="hero-copy" style={{ marginTop: 0, marginBottom: 12 }}>
             最近几条来自交流和预演，试过后反馈一下，我会记进记忆。
@@ -81,24 +84,33 @@ export default function TasksPage() {
               tasks.map((task) => {
                 const open = selectedId === task.id
                 const status = taskStatus(task)
+                const variant = taskStatusVariant(status)
                 return (
                   <div key={task.id} className="task-item" data-task-id={task.id}>
-                    <button
-                      type="button"
-                      className={`task-card${open ? ' selected' : ''}`}
-                      aria-expanded={open}
-                      onClick={() => toggleTask(task.id)}
-                    >
-                      <span className="task-title">{task.title}</span>
-                      <span className="task-source">{task.source || '来自交流'}</span>
-                      <span className="task-status">{status}</span>
-                    </button>
+                    <div className={`task-card${open ? ' selected' : ''}`}>
+                      <p className="task-title">{task.title}</p>
+                      <div className="task-meta">
+                        <span className="task-source">{task.source || '来自交流'}</span>
+                        <button
+                          type="button"
+                          className={`status-tag status-tag--${variant}${savingId === task.id ? ' saving' : ''}`}
+                          aria-expanded={open}
+                          aria-label={`${status}，${open ? '收起' : '展开'}反馈`}
+                          onClick={() => toggleTask(task.id)}
+                        >
+                          <span className="status-text">{status}</span>
+                          <span
+                            className={`status-caret ${open ? 'down' : 'up'}`}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </div>
+                    </div>
                     {open ? (
                       <TaskFeedbackPanel
                         task={task}
-                        disabled={submitting}
-                        onSubmit={handleFeedbackSubmit}
-                        onBackToList={backToTaskList}
+                        disabled={savingId === task.id}
+                        onFeedbackChange={handleFeedbackChange}
                       />
                     ) : null}
                   </div>

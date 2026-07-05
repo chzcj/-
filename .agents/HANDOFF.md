@@ -25,7 +25,23 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ---
 
-## 2026-07-05 11:45 | Cursor | Batch B/C/E 契约与文档
+## 2026-07-05 11:26 | Cursor | 部署 + 记忆契约文档/测试收拢
+
+**做了什么**
+- 生产部署成功（readiness ready:true）；e2e stream **18/18**（section_start 31ms、runtime.mergedSpCall=true）
+- 更新 `memory-read.md` / `memory-write.md`（entryFacts、matchedMechanisms≠low、parent_narrative 写入路径、childQuotes 已砍）
+- 新增 `scripts/test-retrieval-packet.mjs`；`test:contracts` 纳入检索 packet 静态门控
+
+**验证**
+- deploy ✓ / curl readiness ready:true ✓
+- e2e 18/18 ✓
+
+**下一步**
+- 可选：`SSH_PASS=… npm run audit:memory` 对审计账号做 DB 召回探测
+
+**风险/冲突**
+- 勿将部署凭据写入 HANDOFF/Git
+
 
 **做了什么**
 - **Batch B**：新增 `frontend-read-pack.ts`（`FrontendReadSchema` + `pickFrontendReadPack` + 泄漏检测）；`prose-context.ts` 改调门控；`scripts/test-frontend-read-pack.mjs`（16 项契约测试）；npm scripts `test:frontend-read-pack` / `verify:conditional-profile`
@@ -624,3 +640,21 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **下一步**
 - Batch F1/F2/F4/F5（键盘/textarea/语音蒙版与 Safari 卡死）
 - Batch A 流式 chunk_smooth
+
+## 2026-07-05 11:35 | Cursor | 任务页状态键与反馈面板
+
+**做了什么**
+- `app/tasks/page.tsx`：任务卡改为 div；来源「来自交流」左下角、彩色状态键右下角；仅状态键控制展开/收起（灰色三角 up/down）
+- `src/components/tasks/TaskFeedbackPanel.tsx`：移除顶栏返回、底栏提交、已反馈标签；选项点击与备注失焦自动保存并记忆
+- `app/hifi-app.css`：`.status-tag--pending/progress/done` 三色 pill；灰色 caret；状态文字不可选中
+
+**为什么**
+- 用户要求状态键独占展开控制、视觉与 hi-fi 参考一致、反馈无需提交键且保留记忆
+
+**验证**
+- typecheck ✓ / build ✓
+- 部署：本机未设 `SSH_HOST`，未执行 deploy
+
+**下一步**
+- 设部署变量后 `npm run deploy`；Batch F / Batch A 继续
+

@@ -749,7 +749,7 @@
       border-radius: var(--radius-control);
       padding: 13px 15px;
       display: grid;
-      align-items: start;
+      align-items: center;
       background: rgba(255, 255, 255, 0.84);
       box-shadow: var(--shadow-soft);
     }

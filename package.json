@@ -25,7 +25,7 @@
     "audit:memory-contract": "node scripts/audit-memory-contract.mjs",
     "test:frontend-read-pack": "npx tsx scripts/test-frontend-read-pack.mjs",
     "verify:conditional-profile": "node scripts/verify-conditional-profile-reads.mjs",
-    "test:contracts": "npx tsx scripts/test-daily-contract.mjs && npx tsx scripts/test-frontend-read-pack.mjs && node scripts/verify-conditional-profile-reads.mjs && node scripts/audit-memory-contract.mjs",
+    "test:contracts": "npx tsx scripts/test-daily-contract.mjs && npx tsx scripts/test-frontend-read-pack.mjs && node scripts/verify-conditional-profile-reads.mjs && node scripts/test-retrieval-packet.mjs && node scripts/audit-memory-contract.mjs",
     "migrate:humanize-profiles": "node scripts/migrate-humanize-profile-titles.mjs",
     "test:account-lifecycle": "node scripts/test-account-lifecycle.mjs",
     "audit:memory": "node scripts/audit-memory-retrieval.mjs",
