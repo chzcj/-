@@ -7,6 +7,8 @@
 
 ## 前端 AI 读取字段集（FrontendReadSchema）
 
+实现：`src/lib/server/daily/frontend-read-pack.ts` 的 `pickFrontendReadPack()`。
+
 `buildDailyProsePayload`（[prose-context.ts](../../src/lib/server/daily/prose-context.ts)）构造的 `retrievalPack` 是前端 AI 的**唯一**上下文来源，只含以下子字段：
 
 | 字段 | 来源 | 含义 | 必读 |
@@ -40,7 +42,7 @@
 
 - **机制层**（evidence_networks.candidateMechanismMatrix）：synthesis 首次写草案，deep_mechanism 覆盖为深度机制。retrieval 统一从 evidence_networks 读机制名 → 前端 matchedMechanisms。
 - **画像层**（built_profile_snapshots）：synthesis 写 coreJudgment/deepMechanism；deep_mechanism 跑完同步刷新 deepMechanism，保持与机制层一致。
-- **互动模式层**（L7 FamilyInteractionCycle）：唯一真源。ChildStructureModel.likelyFamilyInteractionPatterns 已删（dead write）。retrieval 从 L7 cycles 拼 familyPatterns。
+- **互动模式层**（L7 FamilyInteractionCycle）：唯一真源。多阶段字段对照见 [family-interaction-stages.md](./family-interaction-stages.md)。retrieval 从 L7 cycles 拼 familyPatterns。
 
 ## 条件画像两阶段（非冗余）
 

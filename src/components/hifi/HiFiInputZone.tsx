@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTencentAsrInput } from '@/hooks/useTencentAsrInput'
 
 type HiFiInputZoneProps = {
@@ -25,8 +25,17 @@ export function HiFiInputZone({
   const [text, setText] = useState('')
   const holdButtonRef = useRef<HTMLButtonElement>(null)
   const activePointerRef = useRef<number | null>(null)
+  const holdingRef = useRef(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const live = voice.liveTranscript
+
+  const resizeTextarea = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 112)}px`
+  }, [])
 
   const releasePointerCapture = useCallback(() => {
     const btn = holdButtonRef.current
@@ -38,6 +47,7 @@ export function HiFiInputZone({
   }, [])
 
   const stopVoiceSession = useCallback(() => {
+    holdingRef.current = false
     releasePointerCapture()
     if (voice.isListening) {
       voice.stopListening()
@@ -46,6 +56,7 @@ export function HiFiInputZone({
   }, [releasePointerCapture, voice])
 
   const finishVoice = useCallback(() => {
+    holdingRef.current = false
     releasePointerCapture()
     if (disabled) return
     const finalText = voice.stopListening() || live.trim()
@@ -56,7 +67,8 @@ export function HiFiInputZone({
   }, [disabled, live, onSubmit, releasePointerCapture, voice])
 
   const startHold = useCallback(() => {
-    if (disabled || voice.isListening) return
+    if (disabled || voice.isListening || holdingRef.current) return
+    holdingRef.current = true
     void voice.startListening()
   }, [disabled, voice])
 
@@ -64,6 +76,7 @@ export function HiFiInputZone({
     const value = text.trim()
     if (!value || disabled) return
     setText('')
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
     onSubmit(value, 'text')
   }, [disabled, onSubmit, text])
 
@@ -76,13 +89,25 @@ export function HiFiInputZone({
     setTextMode(false)
   }, [])
 
+  useEffect(() => {
+    if (textMode) resizeTextarea()
+  }, [textMode, text, resizeTextarea])
+
+  useEffect(() => {
+    const endHold = () => {
+      if (!holdingRef.current) return
+      finishVoice()
+    }
+    window.addEventListener('pointerup', endHold)
+    window.addEventListener('touchend', endHold)
+    return () => {
+      window.removeEventListener('pointerup', endHold)
+      window.removeEventListener('touchend', endHold)
+    }
+  }, [finishVoice])
+
   return (
     <div className="input-dock">
-      <div
-        className={`recording-mask${voice.isListening ? ' active' : ''}`}
-        aria-hidden={!voice.isListening}
-      />
-
       <section className={`recording-panel${voice.isListening ? ' active' : ''}`} aria-live="assertive">
         <div className="recording-card">
           <div className="wave" aria-hidden="true">
@@ -113,9 +138,7 @@ export function HiFiInputZone({
             onPointerCancel={() => finishVoice()}
             onLostPointerCapture={() => {
               activePointerRef.current = null
-              if (voice.isListening) {
-                voice.stopListening()
-              }
+              if (holdingRef.current) stopVoiceSession()
             }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -152,12 +175,16 @@ export function HiFiInputZone({
           </button>
           <div className="text-input-wrap">
             <textarea
+              ref={textareaRef}
               className="text-input"
               rows={1}
               placeholder={placeholder}
               value={text}
               disabled={disabled}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value)
+                resizeTextarea()
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()

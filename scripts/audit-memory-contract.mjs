@@ -99,6 +99,16 @@ console.log('audit:memory-contract — 记忆读写契约审计')
     'E6 episode_ingest 不得无条件每轮入队，必须由高价值轮条件触发')
 }
 
+// E7 前端 AI 读取门控：prose-context 必须经 pickFrontendReadPack
+{
+  const prose = read('src/lib/server/daily/prose-context.ts')
+  assert(prose.includes('pickFrontendReadPack'), 'E7 prose-context 必须使用 pickFrontendReadPack')
+  assert(
+    read('src/lib/server/daily/frontend-read-pack.ts').includes('FRONTEND_READ_PACK_KEYS'),
+    'E7 frontend-read-pack 模块存在'
+  )
+}
+
 if (failures > 0) {
   console.error(`\n审计失败：${failures} 项契约违反，禁止上线。`)
   process.exit(1)

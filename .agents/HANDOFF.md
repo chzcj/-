@@ -25,7 +25,50 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ---
 
-## 2026-07-04 18:25 | Cursor | 任务反馈返回体验
+## 2026-07-05 11:45 | Cursor | Batch B/C/E 契约与文档
+
+**做了什么**
+- **Batch B**：新增 `frontend-read-pack.ts`（`FrontendReadSchema` + `pickFrontendReadPack` + 泄漏检测）；`prose-context.ts` 改调门控；`scripts/test-frontend-read-pack.mjs`（16 项契约测试）；npm scripts `test:frontend-read-pack` / `verify:conditional-profile`
+- **Batch C**：`docs/contracts/family-interaction-stages.md`（五处 familyInteraction* 字段对照 + 条件画像两阶段）；`scripts/verify-conditional-profile-reads.mjs` 静态门控；`read-contract.md` 引用更新
+- **Batch E**：`section-llm-enrich.ts` / `memory-bridge-builder.ts` / `second-me-content.ts` 标 `@deprecated`
+
+**为什么**
+- 用户「继续」：完成读取契约门、互动模式文档、死文件标记；不合并 schema
+
+**验证**
+- typecheck ✓ / build ✓
+- `npx tsx scripts/test-frontend-read-pack.mjs` 16/16 ✓
+- `node scripts/verify-conditional-profile-reads.mjs` 10/10 ✓
+- 未改气泡/深度展开行宽 CSS
+
+**下一步**
+- 设 SSH_HOST 后 `npm run deploy`；`npx tsx scripts/test-daily-stream-e2e.mjs` 验证 runtime 字段
+- 本地可用 `npm run test:contracts` 一键跑契约套件
+
+**风险/冲突**
+- `frontend-read-pack.ts` 为 daily prose 唯一 pack 门控，改 slice 上限需同步契约测试
+
+
+**做了什么**
+- **Batch A 流式**：`prose-section-stream` marker 前缀缓冲（替代固定 20 字）；prose 尾 `\n` 修剪；`section-stream.buildPartialSections` finalize 失败保留已完成 section；`dailyStreamClient` final 不再覆盖 `acc`（防缩字闪烁）；`page.tsx` `sections_complete` 合并而非替换；`parseStreamingSection` mixed 与 `rawTextToPatch` 行级对齐；BFF `onSectionsComplete` 发全量 sections
+- **Batch F 移动端**：`useKeyboardOffset` 改 baseViewportHeight 方案、去掉 body fixed；`HiFiInputZone` 移除 recording-mask、textarea 自动增高、window touchend/pointerup 松手兜底；`useTencentAsrInput` 权限通过后再 `setIsListening(true)`
+- **Batch D SP 抽测**：BFF `runtime` 增 `mergedSpCall/proseLen/sectionIdsCompleted/taskTitlePresent`；e2e 脚本校验上述字段
+
+**为什么**
+- 用户要求继续其他批次，气泡/深度展开行宽不动；对齐前端渲染规则避免幻觉
+
+**验证**
+- typecheck ✓ / build ✓
+- e2e 对线上旧版：流式 21ms 无缝 ✓；runtime 新字段待部署后断言（本地未设 SSH_HOST，deploy 跳过）
+- 未改 `globals.css` 气泡 justify / 深度展开 padding
+
+**下一步**
+- 设 SSH_HOST 后 deploy；再跑 `npx tsx scripts/test-daily-stream-e2e.mjs` 验证 runtime 字段
+- Batch B/C/E 仍待做
+
+**风险/冲突**
+- 别动聊天气泡/深度展开行宽 CSS
+
 
 **做了什么**
 - 任务反馈面板顶部增加「← 回到任务界面」显著返回按钮；已反馈任务右上角显示「已反馈」标签（替代底部「已保存」）。
@@ -564,3 +607,20 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **风险**
 - 合并 system prompt 更长（parentFacingStyle+dailyDialogueOrchestration+parentFacingCopy），但稳定前缀可 prompt cache
 - 第 3 个 section 偶尔无流式 section_complete 事件（内容在 finalize 时补全，sections_complete/final 仍完整）
+
+## 2026-07-05 11:05 | Cursor | 聊天气泡/深度展开行宽对齐（Batch F3）
+
+**做了什么**
+- `app/hifi-app.css`：`.bubble` 改 `overflow-wrap: break-word`（原 anywhere 会在标点处提前断行）；`.section-body p` / `.bubble-reply` 加 `text-align: justify` + `text-justify: inter-ideograph`
+- `app/globals.css`：深度展开 `.deep-expand-card` padding 改为 14px 16px（与 `.bubble` 一致）；流式 `.section-body-streaming p` 与 `.deep-expand-body .section-body p` 同步 justify；列表/引语保持左对齐
+
+**为什么**
+- 用户确认问题在聊天气泡正文与深度展开，非输入框
+- 手机窄屏左对齐导致右侧参差；深度展开卡片 padding 比主气泡窄 4px，行宽不一致
+
+**验证**
+- typecheck ✓ / build ✓ / 部署 ✓ / readiness ready:true
+
+**下一步**
+- Batch F1/F2/F4/F5（键盘/textarea/语音蒙版与 Safari 卡死）
+- Batch A 流式 chunk_smooth

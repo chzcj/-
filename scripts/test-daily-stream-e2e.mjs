@@ -101,6 +101,18 @@ if (finalEvt) {
   assert(typeof finalEvt.traceId === 'string', `final.traceId 存在 (${finalEvt.traceId?.slice(0,20)})`)
   console.log(`  final: text=${finalEvt.text.length}字 sections=${finalEvt.sections?.length} actions=${finalEvt.actions?.length} traceId=${finalEvt.traceId?.slice(0,24)}`)
 
+  const rt = finalEvt.runtime
+  if (rt && typeof rt === 'object') {
+    const r = rt
+    console.log(`  runtime: mergedSp=${r.mergedSpCall} proseLen=${r.proseLen} visibleSections=${r.visibleSectionCount} taskTitle=${r.taskTitlePresent} sectionIds=${JSON.stringify(r.sectionIdsCompleted)}`)
+    assert(r.mergedSpCall === true, 'runtime.mergedSpCall=true（合并 SP 调用）')
+    assert(typeof r.proseLen === 'number' && r.proseLen > 0, `runtime.proseLen>0 (got ${r.proseLen})`)
+    assert(Array.isArray(r.sectionIdsCompleted) && r.sectionIdsCompleted.length > 0, 'runtime.sectionIdsCompleted 非空')
+    if (r.promptCache && typeof r.promptCache === 'object') {
+      console.log(`  promptCache: ${JSON.stringify(r.promptCache).slice(0, 120)}`)
+    }
+  }
+
   // timing 验证：proseFirstMs（首字）+ sectionsMs（section 完成）
   const t = finalEvt.timing
   if (t) {

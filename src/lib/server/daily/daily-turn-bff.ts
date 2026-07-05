@@ -34,9 +34,14 @@ export type DailyRuntimeFlags = {
   fastAiEnabled: boolean
   llmProseUsed: boolean
   llmSectionCopyUsed: boolean
+  mergedSpCall?: boolean
   fallbackUsed: boolean
   retrievalUsed: boolean
   retrievalEpisodeCount: number
+  proseLen?: number
+  visibleSectionCount?: number
+  sectionIdsCompleted?: string[]
+  taskTitlePresent?: boolean
   promptCache: ReturnType<typeof parentFacingPromptCacheInfo>
 }
 
@@ -192,7 +197,7 @@ export async function runDailyTurnBff(args: {
   if (!isSafety && sections.length) {
     finalText = dedupeProseFromSections(finalText, sections)
     finalText = clampProse(finalText, proseMode)
-    args.onSectionsComplete?.(sections.filter((s) => !s.hidden))
+    args.onSectionsComplete?.(sections)
     args.onSections?.(sections)
   }
 
@@ -236,9 +241,14 @@ export async function runDailyTurnBff(args: {
       fastAiEnabled: isFastAIEnabled(),
       llmProseUsed: !isSafety,
       llmSectionCopyUsed,
+      mergedSpCall: llmSectionCopyUsed,
       fallbackUsed: false,
       retrievalUsed: retrievalEpisodeCount > 0 || (ctx.matchedMechanisms?.length || 0) > 0,
       retrievalEpisodeCount,
+      proseLen: finalText.length,
+      visibleSectionCount: visibleFilled.length,
+      sectionIdsCompleted: visibleFilled.map((s) => s.id),
+      taskTitlePresent: Boolean(taskTitleFromSections?.trim()),
       promptCache: parentFacingPromptCacheInfo(),
     },
     timing: {

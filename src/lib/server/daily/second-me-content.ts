@@ -1,3 +1,7 @@
+/**
+ * @deprecated 仅被已废弃的 section-llm-enrich 引用；daily 主流程不再使用「第二我」规则拼装。
+ * 保留仅供历史参考，新功能勿引用。
+ */
 import type { DailyCards, OrchestrationOutput } from '@/types/database'
 import {
   humanReadableHeadline,

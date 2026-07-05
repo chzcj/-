@@ -1,4 +1,8 @@
 import type { OrchestrationOutput } from '@/types/database'
+import {
+  frontendReadPackHasContent,
+  pickFrontendReadPack,
+} from '@/lib/server/daily/frontend-read-pack'
 
 export type ProseMode = 'follow_up' | 'analysis' | 'light'
 
@@ -41,17 +45,7 @@ const PACK_FIELD_GUIDE: Record<string, string> = {
 }
 
 function packHasContent(ctx: OrchestrationOutput['retrievedContext']): boolean {
-  return (
-    (ctx.relevantChildStructureModel?.length || 0) > 0 ||
-    (ctx.relevantEntryEvidencePacks?.length || 0) > 0 ||
-    (ctx.entryFacts?.length || 0) > 0 ||
-    (ctx.relevantPastEvents?.length || 0) > 0 ||
-    (ctx.relevantPendingHypotheses?.length || 0) > 0 ||
-    (ctx.matchedMechanisms?.length || 0) > 0 ||
-    (ctx.relevantFamilyInteractionPatterns?.length || 0) > 0 ||
-    (ctx.childQuotes?.length || 0) > 0 ||
-    (ctx.parentNarrativePattern?.length || 0) > 0
-  )
+  return frontendReadPackHasContent(pickFrontendReadPack(ctx))
 }
 
 /** 结构化上下文包：稳定 SP 在 system，动态 pack 在 user payload（利于 prompt cache）。
@@ -65,19 +59,8 @@ export function buildDailyProsePayload(output: OrchestrationOutput, userText: st
   const mode = resolveProseMode(output)
   const hasPack = packHasContent(ctx)
 
-  // retrievalPack：前端 AI 只读不思考的子集（见 docs/contracts/read-contract.md）。
-  // 稳定子字段在前（跨轮不变），动态子字段在后（每轮变）
-  const retrievalPack = {
-    childStructureModels: ctx.relevantChildStructureModel?.slice(0, 4) || [],
-    entryEvidence: ctx.relevantEntryEvidencePacks?.slice(0, 4) || [],
-    entryFacts: ctx.entryFacts?.slice(0, 6) || [],
-    matchedMechanisms: ctx.matchedMechanisms?.slice(0, 3) || [],
-    familyPatterns: ctx.relevantFamilyInteractionPatterns?.slice(0, 2) || [],
-    parentUnderstanding: ctx.parentNarrativePattern?.slice(0, 6) || [],
-    // 动态尾部：近期事件 + 待验证假设每轮可能变
-    recentEvents: ctx.relevantPastEvents?.slice(0, 5) || [],
-    pendingHypotheses: ctx.relevantPendingHypotheses?.slice(0, 3) || [],
-  }
+  // retrievalPack：前端 AI 只读子集（见 docs/contracts/read-contract.md + frontend-read-pack.ts）
+  const retrievalPack = pickFrontendReadPack(ctx)
 
   return {
     // === 稳定前缀（跨轮可命中 prompt cache）===

@@ -88,6 +88,8 @@ export type SectionStreamHandlers = {
 
 export type DailyStreamResult = {
   acc: string
+  /** final 事件中的去重后正文（落库用）；展示以 acc 流式累积为准，避免缩字闪烁 */
+  finalText?: string
   traceId?: string
   finalCards?: DailyCards
   finalSections?: DailySection[]
@@ -133,7 +135,7 @@ export function parseDailyStreamLine(line: string, state: DailyStreamResult) {
     } else if (evt.type === 'actions' && Array.isArray(evt.actions)) {
       state.earlyActions = evt.actions
     } else if (evt.type === 'final') {
-      if (evt.text) state.acc = evt.text
+      if (evt.text) state.finalText = evt.text
       if (evt.cards && typeof evt.cards === 'object') state.finalCards = evt.cards
       if (Array.isArray(evt.sections)) state.finalSections = evt.sections
       if (Array.isArray(evt.actions)) state.finalActions = evt.actions

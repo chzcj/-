@@ -32,6 +32,14 @@ function mergeSectionList(existing: DailySection[] | undefined, patch: DailySect
   return list
 }
 
+function mergeSectionLists(existing: DailySection[] | undefined, incoming: DailySection[]): DailySection[] {
+  let list = [...(existing || [])]
+  for (const patch of incoming) {
+    list = mergeSectionList(list, patch)
+  }
+  return list
+}
+
 function patchStreamingSection(
   existing: DailySection[] | undefined,
   id: string,
@@ -186,7 +194,10 @@ function DailyDialogueContent() {
         (sections) => {
           proseBuffer.flushNow()
           sectionBuffer.flushNow()
-          patchTurn(activeIdRef.current, { sections, sectionsComplete: true })
+          patchTurn(activeIdRef.current, (t) => ({
+            sections: mergeSectionLists(t.sections, sections),
+            sectionsComplete: true,
+          }))
         },
         abortController.signal
       )

@@ -12,6 +12,16 @@ import {
 
 const SECTION_MARKER_PREFIX = '---section:'
 
+/** 仅当末尾可能是 marker 前缀时才缓冲，避免短 prose 被整段吞掉 */
+function proseEmitEnd(full: string, hasSections: boolean): number {
+  if (!hasSections) return full.length
+  if (full.includes(SECTION_MARKER_PREFIX)) return full.length
+  for (let keep = Math.min(full.length, SECTION_MARKER_PREFIX.length - 1); keep > 0; keep--) {
+    if (SECTION_MARKER_PREFIX.startsWith(full.slice(-keep))) return full.length - keep
+  }
+  return full.length
+}
+
 /** 合并 system：parentFacingStyle + dailyDialogueOrchestration + parentFacingCopy（style 只出现一次）。
  *  稳定前缀，便于 provider 侧 prompt cache 命中。 */
 function combinedProseAndSectionSystem(): string {
@@ -64,6 +74,8 @@ export async function streamProseAndSections(
   let proseSent = 0
   let proseText = ''
 
+  const hasSections = visibleSkeletons.length > 0
+
   await requireTextStream(
     combinedProseAndSectionSystem(),
     task,
@@ -79,7 +91,7 @@ export async function streamProseAndSections(
       full += delta
       const markerIdx = full.indexOf(SECTION_MARKER_PREFIX)
       if (markerIdx >= 0) {
-        proseText = full.slice(0, markerIdx)
+        proseText = full.slice(0, markerIdx).replace(/\n+$/, '')
         const inc = proseText.slice(proseSent)
         if (inc) callbacks.onProseDelta?.(inc)
         proseSent = proseText.length
@@ -87,8 +99,7 @@ export async function streamProseAndSections(
         proseDone = true
         sectionTracker?.feed(full.slice(markerIdx))
       } else {
-        // prose 阶段：发增量，缓冲末尾 20 char 防止 marker 片段被当 prose 发
-        const safeEnd = Math.max(0, full.length - 20)
+        const safeEnd = proseEmitEnd(full, hasSections)
         if (safeEnd > proseSent) {
           callbacks.onProseDelta?.(full.slice(proseSent, safeEnd))
           proseSent = safeEnd
@@ -100,7 +111,7 @@ export async function streamProseAndSections(
 
   if (!proseDone) {
     // 流结束仍无 marker：全部当 prose
-    proseText = full
+    proseText = full.replace(/\n+$/, '')
     const inc = proseText.slice(proseSent)
     if (inc) callbacks.onProseDelta?.(inc)
     callbacks.onProseComplete?.()
@@ -115,18 +126,12 @@ export async function streamProseAndSections(
     const result = sectionTracker.finalize()
     return { prose: clampProse(proseText, resolveProseMode(output)), sections: result.sections, taskTitle: result.taskTitle }
   } catch (err) {
-    // 部分 section 缺失：对缺失的发 onSectionError，已完成的保留
     const message = err instanceof Error ? err.message : '这部分未生成'
-    const completed = new Set<string>()
-    // finalize 失败时无法拿到已完成列表，回退：对每个未在 fullText 中出现的 section 发 error
+    const partial = sectionTracker.buildPartialSections()
     for (const sk of visibleSkeletons) {
-      if (!full.includes(`---section:${sk.id}---`)) {
-        callbacks.onSectionError?.(sk.id, message)
-      } else {
-        completed.add(sk.id)
-      }
+      const hasContent = partial.find((s) => s.id === sk.id && (s.paragraphs?.length || s.items?.length || s.quotes?.length))
+      if (!hasContent) callbacks.onSectionError?.(sk.id, message)
     }
-    // 返回骨架（已完成的由前端 section_complete 事件保留，这里只补缺失的骨架）
-    return { prose: clampProse(proseText, resolveProseMode(output)), sections: visibleSkeletons, taskTitle: undefined }
+    return { prose: clampProse(proseText, resolveProseMode(output)), sections: partial, taskTitle: undefined }
   }
 }

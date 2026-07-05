@@ -44,11 +44,9 @@ export function useTencentAsrInput() {
 
   async function startListening() {
     setError('');
-    setIsListening(true);
 
     if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       setError('语音转文字需要 HTTPS 安全连接，可以先打字输入。');
-      setIsListening(false);
       return;
     }
 
@@ -56,7 +54,6 @@ export function useTencentAsrInput() {
       if (!navigator.mediaDevices?.getUserMedia) {
         setIsSupported(false);
         setError('当前浏览器暂不支持麦克风采集，可以先打字输入。');
-        setIsListening(false);
         return;
       }
 
@@ -115,6 +112,7 @@ export function useTencentAsrInput() {
 
           source.connect(processor);
           processor.connect(audioCtx.destination);
+          setIsListening(true);
         } catch (err: unknown) {
           const msg = mapMicrophoneError(err);
           setError(msg);

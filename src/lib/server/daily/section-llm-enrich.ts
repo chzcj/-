@@ -1,3 +1,7 @@
+/**
+ * @deprecated 未接入 daily BFF 主流程；hidden section 已由 fillDailySectionCopy 替代。
+ * 保留仅供历史参考，新功能勿引用。
+ */
 import 'server-only'
 
 import type { OrchestrationOutput } from '@/types/database'

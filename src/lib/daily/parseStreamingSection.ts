@@ -25,20 +25,18 @@ export function parseStreamingSectionBody(
   }
 
   if (kind === 'mixed') {
-    const blocks = trimmed.split(/\n\n+/).map((b) => b.trim()).filter(Boolean)
-    const paragraphs: string[] = []
     const items: string[] = []
-    for (const block of blocks) {
-      const lines = block.split(/\n/).map((l) => l.trim()).filter(Boolean)
-      const listLines = lines.filter((l) => /^[-•*]/.test(l))
-      if (listLines.length === lines.length && listLines.length > 0) {
-        items.push(...listLines.map((l) => l.replace(/^[-•*]\s*/, '')))
-      } else {
-        paragraphs.push(block)
-      }
+    const paragraphs: string[] = []
+    for (const line of trimmed.split(/\n/)) {
+      const t = line.trim()
+      if (!t) continue
+      if (/^[-•*]/.test(t)) items.push(t.replace(/^[-•*]\s*/, ''))
+      else paragraphs.push(t)
     }
-    if (items.length) return { paragraphs: paragraphs.length ? paragraphs : undefined, items }
-    return { paragraphs: paragraphs.length ? paragraphs : [trimmed] }
+    return {
+      paragraphs: paragraphs.length ? paragraphs : undefined,
+      items: items.length ? items : undefined,
+    }
   }
 
   const paragraphs = trimmed

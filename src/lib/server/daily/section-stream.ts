@@ -183,7 +183,17 @@ export function createSectionStreamTracker(skeletons: DailySection[], callbacks:
     return { sections, taskTitle: parsed.taskTitle }
   }
 
-  return { feed, finalize }
+  function buildPartialSections(): DailySection[] {
+    const parsed = parseMarkerStream(fullText, skeletons, true)
+    const sections: DailySection[] = []
+    for (const sk of skeletons) {
+      const raw = (parsed.sectionTexts.get(sk.id) || '').trim()
+      if (raw) sections.push(mergeSectionCopy(sk, rawTextToPatch(sk, raw)))
+    }
+    return sections
+  }
+
+  return { feed, finalize, buildPartialSections }
 }
 
 export function buildSectionStreamTask(skeletons: DailySection[]): string {

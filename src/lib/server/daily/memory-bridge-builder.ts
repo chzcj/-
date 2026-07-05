@@ -1,3 +1,7 @@
+/**
+ * @deprecated 未接入 daily BFF；记忆桥接段落已由 section composer / prose 检索包替代。
+ * 保留仅供历史参考，新功能勿引用。
+ */
 import 'server-only'
 
 import type { DailyCards, OrchestrationOutput } from '@/types/database'
