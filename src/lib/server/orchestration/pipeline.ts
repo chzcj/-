@@ -280,6 +280,7 @@ export async function runOrchestrationPipeline(input: OrchestrationInput): Promi
       recentDiagnosis: [],
       parentNarrativePattern: flattenParentUnderstanding(retrievalPacket.parentNarrativePattern || {}),
       childQuotes: retrievalPacket.childQuotes,
+      parentVerbatimSnippets: retrievalPacket.parentVerbatimSnippets || [],
       entryFacts: retrievalPacket.entryFacts,
     },
     relationshipToExistingModel: {

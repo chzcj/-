@@ -76,6 +76,16 @@ export function EntryCapturePage({ entryType }: { entryType: BuildEntryType }) {
     setLightPromptActive(true)
   }
 
+  const TARGET_CHARS = 400
+  const IDEAL_CHARS = 800
+  const charCount = draft.trim().length
+  const charHint =
+    charCount < TARGET_CHARS
+      ? `再讲具体一点会更好：还差约 ${TARGET_CHARS - charCount} 字，帮我们看清这个模块里的真实场景（不用整理成道理）。`
+      : charCount < IDEAL_CHARS
+        ? `信息量不错。若还能再补 ${IDEAL_CHARS - charCount} 字左右的细节，深度建模会更准。`
+        : '信息量很充分，可以继续。'
+
   async function handleContinue() {
     const merged = draft.trim()
     if (!merged || loading || !hasSubmittableEntryText(merged)) return
@@ -150,7 +160,7 @@ export function EntryCapturePage({ entryType }: { entryType: BuildEntryType }) {
       <HiFiBuildHero
         kicker={`${config.stepLabel} 专项采集`}
         title={config.title}
-        copy={config.subtitle}
+        copy={`${config.subtitle} 讲得越多我们对孩子越了解，清北教育专家会耐心听您讲完。`}
         compact
       />
 
@@ -165,7 +175,7 @@ export function EntryCapturePage({ entryType }: { entryType: BuildEntryType }) {
         <div className="record-box">
           <div className="record-head">
             <strong>真实情况记录</strong>
-            <span className="record-status">建议 30 秒以上</span>
+            <span className="record-status">请您尽量按住说话 1–2 分钟</span>
           </div>
           <textarea
             className="record-area"
@@ -178,6 +188,14 @@ export function EntryCapturePage({ entryType }: { entryType: BuildEntryType }) {
             <span>系统会先整理，不直接下结论</span>
             <span>{draft.length} 字</span>
           </div>
+          {charCount > 0 && charCount < IDEAL_CHARS ? (
+            <p className="hint-text" style={{ marginTop: 8 }}>{charHint}</p>
+          ) : null}
+          {hasText && !loading ? (
+            <p className="hint-text" style={{ marginTop: 6 }}>
+              提交后若系统还想追问，您也可以选择在追问页「暂不补充，直接整理」。
+            </p>
+          ) : null}
 
           <div className={`recording-strip${recording ? ' active' : ''}`}>
             <div className="recording-card">

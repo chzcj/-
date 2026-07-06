@@ -37,7 +37,7 @@ function stableHash(text: string): string {
 }
 
 export function sectionCopySystem(): string {
-  return `${agentPrompts.parentFacingStyle}\n\n---\n\n${agentPrompts.parentFacingCopy}`
+  return `${agentPrompts.parentFacingStyle}\n\n---\n\n${agentPrompts.deepModelingParentDigest}\n\n---\n\n${agentPrompts.parentFacingCopy}`
 }
 
 function mergeSectionCopy(skeleton: DailySection, patch: SectionCopyPatch): DailySection {

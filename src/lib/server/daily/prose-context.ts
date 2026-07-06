@@ -3,6 +3,7 @@ import {
   frontendReadPackHasContent,
   pickFrontendReadPack,
 } from '@/lib/server/daily/frontend-read-pack'
+import type { DeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 
 export type ProseMode = 'follow_up' | 'analysis' | 'light'
 
@@ -52,7 +53,11 @@ function packHasContent(ctx: OrchestrationOutput['retrievedContext']): boolean {
  *  Prompt cache 优化：payload 字段顺序「稳定前缀在前、动态后缀在后」。
  *  DeepSeek/Ark 按 byte-identical 前缀缓存，同一家庭连续多轮交流时，system + 稳定 pack 前缀命中缓存（~1/10 价），
  *  仅 recentEvents/userText/proseMode 等动态尾部重算。retrievalPack 内部也按稳定→动态排键序。 */
-export function buildDailyProsePayload(output: OrchestrationOutput, userText: string) {
+export function buildDailyProsePayload(
+  output: OrchestrationOutput,
+  userText: string,
+  options?: { deepModelDigest?: DeepModelDigestPack }
+) {
   const ctx = output.retrievedContext
   const route = output.routingDecision
   const rel = output.relationshipToExistingModel
@@ -66,11 +71,12 @@ export function buildDailyProsePayload(output: OrchestrationOutput, userText: st
     // === 稳定前缀（跨轮可命中 prompt cache）===
     packReadingGuide: PACK_FIELD_GUIDE,
     retrievalPack,
+    deepModelDigest: options?.deepModelDigest,
     writingRules: {
       outputOnlyProse: true,
       noJsonNoHeadings: true,
       noRepeatSectionContent: true,
-      citeRetrievalRequired: hasPack,
+      citeRetrievalRequired: hasPack || Boolean(options?.deepModelDigest?.anchoredFacts?.length),
       followUpMustStateDistinction: mode === 'follow_up',
       tone: '清北师兄/师姐和家长面谈：先接现场，不急着定性',
       internalFieldsForRoutingOnly: [

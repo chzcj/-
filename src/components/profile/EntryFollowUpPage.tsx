@@ -195,7 +195,7 @@ export function EntryFollowUpPage({ entryType }: { entryType: BuildEntryType }) 
               },
               {
                 id: 'skip',
-                label: '信息够了，直接整理',
+                label: '暂不补充，直接整理',
                 variant: 'quiet' as const,
                 onClick: handleSkipToSummary,
                 disabled: loading,

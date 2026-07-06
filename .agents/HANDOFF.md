@@ -25,6 +25,98 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ---
 
+## 2026-07-06 23:42 | Cursor | 深度建模升级 v2
+
+**做了什么**
+- **画像 Tab stale-first**：先读 tab cache 秒开，后台 `daily-refresh` + 强制网络拉 hub；`refreshedAt` 变化提示「画像已根据最新交流更新」
+- **双模型路由**：`PARENT_AI_*` 豆包（entry/daily/rehearsal 家长可见）+ `FAST_AI_*` DeepSeek（深度链）
+- **四模块采集**：软目标 1000 字、语音「按住 1–2 分钟」文案、`<600` 字强制追问、跳过追问文案强化
+- **深度机制多 Agent 链**：`ecosystemClassifier` → `theoryMatcher` → `mechanismSynthesizer` → `structuralRiskExtractor`（`pipeline.ts`）；handoff 落 `deep_mechanism_handoffs`；`ecosystemLayer`/`theoryCardId` 持久化
+- **structuralTensions**：写入 `deep_model_digest`；hub/card/画像 Tab/result/汇总页 `StructuralTensionCard`
+- **job 链**：`entry_evidence` 不再单独触发 `deep_mechanism_review`（避免半成品跑满链）
+- 审计脚本扩展 ecosystem/tensions 检查；契约 `memory-read.md` 同步
+
+**验证**
+- `npm run typecheck` ✓ / `npm run build` ✓ / `npm run deploy` ✓
+- `curl https://yujian.yihe.site/api/readiness` → `ready: true`（2026-07-06 23:42 UTC+8）
+
+**下一步**
+- 确保生产 `.env.local` 配置 `PARENT_AI_API_KEY`/`PARENT_AI_MODEL`（豆包 endpoint）；有数据账号跑 `audit-deep-modeling-pipeline.mjs`
+- 新用户走完四模块验证 tensions 卡片与 generating 轮询 `structuralTensionsCount`
+
+**风险/冲突**
+- 多 Agent 链延迟增加；LLM 任一步失败会 fallback 单体 `deepMechanismReview`
+- 勿将 SSH/API 密钥写入仓库
+
+---
+
+## 2026-07-06 22:45 | Cursor | 生产部署 + 登录验证
+
+**做了什么**
+- 部署至 `yujian.yihe.site`（rsync → build → PM2 reload）
+- 生产 readiness `ready: true`；陌生用户 register + login + `/api/auth/me` 会话校验通过（curl）
+
+**验证**
+- `curl https://yujian.yihe.site/api/readiness` → `ready: true`
+- 新号注册/登录 API 200，`getMe` 返回正确 familyId/childId
+
+**下一步**
+- 支付宝 WebView 真机复测（需人工）；有画像数据的账号跑 `audit-deep-modeling-pipeline.mjs`
+
+**风险/冲突**
+- 勿将 SSH 密码写入仓库或 HANDOFF
+
+---
+
+## 2026-07-06 22:15 | Cursor | 深度建模审计补齐 P0–P3
+
+**做了什么**
+- **P0 画像刷新时序**：`/family-profile` 先 await `POST /api/account/daily-refresh`、清 tab cache，再拉 hub；首屏 loading「正在整理今日画像」
+- **P0 L2 厚度**：`portrait-card-enrich.ts` 服务端强制每卡 ≥120 字（digest 机制叙事+锚定事实兜底）；应用于 daily-refresh、hub、card API
+- **P1 全表面 digest**：预演 analyze/stream、周报 POST、snapshot LLM 注入 `deepModelDigest`；亲子对话隐藏「上传音频」直至 ASR 就绪
+- **P2 LLM digest**：`prompts/back/deepModelDigestBuilder.md` + `llm-digest-builder.ts`；`buildDeepModelDigest` 确定性后尝试 LLM 加深；四模块 800/2000 字引导 + `<400` 字强制 shouldAsk；generating 等 `mechanismReviewReady`（deep_mechanism_review job）
+- **P3 权威 UI + 契约**：`AuthorityInsightCard` 用于 daily 深度 section、四模块 summary、预演结束总结；`memory-read.md`/`read-contract.md` 同步 childQuotes/deepModelDigest；审计脚本 portrait 门槛 120 字
+
+**验证**
+- `npm run typecheck` ✓ / `npm run build` ✓
+- 部署变量 `SSH_HOST`/`SSH_PASS`/`AUTH_TOKEN` 本机未设 → 未 deploy
+- `audit-deep-modeling-pipeline.mjs` 需 `DATABASE_URL` → 本机未跑生产抽测
+
+**下一步**
+- 设部署变量后 `npm run deploy`；支付宝 WebView 陌生用户登录真机复测
+- 生产账号跑 `node scripts/audit-deep-modeling-pipeline.mjs <phone>`
+
+**风险/冲突**
+- 画像 Tab 首进会多等 daily-refresh（~3–15s），缓存 90s 在进 Tab 时主动失效
+- LLM digest 依赖 Fast AI；失败仍落确定性 digest
+
+---
+
+## 2026-07-06 18:45 | Cursor | 深度建模全链路 M0–M5
+
+**做了什么**
+- **M0 登录**：api-client `credentials:include` + auth POST 网络重试；login/register 结构化日志与限流放宽(15/h IP + per-phone)；post-login `getMe()` 会话校验；middleware/authError 补 `requestId`
+- **M1 深度建模**：`docs/product/deep-modeling.md`、`prompts/core/deepModelingParentDigest.md`；`deep_model_digest` 层 + `buildDeepModelDigest`/`pickDeepModelDigestPack`；daily BFF/合并 SP 注入 digest；generating 轮询 `/api/profile/deep-model-status`；`audit-deep-modeling-pipeline.mjs`
+- **M2 画像**：hub 入 tab cache、daily-refresh 触发、删假趋势、待确认观点列表；`/family-profile/[card]` L2 + `/api/profile/card/[card]`；verify 页 `useHydratedProfile`；四模块软字数引导(800字)
+- **M3 SP/培优**：合并 SP 含 deepModelingParentDigest；dailyPortraitRefresh/communicationRehearsal 必读 digest；`PRODUCT.md` 培优段落
+- **M4 预演对话**：`RehearsalDialogueCapture` + dialogue-analyze API（标红+解读）；`AuthorityInsightCard` + 权威 CSS
+- **M5 体验**：daily-thread 正文 max-width 312px/行距 1.68；`dailyStreamClient` rAF chunk_smooth
+- **记忆 pack**：`childQuotes` + `parentVerbatimSnippets` 恢复进 frontend-read-pack（10 键契约）
+
+**验证**
+- typecheck ✓ / build ✓
+- test-frontend-read-pack 16/16 ✓；test:contracts 契约套件通过（audit-deep-modeling 需 DATABASE_URL+账号）
+- 本地未设 SSH_HOST，deploy 跳过；线上 readiness 仍 ready:true
+
+**下一步**
+- 设 SSH 后 `npm run deploy` 上线本批
+- 音频文件转写 API（dialogue-transcribe 当前 501，按住录音+粘贴可用）
+- 支付宝内登录真机复测
+
+**风险/冲突**
+- 未改气泡/深度展开行宽 CSS
+- digest 构建为确定性拼装，LLM 富化 portrait 仍走 dailyPortraitRefresh
+
 ## 2026-07-05 11:26 | Cursor | 部署 + 记忆契约文档/测试收拢
 
 **做了什么**
@@ -657,4 +749,17 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **下一步**
 - 设部署变量后 `npm run deploy`；Batch F / Batch A 继续
+
+## 2026-07-06 14:43 | Cursor | 任务页 UI 部署
+
+**做了什么**
+- 部署任务页改版：`tasks-ui.css`（状态键/来源底边对齐、三色 pill、灰色三角）、`layout.tsx` 末位引入
+- `scope-hifi-app-css.mjs` 同步任务 meta 对齐 overrides
+
+**验证**
+- typecheck ✓ / build ✓ / deploy ✓ / readiness ready:true（2026-07-06 14:43 UTC+8）
+
+**下一步**
+- 用户强刷 `/tasks` 验证；Batch F / Batch A 继续
+
 

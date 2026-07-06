@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { fail } from '@/lib/api-response'
 import { getCurrentUser } from '@/lib/server/auth'
 
 export function verifyInternalApi(request: Request | NextRequest): boolean {
@@ -42,10 +43,7 @@ export async function verifyAdminApi(request: Request | NextRequest): Promise<bo
 }
 
 export function authError() {
-  return NextResponse.json(
-    { ok: false, error: { code: 'UNAUTHORIZED', message: 'Invalid or missing API token' } },
-    { status: 401 }
-  )
+  return fail('UNAUTHORIZED', '请先登录', undefined, 401)
 }
 
 export function forbiddenError() {

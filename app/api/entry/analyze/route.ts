@@ -82,6 +82,18 @@ export async function POST(request: Request) {
       console.error('[entry/analyze] followUp failed', { entryType, error })
       return fail('ENTRY_FOLLOWUP_UNAVAILABLE', message, undefined, 503)
     }
+
+    const textLen = typeof rawText === 'string' ? rawText.trim().length : 0
+    if (textLen < 400 && result.shouldAsk === false && entryType !== 'final') {
+      return ok({
+        ...result,
+        shouldAsk: true,
+        purpose: result.purpose || '还想再听一个更具体的场景，好把这一模块写扎实。',
+        voicePrompt:
+          result.voicePrompt ||
+          '能不能挑最近印象最深的一次，按当时发生的顺序多讲几句？不用整理成道理。',
+      })
+    }
     return ok(result)
   } catch (error) {
     return failFromError(error)

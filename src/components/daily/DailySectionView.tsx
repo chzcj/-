@@ -1,9 +1,32 @@
 'use client'
 
 import type { DailySection } from '@/types/daily-message'
+import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
 import { parseStreamingSectionBody } from '@/lib/daily/parseStreamingSection'
 
+const AUTHORITY_SECTION_IDS = new Set(['diagnosis_headline', 'this_time', 'profile_reading'])
+
+function sectionPlainBody(section: DailySection): string {
+  if (section.streamingText) return section.streamingText
+  const parts = [
+    ...(section.paragraphs || []),
+    ...(section.items || []),
+    ...(section.quotes || []),
+    section.note || '',
+  ].filter(Boolean)
+  return parts.join('\n')
+}
+
 function SectionBody({ section }: { section: DailySection }) {
+  if (AUTHORITY_SECTION_IDS.has(section.id) && !section.streamingText) {
+    const body = sectionPlainBody(section)
+    if (body.trim()) {
+      return (
+        <AuthorityInsightCard title={section.label} body={body} />
+      )
+    }
+  }
+
   if (section.streamingText !== undefined && section.streamingText !== '') {
     // 流式期间按 kind 增量解析段落/列表/引语，避免「一口气出完再换行」。
     const parsed = parseStreamingSectionBody(section.streamingText, section.kind)

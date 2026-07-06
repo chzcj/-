@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { HiFiBuildHero } from '@/components/profile/HiFiBuildHero'
 import { HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
+import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
+import { StructuralTensionCard } from '@/components/hifi/StructuralTensionCard'
 import { getEntryConfig } from '@/data/entryConfig'
 import {
   buildEntryPath,
@@ -16,6 +18,7 @@ import { persistEntryStageSummary } from '@/lib/profile/persistStageSummary'
 import { requestEntrySummary } from '@/lib/profile/entryAnalyze'
 import { getLatestEntryRecord, getLatestStageSummary, getCombinedEntryText, markEntryCompleted } from '@/lib/storage/entryStorage'
 import { pushBuildStateToServer } from '@/lib/profile/profileSync'
+import type { StructuralTension } from '@/types/deep-model-digest'
 
 type SummaryData = {
   mainJudgment: string
@@ -31,6 +34,7 @@ export function EntrySummaryPage({ entryType }: { entryType: BuildEntryType }) {
   const [aiLoading, setAiLoading] = useState(true)
   const [error, setError] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [structuralTensions, setStructuralTensions] = useState<StructuralTension[]>([])
 
   const load = useCallback(async () => {
     setAiLoading(true)
@@ -89,6 +93,14 @@ export function EntrySummaryPage({ entryType }: { entryType: BuildEntryType }) {
 
   useEffect(() => {
     void load()
+    void fetch('/api/profile/hub', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((hub) => {
+        if (hub?.ok && Array.isArray(hub.data?.structuralTensions)) {
+          setStructuralTensions(hub.data.structuralTensions)
+        }
+      })
+      .catch(() => {})
   }, [load])
 
   function handleConfirm() {
@@ -164,9 +176,7 @@ export function EntrySummaryPage({ entryType }: { entryType: BuildEntryType }) {
       ) : (
         <>
           <section className="section">
-            <div className="summary-card">
-              <h3>系统整理</h3>
-              <p className="summary-lead">{summary.mainJudgment}</p>
+            <AuthorityInsightCard title="系统整理" body={summary.mainJudgment}>
               {summary.facts.length > 0 ? (
                 <ul className="summary-facts">
                   {summary.facts.map((fact) => (
@@ -184,8 +194,13 @@ export function EntrySummaryPage({ entryType }: { entryType: BuildEntryType }) {
                 </div>
               ) : null}
               {summary.note ? <p className="summary-note">{summary.note}</p> : null}
-            </div>
+            </AuthorityInsightCard>
           </section>
+          {structuralTensions.length > 0 ? (
+            <section className="section">
+              <StructuralTensionCard tensions={structuralTensions} compact />
+            </section>
+          ) : null}
           <section className="section">
             <div className="soft-card">
               <h3>请确认一下</h3>

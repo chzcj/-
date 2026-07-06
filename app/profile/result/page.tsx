@@ -2,17 +2,31 @@
 
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
+import { StructuralTensionCard } from '@/components/hifi/StructuralTensionCard'
 import { useHydratedProfile } from '@/hooks/useHydratedProfile'
 import { humanizeMechanismLabel } from '@/lib/entry-name-i18n'
+import type { StructuralTension } from '@/types/deep-model-digest'
 
 function ProfileResultContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justFinishedOnboarding = searchParams.get('onboarding') === '1'
   const { profile, loading } = useHydratedProfile()
+  const [structuralTensions, setStructuralTensions] = useState<StructuralTension[]>([])
+
+  useEffect(() => {
+    void fetch('/api/profile/hub', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((hub) => {
+        if (hub?.ok && Array.isArray(hub.data?.structuralTensions)) {
+          setStructuralTensions(hub.data.structuralTensions)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const backTarget = justFinishedOnboarding ? '/profile/build' : '/family-profile'
 
@@ -88,6 +102,12 @@ function ProfileResultContent() {
               <h3>当前支持重点</h3>
               <p>{profile.supportFocus}</p>
             </div>
+          </section>
+        ) : null}
+
+        {structuralTensions.length > 0 ? (
+          <section className="section">
+            <StructuralTensionCard tensions={structuralTensions} title="可能消耗孩子的运转方式" />
           </section>
         ) : null}
 

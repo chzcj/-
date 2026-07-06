@@ -1,7 +1,12 @@
 import 'server-only';
 
 import { agentPrompts, type AgentPromptKey } from '@/lib/server/agent-prompts';
-import { fastApiKey, fastModel, fastBase, fastTemp, ensureSettingsLoaded } from '@/lib/server/settings/runtime-config';
+import {
+  fastApiKey, fastModel, fastBase, fastTemp,
+  parentApiKey, parentModel, parentBase, parentTemp,
+  isParentAIEnabled,
+  ensureSettingsLoaded
+} from '@/lib/server/settings/runtime-config';
 
 type ArkAgentsGlobal = typeof globalThis & {
   __childosFastWarmupTimer?: ReturnType<typeof setInterval>;
@@ -17,10 +22,21 @@ const agentGlobal = globalThis as ArkAgentsGlobal;
 const FAST_TIMEOUT_MS = Number(process.env.FAST_AI_TIMEOUT_MS || 45_000);
 const FAST_STREAM_IDLE_MS = Number(process.env.FAST_AI_STREAM_IDLE_MS || 25_000);
 
+type ModelLane = 'fast' | 'parent';
+
+function laneConfig(lane: ModelLane) {
+  if (lane === 'parent' && isParentAIEnabled()) {
+    return { apiKey: parentApiKey(), model: parentModel(), base: parentBase(), temp: parentTemp() }
+  }
+  return { apiKey: fastApiKey(), model: fastModel(), base: fastBase(), temp: fastTemp() }
+}
+
 export function isFastAIEnabled() {
   ensureSettingsLoaded();
   return Boolean(fastApiKey() && fastModel());
 }
+
+export { isParentAIEnabled } from '@/lib/server/settings/runtime-config';
 
 export function startFastAIWarmupLoop() {
   if (!isFastAIEnabled() || process.env.FAST_AI_WARMUP === 'false') return;
@@ -112,6 +128,64 @@ export async function callSupportTextStream(system: string, payload: unknown, on
   );
 }
 
+export async function callParentJson<T>(
+  system: string,
+  payload: unknown,
+  options?: { maxTokens?: number }
+): Promise<T | undefined> {
+  if (!isParentAIEnabled() && !isFastAIEnabled()) return undefined;
+  return callOpenAICompatibleJson<T>({
+    system,
+    user: `只输出 JSON，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
+    maxTokens: options?.maxTokens,
+    lane: 'parent',
+  });
+}
+
+export async function callParentTextStream(
+  system: string,
+  payload: unknown,
+  onDelta: (delta: string) => void,
+  options?: { maxTokens?: number }
+): Promise<string | undefined> {
+  if (!isParentAIEnabled() && !isFastAIEnabled()) return undefined;
+  return callOpenAICompatibleTextStream(
+    {
+      system,
+      user: `只输出要展示给用户的文本，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
+      maxTokens: options?.maxTokens,
+      lane: 'parent',
+    },
+    onDelta
+  );
+}
+
+export async function callParentAgentJson<T>(agent: AgentPromptKey, task: string, payload: unknown): Promise<T | undefined> {
+  if (!isParentAIEnabled() && !isFastAIEnabled()) return undefined;
+  return callOpenAICompatibleJson<T>({
+    system: agentPrompts[agent],
+    user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
+    lane: 'parent',
+  });
+}
+
+export async function callParentAgentTextStream(
+  agent: AgentPromptKey,
+  task: string,
+  payload: unknown,
+  onDelta: (delta: string) => void
+): Promise<string | undefined> {
+  if (!isParentAIEnabled() && !isFastAIEnabled()) return undefined;
+  return callOpenAICompatibleTextStream(
+    {
+      system: agentPrompts[agent],
+      user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
+      lane: 'parent',
+    },
+    onDelta
+  );
+}
+
 export async function callFastJson<T>(
   system: string,
   payload: unknown,
@@ -121,7 +195,8 @@ export async function callFastJson<T>(
   return callOpenAICompatibleJson<T>({
     system,
     user: `只输出 JSON，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
-    maxTokens: options?.maxTokens
+    maxTokens: options?.maxTokens,
+    lane: 'fast',
   });
 }
 
@@ -131,7 +206,8 @@ export async function callFastTextStream(system: string, payload: unknown, onDel
     {
       system,
       user: `只输出要展示给用户的文本，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
-      maxTokens: options?.maxTokens
+      maxTokens: options?.maxTokens,
+      lane: 'fast',
     },
     onDelta
   );
@@ -140,30 +216,34 @@ export async function callFastTextStream(system: string, payload: unknown, onDel
 async function callOpenAICompatibleJson<T>({
   system,
   user,
-  maxTokens
+  maxTokens,
+  lane = 'fast',
 }: {
   system: string
   user: string
   maxTokens?: number
+  lane?: ModelLane
 }): Promise<T | undefined> {
+  const { apiKey, model, base, temp } = laneConfig(lane)
+  if (!apiKey || !model) return undefined
   // 总超时：上游卡住时 abort，避免请求无限挂（caller 的 .catch 走降级）。
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FAST_TIMEOUT_MS);
   try {
-    const response = await fetch(`${fastBase()}/chat/completions`, {
+    const response = await fetch(`${base}/chat/completions`, {
       method: 'POST',
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${fastApiKey()}`
+        Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: fastModel(),
+        model,
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user }
         ],
-        temperature: fastTemp(),
+        temperature: temp,
         max_tokens: maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 2048),
         response_format: { type: 'json_object' }
       })
@@ -177,14 +257,19 @@ async function callOpenAICompatibleJson<T>({
     const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: CacheUsage };
     const text = data.choices?.[0]?.message?.content || '';
     if (!text) throw new Error('FAST_AI_EMPTY_OUTPUT');
-    logCacheHit('json', fastModel(), data.usage);
+    logCacheHit(`json:${lane}`, model, data.usage);
     return parseJson<T>(text);
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function callOpenAICompatibleTextStream({ system, user, maxTokens }: { system: string; user: string; maxTokens?: number }, onDelta: (delta: string) => void): Promise<string | undefined> {
+async function callOpenAICompatibleTextStream(
+  { system, user, maxTokens, lane = 'fast' }: { system: string; user: string; maxTokens?: number; lane?: ModelLane },
+  onDelta: (delta: string) => void
+): Promise<string | undefined> {
+  const { apiKey, model, base, temp } = laneConfig(lane)
+  if (!apiKey || !model) return undefined
   // idle 超时：每收到一个 chunk 就重置，只在「上游卡住、长时间无新数据」时 abort——不打断正常长输出。
   const controller = new AbortController();
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -194,22 +279,22 @@ async function callOpenAICompatibleTextStream({ system, user, maxTokens }: { sys
   };
   try {
     bumpIdle();
-    const response = await fetch(`${fastBase()}/chat/completions`, {
+    const response = await fetch(`${base}/chat/completions`, {
       method: 'POST',
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${fastApiKey()}`
+        Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: fastModel(),
+        model,
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user }
         ],
         stream: true,
         stream_options: { include_usage: true },
-        temperature: fastTemp(),
+        temperature: temp,
         max_tokens: maxTokens ?? Number(process.env.FAST_AI_STREAM_MAX_TOKENS || 1024)
       })
     });
@@ -250,7 +335,7 @@ async function callOpenAICompatibleTextStream({ system, user, maxTokens }: { sys
       fullText += tail;
       onDelta(tail);
     }
-    logCacheHit('stream', fastModel(), streamUsage);
+    logCacheHit(`stream:${lane}`, model, streamUsage);
     return fullText.trim() || undefined;
   } finally {
     if (idleTimer) clearTimeout(idleTimer);

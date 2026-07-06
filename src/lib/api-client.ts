@@ -62,13 +62,22 @@ function normalizeResult<T>(json: unknown): ApiResult<T> {
   return fallbackError(json);
 }
 
+const AUTH_POST_PATHS = new Set(['/api/auth/login', '/api/auth/register', '/api/auth/demo']);
+
+function isAuthPost(path: string, method: string) {
+  return method === 'POST' && AUTH_POST_PATHS.has(path);
+}
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
-  // GET 幂等：对临时可重试错误(retriable)与网络异常自动重试一次；POST 等非幂等不自动重试，避免重复写。
+  // GET 幂等：对临时可重试错误(retriable)与网络异常自动重试一次。
+  // 认证 POST：网络异常可重试一次（登录/注册本身幂等安全：重复注册返回 PHONE_EXISTS）。
   const method = (init?.method || 'GET').toUpperCase();
-  const canRetry = method === 'GET';
+  const canRetryGet = method === 'GET';
+  const canRetryAuthPost = isAuthPost(path, method);
   for (let attempt = 0; ; attempt++) {
     try {
       const response = await fetch(path, {
+        credentials: 'include',
         ...init,
         headers: {
           'Content-Type': 'application/json',
@@ -78,13 +87,14 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<ApiResu
       const json = await response.json().catch(() => undefined);
       const result = normalizeResult<T>(json);
       if (!response.ok && result.ok) return fallbackError({ status: response.status, path });
-      if (!result.ok && result.error.retriable && canRetry && attempt === 0) {
+      if (!result.ok && result.error.retriable && canRetryGet && attempt === 0) {
         await new Promise((r) => setTimeout(r, 600));
         continue;
       }
       return result;
     } catch (error) {
-      if (canRetry && attempt === 0) {
+      const retriable = canRetryGet || canRetryAuthPost;
+      if (retriable && attempt === 0) {
         await new Promise((r) => setTimeout(r, 600));
         continue;
       }

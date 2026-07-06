@@ -3,6 +3,9 @@ import { callAgentJson } from '@/lib/server/ark-agents';
 import { getRequestIdentity } from '@/lib/server/auth';
 import { loadProfileSnapshotContext } from '@/lib/server/db';
 import { verifyAppApi, authError } from '@/lib/server/auth-guard';
+import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store';
+import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder';
+import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest';
 
 export async function GET(request: Request) {
   // 鉴权：与其它前台数据接口一致（此处此前缺失，正是匿名越权读档案的入口）。
@@ -28,6 +31,12 @@ export async function GET(request: Request) {
   }
 
   // 2) 无 digest：尝试 LLM 轻量生成。
+  let deepDigest = await loadDeepModelDigest({ familyId: identity.familyId, childId: identity.childId }).catch(() => null);
+  if (!deepDigest?.mechanismNarrative) {
+    deepDigest = await buildDeepModelDigest({ familyId: identity.familyId, childId: identity.childId }).catch(() => deepDigest);
+  }
+  const deepModelDigest = pickDeepModelDigestPack(deepDigest);
+
   const snapshot = await callAgentJson<{
     recentChanges?: Array<{ title: string; body: string }>;
     currentFocus?: string;
@@ -45,7 +54,8 @@ export async function GET(request: Request) {
   }>('profileSnapshot', '根据近期记忆和孩子记录，生成孩子档案页面可用的轻量数据。', {
     familyId: identity.familyId,
     childId: identity.childId,
-    context
+    context,
+    deepModelDigest,
   }).catch((error) => {
     console.error('[childos] profileSnapshot failed', error);
     return undefined;

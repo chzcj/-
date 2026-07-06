@@ -243,6 +243,8 @@ export type MechanismType =
   | 'pending_hypothesis'
   | 'unsupported'
 
+export type EcosystemLayer = 'micro' | 'meso' | 'exo' | 'macro' | 'chrono'
+
 export interface CandidateMechanism {
   mechanismName: string
   mechanismType: MechanismType
@@ -258,6 +260,8 @@ export interface CandidateMechanism {
   missingEvidence: string[]
   possibleAlternativeExplanations: string[]
   shouldPromoteToDiagnosis: boolean
+  ecosystemLayer?: EcosystemLayer
+  theoryCardId?: string
 }
 
 export interface CrossEntryEvidenceNetwork {
@@ -630,6 +634,8 @@ export interface RetrievedContext {
   childQuotes: string[]
   /** 四模块具体事实直喂（verifiableFacts/childBehaviors/triggerPoints），前端 AI 直读不思考 */
   entryFacts: string[]
+  /** 家长原话片段（近期输入） */
+  parentVerbatimSnippets?: string[]
 }
 
 /* ================================================================
@@ -695,6 +701,8 @@ export interface DailyDialogueRetrievalPacket {
   pendingHypotheses: string[]
   possibleCounterEvidence: string[]
   childQuotes: string[]
+  /** 家长原话片段 */
+  parentVerbatimSnippets?: string[]
   /** 四模块采集的具体事实直喂（verifiableFacts/childBehaviors/triggerPoints 合并去重，前端 AI 直读） */
   entryFacts: string[]
   familyInteractionPatterns: string[]

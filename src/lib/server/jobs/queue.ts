@@ -145,8 +145,7 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     // 此前 entry_evidence 绕过 memory_write 链导致采集后画像不刷新。桶 key 幂等，今天已排则跳过。
     await enqueueJob('digest_update', { tenant: p.tenant }, digestUpdateBucketKey(p.tenant), null)
     await enqueueJob('model_review', { tenant: p.tenant }, modelReviewBucketKey(p.tenant), null)
-    // 采集后链式深度机制复核：entry pack 是机制原料，采集后应刷新机制层。
-    await enqueueJob('deep_mechanism_review', { tenant: p.tenant }, deepMechanismBucketKey(p.tenant), null)
+    // 深度机制链仅在四模块齐/final 或 memory_write 日桶触发，避免单模块半成品跑满链
   } else if (jobType === 'model_review') {
     const p = payload as DigestUpdatePayload
     await runModelReview(p.tenant) // 复核待验证假设：反证+置信度，幂等可重跑

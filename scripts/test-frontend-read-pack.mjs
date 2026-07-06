@@ -20,14 +20,16 @@ console.log('=== FrontendReadSchema 契约测试 ===\n')
 // 1. 键序稳定
 console.log('1. FRONTEND_READ_PACK_KEYS 键序')
 assert(FRONTEND_READ_PACK_KEYS[0] === 'childStructureModels', '首键 childStructureModels')
-assert(FRONTEND_READ_PACK_KEYS.at(-1) === 'pendingHypotheses', '末键 pendingHypotheses')
-assert(FRONTEND_READ_PACK_KEYS.length === 8, `共 8 个键 (got ${FRONTEND_READ_PACK_KEYS.length})`)
+assert(FRONTEND_READ_PACK_KEYS.at(-1) === 'parentVerbatimSnippets', '末键 parentVerbatimSnippets')
+assert(FRONTEND_READ_PACK_KEYS.length === 10, `共 10 个键 (got ${FRONTEND_READ_PACK_KEYS.length})`)
 
 // 2. pickFrontendReadPack 形状
 console.log('\n2. pickFrontendReadPack 形状')
 const mockCtx = {
   relevantChildStructureModel: ['画像A'],
   relevantEntryEvidencePacks: ['证据包'],
+  childQuotes: ['孩子说知道了'],
+  parentVerbatimSnippets: ['昨晚我又催他写作业'],
   entryFacts: ['错题本只抄答案'],
   matchedMechanisms: ['亲职风格-高要求低回应'],
   relevantFamilyInteractionPatterns: ['催作业→发脾气'],
@@ -35,14 +37,14 @@ const mockCtx = {
   relevantPastEvents: ['昨晚吵了一架'],
   relevantPendingHypotheses: ['是否在逃避评价'],
   recentDiagnosis: ['禁止泄漏'],
-  childQuotes: ['禁止泄漏'],
 }
 const pack = pickFrontendReadPack(mockCtx)
 assert(isFrontendReadPackShape(pack), 'pick 结果通过 isFrontendReadPackShape')
 assert(pack.entryFacts[0] === '错题本只抄答案', 'entryFacts 映射正确')
+assert(pack.childQuotes[0] === '孩子说知道了', 'childQuotes 映射正确')
+assert(pack.parentVerbatimSnippets[0] === '昨晚我又催他写作业', 'parentVerbatimSnippets 映射正确')
 assert(pack.familyPatterns[0] === '催作业→发脾气', 'familyPatterns 映射正确')
 assert(!('recentDiagnosis' in pack), 'pack 不含 recentDiagnosis')
-assert(!('childQuotes' in pack), 'pack 不含 childQuotes')
 
 // 3. slice 上限
 console.log('\n3. slice 上限')

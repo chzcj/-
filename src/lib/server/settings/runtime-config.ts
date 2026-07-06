@@ -62,6 +62,24 @@ export function fastBase(): string {
   return (override.fastBase ?? process.env.FAST_AI_BASE_URL ?? 'https://api.deepseek.com/v1').replace(/\/$/, '')
 }
 export function fastTemp(): number { return override.fastTemp ?? Number(process.env.FAST_AI_TEMPERATURE || 0.25) }
+
+/** 家长可见前台：豆包 flash；未配置时回退 FAST_AI（单轨兼容）。 */
+export function parentApiKey(): string {
+  return process.env.PARENT_AI_API_KEY || process.env.ARK_API_KEY || fastApiKey()
+}
+export function parentModel(): string {
+  return process.env.PARENT_AI_MODEL || 'ep-20260603000221-qp5h7'
+}
+export function parentBase(): string {
+  return (process.env.PARENT_AI_BASE_URL || process.env.ARK_BASE_URL || fastBase()).replace(/\/$/, '')
+}
+export function parentTemp(): number { return Number(process.env.PARENT_AI_TEMPERATURE || fastTemp()) }
+
+export function isParentAIEnabled(): boolean {
+  ensureSettingsLoaded()
+  return Boolean(parentApiKey() && parentModel())
+}
+
 export function embApiKey(): string {
   return override.embApiKey ?? process.env.EMBEDDING_API_KEY ?? process.env.DASHSCOPE_API_KEY ?? ''
 }

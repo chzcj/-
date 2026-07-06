@@ -8,6 +8,8 @@ import { ProfileEditModals, type EditModalKind } from '@/components/profile/Prof
 import { apiClient } from '@/lib/api-client'
 import { readProfileTabCache, writeProfileTabCache } from '@/lib/profile-tab-cache'
 import { getLatestProfile, hasProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage'
+import { StructuralTensionCard } from '@/components/hifi/StructuralTensionCard'
+import type { StructuralTension } from '@/types/deep-model-digest'
 
 function truncate(text: string, max = 160) {
   const value = text.trim()
@@ -40,7 +42,6 @@ export default function FamilyProfilePage() {
   const [currentFocus, setCurrentFocus] = useState('')
   const [recentTitle, setRecentTitle] = useState('')
   const [weeklySummary, setWeeklySummary] = useState('')
-  const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const [editModal, setEditModal] = useState<EditModalKind | null>(null)
 
   const [hubCards, setHubCards] = useState<{
@@ -60,6 +61,34 @@ export default function FamilyProfilePage() {
     hypotheses?: string
   }>({})
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
+  const [pendingList, setPendingList] = useState<string[]>([])
+  const [hubLoading, setHubLoading] = useState(true)
+  const [backgroundRefreshing, setBackgroundRefreshing] = useState(false)
+  const [updateNotice, setUpdateNotice] = useState('')
+  const [structuralTensions, setStructuralTensions] = useState<StructuralTension[]>([])
+
+  function applyHubData(hub: { ok?: boolean; data?: Record<string, unknown> } | null) {
+    if (!hub?.ok || !hub.data) return
+    const d = hub.data
+    setHubCards({
+      interactionPattern: d.interactionPattern as string | undefined,
+      effectiveStrategies: d.effectiveStrategies as string | undefined,
+      pendingHypotheses: d.pendingHypotheses as string | undefined,
+      behaviorSummary: d.behaviorSummary as string | undefined,
+      hasRealData: d.hasRealData as boolean | undefined,
+    })
+    if (d.portraitCards) setPortraitCards(d.portraitCards as typeof portraitCards)
+    if (d.refreshedAt !== undefined) setRefreshedAt(d.refreshedAt as string | null)
+    if (d.pendingHypothesesList) setPendingList(d.pendingHypothesesList as string[])
+    if (Array.isArray(d.structuralTensions)) {
+      setStructuralTensions(d.structuralTensions as StructuralTension[])
+    }
+    if (d.coreJudgment) {
+      setCoreJudgment(d.coreJudgment as string)
+      setCompleteness((d.completeness as number) || 0)
+      setProfileReady(true)
+    }
+  }
 
   const syncLocalProfile = useCallback(() => {
     const local = getLatestProfile()
@@ -77,11 +106,11 @@ export default function FamilyProfilePage() {
     return false
   }, [])
 
-  const refreshProfile = useCallback(async (showLoading = true) => {
+  const refreshProfile = useCallback(async (showLoading = true, forceNetwork = false) => {
     if (refreshing) return
 
     const cached = readProfileTabCache()
-    if (cached) {
+    if (cached && !showLoading && !forceNetwork) {
       const built = cached.built as { ok?: boolean; data?: { snapshot?: { coreJudgment?: string } } } | null
       if (built?.ok && built.data?.snapshot?.coreJudgment) {
         hydrateProfileFromRemote(built.data.snapshot as never)
@@ -94,7 +123,7 @@ export default function FamilyProfilePage() {
       }
       const wk = cached.weekly as { ok?: boolean; data?: { weeklySummary?: string } }
       if (wk?.ok && wk.data?.weeklySummary) setWeeklySummary(wk.data.weeklySummary)
-      if (showLoading) setRefreshing(false)
+      applyHubData(cached.hub as { ok?: boolean; data?: Record<string, unknown> } | null)
       return
     }
 
@@ -116,26 +145,11 @@ export default function FamilyProfilePage() {
     const [snapshot, weekly, hub] = await Promise.all([
       apiClient.getProfileSnapshot(),
       apiClient.getWeeklyReview(),
-      fetch('/api/profile/hub').then((r) => r.json()).catch(() => null),
+      fetch('/api/profile/hub', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
     ])
-    writeProfileTabCache({ snapshot, weekly })
+    writeProfileTabCache({ snapshot, weekly, hub })
 
-    if (hub?.ok && hub.data) {
-      setHubCards({
-        interactionPattern: hub.data.interactionPattern,
-        effectiveStrategies: hub.data.effectiveStrategies,
-        pendingHypotheses: hub.data.pendingHypotheses,
-        behaviorSummary: hub.data.behaviorSummary,
-        hasRealData: hub.data.hasRealData,
-      })
-      if (hub.data.portraitCards) setPortraitCards(hub.data.portraitCards)
-      if (hub.data.refreshedAt !== undefined) setRefreshedAt(hub.data.refreshedAt)
-      if (hub.data.coreJudgment) {
-        setCoreJudgment(hub.data.coreJudgment)
-        setCompleteness(hub.data.completeness || 0)
-        setProfileReady(true)
-      }
-    }
+    applyHubData(hub)
 
     if (snapshot.ok) {
       if (snapshot.data.currentFocus) setCurrentFocus(snapshot.data.currentFocus)
@@ -152,8 +166,56 @@ export default function FamilyProfilePage() {
   }, [refreshing, syncLocalProfile])
 
   useEffect(() => {
-    void refreshProfile(false)
-  }, [refreshProfile])
+    let cancelled = false
+    const boot = async () => {
+      const cached = readProfileTabCache()
+      if (cached) {
+        syncLocalProfile()
+        const built = cached.built as { ok?: boolean; data?: { snapshot?: { coreJudgment?: string } } } | null
+        if (built?.ok && built.data?.snapshot?.coreJudgment) {
+          hydrateProfileFromRemote(built.data.snapshot as never)
+          syncLocalProfile()
+        }
+        const snap = cached.snapshot as { ok?: boolean; data?: { currentFocus?: string; recentChanges?: { title: string }[] } }
+        if (snap?.ok) {
+          if (snap.data?.currentFocus) setCurrentFocus(snap.data.currentFocus)
+          if (snap.data?.recentChanges?.[0]) setRecentTitle(snap.data.recentChanges[0].title)
+        }
+        const wk = cached.weekly as { ok?: boolean; data?: { weeklySummary?: string } }
+        if (wk?.ok && wk.data?.weeklySummary) setWeeklySummary(wk.data.weeklySummary)
+        applyHubData(cached.hub as { ok?: boolean; data?: Record<string, unknown> } | null)
+        setHubLoading(false)
+      } else {
+        setHubLoading(true)
+        await refreshProfile(true)
+        if (!cancelled) setHubLoading(false)
+      }
+
+      if (cancelled) return
+      const cachedHub = readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null
+      const prevAt = cachedHub?.data?.refreshedAt || null
+      setBackgroundRefreshing(true)
+      try {
+        await fetch('/api/account/daily-refresh', { method: 'POST', credentials: 'include' })
+      } catch {
+        /* 后台刷新失败不阻塞首屏 */
+      }
+      if (cancelled) return
+      await refreshProfile(false, true)
+      if (!cancelled) {
+        setBackgroundRefreshing(false)
+        const hub = readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null
+        const nextAt = hub?.data?.refreshedAt
+        if (nextAt && prevAt && nextAt !== prevAt) {
+          setUpdateNotice('画像已根据最新交流更新')
+          window.setTimeout(() => setUpdateNotice(''), 4000)
+        }
+      }
+    }
+    void boot()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- boot once; refreshedAt read for diff only
+  }, [refreshProfile, syncLocalProfile])
 
   const hasLocalProfile = profileReady || hasProfile()
   const focusText = supportFocus || currentFocus || (hubCards.hasRealData ? '' : '完成交流后，关注点会在这里更新。')
@@ -164,6 +226,7 @@ export default function FamilyProfilePage() {
   const profileCards = [
     {
       title: '动态成长画像',
+      slug: 'growth',
       body: portraitCards.growth || growthText,
       progress: completeness,
       progressHint:
@@ -173,40 +236,53 @@ export default function FamilyProfilePage() {
     },
     {
       title: '当前关注点',
+      slug: 'focus',
       body: portraitCards.focus || focusText || truncate(coreJudgment || '暂无', 80),
       progress: (portraitCards.focus || focusText) ? 55 : 8,
       progressHint: (portraitCards.focus || focusText) ? '已基于已记录交流生成，继续使用会越来越准。' : '完成更多交流后，关注点会在这里更新。',
     },
     {
       title: '行为模式总结',
+      slug: 'behavior',
       body: portraitCards.behavior || hubCards.behaviorSummary || (hasLocalProfile && coreJudgment ? truncate(coreJudgment, 120) : '交流积累后，会在这里看到模式总结。'),
       progress: (portraitCards.behavior || hubCards.behaviorSummary) ? 55 : 8,
       progressHint: (portraitCards.behavior || hubCards.behaviorSummary) ? '已从交流中提取行为模式，继续记录会持续修正。' : '完成几次交流后，这里会出现孩子的行为模式总结。',
     },
     {
       title: '家庭互动模式',
+      slug: 'interaction',
       body: portraitCards.interaction || hubCards.interactionPattern || (hubCards.hasRealData ? '' : '完成画像与多轮交流后更新。'),
       progress: (portraitCards.interaction || hubCards.interactionPattern) ? 55 : 8,
       progressHint: (portraitCards.interaction || hubCards.interactionPattern) ? '已识别家庭互动循环，多轮交流后会越来越清晰。' : '完成画像建模 + 多轮交流后，这里会展示你们家的互动模式。',
     },
     {
       title: '有效策略',
+      slug: 'strategies',
       body: portraitCards.strategies || hubCards.effectiveStrategies || (hubCards.hasRealData ? '' : '来自任务反馈与交流的验证策略会出现在这里。'),
       progress: (portraitCards.strategies || hubCards.effectiveStrategies) ? 55 : 8,
       progressHint: (portraitCards.strategies || hubCards.effectiveStrategies) ? '已积累验证过的策略，继续反馈任务结果会扩充。' : '试过任务后回来反馈，验证有效的策略会出现在这里。',
     },
     {
+      title: '家庭运转张力',
+      slug: 'tensions',
+      body: structuralTensions[0]
+        ? `${structuralTensions[0].title}：${structuralTensions[0].detail}`
+        : '',
+      progress: structuralTensions.length ? 50 : 8,
+      progressHint: structuralTensions.length
+        ? '这些运转方式可能在消耗孩子精力，后续交流会继续修正。'
+        : '深度建模完成后，可能消耗孩子的家庭运转方式会出现在这里。',
+    },
+    {
       title: '待验证假设',
+      slug: 'hypotheses',
       body: portraitCards.hypotheses || hubCards.pendingHypotheses || (hubCards.hasRealData ? '' : '仍在观察中的判断会列在这里。'),
       progress: (portraitCards.hypotheses || hubCards.pendingHypotheses) ? 40 : 8,
       progressHint: (portraitCards.hypotheses || hubCards.pendingHypotheses) ? '这些判断仍在观察中，后续交流会帮助确认或修正。' : '持续交流后，系统会提出待验证的判断供你留意。',
     },
   ].filter((card) => card.body.trim().length > 0)
 
-  const trendItems = [
-    recentTitle || '冲突次数减少',
-    weeklySummary ? truncate(weeklySummary, 48) : '作业启动稍改善',
-  ].filter(Boolean)
+  const trendItems = [recentTitle, weeklySummary ? truncate(weeklySummary, 48) : ''].filter(Boolean)
 
   return (
     <OnboardingGuard>
@@ -217,41 +293,49 @@ export default function FamilyProfilePage() {
             {refreshedAt ? (
               <span className="profile-refreshed-at">上次整理：{formatRefreshedAt(refreshedAt)}</span>
             ) : null}
+            {backgroundRefreshing ? (
+              <span className="profile-refreshed-at"> · 后台整理中</span>
+            ) : null}
           </h2>
+          {updateNotice ? (
+            <p className="hint-text" style={{ marginTop: 4, color: '#6E6AF8' }}>{updateNotice}</p>
+          ) : null}
           <div className="profile-data-grid">
-            {profileCards.map((card) => {
-              const expanded = expandedCard === card.title
-              return (
+            {hubLoading ? (
+              <div className="loading-wrap" style={{ gridColumn: '1 / -1', padding: '24px 0' }}>
+                <div className="loader" aria-hidden="true" />
+                <p className="hint-text">正在整理今日画像…</p>
+              </div>
+            ) : (
+              profileCards.map((card) => (
                 <div
                   key={card.title}
-                  className={`profile-data-card${expanded ? ' expanded' : ''}`}
+                  className="profile-data-card"
                   role="button"
                   tabIndex={0}
-                  onClick={() => setExpandedCard(expanded ? null : card.title)}
+                  onClick={() => router.push(`/family-profile/${card.slug}`)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
-                      setExpandedCard(expanded ? null : card.title)
+                      router.push(`/family-profile/${card.slug}`)
                     }
                   }}
                 >
                   <h3>
                     {card.title}
                     {card.title === '动态成长画像' && hasLocalProfile ? ` · ${completeness}%` : ''}
-                    <span className="card-chevron" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+                    <span className="card-chevron" aria-hidden="true">▸</span>
                   </h3>
                   <p>{card.body}</p>
-                  {expanded && (
-                    <div className="card-progress-detail">
-                      <div className="progress-bar-track">
-                        <div className="progress-bar-fill" style={{ width: `${card.progress}%` }} />
-                      </div>
-                      <p className="progress-hint">{card.progressHint}</p>
+                  <div className="card-progress-detail">
+                    <div className="progress-bar-track">
+                      <div className="progress-bar-fill" style={{ width: `${card.progress}%` }} />
                     </div>
-                  )}
+                    <p className="progress-hint">{card.progressHint}</p>
+                  </div>
                 </div>
-              )
-            })}
+              ))
+            )}
           </div>
           {!hasLocalProfile ? (
             <button type="button" className="quiet-button" style={{ marginTop: 12 }} onClick={() => void refreshProfile(true)}>
@@ -260,23 +344,46 @@ export default function FamilyProfilePage() {
           ) : null}
         </section>
 
+        {structuralTensions.length > 0 ? (
+          <section className="section">
+            <StructuralTensionCard tensions={structuralTensions} />
+          </section>
+        ) : null}
+
         <section className="section">
           <h2 className="section-title">孩子最近变化</h2>
           <div className="profile-block">
-            <h3>最近变化：</h3>
-            <ul>
-              {trendItems.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            {trendItems.length > 0 ? (
+              <ul>
+                {trendItems.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="hint-text">继续交流后，最近变化会在这里更新。</p>
+            )}
           </div>
         </section>
 
         <section className="section">
           <h2 className="section-title">待确认观点</h2>
           <div className="profile-block">
-            <h3>以下判断仍在观察中</h3>
-            <p className="hint-text">当前画像只基于已记录交流和任务反馈，不作为定论。</p>
+            {pendingList.length > 0 ? (
+              <ul>
+                {pendingList.map((item) => (
+                  <li key={item}>
+                    <button type="button" className="link-button" onClick={() => router.push('/family-profile/hypotheses')}>
+                      {item}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <>
+                <h3>以下判断仍在观察中</h3>
+                <p className="hint-text">持续交流后，系统会提出待验证的判断供你留意。</p>
+              </>
+            )}
           </div>
         </section>
 

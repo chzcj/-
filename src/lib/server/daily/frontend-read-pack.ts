@@ -14,6 +14,8 @@ export const FRONTEND_READ_PACK_KEYS = [
   'parentUnderstanding',
   'recentEvents',
   'pendingHypotheses',
+  'childQuotes',
+  'parentVerbatimSnippets',
 ] as const
 
 export type FrontendReadPackKey = (typeof FRONTEND_READ_PACK_KEYS)[number]
@@ -24,7 +26,6 @@ export type FrontendReadSchema = Record<FrontendReadPackKey, string[]>
 /** RetrievedContext 中不得直喂前端 AI 的字段 */
 export const BACKEND_ONLY_CONTEXT_FIELDS = [
   'recentDiagnosis',
-  'childQuotes',
 ] as const satisfies ReadonlyArray<keyof RetrievedContext>
 
 const SLICE_LIMITS: Record<FrontendReadPackKey, number> = {
@@ -36,6 +37,8 @@ const SLICE_LIMITS: Record<FrontendReadPackKey, number> = {
   parentUnderstanding: 6,
   recentEvents: 5,
   pendingHypotheses: 3,
+  childQuotes: 4,
+  parentVerbatimSnippets: 4,
 }
 
 /** 从 RetrievedContext 抽取前端 AI 唯一可读子集 */
@@ -49,6 +52,8 @@ export function pickFrontendReadPack(ctx: RetrievedContext): FrontendReadSchema 
     parentUnderstanding: ctx.parentNarrativePattern?.slice(0, SLICE_LIMITS.parentUnderstanding) || [],
     recentEvents: ctx.relevantPastEvents?.slice(0, SLICE_LIMITS.recentEvents) || [],
     pendingHypotheses: ctx.relevantPendingHypotheses?.slice(0, SLICE_LIMITS.pendingHypotheses) || [],
+    childQuotes: ctx.childQuotes?.slice(0, SLICE_LIMITS.childQuotes) || [],
+    parentVerbatimSnippets: ctx.parentVerbatimSnippets?.slice(0, SLICE_LIMITS.parentVerbatimSnippets) || [],
   }
 }
 

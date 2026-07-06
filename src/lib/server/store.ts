@@ -11,7 +11,7 @@ import {
 import { formatBeijingDate } from '@/lib/beijing-time';
 import { DEFAULT_MAX_ROUND, MIN_UNDERSTANDING_ROUND } from '@/lib/conversation-config';
 import { agentPrompts } from '@/lib/server/agent-prompts';
-import { callAgentJson, callFastJson, callFastTextStream, callSupportJson, callSupportTextStream, isFastAIEnabled } from '@/lib/server/ark-agents';
+import { callAgentJson, callFastJson, callFastTextStream, callParentTextStream, callSupportJson, callSupportTextStream, isFastAIEnabled } from '@/lib/server/ark-agents';
 import { buildDiagnosticA1JsonPrompt, buildDiagnosticStreamPrompt, buildUnderstandingSectionPrompt } from '@/lib/server/diagnostic-runtime';
 import {
   debugDatabase,
@@ -33,6 +33,9 @@ import type {
   RehearsalResultData,
   UnderstandingCardData
 } from '@/types/childos';
+import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store';
+import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder';
+import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest';
 
 interface MockStore {
   conversations: Map<string, ConversationStateData>;
@@ -58,6 +61,15 @@ const { conversations, archives, correctionLogs, memoryRecords, rehearsalMessage
 
 // 请求者租户标识，用于会话归属校验（防 IDOR：凭 conversationId 越权访问他人会话）。
 type ReqTenant = { familyId: string; childId: string };
+
+async function loadRehearsalDigestPack(tenant?: ReqTenant) {
+  if (!tenant) return undefined
+  let digest = await loadDeepModelDigest(tenant).catch(() => null)
+  if (!digest?.mechanismNarrative) {
+    digest = await buildDeepModelDigest(tenant).catch(() => digest)
+  }
+  return pickDeepModelDigestPack(digest)
+}
 
 function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -236,12 +248,14 @@ export async function generateRehearsal(conversationId: string, tenant: ReqTenan
   const conversation = await getCachedOrPersistedConversation(conversationId, tenant);
   if (!conversation) return undefined;
   const fallback = makeRehearsal(conversationId, parentText);
+  const deepModelDigest = await loadRehearsalDigestPack(tenant);
   const agentResult = await tryFastJson<RehearsalResultData>(
     `${agentPrompts.communicationRehearsal}\n只输出完整 RehearsalResultData JSON，所有字段非空。`,
     {
       conversation: compactConversation(conversation),
       understandingCard: compactUnderstandingCard(conversation.understandingCard),
-      parentText
+      parentText,
+      deepModelDigest,
     }
   );
   const result: RehearsalResultData = {
@@ -266,7 +280,8 @@ export async function generateRehearsal(conversationId: string, tenant: ReqTenan
 export async function submitRehearsalStreaming(
   conversationId: string,
   text: string,
-  onDelta: (delta: string) => void
+  onDelta: (delta: string) => void,
+  tenant?: ReqTenant
 ) {
   const history = rehearsalMessages.get(conversationId) || [];
   history.push({ role: 'user' as const, text });
@@ -277,9 +292,11 @@ export async function submitRehearsalStreaming(
     .map((m: { role: string; text: string }) => (m.role === 'user' ? `家长：${m.text}` : `AI：${m.text}`))
     .join('\n');
 
-  const fullText = await callFastTextStream(
+  const deepModelDigest = await loadRehearsalDigestPack(tenant);
+
+  const fullText = await callParentTextStream(
     agentPrompts.communicationRehearsal,
-    { history: context, latestMessage: text },
+    { history: context, latestMessage: text, deepModelDigest },
     onDelta
   ).catch((error) => {
     console.error('[childos] rehearsal stream failed', error);

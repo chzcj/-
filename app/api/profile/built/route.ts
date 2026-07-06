@@ -5,6 +5,8 @@ import { saveBuiltProfileSnapshot, getLatestBuiltProfileSnapshot, type BuiltProf
 import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
 import { setUserOnboardingComplete } from '@/lib/server/db'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
+import { enqueueJob } from '@/lib/server/jobs/queue'
+import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 
 /* ================================================================
    首次建模孩子画像快照的 DB 持久化（让画像跨设备/重装不丢）。
@@ -67,6 +69,14 @@ export async function POST(request: Request) {
       updatedAt: new Date().toISOString(),
     }
     await saveBuiltProfileSnapshot(snapshot, tenant)
+    const dayBucket = new Date().toISOString().slice(0, 10)
+    await enqueueJob(
+      'deep_mechanism_review',
+      { tenant },
+      `deep_mechanism:build:${tenant.familyId}:${tenant.childId}:${dayBucket}`,
+      null
+    ).catch(() => {})
+    void buildDeepModelDigest(tenant)
     if (user?.userId) {
       await setUserOnboardingComplete(user.userId, true)
     }

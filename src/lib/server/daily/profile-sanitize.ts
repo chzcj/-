@@ -1,17 +1,11 @@
 /** 禁止进入家长可见文案的画像/测试占位文本 */
 
-const PLACEHOLDER_RE =
-  /测试画像|生命周期测试|画像\s*ID|profile[_\s-]?id|^\d{10,}$|178\d{6,}|[A-Za-z0-9]{8,}测试/i
+import { isProfilePlaceholderText, PROFILE_PLACEHOLDER_RE } from '@/lib/profile/placeholder-text'
 
-const GENERIC_MODEL_RE = /^当前输入可被已有画像解释\.?$/i
+const PLACEHOLDER_RE = PROFILE_PLACEHOLDER_RE
 
 export function isPlaceholderProfileText(text: string | undefined | null): boolean {
-  const t = text?.trim()
-  if (!t) return true
-  if (t.length < 6) return true
-  if (PLACEHOLDER_RE.test(t)) return true
-  if (GENERIC_MODEL_RE.test(t)) return true
-  return false
+  return isProfilePlaceholderText(text)
 }
 
 /** 从机制/假设/模式中生成 ≤40 字家长可读摘要 */

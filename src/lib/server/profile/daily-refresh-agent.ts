@@ -12,6 +12,10 @@ import {
 } from '@/lib/server/memory/database-manager'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { DailyThinkingChip } from '@/types/daily-message'
+import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
+import { isPlaceholderProfileText } from '@/lib/server/daily/profile-sanitize'
+import { pickDeepModelDigestPack, type DeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import { enrichPortraitCards } from '@/lib/server/profile/portrait-card-enrich'
 
 const LAYER = 'daily_ui_snapshot'
 const ITEM_ID = 'latest'
@@ -48,10 +52,10 @@ function truncate(text: string, max = 36): string {
 }
 
 /** 无 LLM 兜底：直接从结构化字段拼真实人话，禁止模板假文案。 */
-function buildFallbackSnapshot(ctx: RefreshContext): DailyUiSnapshot {
+function buildFallbackSnapshot(ctx: RefreshContext, digestPack: DeepModelDigestPack): DailyUiSnapshot {
   const built = ctx.built
-  const core = built?.coreJudgment?.trim() || ''
-  const support = built?.supportFocus?.trim() || ''
+  const core = isPlaceholderProfileText(built?.coreJudgment) ? '' : (built?.coreJudgment?.trim() || '')
+  const support = isPlaceholderProfileText(built?.supportFocus) ? '' : (built?.supportFocus?.trim() || '')
   const topMechanism = ctx.topMechanisms[0] || ''
   const cycleText = ctx.topCycle || ''
   const hypText = ctx.activeHypotheses[0] || ''
@@ -65,12 +69,12 @@ function buildFallbackSnapshot(ctx: RefreshContext): DailyUiSnapshot {
   ]
 
   const portraitCards: DailyPortraitCards = {
-    growth: core ? truncate(core, 48) : '还在了解',
-    focus: support ? truncate(support, 48) : '还在了解',
-    behavior: topMechanism ? truncate(topMechanism, 48) : '还在了解',
-    interaction: cycleText ? truncate(cycleText, 48) : '还在了解',
-    strategies: support ? truncate(support, 48) : '还在了解',
-    hypotheses: hypText ? truncate(hypText, 48) : '还在了解',
+    growth: core ? truncate(core, 120) : digestPack.mechanismNarrative ? truncate(digestPack.mechanismNarrative, 120) : '还在了解',
+    focus: support ? truncate(support, 120) : digestPack.cultivationFocus ? truncate(digestPack.cultivationFocus, 120) : '还在了解',
+    behavior: topMechanism ? truncate(topMechanism, 120) : digestPack.anchoredFacts[0] ? truncate(digestPack.anchoredFacts[0], 120) : '还在了解',
+    interaction: cycleText ? truncate(cycleText, 120) : digestPack.interactionLoops[0] ? truncate(digestPack.interactionLoops[0], 120) : '还在了解',
+    strategies: support ? truncate(support, 120) : digestPack.cultivationFocus ? truncate(digestPack.cultivationFocus, 120) : '还在了解',
+    hypotheses: hypText ? truncate(hypText, 120) : digestPack.openHypotheses[0] ? truncate(digestPack.openHypotheses[0], 120) : '还在了解',
   }
 
   return {
@@ -126,15 +130,20 @@ async function gatherRefreshContext(tenant: TenantId): Promise<RefreshContext> {
  */
 export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUiSnapshot> {
   const ctx = await gatherRefreshContext(tenant)
+  const digest = await buildDeepModelDigest(tenant).catch(() => null)
+  const digestPack = pickDeepModelDigestPack(digest)
 
   const payload = {
-    coreJudgment: ctx.built?.coreJudgment || '',
-    supportFocus: ctx.built?.supportFocus || '',
+    coreJudgment: isPlaceholderProfileText(ctx.built?.coreJudgment) ? '' : (ctx.built?.coreJudgment || ''),
+    supportFocus: isPlaceholderProfileText(ctx.built?.supportFocus) ? '' : (ctx.built?.supportFocus || ''),
     completeness: ctx.built?.completeness ?? 0,
     topMechanisms: ctx.topMechanisms,
     familyInteractionCycle: ctx.topCycle,
     pendingHypotheses: ctx.activeHypotheses,
     recentParentInputs: ctx.recentInputs,
+    deepModelDigest: digestPack,
+    cardMinChars: 120,
+    requireFactAnchor: true,
   }
 
   const llmResult = await callFastJson<{
@@ -150,7 +159,12 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
           refreshedAt: new Date().toISOString(),
           source: 'llm',
         }
-      : buildFallbackSnapshot(ctx)
+      : buildFallbackSnapshot(ctx, digestPack)
+
+  snapshot.portraitCards = enrichPortraitCards(snapshot.portraitCards, digestPack, {
+    coreJudgment: isPlaceholderProfileText(ctx.built?.coreJudgment) ? undefined : ctx.built?.coreJudgment,
+    supportFocus: isPlaceholderProfileText(ctx.built?.supportFocus) ? undefined : ctx.built?.supportFocus,
+  })
 
   await upsertMemoryLayerItems(
     LAYER,

@@ -25,7 +25,7 @@ function proseEmitEnd(full: string, hasSections: boolean): number {
 /** 合并 system：parentFacingStyle + dailyDialogueOrchestration + parentFacingCopy（style 只出现一次）。
  *  稳定前缀，便于 provider 侧 prompt cache 命中。 */
 function combinedProseAndSectionSystem(): string {
-  return `${agentPrompts.parentFacingStyle}\n\n---\n\n${agentPrompts.dailyDialogueOrchestration}\n\n---\n\n${agentPrompts.parentFacingCopy}`
+  return `${agentPrompts.parentFacingStyle}\n\n---\n\n${agentPrompts.deepModelingParentDigest}\n\n---\n\n${agentPrompts.dailyDialogueOrchestration}\n\n---\n\n${agentPrompts.parentFacingCopy}`
 }
 
 /** 合并 task：先输出 prose 正文，再按 marker 输出 sections + taskTitle */
@@ -47,6 +47,7 @@ section 顺序必须为：${order}
 }
 
 export type ProseAndSectionCallbacks = {
+  deepModelDigest?: import('@/lib/server/memory/deep-modeling/pick-deep-model-digest').DeepModelDigestPack
   onProseDelta?: (delta: string) => void
   onProseComplete?: () => void
   onSectionError?: (id: string, message: string) => void
@@ -63,7 +64,7 @@ export async function streamProseAndSections(
   visibleSkeletons: DailySection[],
   callbacks: ProseAndSectionCallbacks
 ): Promise<{ prose: string; sections: DailySection[]; taskTitle?: string }> {
-  const payload = buildDailyProsePayload(output, userText)
+  const payload = buildDailyProsePayload(output, userText, { deepModelDigest: callbacks.deepModelDigest })
   const task = buildProseAndSectionTask(output, visibleSkeletons)
   const sectionTracker = visibleSkeletons.length
     ? createSectionStreamTracker(visibleSkeletons, callbacks)

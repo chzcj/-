@@ -18,7 +18,9 @@
 | family_interaction_cycles | getFamilyInteractionCycles | familyInteractionPatterns | familyPatterns | ✅ |
 | parent_narrative_patterns | getParentNarrativePattern | parentNarrativePattern → flatten | parentUnderstanding | ✅（deep_mechanism_review + memory_write 写入） |
 | evidence_episodes/fact_atoms | retrieveContextPack（向量） | recentRelatedEvents / supportingEvidence | recentEvents（间接） | ✅（非 warmTurn） |
-| childQuotes | — | childQuotes（兼容字段，恒空） | **不进 pack** | ❌ 已砍 |
+| childQuotes | turn_events / evidence_networks | childQuotes（孩子原话片段） | childQuotes | ✅ |
+| parentVerbatimSnippets | turn_events / entry packs | parentVerbatimSnippets | parentVerbatimSnippets | ✅ |
+| deep_model_digest | loadDeepModelDigest | — | deepModelDigest（含 structuralTensions 家庭运转张力） | ✅ |
 
 ## 前端 AI vs 后端思考 agent 读取区分（原则）
 
@@ -35,7 +37,7 @@
 
 ### 后端思考 agent 读全量 + 调 LLM 产出
 
-- `deep_mechanism_review`：读全量 packs + updates + network + hypotheses + cycles → 覆盖 evidence_networks、写 parent_narrative_patterns
+- `deep_mechanism_review`（多 Agent 链：ecosystem → theory → synthesize → structuralRisk）：读全量 packs → 覆盖 evidence_networks、写 handoffs + structuralTensions 入 digest
 - `synthesis`：读全量 packs → candidateMechanismMatrix + childStructureModelDraft
 - `diagnosis`：读 packs + network → conditional_profiles + family_interaction_cycles
 - `model_review`：复核 pending_hypotheses

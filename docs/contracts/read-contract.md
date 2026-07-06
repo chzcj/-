@@ -21,6 +21,9 @@
 | `parentUnderstanding` | parent_narrative_patterns flatten slice 6 | 家长叙事模式 | ✓ |
 | `recentEvents` | turn_events + daily_updates 合并最近 5 条 | 近期对话 | 动态 |
 | `pendingHypotheses` | pending_hypotheses slice 3 | 待验证假设 | 动态 |
+| `childQuotes` | turn_events / evidence_networks 孩子原话 | 孩子原话片段 slice 4 | 动态 |
+| `parentVerbatimSnippets` | turn_events 家长原话 | 家长原话片段 slice 5 | 动态 |
+| `deepModelDigest` | deep_model_digest 层 | SecondMe 家长向摘要（机制叙事+锚定事实） | ✓ 全表面分析 Agent |
 
 **前端 AI 禁止读**：raw_materials、cleaned_facts、retrieval_indexes、evidence_networks 全量对象（只读机制名）、diagnosis 全量、synthesis 全量。
 

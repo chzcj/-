@@ -29,6 +29,9 @@ import { streamProseAndSections } from '@/lib/server/daily/prose-section-stream'
 import { requireTextStream } from '@/lib/server/daily/llm-required'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import { createId } from '@/lib/storage/storageIds'
+import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
+import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
+import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 
 export type DailyRuntimeFlags = {
   fastAiEnabled: boolean
@@ -106,6 +109,16 @@ export async function runDailyTurnBff(args: {
   const traceId = args.traceId || createId('trace')
   const userText = args.userText.trim()
 
+  let digestPack = pickDeepModelDigestPack(await loadDeepModelDigest(args.tenant).catch(() => null))
+  if (!digestPack.mechanismNarrative && !digestPack.anchoredFacts.length) {
+    try {
+      const built = await buildDeepModelDigest(args.tenant)
+      digestPack = pickDeepModelDigestPack(built)
+    } catch {
+      /* 无 digest 时降级 retrievalPack */
+    }
+  }
+
   const t0 = Date.now()
   const output = await runOrchestrationPipeline({
     userText,
@@ -168,6 +181,7 @@ export async function runDailyTurnBff(args: {
       userText,
       visibleAfterPolicy,
       {
+        deepModelDigest: digestPack,
         onProseDelta: (delta) => {
           if (tProseFirst === null) tProseFirst = Date.now()
           args.onDelta?.(delta)

@@ -175,6 +175,27 @@ export async function readDailyStream(
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let smoothQueue = ''
+  let rafId: number | null = null
+
+  const flushSmooth = (all = false) => {
+    const take = all ? smoothQueue.length : Math.min(smoothQueue.length, 14)
+    if (take <= 0) return
+    const chunk = smoothQueue.slice(0, take)
+    smoothQueue = smoothQueue.slice(take)
+    state.acc += chunk
+    onDelta(state.acc)
+  }
+
+  const scheduleSmooth = () => {
+    if (rafId != null) return
+    rafId = requestAnimationFrame(() => {
+      rafId = null
+      flushSmooth(false)
+      if (smoothQueue.length) scheduleSmooth()
+    })
+  }
+
   let lastSections: DailySection[] | undefined
   let lastActions: DailyAction[] | undefined
   let startFired = false
@@ -208,13 +229,19 @@ export async function readDailyStream(
   }
 
   const processLine = (line: string) => {
+    const prevAcc = state.acc
     const prevThinking = state.thinkingChips
     parseDailyStreamLine(line, state)
     if (state.traceId && !startFired && onStart) {
       startFired = true
       onStart(state.traceId)
     }
-    if (state.acc) onDelta(state.acc)
+    if (state.acc.length > prevAcc.length) {
+      smoothQueue += state.acc.slice(prevAcc.length)
+      scheduleSmooth()
+    } else if (state.acc) {
+      onDelta(state.acc)
+    }
     if (state.thinkingChips && state.thinkingChips !== prevThinking && onThinking) {
       onThinking(state.thinkingChips)
     }
@@ -252,6 +279,8 @@ export async function readDailyStream(
     if (buffer.trim() && !signal?.aborted) {
       processLine(buffer)
     }
+    flushSmooth(true)
+    while (smoothQueue.length) flushSmooth(true)
   } catch (err) {
     if (signal?.aborted) {
       return { ...state, streamError: undefined }

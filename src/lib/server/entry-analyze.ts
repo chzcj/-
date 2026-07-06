@@ -1,4 +1,4 @@
-import { callFastJson } from '@/lib/server/ark-agents'
+import { callParentJson } from '@/lib/server/ark-agents'
 import { sanitizeForParent } from '@/lib/server/daily/profile-sanitize'
 import { resolveEntryFollowUpAgent, resolveEntrySummaryAgent } from '@/lib/server/entry-build-prompts'
 import { buildEntryAnalyzeSystem } from '@/lib/server/profile-build-prompts'
@@ -148,7 +148,7 @@ export async function runEntryFollowUp(entryType: string, rawText: string) {
   const agent = resolveEntryFollowUpAgent(entryType)
   const isFinal = entryType === 'final'
   let lastError: unknown
-  const raw = await callFastJson<Record<string, unknown>>(buildEntryAnalyzeSystem(agent), {
+  const raw = await callParentJson<Record<string, unknown>>(buildEntryAnalyzeSystem(agent), {
     task: `家长在「${topic}」入口输入了以下描述。请判断是否需要继续追问，并生成追问内容。只输出 JSON。`,
     entryType,
     topic,
@@ -166,7 +166,7 @@ export async function runEntrySummary(entryType: string, rawText: string) {
   const topic = TITLE_MAP[entryType] || entryType
   const agent = resolveEntrySummaryAgent(entryType)
   let lastError: unknown
-  const raw = await callFastJson<Record<string, unknown>>(buildEntryAnalyzeSystem(agent), {
+  const raw = await callParentJson<Record<string, unknown>>(buildEntryAnalyzeSystem(agent), {
     task: `家长在「${topic}」入口完成了描述（含可能的追问补充）。请写阶段总结。只输出 JSON。`,
     entryType,
     topic,

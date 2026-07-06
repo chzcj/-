@@ -2,18 +2,24 @@
 
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
-import { getLatestProfile } from '@/lib/storage/profileStorage'
+import { useHydratedProfile } from '@/hooks/useHydratedProfile'
 
 export default function VerifyPage() {
   const router = useRouter()
-  const [profile, setProfile] = useState<ReturnType<typeof getLatestProfile>>(null)
+  const { profile, loading } = useHydratedProfile()
 
-  useEffect(() => {
-    setProfile(getLatestProfile())
-  }, [])
+  if (loading) {
+    return (
+      <HiFiMainShell activeTab="profile">
+        <div className="loading-wrap" style={{ minHeight: '40vh' }}>
+          <div className="loader" aria-hidden="true" />
+          <p>正在加载…</p>
+        </div>
+      </HiFiMainShell>
+    )
+  }
 
   if (!profile) {
     return (
@@ -48,7 +54,8 @@ export default function VerifyPage() {
         <section className="section">
           {points.length > 0 ? (
             points.map((v) => (
-              <div key={v.id} className="profile-block">
+              <div key={v.id} className="profile-block authority-insight-card">
+                <p className="authority-badge">清北学霸 · 家庭智慧</p>
                 <h3>{v.title}</h3>
                 <p>{v.description}</p>
               </div>

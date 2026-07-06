@@ -2,6 +2,7 @@ import { fail } from '@/lib/api-response';
 import { z } from 'zod';
 import { submitRehearsalStreaming } from '@/lib/server/store';
 import { verifyAppApi, authError } from '@/lib/server/auth-guard';
+import { resolveTenant } from '@/lib/server/memory/tenant';
 
 const rehearsalStreamSchema = z.object({
   conversationId: z.string().min(1),
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
   const parsed = rehearsalStreamSchema.safeParse(body);
   if (!parsed.success) return fail('BAD_REQUEST', '这次输入没有整理成功，可以再试一次。', parsed.error.flatten());
 
+  const tenant = await resolveTenant();
   const encoder = new TextEncoder();
 
   return new Response(
@@ -26,9 +28,14 @@ export async function POST(request: Request) {
 
         try {
           send({ type: 'start' });
-          const reply = await submitRehearsalStreaming(parsed.data.conversationId, parsed.data.text, (delta) => {
-            send({ type: 'delta', delta });
-          });
+          const reply = await submitRehearsalStreaming(
+            parsed.data.conversationId,
+            parsed.data.text,
+            (delta) => {
+              send({ type: 'delta', delta });
+            },
+            tenant
+          );
           if (!reply) {
             send({ type: 'error', message: '我暂时没有整理出回应，你可以再说一次。' });
             controller.close();

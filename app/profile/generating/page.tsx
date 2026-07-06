@@ -17,7 +17,7 @@ export default function GeneratingPage() {
   const [step, setStep] = useState(0)
   const [error, setError] = useState('')
   const [retryKey, setRetryKey] = useState(0)
-  const steps = ['整理四个模块的关键事实', '跨模块综合建模', '生成条件化孩子画像', '整理家庭支持重点']
+  const steps = ['整理四个模块的关键事实', '跨模块综合建模', '深度建模与机制复核', '生成条件化孩子画像', '整理家庭支持重点']
 
   useEffect(() => {
     if (hasProfile()) {
@@ -235,6 +235,7 @@ export default function GeneratingPage() {
 
         setStep(3)
         await waitForTripleReady(() => cancelled)
+        await waitForDeepModelDigest(() => cancelled)
 
         if (!cancelled) {
           router.push('/profile/result?onboarding=1')
@@ -263,7 +264,7 @@ export default function GeneratingPage() {
     <HiFiBuildShell
       topTitle={error ? '画像没有生成成功' : '正在生成孩子画像'}
       stepLabel="建模中"
-      progress={96 + Math.min(step, 3)}
+      progress={96 + Math.min(step, 4)}
       onBack={error ? () => router.push('/profile/build') : undefined}
       actions={
         error
@@ -313,6 +314,23 @@ function mapStrength(s: string | undefined): 'weak' | 'medium' | 'strong' {
   if (s === 'weak') return 'weak'
   if (s === 'strong') return 'strong'
   return 'medium'
+}
+
+async function waitForDeepModelDigest(isCancelled: () => boolean): Promise<void> {
+  const MAX_TRIES = 36
+  const INTERVAL = 2500
+  for (let i = 0; i < MAX_TRIES; i++) {
+    if (isCancelled()) return
+    try {
+      const r = await fetch('/api/profile/deep-model-status', { credentials: 'include' })
+      const json = await r.json()
+      if (json.ok && json.data?.mechanismReviewReady) return
+    } catch {
+      /* ignore */
+    }
+    if (isCancelled()) return
+    await new Promise<void>((resolve) => setTimeout(resolve, INTERVAL))
+  }
 }
 
 async function waitForTripleReady(isCancelled: () => boolean): Promise<void> {

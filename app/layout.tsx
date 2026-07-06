@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './hifi-app.css';
+import './tasks-ui.css';
 
 export const metadata: Metadata = {
   title: '育见',

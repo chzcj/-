@@ -1,23 +1,39 @@
-import { fail, ok } from '@/lib/api-response';
+import { fail, ok, requestId } from '@/lib/api-response';
 import { authCredentialsSchema } from '@/lib/schemas';
 import { registerWithPhonePassword } from '@/lib/server/auth';
+import { logAuthEvent } from '@/lib/server/auth-log';
 import { checkRateLimit, clientIp } from '@/lib/server/rate-limit';
 
 export async function POST(request: Request) {
+  const started = Date.now();
+  const reqId = requestId();
   const body = await request.json().catch(() => ({}));
   const parsed = authCredentialsSchema.safeParse(body);
-  if (!parsed.success) return fail('BAD_REQUEST', '手机号或密码格式不对，请再检查一下。', parsed.error.flatten());
+  if (!parsed.success) {
+    logAuthEvent('register', { requestId: reqId, ip: clientIp(request), outcome: 'bad_request' });
+    return fail('BAD_REQUEST', '手机号或密码格式不对，请再检查一下。', parsed.error.flatten());
+  }
 
   const ip = clientIp(request);
-  const ipLimit = checkRateLimit(`auth:register:ip:${ip}`, 5, 60 * 60 * 1000);
+  const phone = parsed.data.phone.replace(/[^\d+]/g, '').trim();
+  const ipLimit = checkRateLimit(`auth:register:ip:${ip}`, 15, 60 * 60 * 1000);
   if (!ipLimit.ok) {
+    logAuthEvent('register', { requestId: reqId, ip, phone, outcome: 'rate_limited', durationMs: Date.now() - started });
     return fail('RATE_LIMITED', `注册尝试过于频繁，请 ${ipLimit.retryAfterSec} 秒后再试。`, undefined, 429);
+  }
+  const phoneLimit = checkRateLimit(`auth:register:phone:${phone}`, 5, 60 * 60 * 1000);
+  if (!phoneLimit.ok) {
+    logAuthEvent('register', { requestId: reqId, ip, phone, outcome: 'rate_limited_phone', durationMs: Date.now() - started });
+    return fail('RATE_LIMITED', `该手机号注册尝试过于频繁，请 ${phoneLimit.retryAfterSec} 秒后再试。`, undefined, 429);
   }
 
   try {
     const user = await registerWithPhonePassword(parsed.data.phone, parsed.data.password);
-    return ok({ user });
+    logAuthEvent('register', { requestId: reqId, ip, phone, outcome: 'ok', durationMs: Date.now() - started });
+    return ok({ user }, reqId);
   } catch (error) {
+    const code = error instanceof Error ? error.message : 'AUTH_FAILED';
+    logAuthEvent('register', { requestId: reqId, ip, phone, outcome: code, durationMs: Date.now() - started, error: String(error) });
     return failAuth(error);
   }
 }
@@ -29,6 +45,9 @@ function failAuth(error: unknown) {
   if (code === 'BAD_PASSWORD') return fail('BAD_PASSWORD', '密码至少需要 8 位。');
   if (code === 'AUTH_DATABASE_DISABLED') {
     return fail('AUTH_DATABASE_DISABLED', '数据库未连接，可先使用演示模式浏览。', undefined, 503);
+  }
+  if (code === 'AUTH_DATABASE_UNAVAILABLE') {
+    return fail('AUTH_DATABASE_UNAVAILABLE', '数据库暂时不可用，可先使用演示模式浏览。', undefined, 503);
   }
   if (isDatabaseConnectionError(error)) {
     return fail('AUTH_DATABASE_DISABLED', '数据库未连接，可先使用演示模式浏览。', undefined, 503);

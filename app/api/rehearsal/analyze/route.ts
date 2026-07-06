@@ -5,6 +5,9 @@ import { rehearsalAnalyzeSchema } from '@/lib/schemas'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
+import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
+import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
+import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { createId } from '@/lib/storage/storageIds'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { recordFeatureTurn } from '@/lib/server/memory/turn-event'
@@ -68,6 +71,11 @@ export async function POST(request: Request) {
     try {
       const ctx = (profileContext || {}) as RehearsalProfileContext
       const packet = await buildDailyDialogueRetrievalPacket(parentText, tenant, { fast: true }).catch(() => undefined)
+      let digest = await loadDeepModelDigest(tenant).catch(() => null)
+      if (!digest?.mechanismNarrative) {
+        digest = await buildDeepModelDigest(tenant).catch(() => digest)
+      }
+      const deepModelDigest = pickDeepModelDigestPack(digest)
       const pastSimilarTalks = (packet?.recentRelatedEvents || []).slice(0, 3)
       const memHypotheses = ctx.pendingHypotheses?.length ? ctx.pendingHypotheses : (packet?.pendingHypotheses || [])
 
@@ -126,6 +134,13 @@ export async function POST(request: Request) {
                     task: buildRehearsalStreamTask(),
                     parentMessage: parentText,
                     profileContext: profileSummary.slice(0, 1500),
+                    deepModelDigest,
+                    retrievalPack: packet ? {
+                      childStructureModels: packet.relevantChildStructureModels || [],
+                      matchedMechanisms: packet.matchedMechanisms || [],
+                      pendingHypotheses: packet.pendingHypotheses || [],
+                      familyPatterns: packet.familyInteractionPatterns || [],
+                    } : undefined,
                     parentRoundCount,
                   },
                   (delta) => tracker.feed(delta),

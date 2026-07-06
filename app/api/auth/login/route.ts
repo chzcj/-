@@ -1,6 +1,7 @@
-import { fail, ok } from '@/lib/api-response';
+import { fail, ok, requestId } from '@/lib/api-response';
 import { authCredentialsSchema } from '@/lib/schemas';
 import { loginWithPhonePassword } from '@/lib/server/auth';
+import { logAuthEvent } from '@/lib/server/auth-log';
 import { checkRateLimit, clientIp } from '@/lib/server/rate-limit';
 import { getLatestBuiltProfileSnapshot } from '@/lib/server/memory/database-manager';
 import { enqueueJob, profileRewriteBucketKey } from '@/lib/server/jobs/queue';
@@ -23,27 +24,36 @@ async function maybeEnqueueProfileRewrite(familyId: string, childId: string): Pr
 }
 
 export async function POST(request: Request) {
+  const started = Date.now();
+  const reqId = requestId();
   const body = await request.json().catch(() => ({}));
   const parsed = authCredentialsSchema.safeParse(body);
-  if (!parsed.success) return fail('BAD_REQUEST', '手机号或密码格式不对，请再检查一下。', parsed.error.flatten());
+  if (!parsed.success) {
+    logAuthEvent('login', { requestId: reqId, ip: clientIp(request), outcome: 'bad_request' });
+    return fail('BAD_REQUEST', '手机号或密码格式不对，请再检查一下。', parsed.error.flatten());
+  }
 
   const ip = clientIp(request);
   const phone = parsed.data.phone.replace(/[^\d+]/g, '').trim();
   const ipLimit = checkRateLimit(`auth:login:ip:${ip}`, 30, 15 * 60 * 1000);
   if (!ipLimit.ok) {
+    logAuthEvent('login', { requestId: reqId, ip, phone, outcome: 'rate_limited', durationMs: Date.now() - started });
     return fail('RATE_LIMITED', `登录尝试过于频繁，请 ${ipLimit.retryAfterSec} 秒后再试。`, undefined, 429);
   }
   const phoneLimit = checkRateLimit(`auth:login:phone:${phone}`, 10, 15 * 60 * 1000);
   if (!phoneLimit.ok) {
+    logAuthEvent('login', { requestId: reqId, ip, phone, outcome: 'rate_limited', durationMs: Date.now() - started });
     return fail('RATE_LIMITED', `该账号登录尝试过于频繁，请 ${phoneLimit.retryAfterSec} 秒后再试。`, undefined, 429);
   }
 
   try {
     const user = await loginWithPhonePassword(parsed.data.phone, parsed.data.password);
-    // 画像每 2 天静默重写：登录时检查 built.updatedAt，超期则入队后台 agent 整体重写。
-    void maybeEnqueueProfileRewrite(user.familyId, user.childId)
-    return ok({ user });
+    void maybeEnqueueProfileRewrite(user.familyId, user.childId);
+    logAuthEvent('login', { requestId: reqId, ip, phone, outcome: 'ok', durationMs: Date.now() - started });
+    return ok({ user }, reqId);
   } catch (error) {
+    const code = error instanceof Error ? error.message : 'AUTH_FAILED';
+    logAuthEvent('login', { requestId: reqId, ip, phone, outcome: code, durationMs: Date.now() - started, error: String(error) });
     return failAuth(error);
   }
 }
@@ -55,6 +65,9 @@ function failAuth(error: unknown) {
   if (code === 'BAD_PASSWORD') return fail('BAD_PASSWORD', '密码至少需要 8 位。');
   if (code === 'AUTH_DATABASE_DISABLED') {
     return fail('AUTH_DATABASE_DISABLED', '数据库未连接，可先使用演示模式浏览。', undefined, 503);
+  }
+  if (code === 'AUTH_DATABASE_UNAVAILABLE') {
+    return fail('AUTH_DATABASE_UNAVAILABLE', '数据库暂时不可用，可先使用演示模式浏览。', undefined, 503);
   }
   if (isDatabaseConnectionError(error)) {
     return fail('AUTH_DATABASE_DISABLED', '数据库未连接，可先使用演示模式浏览。', undefined, 503);

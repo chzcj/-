@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { requestId } from '@/lib/api-response'
 
 // 仅保留真正需要公开的路径：登录页 + 健康/就绪探针。其余 /api/auth/* 由 isAuth 放行。
 // 其它所有受保护路由（含 daily/synthesis/diagnosis/memory/* 等）此前在白名单里靠各自
@@ -84,9 +85,19 @@ export function middleware(request: NextRequest) {
   // 受保护路由：要求有效会话 cookie（存在性，路由内 verifyAppApi 再验真实性）或内部 token。
   if (!token && !hasValidInternalToken(request)) {
     if (pathname.startsWith('/api/')) {
+      const id = requestId()
       return NextResponse.json(
-        { ok: false, error: { code: 'UNAUTHORIZED', message: '请先登录' } },
-        { status: 401 }
+        {
+          ok: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: '请先登录',
+            errorType: 'validation',
+            retriable: false
+          },
+          requestId: id
+        },
+        { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
       )
     }
     return NextResponse.redirect(new URL('/login', getExternalOrigin(request)))

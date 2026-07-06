@@ -150,7 +150,17 @@ export async function buildDailyDialogueRetrievalPacket(
   const profileTexts = profiles.map(p => p.childTendency)
   // childQuotes/parentQuotes 已从 entry packs 移除（dead extraction，永远空）。
   // 保留 retrieval packet 字段为空数组以兼容 diagnosis/synthesis 读取链（不破坏下游）。
-  const childQuotes: string[] = []
+  const childQuotes = [
+    ...new Set(
+      packs.flatMap((p) =>
+        (p.decomposedInput.childBehaviors || []).filter((b) => /[「"'']/.test(b) || b.length <= 40)
+      )
+    ),
+  ].slice(0, 4)
+  const parentVerbatimSnippets = inputHistory
+    .map((h) => h.text?.trim())
+    .filter((t): t is string => Boolean(t && t.length >= 12))
+    .slice(-4)
   // 具体事实直喂：四模块采集的 verifiableFacts/childBehaviors/triggerPoints 合并去重，
   // 让前端 AI 直接读到"错题本只抄答案"这类具体场景，而不是只拿 episode 摘要。
   const entryFacts = [
@@ -204,6 +214,7 @@ export async function buildDailyDialogueRetrievalPacket(
     pendingHypotheses: hypotheses.map(h => h.hypothesis),
     possibleCounterEvidence: [],
     childQuotes,
+    parentVerbatimSnippets,
     entryFacts,
     familyInteractionPatterns,
     parentNarrativePattern: buildParentUnderstanding(parentPattern, packs),

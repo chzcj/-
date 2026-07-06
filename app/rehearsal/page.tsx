@@ -18,6 +18,8 @@ import {
 } from '@/data/rehearsalScenes'
 import { getLatestProfile } from '@/lib/storage/profileStorage'
 import { saveTaskFromRehearsal } from '@/lib/storage/taskStorage'
+import { RehearsalDialogueCapture } from '@/components/rehearsal/RehearsalDialogueCapture'
+import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
 import type { InputMode } from '@/types/childos'
 
 type SimulationStep = 'entry' | 'confirm' | 'active' | 'end'
@@ -531,8 +533,16 @@ export default function RehearsalPage() {
         <div className={`simulation-layout${step === 'end' ? '' : ' hidden'}`} id="simulationEnd">
           <section className="section">
             <h2 className="section-title">这次预演里，我看到的重点</h2>
+            <AuthorityInsightCard
+              title="预演总结"
+              body={
+                endData?.closingAdvice ||
+                endData?.whyThisIsSafer ||
+                '先减少「被站在旁边看着」的感觉，再谈开始。'
+              }
+            />
             <div className="profile-block">
-              <h3>1. 孩子最容易被触发的是</h3>
+              <h3>孩子最容易被触发的是</h3>
               <p>
                 {endData?.childLikelyHearing ||
                   endData?.riskPoints?.[0] ||
@@ -540,15 +550,7 @@ export default function RehearsalPage() {
               </p>
             </div>
             <div className="profile-block">
-              <h3>2. 结合这次预演，建议你留意</h3>
-              <p>
-                {endData?.closingAdvice ||
-                  endData?.whyThisIsSafer ||
-                  '先减少「被站在旁边看着」的感觉，再谈开始。'}
-              </p>
-            </div>
-            <div className="profile-block">
-              <h3>3. 今晚可以试的说法</h3>
+              <h3>今晚可以试的说法</h3>
               <p>
                 {endData?.saferVersion ||
                   endData?.suggestedWording ||
@@ -574,6 +576,8 @@ export default function RehearsalPage() {
             </div>
           </section>
         </div>
+
+        <RehearsalDialogueCapture />
       </HiFiMainShell>
     </OnboardingGuard>
   )

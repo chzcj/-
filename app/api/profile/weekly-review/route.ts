@@ -3,6 +3,10 @@ import { getRequestIdentity } from '@/lib/server/auth';
 import { isDatabaseEnabled } from '@/lib/server/db';
 import { callAgentJson } from '@/lib/server/ark-agents';
 import { verifyAppApi, authError } from '@/lib/server/auth-guard';
+import { resolveTenant } from '@/lib/server/memory/tenant';
+import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store';
+import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder';
+import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest';
 import pg from 'pg';
 
 const { Pool } = pg;
@@ -24,9 +28,16 @@ export async function POST(request: Request) {
     return fail('NO_OBSERVATIONS', '本周还没有观察记录，先记录几条再来看周报。', undefined, 400);
   }
 
+  const tenant = await resolveTenant();
+  let digest = await loadDeepModelDigest(tenant).catch(() => null);
+  if (!digest?.mechanismNarrative) {
+    digest = await buildDeepModelDigest(tenant).catch(() => digest);
+  }
+  const deepModelDigest = pickDeepModelDigestPack(digest);
+
   const ai = await callAgentJson<{
     headline: string; summary: string; repeatedPatterns: string[]; keyObservation: string; nextWatchPoints: string[];
-  }>('weeklyReview', '把家长这一周的若干条观察整理成一份平和、不评判的周报。', { observations }).catch(() => undefined);
+  }>('weeklyReview', '把家长这一周的若干条观察整理成一份平和、不评判的周报。', { observations, deepModelDigest }).catch(() => undefined);
 
   if (!ai?.headline) {
     return fail('WEEKLY_REVIEW_UNAVAILABLE', '本周周报暂时没有生成成功，可以稍后再试。', undefined, 503);

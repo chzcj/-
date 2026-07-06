@@ -2,6 +2,7 @@ import type { LocalEvidenceRecord, LocalProfileSnapshot, LocalVerificationPoint 
 import { DEFAULT_CHILD_ID, DEFAULT_FAMILY_ID } from './storageSeed'
 import { updateStorage, getStorage } from './localStorageService'
 import { createId } from './storageIds'
+import { isProfilePlaceholderText } from '@/lib/profile/placeholder-text'
 import { markOnboardingComplete } from '@/lib/profile/onboarding'
 import { markBuildSessionCompleted } from '@/lib/storage/entryStorage'
 
@@ -62,6 +63,7 @@ export function getLatestProfile() {
     .filter((p) => p.childId === DEFAULT_CHILD_ID)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
   if (!profile) return null
+  if (isProfilePlaceholderText(profile.coreJudgment)) return null
   return {
     ...profile,
     evidence: storage.evidenceRecords.filter((e) => e.profileSnapshotId === profile.id),
@@ -83,7 +85,8 @@ export function hydrateProfileFromRemote(remote: {
   evidence?: Array<{ sourceLabel: string; evidenceText: string; explanation: string; strength: 'weak' | 'medium' | 'strong' }>
   verificationPoints?: Array<{ title: string; description: string }>
 }) {
-  if (!remote?.coreJudgment || getLatestProfile()) return
+  if (!remote?.coreJudgment || isProfilePlaceholderText(remote.coreJudgment)) return
+  if (getLatestProfile()) return
   createProfileSnapshot({
     completeness: remote.completeness,
     coreJudgment: remote.coreJudgment,

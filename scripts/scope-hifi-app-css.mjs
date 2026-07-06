@@ -329,6 +329,113 @@ ${scope} .progress-hint {
   color: var(--ink-soft);
 }
 
+/* Tasks: meta row bottom-align + status pill / caret */
+${scope} .task-meta {
+  align-items: flex-end;
+  min-height: 30px;
+}
+
+${scope} .task-meta .task-source {
+  display: flex;
+  align-items: flex-end;
+  min-height: 30px;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+${scope} .status-tag {
+  flex-shrink: 0;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  line-height: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.16s var(--ease-out-quart), opacity 0.16s ease;
+}
+
+${scope} .status-tag:active {
+  transform: scale(0.97);
+}
+
+${scope} .status-tag.saving {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+${scope} .status-tag .status-text {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+${scope} .status-tag--pending {
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.84);
+  border-color: rgba(73, 91, 45, 0.08);
+  box-shadow: var(--shadow-soft);
+}
+
+${scope} .status-tag--progress {
+  color: #8a7340;
+  background: var(--butter-soft);
+  border-color: rgba(138, 115, 64, 0.12);
+}
+
+${scope} .status-tag--done {
+  color: var(--green-deep);
+  background: var(--green-soft);
+  border-color: rgba(111, 159, 86, 0.14);
+}
+
+${scope} .status-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border: none;
+}
+
+${scope} .status-caret::after {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+${scope} .status-caret.up::after {
+  border-bottom: 5px solid var(--muted);
+}
+
+${scope} .status-caret.down::after {
+  border-top: 5px solid var(--muted);
+}
+
+${scope} .status-caret.up,
+${scope} .status-caret.down {
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   ${scope} .page.page-entering .hero-card,
   ${scope} .page.page-entering .section,

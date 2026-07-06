@@ -50,11 +50,20 @@ function LoginPageContent() {
     }
 
     if (result.ok) {
+      const me = await apiClient.getMe();
+      if (!me.ok || !me.data?.user) {
+        setHasError(true);
+        setToast('登录成功但会话未保存。请用系统浏览器打开，或关闭应用内页面后重试。');
+        setLoading(false);
+        return;
+      }
       await routeAfterAuth(true);
     } else {
       setHasError(true);
       if (result.error.code === 'AUTH_DATABASE_DISABLED') {
         setToast('数据库未连接，可先使用下方「演示模式」浏览界面。');
+      } else if (result.error.code === 'INTERNAL_ERROR' && process.env.NODE_ENV === 'development') {
+        setToast(`${result.error.message}（${String(result.error.detail ?? '')}）`);
       } else {
         setToast(result.error.message);
       }
@@ -69,6 +78,13 @@ function LoginPageContent() {
     setHasError(false);
     const result = await apiClient.demoLogin();
     if (result.ok) {
+      const me = await apiClient.getMe();
+      if (!me.ok || !me.data?.user) {
+        setHasError(true);
+        setToast('演示模式已开启，但会话未保存。请用系统浏览器打开后重试。');
+        setLoading(false);
+        return;
+      }
       await routeAfterAuth(false);
     } else {
       setHasError(true);

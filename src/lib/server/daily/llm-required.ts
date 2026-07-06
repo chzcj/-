@@ -1,7 +1,7 @@
 import 'server-only'
 
 import type { AgentPromptKey } from '@/lib/server/agent-prompts'
-import { callAgentJson, callAgentTextStream, callFastJson, callFastTextStream, isFastAIEnabled } from '@/lib/server/ark-agents'
+import { callAgentJson, callAgentTextStream, callParentAgentJson, callParentAgentTextStream, callParentJson, callParentTextStream, callFastJson, callFastTextStream, isFastAIEnabled, isParentAIEnabled } from '@/lib/server/ark-agents'
 import { filterParentFacingText } from '@/lib/server/daily/parent-facing-filter'
 
 export class DailyLlmRequiredError extends Error {
@@ -21,7 +21,7 @@ function sleep(ms: number) {
 }
 
 export function assertFastAiConfigured() {
-  if (!isFastAIEnabled()) {
+  if (!isFastAIEnabled() && !isParentAIEnabled()) {
     throw new DailyLlmRequiredError('FAST_AI_NOT_CONFIGURED')
   }
 }
@@ -38,7 +38,7 @@ export async function requireAgentTextStream(
 
   for (let attempt = 1; attempt <= DEFAULT_RETRIES; attempt++) {
     try {
-      const raw = await callAgentTextStream(agent, task, payload, onDelta || (() => {}))
+      const raw = await callParentAgentTextStream(agent, task, payload, onDelta || (() => {}))
       if (!raw?.trim()) {
         throw new Error('LLM_EMPTY_OUTPUT')
       }
@@ -63,7 +63,7 @@ export async function requireAgentJson<T>(
 
   for (let attempt = 1; attempt <= DEFAULT_RETRIES; attempt++) {
     try {
-      const raw = await callAgentJson<T>(agent, task, payload)
+      const raw = await callParentAgentJson<T>(agent, task, payload)
       if (raw === undefined || raw === null) {
         throw new Error('LLM_EMPTY_JSON')
       }
@@ -90,7 +90,7 @@ export async function requireTextStream(
 
   for (let attempt = 1; attempt <= DEFAULT_RETRIES; attempt++) {
     try {
-      const raw = await callFastTextStream(
+      const raw = await callParentTextStream(
         system,
         { task, ...(typeof payload === 'object' && payload ? payload : { input: payload }) },
         onDelta || (() => {}),
@@ -118,7 +118,7 @@ export async function requireFastJson<T>(
 
   for (let attempt = 1; attempt <= DEFAULT_RETRIES; attempt++) {
     try {
-      const raw = await callFastJson<T>(system, payload, { maxTokens: options?.maxTokens })
+      const raw = await callParentJson<T>(system, payload, { maxTokens: options?.maxTokens })
       if (raw === undefined || raw === null) throw new Error('LLM_EMPTY_JSON')
       options?.validate?.(raw)
       return raw

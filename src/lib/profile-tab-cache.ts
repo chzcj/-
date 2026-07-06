@@ -7,6 +7,7 @@ type ProfileTabCache = {
   built: unknown
   snapshot: unknown
   weekly: unknown
+  hub: unknown
 }
 
 export function readProfileTabCache(): ProfileTabCache | null {
@@ -23,7 +24,7 @@ export function readProfileTabCache(): ProfileTabCache | null {
 
 export function writeProfileTabCache(partial: Partial<Omit<ProfileTabCache, 'at'>>) {
   try {
-    const prev = readProfileTabCache() || { at: 0, built: null, snapshot: null, weekly: null }
+    const prev = readProfileTabCache() || { at: 0, built: null, snapshot: null, weekly: null, hub: null }
     sessionStorage.setItem(
       KEY,
       JSON.stringify({
@@ -31,6 +32,7 @@ export function writeProfileTabCache(partial: Partial<Omit<ProfileTabCache, 'at'
         built: partial.built !== undefined ? partial.built : prev.built,
         snapshot: partial.snapshot !== undefined ? partial.snapshot : prev.snapshot,
         weekly: partial.weekly !== undefined ? partial.weekly : prev.weekly,
+        hub: partial.hub !== undefined ? partial.hub : prev.hub,
       }),
     )
   } catch {
