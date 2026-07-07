@@ -1,60 +1,146 @@
 import 'server-only'
 
-import type { DailyPortraitCards } from '@/lib/server/profile/daily-refresh-agent'
 import type { DeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
-import { isProfilePlaceholderText, stripProfilePlaceholder } from '@/lib/profile/placeholder-text'
+import { stripProfilePlaceholder } from '@/lib/profile/placeholder-text'
+import {
+  dedupeTextParts,
+  isThinPortraitText,
+  normalizePortraitCard,
+  truncateSummary,
+  type DailyPortraitCards,
+  type PortraitCardContent,
+  type PortraitCardKey,
+  type PortraitCardSection,
+} from '@/types/portrait-card'
 
-export const MIN_PORTRAIT_CARD_CHARS = 120
+export type { DailyPortraitCards, PortraitCardContent, PortraitCardKey }
 
-const THIN_PLACEHOLDER = /^(还在了解|暂无|继续交流|完成交流|记录、任务|交流积累)/
+const CARD_KEYS: PortraitCardKey[] = [
+  'growth',
+  'focus',
+  'behavior',
+  'interaction',
+  'strategies',
+  'hypotheses',
+]
 
-function charLen(text: string): number {
-  return text.replace(/\s/g, '').length
+function pickFacts(pack: DeepModelDigestPack, max = 3): string[] {
+  return pack.anchoredFacts.slice(0, max)
 }
 
-function joinParts(parts: string[], sep = ' '): string {
-  return parts.map((p) => p.trim()).filter(Boolean).join(sep).trim()
+function defaultSectionsForKey(
+  key: PortraitCardKey,
+  pack: DeepModelDigestPack,
+  extras?: { coreJudgment?: string; supportFocus?: string }
+): PortraitCardSection[] {
+  const core = stripProfilePlaceholder(extras?.coreJudgment) || ''
+  const support = extras?.supportFocus?.trim() || ''
+  const narrative = pack.mechanismNarrative.trim()
+  const facts = pickFacts(pack)
+  const cultivation = pack.cultivationFocus.trim()
+
+  const byKey: Record<PortraitCardKey, PortraitCardSection[]> = {
+    growth: [
+      {
+        heading: '机制理解',
+        items: dedupeTextParts([narrative, core].filter(Boolean)),
+      },
+      {
+        heading: '已观察到的场景',
+        items: facts.slice(0, 2),
+      },
+    ],
+    focus: [
+      {
+        heading: '当前成长重点',
+        items: dedupeTextParts([support, cultivation].filter(Boolean)),
+      },
+    ],
+    behavior: [
+      {
+        heading: '行为模式',
+        items: dedupeTextParts(facts),
+      },
+    ],
+    interaction: [
+      {
+        heading: '家庭互动循环',
+        items: dedupeTextParts(pack.interactionLoops),
+      },
+    ],
+    strategies: [
+      {
+        heading: '可试一步',
+        items: dedupeTextParts([cultivation, support].filter(Boolean)),
+      },
+    ],
+    hypotheses: [
+      {
+        heading: '待验证判断',
+        items: dedupeTextParts(pack.openHypotheses),
+      },
+    ],
+  }
+
+  return byKey[key].filter((s) => s.items.length > 0)
 }
 
-function pickFacts(pack: DeepModelDigestPack, max = 3): string {
-  return pack.anchoredFacts.slice(0, max).join('；')
-}
-
-/** 单卡拼装：优先已有正文，不足 120 字则用 digest 机制叙事 + 锚定事实兜底。 */
-export function enrichPortraitCardBody(
-  key: keyof DailyPortraitCards,
-  body: string | undefined,
+function defaultLeadForKey(
+  key: PortraitCardKey,
   pack: DeepModelDigestPack,
   extras?: { coreJudgment?: string; supportFocus?: string }
 ): string {
-  const trimmed = stripProfilePlaceholder(body)
-  if (trimmed && charLen(trimmed) >= MIN_PORTRAIT_CARD_CHARS && !THIN_PLACEHOLDER.test(trimmed)) {
-    return trimmed
-  }
-
-  const facts = pickFacts(pack)
-  const narrative = pack.mechanismNarrative.trim()
   const core = stripProfilePlaceholder(extras?.coreJudgment) || ''
-  const support = extras?.supportFocus?.trim() || pack.cultivationFocus.trim()
+  const support = extras?.supportFocus?.trim() || ''
+  const narrative = pack.mechanismNarrative.trim()
 
-  const byKey: Record<keyof DailyPortraitCards, string> = {
-    growth: joinParts([trimmed, narrative, facts, core], ' '),
-    focus: joinParts([trimmed, support, pack.cultivationFocus, narrative.slice(0, 160)], ' '),
-    behavior: joinParts([trimmed, facts, narrative, core.slice(0, 120)], ' '),
-    interaction: joinParts([trimmed, pack.interactionLoops.join('；'), narrative.slice(0, 160)], ' '),
-    strategies: joinParts([trimmed, pack.cultivationFocus, support, facts], ' '),
-    hypotheses: joinParts([trimmed, pack.openHypotheses.join('；'), narrative.slice(0, 100)], ' '),
+  const byKey: Record<PortraitCardKey, string> = {
+    growth: core || narrative,
+    focus: support || pack.cultivationFocus.trim(),
+    behavior: pickFacts(pack, 1)[0] || core,
+    interaction: pack.interactionLoops[0] || '',
+    strategies: support || pack.cultivationFocus.trim(),
+    hypotheses: pack.openHypotheses[0] || '',
   }
 
-  let enriched = byKey[key] || joinParts([trimmed, narrative, facts], ' ')
-  if (charLen(enriched) < MIN_PORTRAIT_CARD_CHARS) {
-    enriched = joinParts([enriched, narrative, facts, pack.openHypotheses[0] || ''], ' ')
-  }
-  if (charLen(enriched) < MIN_PORTRAIT_CARD_CHARS && core) {
-    enriched = joinParts([enriched, core], ' ')
-  }
+  return byKey[key]?.trim() || ''
+}
 
-  return enriched.trim() || trimmed || '继续交流后，这里会出现更完整的深度分析。'
+function defaultSummaryForKey(
+  key: PortraitCardKey,
+  pack: DeepModelDigestPack,
+  extras?: { coreJudgment?: string; supportFocus?: string }
+): string {
+  return truncateSummary(defaultLeadForKey(key, pack, extras))
+}
+
+/** 补全单卡缺失字段，不重复拼接同一句。 */
+export function enrichPortraitCardContent(
+  key: PortraitCardKey,
+  raw: PortraitCardContent | string | undefined,
+  pack: DeepModelDigestPack,
+  extras?: { coreJudgment?: string; supportFocus?: string }
+): PortraitCardContent {
+  const normalized = normalizePortraitCard(raw)
+  const leadFallback = defaultLeadForKey(key, pack, extras)
+  const summaryFallback = defaultSummaryForKey(key, pack, extras)
+  const sectionFallback = defaultSectionsForKey(key, pack, extras)
+
+  const lead = normalized?.lead && !isThinPortraitText(normalized.lead)
+    ? normalized.lead
+    : leadFallback
+
+  const summary = normalized?.summary && !isThinPortraitText(normalized.summary)
+    ? normalized.summary
+    : truncateSummary(lead || summaryFallback)
+
+  const sections = normalized?.sections?.length ? normalized.sections : sectionFallback
+
+  return {
+    summary: summary || '继续交流后，这里会出现更完整的深度分析。',
+    lead: lead || undefined,
+    sections: sections.length ? sections : undefined,
+  }
 }
 
 export function enrichPortraitCards(
@@ -62,17 +148,24 @@ export function enrichPortraitCards(
   pack: DeepModelDigestPack,
   extras?: { coreJudgment?: string; supportFocus?: string }
 ): DailyPortraitCards {
-  const keys: (keyof DailyPortraitCards)[] = [
-    'growth',
-    'focus',
-    'behavior',
-    'interaction',
-    'strategies',
-    'hypotheses',
-  ]
-  const out: DailyPortraitCards = { ...(cards || {}) }
-  for (const key of keys) {
-    out[key] = enrichPortraitCardBody(key, out[key], pack, extras)
+  const out: DailyPortraitCards = {}
+  for (const key of CARD_KEYS) {
+    out[key] = enrichPortraitCardContent(key, cards?.[key], pack, extras)
   }
   return out
+}
+
+/** @deprecated 使用 enrichPortraitCardContent + buildPortraitCardDetail */
+export function enrichPortraitCardBody(
+  key: PortraitCardKey,
+  body: string | undefined,
+  pack: DeepModelDigestPack,
+  extras?: { coreJudgment?: string; supportFocus?: string }
+): string {
+  const card = enrichPortraitCardContent(key, body, pack, extras)
+  const parts = dedupeTextParts([
+    card.lead || card.summary,
+    ...(card.sections || []).flatMap((s) => s.items),
+  ])
+  return parts.join('\n\n') || card.summary
 }

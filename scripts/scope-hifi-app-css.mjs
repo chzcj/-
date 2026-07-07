@@ -436,6 +436,94 @@ ${scope} .status-caret.down {
   border-bottom: none;
 }
 
+/* Profile: white surface + structured card detail */
+${scope}.surface-white .app-shell {
+  background: #fff;
+}
+
+${scope}.surface-white .profile-data-card,
+${scope}.surface-white .profile-block {
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 3px rgba(29, 29, 31, 0.04);
+}
+
+${scope} .profile-card-summary {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink-soft);
+}
+
+${scope} .portrait-detail-card {
+  display: grid;
+  gap: 14px;
+}
+
+${scope} .portrait-detail-lead {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-body);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+${scope} .portrait-detail-section {
+  padding-top: 4px;
+}
+
+${scope} .portrait-detail-heading {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+${scope} .portrait-detail-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+  line-height: 1.55;
+}
+
+${scope} .portrait-detail-list li + li {
+  margin-top: 6px;
+}
+
+${scope} .portrait-detail-facts {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-control);
+  background: rgba(29, 29, 31, 0.03);
+  border: 1px solid var(--line);
+}
+
+${scope} .portrait-detail-facts h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+${scope} .portrait-detail-facts ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+${scope} .authority-badge {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
 @media (prefers-reduced-motion: reduce) {
   ${scope} .page.page-entering .hero-card,
   ${scope} .page.page-entering .section,

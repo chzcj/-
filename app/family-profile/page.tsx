@@ -8,8 +8,12 @@ import { ProfileEditModals, type EditModalKind } from '@/components/profile/Prof
 import { apiClient } from '@/lib/api-client'
 import { readProfileTabCache, writeProfileTabCache } from '@/lib/profile-tab-cache'
 import { getLatestProfile, hasProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage'
-import { StructuralTensionCard } from '@/components/hifi/StructuralTensionCard'
 import type { StructuralTension } from '@/types/deep-model-digest'
+import {
+  portraitCardSummary,
+  truncateSummary,
+  type DailyPortraitCards,
+} from '@/types/portrait-card'
 
 function truncate(text: string, max = 160) {
   const value = text.trim()
@@ -32,6 +36,24 @@ function formatRefreshedAt(iso: string): string {
   }
 }
 
+
+function cardSummary(
+  card: DailyPortraitCards[keyof DailyPortraitCards],
+  fallback: string
+): string {
+  const fromPortrait = portraitCardSummary(card)
+  if (fromPortrait) return fromPortrait
+  const fb = fallback.trim()
+  return fb ? truncateSummary(fb, 56) : ''
+}
+
+function hasCardContent(
+  card: DailyPortraitCards[keyof DailyPortraitCards],
+  fallback = ''
+): boolean {
+  return Boolean(portraitCardSummary(card) || fallback.trim())
+}
+
 export default function FamilyProfilePage() {
   const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
@@ -52,14 +74,7 @@ export default function FamilyProfilePage() {
     hasRealData?: boolean
   }>({})
   // daily-refresh Agent 产出的人话卡片摘要 + 上次整理时间
-  const [portraitCards, setPortraitCards] = useState<{
-    growth?: string
-    focus?: string
-    behavior?: string
-    interaction?: string
-    strategies?: string
-    hypotheses?: string
-  }>({})
+  const [portraitCards, setPortraitCards] = useState<DailyPortraitCards>({})
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
   const [pendingList, setPendingList] = useState<string[]>([])
   const [hubLoading, setHubLoading] = useState(true)
@@ -227,7 +242,7 @@ export default function FamilyProfilePage() {
     {
       title: '动态成长画像',
       slug: 'growth',
-      body: portraitCards.growth || growthText,
+      body: cardSummary(portraitCards.growth, growthText),
       progress: completeness,
       progressHint:
         completeness >= 100
@@ -237,36 +252,36 @@ export default function FamilyProfilePage() {
     {
       title: '当前关注点',
       slug: 'focus',
-      body: portraitCards.focus || focusText || truncate(coreJudgment || '暂无', 80),
-      progress: (portraitCards.focus || focusText) ? 55 : 8,
-      progressHint: (portraitCards.focus || focusText) ? '已基于已记录交流生成，继续使用会越来越准。' : '完成更多交流后，关注点会在这里更新。',
+      body: cardSummary(portraitCards.focus, focusText || truncate(coreJudgment || '暂无', 80)),
+      progress: hasCardContent(portraitCards.focus, focusText) ? 55 : 8,
+      progressHint: hasCardContent(portraitCards.focus, focusText) ? '已基于已记录交流生成，继续使用会越来越准。' : '完成更多交流后，关注点会在这里更新。',
     },
     {
       title: '行为模式总结',
       slug: 'behavior',
-      body: portraitCards.behavior || hubCards.behaviorSummary || (hasLocalProfile && coreJudgment ? truncate(coreJudgment, 120) : '交流积累后，会在这里看到模式总结。'),
-      progress: (portraitCards.behavior || hubCards.behaviorSummary) ? 55 : 8,
-      progressHint: (portraitCards.behavior || hubCards.behaviorSummary) ? '已从交流中提取行为模式，继续记录会持续修正。' : '完成几次交流后，这里会出现孩子的行为模式总结。',
+      body: cardSummary(portraitCards.behavior, hubCards.behaviorSummary || (hasLocalProfile && coreJudgment ? truncate(coreJudgment, 120) : '交流积累后，会在这里看到模式总结。')),
+      progress: hasCardContent(portraitCards.behavior, hubCards.behaviorSummary || '') ? 55 : 8,
+      progressHint: hasCardContent(portraitCards.behavior, hubCards.behaviorSummary || '') ? '已从交流中提取行为模式，继续记录会持续修正。' : '完成几次交流后，这里会出现孩子的行为模式总结。',
     },
     {
       title: '家庭互动模式',
       slug: 'interaction',
-      body: portraitCards.interaction || hubCards.interactionPattern || (hubCards.hasRealData ? '' : '完成画像与多轮交流后更新。'),
-      progress: (portraitCards.interaction || hubCards.interactionPattern) ? 55 : 8,
-      progressHint: (portraitCards.interaction || hubCards.interactionPattern) ? '已识别家庭互动循环，多轮交流后会越来越清晰。' : '完成画像建模 + 多轮交流后，这里会展示你们家的互动模式。',
+      body: cardSummary(portraitCards.interaction, hubCards.interactionPattern || (hubCards.hasRealData ? '' : '完成画像与多轮交流后更新。')),
+      progress: hasCardContent(portraitCards.interaction, hubCards.interactionPattern || '') ? 55 : 8,
+      progressHint: hasCardContent(portraitCards.interaction, hubCards.interactionPattern || '') ? '已识别家庭互动循环，多轮交流后会越来越清晰。' : '完成画像建模 + 多轮交流后，这里会展示你们家的互动模式。',
     },
     {
       title: '有效策略',
       slug: 'strategies',
-      body: portraitCards.strategies || hubCards.effectiveStrategies || (hubCards.hasRealData ? '' : '来自任务反馈与交流的验证策略会出现在这里。'),
-      progress: (portraitCards.strategies || hubCards.effectiveStrategies) ? 55 : 8,
-      progressHint: (portraitCards.strategies || hubCards.effectiveStrategies) ? '已积累验证过的策略，继续反馈任务结果会扩充。' : '试过任务后回来反馈，验证有效的策略会出现在这里。',
+      body: cardSummary(portraitCards.strategies, hubCards.effectiveStrategies || (hubCards.hasRealData ? '' : '来自任务反馈与交流的验证策略会出现在这里。')),
+      progress: hasCardContent(portraitCards.strategies, hubCards.effectiveStrategies || '') ? 55 : 8,
+      progressHint: hasCardContent(portraitCards.strategies, hubCards.effectiveStrategies || '') ? '已积累验证过的策略，继续反馈任务结果会扩充。' : '试过任务后回来反馈，验证有效的策略会出现在这里。',
     },
     {
       title: '家庭运转张力',
       slug: 'tensions',
       body: structuralTensions[0]
-        ? `${structuralTensions[0].title}：${structuralTensions[0].detail}`
+        ? truncateSummary(`${structuralTensions[0].title}：${structuralTensions[0].detail}`, 56)
         : '',
       progress: structuralTensions.length ? 50 : 8,
       progressHint: structuralTensions.length
@@ -276,9 +291,9 @@ export default function FamilyProfilePage() {
     {
       title: '待验证假设',
       slug: 'hypotheses',
-      body: portraitCards.hypotheses || hubCards.pendingHypotheses || (hubCards.hasRealData ? '' : '仍在观察中的判断会列在这里。'),
-      progress: (portraitCards.hypotheses || hubCards.pendingHypotheses) ? 40 : 8,
-      progressHint: (portraitCards.hypotheses || hubCards.pendingHypotheses) ? '这些判断仍在观察中，后续交流会帮助确认或修正。' : '持续交流后，系统会提出待验证的判断供你留意。',
+      body: cardSummary(portraitCards.hypotheses, hubCards.pendingHypotheses || (hubCards.hasRealData ? '' : '仍在观察中的判断会列在这里。')),
+      progress: hasCardContent(portraitCards.hypotheses, hubCards.pendingHypotheses || '') ? 40 : 8,
+      progressHint: hasCardContent(portraitCards.hypotheses, hubCards.pendingHypotheses || '') ? '这些判断仍在观察中，后续交流会帮助确认或修正。' : '持续交流后，系统会提出待验证的判断供你留意。',
     },
   ].filter((card) => card.body.trim().length > 0)
 
@@ -286,7 +301,7 @@ export default function FamilyProfilePage() {
 
   return (
     <OnboardingGuard>
-      <HiFiMainShell activeTab="profile">
+      <HiFiMainShell activeTab="profile" surface="white">
         <section className="section">
           <h2 className="section-title">
             画像数据中心
@@ -326,7 +341,7 @@ export default function FamilyProfilePage() {
                     {card.title === '动态成长画像' && hasLocalProfile ? ` · ${completeness}%` : ''}
                     <span className="card-chevron" aria-hidden="true">▸</span>
                   </h3>
-                  <p>{card.body}</p>
+                  <p className="profile-card-summary">{card.body}</p>
                   <div className="card-progress-detail">
                     <div className="progress-bar-track">
                       <div className="progress-bar-fill" style={{ width: `${card.progress}%` }} />
@@ -343,13 +358,6 @@ export default function FamilyProfilePage() {
             </button>
           ) : null}
         </section>
-
-        {structuralTensions.length > 0 ? (
-          <section className="section">
-            <StructuralTensionCard tensions={structuralTensions} />
-          </section>
-        ) : null}
-
         <section className="section">
           <h2 className="section-title">孩子最近变化</h2>
           <div className="profile-block">
@@ -365,10 +373,10 @@ export default function FamilyProfilePage() {
           </div>
         </section>
 
-        <section className="section">
-          <h2 className="section-title">待确认观点</h2>
-          <div className="profile-block">
-            {pendingList.length > 0 ? (
+        {pendingList.length > 0 && !hasCardContent(portraitCards.hypotheses, hubCards.pendingHypotheses || '') ? (
+          <section className="section">
+            <h2 className="section-title">待确认观点</h2>
+            <div className="profile-block">
               <ul>
                 {pendingList.map((item) => (
                   <li key={item}>
@@ -378,14 +386,9 @@ export default function FamilyProfilePage() {
                   </li>
                 ))}
               </ul>
-            ) : (
-              <>
-                <h3>以下判断仍在观察中</h3>
-                <p className="hint-text">持续交流后，系统会提出待验证的判断供你留意。</p>
-              </>
-            )}
-          </div>
-        </section>
+            </div>
+          </section>
+        ) : null}
 
         <section className="section">
           <h2 className="section-title">相关操作</h2>

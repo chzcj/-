@@ -6,7 +6,9 @@ import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-b
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { loadDailyUiSnapshot } from '@/lib/server/profile/daily-refresh-agent'
 import { getLatestBuiltProfileSnapshot } from '@/lib/server/memory/database-manager'
-import { enrichPortraitCardBody } from '@/lib/server/profile/portrait-card-enrich'
+import { enrichPortraitCardContent } from '@/lib/server/profile/portrait-card-enrich'
+import { buildPortraitCardDetail } from '@/lib/server/profile/portrait-card-detail'
+import type { PortraitCardKey } from '@/types/portrait-card'
 
 const CARD_KEYS = ['growth', 'focus', 'behavior', 'interaction', 'strategies', 'hypotheses', 'tensions'] as const
 export type ProfileCardKey = (typeof CARD_KEYS)[number]
@@ -41,29 +43,33 @@ export async function GET(
   const ui = await loadDailyUiSnapshot(tenant).catch(() => null)
   const built = await getLatestBuiltProfileSnapshot(tenant).catch(() => null)
 
-  const portraitBody = key === 'tensions' ? '' : (ui?.portraitCards?.[key as keyof typeof ui.portraitCards] || '')
   const extras = { coreJudgment: built?.coreJudgment, supportFocus: built?.supportFocus }
-  const fallbackBodies: Record<ProfileCardKey, string> = {
-    growth: portraitBody || digestPack.mechanismNarrative || built?.coreJudgment || '',
-    focus: portraitBody || digestPack.cultivationFocus || built?.supportFocus || '',
-    behavior: portraitBody || digestPack.anchoredFacts.join('\n') || built?.coreJudgment || '',
-    interaction: portraitBody || digestPack.interactionLoops.join('\n') || built?.deepMechanism || '',
-    strategies: portraitBody || digestPack.cultivationFocus || built?.supportFocus || '',
-    hypotheses: portraitBody || digestPack.openHypotheses.join('\n') || '',
-    tensions: portraitBody || (digest?.structuralTensions || []).map((t) => `${t.title}：${t.detail}`).join('\n'),
+  const structuralTensions = digest?.structuralTensions || []
+
+  if (key === 'tensions') {
+    return ok({
+      card: key,
+      title: CARD_TITLES[key],
+      summary: structuralTensions[0] ? `${structuralTensions[0].title}：${structuralTensions[0].detail}` : '',
+      sections: [],
+      anchoredFacts: [],
+      structuralTensions,
+      refreshedAt: ui?.refreshedAt || digest?.updatedAt || null,
+    })
   }
 
-  const structuralTensions = digest?.structuralTensions || []
+  const rawCard = ui?.portraitCards?.[key as PortraitCardKey]
+  const enriched = enrichPortraitCardContent(key as PortraitCardKey, rawCard, digestPack, extras)
+  const detail = buildPortraitCardDetail(key as PortraitCardKey, enriched, digestPack)
 
   return ok({
     card: key,
     title: CARD_TITLES[key],
-    body: key === 'tensions'
-      ? structuralTensions.map((t) => `${t.title}：${t.detail}`).join('\n\n')
-      : enrichPortraitCardBody(key, fallbackBodies[key], digestPack, extras),
-    anchoredFacts: digestPack.anchoredFacts,
+    summary: detail.summary,
+    lead: detail.lead,
+    sections: detail.sections,
+    anchoredFacts: detail.anchoredFacts,
     mechanismNarrative: digestPack.mechanismNarrative,
-    structuralTensions: key === 'tensions' ? structuralTensions : undefined,
     refreshedAt: ui?.refreshedAt || digest?.updatedAt || null,
   })
 }

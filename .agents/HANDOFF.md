@@ -24,6 +24,43 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 ```
 
 ---
+## 2026-07-07 19:05 | Cursor | 画像页结构化改版 + 部署
+
+**做了什么**
+- 画像 Tab / 二级页白底、L1 摘要收起、二级页 `PortraitCardDetail` 分区
+- 服务端 `summary/lead/sections` 结构化 + enrich 去重
+- 部署至 `yujian.yihe.site`
+
+**验证**
+- typecheck ✓ / build ✓ / deploy ✓
+- `curl https://yujian.yihe.site/api/readiness` → `ready: true`（2026-07-07 19:05 UTC+8）
+
+**下一步**
+- 用户强刷 `/family-profile` 验证；重新登录触发 daily-refresh 写入新结构
+
+**风险/冲突**
+- 旧 daily_ui_snapshot string 格式靠 `normalizePortraitCard` 兼容
+
+## 2026-07-07 16:12 | Cursor | 画像页结构化改版（完成）
+
+**做了什么**
+- 画像 Tab / 二级页白底（`surface-white`）
+- L1 卡片仅展示 ≤56 字摘要（`profile-card-summary` 两行截断）
+- 服务端拆分 `summary` / `lead` / `sections`，`portrait-card-enrich` 去重、移除 120 字凑字
+- 二级页 `PortraitCardDetail` 分区展示；card API 返回结构化 payload
+- `pendingHypothesesList` 去重；移除与卡片重复的「家庭运转张力」独立区块
+- 画像 CSS 写入 `scripts/scope-hifi-app-css.mjs`（构建后持久）
+
+**验证**
+- typecheck ✓ / build ✓
+- deploy ✗（本机未设置 SSH_HOST / SSH_PASS）
+
+**下一步**
+- 设置部署变量后 `npm run deploy`；用户强刷 `/family-profile` 验证
+- 下次 login daily-refresh 写入新结构化 portraitCards
+
+**风险/冲突**
+- 旧 daily_ui_snapshot string 格式靠 `normalizePortraitCard` 兼容
 
 ## 2026-07-06 23:42 | Cursor | 深度建模升级 v2
 

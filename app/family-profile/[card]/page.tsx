@@ -5,8 +5,10 @@ import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
+import { PortraitCardDetail } from '@/components/hifi/PortraitCardDetail'
 import { StructuralTensionCard } from '@/components/hifi/StructuralTensionCard'
 import type { StructuralTension } from '@/types/deep-model-digest'
+import type { PortraitCardSection } from '@/types/portrait-card'
 
 const TITLES: Record<string, string> = {
   growth: '动态成长画像',
@@ -22,7 +24,9 @@ export default function ProfileCardDetailPage() {
   const router = useRouter()
   const params = useParams()
   const card = String(params.card || '')
-  const [body, setBody] = useState('')
+  const [summary, setSummary] = useState('')
+  const [lead, setLead] = useState('')
+  const [sections, setSections] = useState<PortraitCardSection[]>([])
   const [facts, setFacts] = useState<string[]>([])
   const [tensions, setTensions] = useState<StructuralTension[]>([])
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
@@ -36,7 +40,9 @@ export default function ProfileCardDetailPage() {
         const res = await fetch(`/api/profile/card/${card}`, { credentials: 'include' })
         const json = await res.json()
         if (!cancelled && json.ok && json.data) {
-          setBody(json.data.body || '')
+          setSummary(json.data.summary || '')
+          setLead(json.data.lead || '')
+          setSections(json.data.sections || [])
           setFacts(json.data.anchoredFacts || [])
           setTensions(json.data.structuralTensions || [])
           setRefreshedAt(json.data.refreshedAt || null)
@@ -49,10 +55,11 @@ export default function ProfileCardDetailPage() {
   }, [card])
 
   const title = TITLES[card] || '画像详情'
+  const hasContent = summary || lead || sections.length > 0 || tensions.length > 0
 
   return (
     <OnboardingGuard>
-      <HiFiMainShell activeTab="profile">
+      <HiFiMainShell activeTab="profile" surface="white">
         <button type="button" className="quiet-button" onClick={() => router.push('/family-profile')}>
           <ArrowLeft size={16} /> 返回画像
         </button>
@@ -61,26 +68,16 @@ export default function ProfileCardDetailPage() {
           {refreshedAt ? <p className="hint-text">上次整理：{new Date(refreshedAt).toLocaleString('zh-CN')}</p> : null}
           {loading ? (
             <p className="hint-text">正在加载…</p>
-          ) : body || tensions.length ? (
+          ) : hasContent ? (
             card === 'tensions' && tensions.length ? (
               <StructuralTensionCard tensions={tensions} />
             ) : (
-            <div className="profile-block authority-insight-card">
-              <p className="authority-badge">清北学霸 · 家庭智慧</p>
-              {body.split('\n').filter(Boolean).map((para) => (
-                <p key={para.slice(0, 24)} className="profile-detail-para">{para}</p>
-              ))}
-              {facts.length > 0 ? (
-                <div className="profile-fact-quotes">
-                  <h3>依据你家已记录的事实</h3>
-                  <ul>
-                    {facts.map((f) => (
-                      <li key={f}>{f}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
+              <PortraitCardDetail
+                summary={summary}
+                lead={lead}
+                sections={sections}
+                anchoredFacts={facts}
+              />
             )
           ) : (
             <p className="hint-text">继续交流后，这里会出现更完整的深度分析。</p>

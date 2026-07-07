@@ -16,18 +16,13 @@ import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-b
 import { isPlaceholderProfileText } from '@/lib/server/daily/profile-sanitize'
 import { pickDeepModelDigestPack, type DeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { enrichPortraitCards } from '@/lib/server/profile/portrait-card-enrich'
+import type { DailyPortraitCards } from '@/types/portrait-card'
+import { truncateSummary } from '@/types/portrait-card'
 
 const LAYER = 'daily_ui_snapshot'
 const ITEM_ID = 'latest'
 
-export type DailyPortraitCards = {
-  growth?: string
-  focus?: string
-  behavior?: string
-  interaction?: string
-  strategies?: string
-  hypotheses?: string
-}
+export type { DailyPortraitCards }
 
 export type DailyUiSnapshot = {
   thinkingChips: DailyThinkingChip[]
@@ -68,13 +63,19 @@ function buildFallbackSnapshot(ctx: RefreshContext, digestPack: DeepModelDigestP
     { label: '互动特点', text: cycleText ? truncate(cycleText, 32) : '还在了解' },
   ]
 
+  const mk = (summarySrc: string, leadSrc?: string) => {
+    const lead = (leadSrc || summarySrc).trim()
+    if (!lead) return { summary: '还在了解' }
+    return { summary: truncateSummary(lead), lead }
+  }
+
   const portraitCards: DailyPortraitCards = {
-    growth: core ? truncate(core, 120) : digestPack.mechanismNarrative ? truncate(digestPack.mechanismNarrative, 120) : '还在了解',
-    focus: support ? truncate(support, 120) : digestPack.cultivationFocus ? truncate(digestPack.cultivationFocus, 120) : '还在了解',
-    behavior: topMechanism ? truncate(topMechanism, 120) : digestPack.anchoredFacts[0] ? truncate(digestPack.anchoredFacts[0], 120) : '还在了解',
-    interaction: cycleText ? truncate(cycleText, 120) : digestPack.interactionLoops[0] ? truncate(digestPack.interactionLoops[0], 120) : '还在了解',
-    strategies: support ? truncate(support, 120) : digestPack.cultivationFocus ? truncate(digestPack.cultivationFocus, 120) : '还在了解',
-    hypotheses: hypText ? truncate(hypText, 120) : digestPack.openHypotheses[0] ? truncate(digestPack.openHypotheses[0], 120) : '还在了解',
+    growth: mk(core || digestPack.mechanismNarrative),
+    focus: mk(support || digestPack.cultivationFocus),
+    behavior: mk(topMechanism || digestPack.anchoredFacts[0] || ''),
+    interaction: mk(cycleText || digestPack.interactionLoops[0] || ''),
+    strategies: mk(support || digestPack.cultivationFocus),
+    hypotheses: mk(hypText || digestPack.openHypotheses[0] || ''),
   }
 
   return {
@@ -142,7 +143,6 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
     pendingHypotheses: ctx.activeHypotheses,
     recentParentInputs: ctx.recentInputs,
     deepModelDigest: digestPack,
-    cardMinChars: 120,
     requireFactAnchor: true,
   }
 

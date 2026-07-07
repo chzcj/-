@@ -15,6 +15,7 @@ import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-st
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { enrichPortraitCards } from '@/lib/server/profile/portrait-card-enrich'
+import { dedupeTextParts } from '@/types/portrait-card'
 
 function truncate(text: string, max = 160) {
   const t = text.trim()
@@ -83,10 +84,12 @@ export async function GET(request: Request) {
       )
     : ''
 
-  const activeHyps = hypotheses
-    .filter((h) => h.status === 'pending' || h.status === 'supported')
-    .slice(0, 2)
-    .map((h) => truncate(h.hypothesis, 100))
+  const activeHyps = dedupeTextParts(
+    hypotheses
+      .filter((h) => h.status === 'pending' || h.status === 'supported')
+      .slice(0, 4)
+      .map((h) => truncate(h.hypothesis, 100))
+  ).slice(0, 2)
 
   const strategies = supportFocus
     ? truncate(supportFocus, 120)

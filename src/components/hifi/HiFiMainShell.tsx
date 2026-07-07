@@ -19,6 +19,8 @@ type HiFiMainShellProps = {
   recordingPanel?: ReactNode
   /** 主 Tab 回访时跳过进场动画，减轻切换卡顿感 */
   animate?: boolean
+  /** 画像等页面使用纯白底 */
+  surface?: 'default' | 'white'
 }
 
 /** 对齐 design-reference/extracted/2-main-app.html 的 app-shell 结构与 switchTab 动效 */
@@ -29,6 +31,7 @@ export function HiFiMainShell({
   showInput = false,
   recordingPanel,
   animate = true,
+  surface = 'default',
 }: HiFiMainShellProps) {
   const pathname = usePathname()
   const pageRef = useRef<HTMLElement>(null)
@@ -88,7 +91,7 @@ export function HiFiMainShell({
   }, [])
 
   return (
-    <div className="hifi-app-root">
+    <div className={`hifi-app-root${surface === 'white' ? ' surface-white' : ''}`}>
       <main className="app-shell" aria-label="育见">
         <div className="app-safe-top" aria-hidden="true" />
         <section className="page-stack">
