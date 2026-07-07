@@ -26,7 +26,9 @@ npm run sync:gitee
 ## 产品与设计
 
 - 产品边界：[PRODUCT.md](PRODUCT.md)
-- 设计系统：[DESIGN.md](DESIGN.md)
+- 设计系统：[DESIGN.md](DESIGN.md)（hi-fi 主站；旧紫色 AppShell 已废弃）
+- UI 像素参考：[design-reference/README.md](design-reference/README.md)
+- 对外合作材料：[docs/outreach/](docs/outreach/)
 - **Impeccable（UI）**：已安装于 `.agents/skills/impeccable/`（Cursor 入口：`.cursor/skills/impeccable`）
   - 开工：`node .agents/skills/impeccable/scripts/context.mjs`
   - 更新：`npx impeccable skills update`

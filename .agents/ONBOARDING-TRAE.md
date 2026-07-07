@@ -62,3 +62,5 @@ curl -s https://yujian.yihe.site/api/readiness
 | `.agents/HANDOFF.md` | 留言板 |
 | `.agents/README.md` | 协作流程 |
 | `README.md` | 环境与部署 |
+| `DESIGN.md` | hi-fi 设计系统（四 Tab 主站；勿恢复紫色 AppShell） |
+| `design-reference/README.md` | UI 像素参考与 CSS 生成流程 |

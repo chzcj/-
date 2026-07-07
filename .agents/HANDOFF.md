@@ -25,6 +25,20 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ---
 
+## 2026-07-07 23:05 | Cursor | DESIGN.md 与文档同步（hi-fi 主站）
+
+**做了什么**
+- 重写 `DESIGN.md`：黄绿 hi-fi token、`HiFiMainShell`/`HiFiInputZone`/四 Tab/流式体验；标注旧紫色 AppShell 废弃
+- 更新 `README.md`（`asr:dev` 本地启动、outreach 链接）、`PRODUCT.md`、`AGENTS.md`、`design-reference/README.md`、`docs/优化清单.md` 基线说明、`.agents/ONBOARDING-TRAE.md`
+
+**验证**
+- 文档交叉引用一致；未改运行时代码
+
+**下一步**
+- 新 UI 以 `DESIGN.md` + `hifi-app.css` 为准；勿恢复 `/home` 紫色布局
+
+---
+
 ## 2026-07-07 22:12 | Cursor | stream:timing 埋点验证（provider vs prose delta）
 
 **做了什么**

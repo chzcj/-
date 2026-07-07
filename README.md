@@ -90,10 +90,12 @@ npm run sync:gitee
 
 ```bash
 npm install
-npm run dev
+npm run asr:dev    # 开发服务器（含 WebSocket ASR），入口 server.js
 ```
 
 打开 `http://localhost:3000/daily`（主 Tab 入口；`/home` 会自动重定向）
+
+生产模式本地预览：`npm run build && npm run asr:start`
 
 ### 本地数据库
 
@@ -236,10 +238,12 @@ docs/contracts/         # daily-stream-events、daily-state-machine 等
 
 ## 当前状态
 
-- 产品在 `https://yujian.yihe.site` 线上运行（品牌名：育见 / ChildOS 心镜）
+- 产品在 `https://yujian.yihe.site` 线上运行（品牌名：**育见** / ChildOS / 心镜）
 - 主流程：hi-fi 四 Tab（`/daily` | `/tasks` | `/rehearsal` | `/family-profile`）
+- 设计系统：[`DESIGN.md`](DESIGN.md)（hi-fi 黄绿主视觉）；像素参考 [`design-reference/README.md`](design-reference/README.md)
 - PostgreSQL 数据库已接入（用户、会话、记忆）
 - Fast AI（DeepSeek `deepseek-v4-flash`）已接入；可选豆包 `PARENT_AI_*`
 - 日常交流流式契约见 `docs/contracts/daily-stream-events.md`
 - 五入口画像流程已实现（localStorage 草稿 + 后端 memory 同步）
 - 旧问题梳理流程保留，middleware 重定向至 `/daily`
+- 对外合作材料：`docs/outreach/`（支教推广技术说明与意向书）
