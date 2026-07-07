@@ -176,6 +176,7 @@ export async function readDailyStream(
   const decoder = new TextDecoder()
   let buffer = ''
   let smoothQueue = ''
+  let revealedLen = 0
   let rafId: number | null = null
 
   const flushSmooth = (all = false) => {
@@ -183,8 +184,9 @@ export async function readDailyStream(
     if (take <= 0) return
     const chunk = smoothQueue.slice(0, take)
     smoothQueue = smoothQueue.slice(take)
-    state.acc += chunk
-    onDelta(state.acc)
+    revealedLen += chunk.length
+    const display = state.acc.slice(0, revealedLen)
+    onDelta(display)
   }
 
   const scheduleSmooth = () => {
@@ -237,10 +239,9 @@ export async function readDailyStream(
       onStart(state.traceId)
     }
     if (state.acc.length > prevAcc.length) {
-      smoothQueue += state.acc.slice(prevAcc.length)
+      const inc = state.acc.slice(prevAcc.length)
+      smoothQueue += inc
       scheduleSmooth()
-    } else if (state.acc) {
-      onDelta(state.acc)
     }
     if (state.thinkingChips && state.thinkingChips !== prevThinking && onThinking) {
       onThinking(state.thinkingChips)

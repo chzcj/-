@@ -35,6 +35,38 @@ ChildOS（心镜）是一个帮助家长理解青春期孩子的 AI 产品。
 
 产品内核是【深度建模】：家长持续输入真实生活片段 → 多 Agent 共建孩子 SecondMe → 前台所有分析必须锚定家庭事实与机制闭环。详见 `docs/product/deep-modeling.md`。
 
+## 当前主链路（hi-fi）
+
+线上主体验以 **四 Tab** 组织（`HiFiMainShell`），不是旧版 `/home` 问题梳理流：
+
+| Tab | 路由 | 价值 |
+|-----|------|------|
+| 交流 | `/daily` | 家长说真实片段 → AI 深度理解（非泛建议） |
+| 任务 | `/tasks` | 从交流中沉淀可验证的小步尝试 |
+| 预演 | `/rehearsal` | 选场景后预演「孩子会怎么听」 |
+| 画像 | `/family-profile` | 长期 SecondMe：摘要卡、机制链、本周回顾 |
+
+**Onboarding 门禁**：陌生用户须先完成五入口画像（`/profile/build/*` → generating → result），再解锁四 Tab。旧路由由 middleware 重定向到 `/daily`，不恢复紫色心镜布局。
+
+**交流单轮输出形态**（BFF 流式，契约见 `docs/contracts/daily-stream-events.md`）：
+
+```
+start → thinking（四宫格）→ prose 流式 → prose_complete
+  → section_start/delta/complete（≤3 个可见 section）→ sections_complete → actions → final
+```
+
+hidden section 后台预取，供「深度展开」点开即读，不阻塞前台。
+
+## 流式体验原则
+
+1. **首字前**：允许 thinking 四宫格占位（家长知道系统在「读你家孩子」），不假装已经想好。
+2. **正文**：增量流式、无短语重复累加、结束时不缩字闪烁；节奏可略平滑，但不得牺牲正确性。
+3. **section**：prose 结束后紧接流出（单次 LLM 调用 marker 流），家长感知为「一段话接结构化展开」。
+4. **actions**：visible sections 全部落定后再出，解锁输入框；不必等 hidden/final 才允许发下一条。
+5. **打断**：家长可 abort；已展示内容保留，标记 interrupted。
+
+品牌对外可用 **育见**；代码与文档中 ChildOS / 心镜 为同一产品。
+
 ## Brand Personality
 
 三个词：简洁、清晰、沉浸。

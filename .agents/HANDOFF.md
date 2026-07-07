@@ -24,6 +24,33 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 ```
 
 ---
+
+## 2026-07-07 20:05 | Cursor | 流式重复修复 + digest 并行 + 文档同步
+
+**做了什么**
+- `dailyStreamClient.ts`：删除非 delta 时 `onDelta(state.acc)` 旁路、清 debug 埋点；保留 smoothQueue + proseBuffer rAF
+- 新增 `scripts/test-daily-stream-client.mjs`（7 项回归）并入 `test:contracts`
+- `daily-turn-bff.ts`：`ensureDigestPack` 与 `runOrchestrationPipeline` 并行（`Promise.all`）
+- `README.md`：hi-fi 四 Tab、onboarding 门禁、`/api/daily/stream`、目录与 AI 配置
+- `PRODUCT.md`：新增「当前主链路（hi-fi）」与「流式体验原则」
+
+**为什么**
+- 正文「你你/刚刚试刚刚试」式重复：旁路绕过 smooth 与队列不同步；用户确认 rAF ~16ms 不必为 TTFT 拆除
+- 首字慢主因在 orchestration；digest 与 orchestration 无依赖却串行 await，改为并行
+- README/PRODUCT 与线上四 Tab 脱节，误导协作
+
+**验证**
+- typecheck ✓ / build ✓ / test-daily-stream-client 7/7 ✓ / test-daily-contract 22/22 ✓
+- e2e stream 18/18（section_start 相对 prose_complete 0ms）
+- deploy ✓ / readiness ready:true（2026-07-07 20:03 UTC+8）
+
+**下一步**
+- 用户强刷 `/daily` 验证正文无重复；冷启动首轮对比首字主观感受
+- orchestration 冷启动仍是首字主瓶颈（独立项）；`test:contracts` 中 retrieval-packet 2 项失败为既有问题
+
+**风险/冲突**
+- 勿回滚 `revealedLen` smooth 逻辑；并行 digest build 与 orchestration 争用 LLM 时需观察 pm2 ttft 日志
+
 ## 2026-07-07 19:05 | Cursor | 画像页结构化改版 + 部署
 
 **做了什么**

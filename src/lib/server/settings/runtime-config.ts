@@ -63,14 +63,26 @@ export function fastBase(): string {
 }
 export function fastTemp(): number { return override.fastTemp ?? Number(process.env.FAST_AI_TEMPERATURE || 0.25) }
 
+/** 是否单独配置了豆包/方舟家长轨（未配置时 parent 轨完整回退 FAST_AI）。 */
+function hasDedicatedParentAI(): boolean {
+  return Boolean(
+    process.env.PARENT_AI_API_KEY ||
+    process.env.ARK_API_KEY ||
+    process.env.PARENT_AI_BASE_URL ||
+    process.env.ARK_BASE_URL
+  )
+}
+
 /** 家长可见前台：豆包 flash；未配置时回退 FAST_AI（单轨兼容）。 */
 export function parentApiKey(): string {
   return process.env.PARENT_AI_API_KEY || process.env.ARK_API_KEY || fastApiKey()
 }
 export function parentModel(): string {
+  if (!hasDedicatedParentAI()) return fastModel()
   return process.env.PARENT_AI_MODEL || 'ep-20260603000221-qp5h7'
 }
 export function parentBase(): string {
+  if (!hasDedicatedParentAI()) return fastBase()
   return (process.env.PARENT_AI_BASE_URL || process.env.ARK_BASE_URL || fastBase()).replace(/\/$/, '')
 }
 export function parentTemp(): number { return Number(process.env.PARENT_AI_TEMPERATURE || fastTemp()) }

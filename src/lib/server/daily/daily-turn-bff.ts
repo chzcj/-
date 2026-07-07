@@ -87,6 +87,19 @@ async function generateDailyProse(
   return requireTextStream(combinedProseSystem(), task, prosePayload, onDelta, { maxTokens: 1024 })
 }
 
+async function ensureDigestPack(tenant: TenantId) {
+  let digestPack = pickDeepModelDigestPack(await loadDeepModelDigest(tenant).catch(() => null))
+  if (!digestPack.mechanismNarrative && !digestPack.anchoredFacts.length) {
+    try {
+      const built = await buildDeepModelDigest(tenant)
+      digestPack = pickDeepModelDigestPack(built)
+    } catch {
+      /* 无 digest 时降级 retrievalPack */
+    }
+  }
+  return digestPack
+}
+
 export async function runDailyTurnBff(args: {
   userText: string
   maturityLevel?: MaturityLevel
@@ -109,23 +122,16 @@ export async function runDailyTurnBff(args: {
   const traceId = args.traceId || createId('trace')
   const userText = args.userText.trim()
 
-  let digestPack = pickDeepModelDigestPack(await loadDeepModelDigest(args.tenant).catch(() => null))
-  if (!digestPack.mechanismNarrative && !digestPack.anchoredFacts.length) {
-    try {
-      const built = await buildDeepModelDigest(args.tenant)
-      digestPack = pickDeepModelDigestPack(built)
-    } catch {
-      /* 无 digest 时降级 retrievalPack */
-    }
-  }
-
   const t0 = Date.now()
-  const output = await runOrchestrationPipeline({
-    userText,
-    maturityLevel: args.maturityLevel,
-    tenant: args.tenant,
-    warmTurn: args.warmTurn,
-  })
+  const [digestPack, output] = await Promise.all([
+    ensureDigestPack(args.tenant),
+    runOrchestrationPipeline({
+      userText,
+      maturityLevel: args.maturityLevel,
+      tenant: args.tenant,
+      warmTurn: args.warmTurn,
+    }),
+  ])
   args.onOrchestration?.(output)
   const tOrch = Date.now()
 

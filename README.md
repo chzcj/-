@@ -39,16 +39,26 @@ npm run sync:gitee
 
 ## 当前产品结构
 
-### 底部导航（四大模块）
+主流程以 **hi-fi 四 Tab** 为准（`HiFiMainShell` + `HiFiBottomNav`）。旧路由由 `middleware.ts` 重定向到 `/daily`，勿再恢复紫色心镜 `AppShell` 布局。
+
+### 底部导航（四 Tab）
 
 | 导航 | 页面 | 功能 |
 |---|---|---|
-| 对话 | `/home` | 首页：语音/文字输入一段小事 → 多轮追问 → 生成孩子理解卡 |
-| 沟通预演 | `/rehearsal` | 输入想对孩子说的话 → 分析孩子可能怎么听 → 更建议的说法 |
-| 记录孩子 | `/record-child` | 表单记录日常事件、变化、想观察的点 |
-| 档案 | `/family-profile` | 家庭看板：近期线索、稳定画像、观察重点、本周回顾 |
+| 交流 | `/daily` | 日常对话：语音/文字输入 → thinking 四宫格 → 正文流式 → sections → actions |
+| 任务 | `/tasks` | 从交流中沉淀的「今晚可试」任务与反馈 |
+| 预演 | `/rehearsal` | 选场景 → 输入准备对孩子说的话 → 分析孩子可能怎么听 |
+| 画像 | `/family-profile` | 孩子画像 hub：摘要卡、机制链、本周回顾、深度展开 |
 
-### 新增五入口画像流程
+### 新用户 Onboarding（五入口画像）
+
+陌生用户须先完成五入口，再解锁四 Tab：
+
+```
+/login → /profile/build/intro → /profile/build/basic → /profile/build（五入口 hub）
+  → 各入口采集/追问 → /profile/build/final-follow-up → /profile/generating → /profile/result
+  → 解锁 /daily、/tasks、/rehearsal、/family-profile
+```
 
 - `/profile/build` — 五入口入口页（学习作业 / 日常节奏 / 亲子沟通 / 情绪压力 / 关系环境）
 - `/profile/build/{type}` — 各入口输入页（语音输入 + AI 追问）
@@ -58,11 +68,12 @@ npm run sync:gitee
 - `/profile/generating` — 调用 /api/synthesis + /api/diagnosis 生成画像
 - `/profile/result` — 画像结果展示
 
-### 旧流程（保留，不走底部导航）
+### 旧流程（保留，middleware 重定向，不走底部导航）
 
-- `/problem/start` → `/problem/follow-up` → `/problem/confirm` → `/problem/generating`
-- `/understanding-card` / `/advice-card` / `/next-step`
-- `/rehearsal/input` — 旧流式对话式预演（从 `/next-step` 进入）
+- `/home`、`/problem/*`、`/observation` 等 → 重定向 `/daily`
+- `/problem/start` → … → `/understanding-card` / `/advice-card` / `/next-step`
+- `/rehearsal/input` — 旧流式对话式预演
+- `/record-child` — 旧记录入口（非主 Tab）
 
 ### 其他页面
 
@@ -125,8 +136,9 @@ npm run lint     # 需 eslint-config-next（npm install 后可用）
 |---|---|
 | `DATABASE_URL` | PostgreSQL：用户、会话、对话记录、记忆库 |
 | `NEXT_PUBLIC_USE_MOCK` | 当前项目为 `false`（走真实后端） |
-| `FAST_AI_API_KEY` | DeepSeek / Fast AI：追问、总结、诊断 agent |
+| `FAST_AI_API_KEY` | DeepSeek Fast AI：日常交流、追问、总结、诊断 agent |
 | `FAST_AI_MODEL` | 模型名（默认 `deepseek-v4-flash`） |
+| `PARENT_AI_*` / `ARK_API_KEY` | 可选：家长向 prose/section 专用豆包端点；未配置时回落 `FAST_AI_*` |
 | `INTERNAL_API_TOKEN` | 内部 API 鉴权 |
 | `TENCENT_APPID` | 腾讯云实时语音识别 |
 | `TENCENT_SECRET_ID` | 腾讯云 ASR |
@@ -192,7 +204,10 @@ curl -s https://yujian.yihe.site/api/readiness
 | `/api/synthesis` | 跨入口综合建模 |
 | `/api/diagnosis` | 深层诊断 |
 | `/api/profile/*` | 画像快照和周报 |
-| `/api/daily` | 每日观察 |
+| `/api/daily/stream` | **日常交流主入口**（NDJSON 流式：thinking → prose → sections → actions → final） |
+| `/api/daily` | @deprecated 非流式日常（无前端调用，保留兼容） |
+| `/api/daily/section-retry` | section 生成失败重试 |
+| `/api/daily/memory-status` | 按 traceId 查记忆写入状态 |
 | `/api/asr/token` | ASR 鉴权 token |
 | `/api/asr/stream` | ASR WebSocket 代理（server-ws.js 处理） |
 | `/api/readiness` | 健康检查 |
@@ -201,48 +216,30 @@ curl -s https://yujian.yihe.site/api/readiness
 
 ```
 app/                    # Next.js App Router 页面
-  api/                  # BFF API 路由
-  home/                 # 首页
-  login/                # 登录
-  problem/              # 问题梳理流程（旧）
-  rehearsal/            # 沟通预演
-  profile/build/        # 五入口画像构建
+  api/daily/stream/     # 日常交流 NDJSON 流式 BFF
+  daily/                # 交流 Tab（主入口）
+  tasks/                # 任务 Tab
+  rehearsal/            # 预演 Tab
+  family-profile/       # 画像 Tab
+  profile/build/        # 五入口画像构建（HiFiBuildShell）
+  login/
   ...
 src/
-  components/           # UI 组件
-    ai/                 # AI 输出卡片
-    cards/              # 功能卡片
-    controls/           # 按钮
-    layout/             # AppShell、导航、进度条
-    states/             # 空状态、错误、加载
-    ui/                 # 页头、品牌
-    voice/              # 语音输入条
-  hooks/                # 语音输入 hook
-  lib/
-    api-client.ts       # 前端 API 客户端
-    server/             # 后端
-      auth.ts           # 鉴权
-      db.ts             # PostgreSQL
-      ark-agents.ts     # Fast AI agent 调用
-      auth-guard.ts     # 内部 API 鉴权
-      diagnosis/        # 深层诊断 pipeline
-      synthesis/        # 综合建模 pipeline
-      memory/           # 记忆写入/检索
-      context/          # 上下文检索
-    storage/            # localStorage 存储（五入口草稿）
-  store/                # Zustand 状态管理
-  types/                # TypeScript 类型
-  data/                 # 入口配置和 mock 数据
-server-ws.js            # PM2 进程入口（Next.js + ASR WebSocket）
-ecosystem.config.js     # PM2 配置
+  components/hifi/      # HiFiMainShell、HiFiBottomNav、HiFiInputZone
+  components/daily/     # 交流气泡、section、深度展开
+  lib/daily/            # dailyStreamClient、线程持久化
+  lib/server/daily/     # daily-turn-bff、prose-section-stream
+  types/daily-stream.ts # 流事件契约（与 docs/contracts/ 对齐）
+  ...
+docs/contracts/         # daily-stream-events、daily-state-machine 等
 ```
 
 ## 当前状态
 
-- 产品在 `https://yujian.yihe.site` 线上运行
-- 所有页面已部署并通过 HTTP 200 验证
+- 产品在 `https://yujian.yihe.site` 线上运行（品牌名：育见 / ChildOS 心镜）
+- 主流程：hi-fi 四 Tab（`/daily` | `/tasks` | `/rehearsal` | `/family-profile`）
 - PostgreSQL 数据库已接入（用户、会话、记忆）
-- Fast AI (豆包) 已接入
-- 腾讯云 ASR WebSocket 语音识别已配置
+- Fast AI（DeepSeek `deepseek-v4-flash`）已接入；可选豆包 `PARENT_AI_*`
+- 日常交流流式契约见 `docs/contracts/daily-stream-events.md`
 - 五入口画像流程已实现（localStorage 草稿 + 后端 memory 同步）
-- 旧问题梳理流程保留并可用
+- 旧问题梳理流程保留，middleware 重定向至 `/daily`
