@@ -74,8 +74,24 @@ export async function streamProseAndSections(
   let proseDone = false
   let proseSent = 0
   let proseText = ''
+  let tFirstProviderDelta: number | null = null
+  let tFirstProseDelta: number | null = null
+  const tStreamStart = Date.now()
 
   const hasSections = visibleSkeletons.length > 0
+
+  const emitProseDelta = (delta: string) => {
+    if (!delta) return
+    if (tFirstProseDelta === null) {
+      tFirstProseDelta = Date.now()
+      const providerGap =
+        tFirstProviderDelta !== null ? tFirstProseDelta - tFirstProviderDelta : null
+      console.info(
+        `[stream:timing] providerToProseDeltaMs=${providerGap ?? 'n/a'} streamToProseDeltaMs=${tFirstProseDelta - tStreamStart}`
+      )
+    }
+    callbacks.onProseDelta?.(delta)
+  }
 
   await requireTextStream(
     combinedProseAndSectionSystem(),
@@ -85,6 +101,7 @@ export async function streamProseAndSections(
       sectionSkeletons: visibleSkeletons.map((s) => ({ id: s.id, label: s.label, kind: s.kind, hidden: s.hidden })),
     },
     (delta) => {
+      if (tFirstProviderDelta === null) tFirstProviderDelta = Date.now()
       if (proseDone) {
         sectionTracker?.feed(delta)
         return
@@ -94,7 +111,7 @@ export async function streamProseAndSections(
       if (markerIdx >= 0) {
         proseText = full.slice(0, markerIdx).replace(/\n+$/, '')
         const inc = proseText.slice(proseSent)
-        if (inc) callbacks.onProseDelta?.(inc)
+        if (inc) emitProseDelta(inc)
         proseSent = proseText.length
         callbacks.onProseComplete?.()
         proseDone = true
@@ -102,7 +119,7 @@ export async function streamProseAndSections(
       } else {
         const safeEnd = proseEmitEnd(full, hasSections)
         if (safeEnd > proseSent) {
-          callbacks.onProseDelta?.(full.slice(proseSent, safeEnd))
+          emitProseDelta(full.slice(proseSent, safeEnd))
           proseSent = safeEnd
         }
       }
@@ -114,7 +131,7 @@ export async function streamProseAndSections(
     // 流结束仍无 marker：全部当 prose
     proseText = full.replace(/\n+$/, '')
     const inc = proseText.slice(proseSent)
-    if (inc) callbacks.onProseDelta?.(inc)
+    if (inc) emitProseDelta(inc)
     callbacks.onProseComplete?.()
     return { prose: clampProse(proseText, resolveProseMode(output)), sections: visibleSkeletons, taskTitle: undefined }
   }

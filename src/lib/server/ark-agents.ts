@@ -279,6 +279,7 @@ async function callOpenAICompatibleTextStream(
   };
   try {
     bumpIdle();
+    const tFetchStart = Date.now();
     const response = await fetch(`${base}/chat/completions`, {
       method: 'POST',
       signal: controller.signal,
@@ -310,6 +311,7 @@ async function callOpenAICompatibleTextStream(
     let buffer = '';
     let fullText = '';
     let streamUsage: CacheUsage | undefined;
+    let tFirstProviderChunk: number | null = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -323,6 +325,12 @@ async function callOpenAICompatibleTextStream(
         if (u) streamUsage = u;
         const delta = parseOpenAIStreamLine(line);
         if (!delta) continue;
+        if (tFirstProviderChunk === null) {
+          tFirstProviderChunk = Date.now();
+          console.info(
+            `[stream:timing] lane=${lane} model=${model} providerFirstChunkMs=${tFirstProviderChunk - tFetchStart}`
+          );
+        }
         fullText += delta;
         onDelta(delta);
       }

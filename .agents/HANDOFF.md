@@ -25,6 +25,49 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ---
 
+## 2026-07-07 22:12 | Cursor | stream:timing 埋点验证（provider vs prose delta）
+
+**做了什么**
+- `ark-agents.ts`：`providerFirstChunkMs`（fetch 到首个 provider delta）
+- `prose-section-stream.ts`：`providerToProseDeltaMs`（首个 provider delta → 首个 `onProseDelta`）
+- 部署生产后跑 2 轮 stream（cold + warmTurn）
+
+**验证**
+- 3 条主调用样本 `providerToProseDeltaMs` 均为 **0ms**（<<50ms）
+- `providerFirstChunkMs` ≈ `proseFirstMs`（8277/8720/4623 vs timing.proseFirst 8277/8721）
+- 结论：**7–9s 首字等待 = DeepSeek 首 chunk prefill，BFF 未扣留文本**
+
+**下一步**
+- 优化首字应打 provider prefill（ack 拆分 / 减 miss），非压 BFF 缓冲
+- `[stream:timing]` 日志可保留观测；无需再怀疑 smoothQueue/proseEmitEnd
+
+---
+
+## 2026-07-07 21:40 | Cursor | 部署 + 线上 TTFT 日志分布
+
+**做了什么**
+- `npm run deploy` 成功（readiness ready:true，PM2 reload）
+- SSH 拉取 pm2 最近 53 条 `[daily/stream] ttft=` 日志并统计分布
+- 线上 API 额外采样 5 轮（2 cold + 3 warm）与日志交叉验证
+
+**验证结果（53 条生产日志）**
+| 指标 | p50 | p95 | min | max |
+|------|-----|-----|-----|-----|
+| ttft（首字） | **7536ms** | 20344ms | 2631ms | 26967ms |
+| proseFirstMs | **7397ms** | 17502ms | 2552ms | 23449ms |
+| orchestrationMs | **67ms** | 360ms | 3ms | 367ms |
+
+- warmTurn=true：ttft p50=8584ms；cold：p50=7428ms
+- **>10s 占 28%**，**>20s 占 6%**（长尾存在但非全部）
+- 结论：**orchestration 不是瓶颈**；首字慢几乎全在 prose+section 合并 LLM TTFT；历史最快 ~2.6s 仍可达，中位数已从 HANDOFF 早期 ~3s 漂移到 ~7.5s
+
+**风险**
+- 日志中有较多 `LLM_PROSE_FAILED` / `PARENT_FACING_BANNED` 错误（与慢/失败轮相关，需单独排查）
+- 勿在 HANDOFF/仓库写入 SSH 密码或 AUTH_TOKEN
+
+**下一步**
+- 若优化首字：主攻 prose LLM（cache 命中率、禁止交流轮同步 digest LLM build、可选极短 ack）；不动 orchestration 规则层
+
 ## 2026-07-07 20:05 | Cursor | 流式重复修复 + digest 并行 + 文档同步
 
 **做了什么**
