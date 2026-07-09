@@ -4,7 +4,12 @@ import path from 'node:path'
 const root = path.resolve(import.meta.dirname, '..')
 const html = fs.readFileSync(path.join(root, 'design-reference/pages/index.full.html'), 'utf8')
 const start = html.indexOf('const appPages = ')
-const end = html.indexOf('];', start)
+const endMarker = '\n    ];\n    const appStage'
+const boundary = html.indexOf(endMarker, start)
+if (start < 0 || boundary < 0) {
+  throw new Error('未找到 appPages 数组边界')
+}
+const end = boundary + endMarker.indexOf(']')
 const arrText = html.slice(start + 'const appPages = '.length, end + 1)
 const pages = JSON.parse(arrText)
 const outDir = path.join(root, 'design-reference/extracted')
