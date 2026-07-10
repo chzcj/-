@@ -47,10 +47,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await loginWithPhonePassword(parsed.data.phone, parsed.data.password);
+    const { user, sessionToken } = await loginWithPhonePassword(parsed.data.phone, parsed.data.password);
     void maybeEnqueueProfileRewrite(user.familyId, user.childId);
     logAuthEvent('login', { requestId: reqId, ip, phone, outcome: 'ok', durationMs: Date.now() - started });
-    return ok({ user }, reqId);
+    return ok({ user, sessionToken }, reqId);
   } catch (error) {
     const code = error instanceof Error ? error.message : 'AUTH_FAILED';
     logAuthEvent('login', { requestId: reqId, ip, phone, outcome: code, durationMs: Date.now() - started, error: String(error) });

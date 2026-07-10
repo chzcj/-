@@ -1,0 +1,33 @@
+.how-to-speak-page {
+  padding-bottom: 24px;
+}
+
+.how-to-speak-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.how-to-speak-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.how-to-speak-reason {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6f7480;
+}
+
+.hint-block {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(111, 159, 86, 0.1);
+}

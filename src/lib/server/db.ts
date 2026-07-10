@@ -169,6 +169,9 @@ export async function ensureDbSchema() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN NOT NULL DEFAULT FALSE;
         -- 软删除（注销账号 30 天恢复期）
         ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS wechat_openid TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS wechat_unionid TEXT;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wechat_openid ON users (wechat_openid) WHERE wechat_openid IS NOT NULL;
         -- 已有画像快照或已多次交流的老用户，标记为已完成 onboarding
         UPDATE users u SET onboarding_complete = TRUE
         WHERE onboarding_complete = FALSE AND EXISTS (
@@ -619,6 +622,8 @@ export interface UserRecord {
   childId: string;
   isAdmin: boolean;
   onboardingComplete: boolean;
+  wechatOpenid?: string;
+  wechatUnionid?: string;
 }
 
 export async function findUserByPhone(phone: string) {
@@ -634,6 +639,57 @@ export async function findUserByPhone(phone: string) {
     is_admin: boolean;
     onboarding_complete: boolean;
   }>('SELECT user_id, phone, password_hash, family_id, child_id, is_admin, onboarding_complete FROM users WHERE phone = $1', [phone]);
+  return mapUser(result.rows[0]);
+}
+
+export async function findUserByWechatOpenid(openid: string) {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const result = await pool.query<{
+    user_id: string;
+    phone: string;
+    password_hash: string;
+    family_id: string;
+    child_id: string;
+    is_admin: boolean;
+    onboarding_complete: boolean;
+    wechat_openid: string | null;
+    wechat_unionid: string | null;
+  }>(
+    `SELECT user_id, phone, password_hash, family_id, child_id, is_admin, onboarding_complete,
+            wechat_openid, wechat_unionid
+     FROM users WHERE wechat_openid = $1`,
+    [openid]
+  );
+  return mapUser(result.rows[0]);
+}
+
+export async function createUserWechat(openid: string, unionid?: string) {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const userId = createId('user');
+  const familyId = createId('fam');
+  const childId = createId('child');
+  const phone = `wx_${openid.slice(-16)}`;
+  const result = await pool.query<{
+    user_id: string;
+    phone: string;
+    password_hash: string;
+    family_id: string;
+    child_id: string;
+    is_admin: boolean;
+    onboarding_complete: boolean;
+    wechat_openid: string | null;
+    wechat_unionid: string | null;
+  }>(
+    `INSERT INTO users (user_id, phone, password_hash, family_id, child_id, wechat_openid, wechat_unionid)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING user_id, phone, password_hash, family_id, child_id, is_admin, onboarding_complete,
+               wechat_openid, wechat_unionid`,
+    [userId, phone, 'wechat_no_password', familyId, childId, openid, unionid || null]
+  );
   return mapUser(result.rows[0]);
 }
 
@@ -1342,6 +1398,8 @@ function mapUser(row?: {
   child_id: string;
   is_admin?: boolean;
   onboarding_complete?: boolean;
+  wechat_openid?: string | null;
+  wechat_unionid?: string | null;
 }): UserRecord | undefined {
   if (!row) return undefined;
   return {
@@ -1351,6 +1409,8 @@ function mapUser(row?: {
     familyId: row.family_id,
     childId: row.child_id,
     isAdmin: row.is_admin === true,
-    onboardingComplete: row.onboarding_complete === true
+    onboardingComplete: row.onboarding_complete === true,
+    wechatOpenid: row.wechat_openid || undefined,
+    wechatUnionid: row.wechat_unionid || undefined,
   };
 }

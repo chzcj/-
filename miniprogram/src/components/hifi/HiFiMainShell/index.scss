@@ -1,0 +1,10 @@
+@import '../../../styles/tokens.scss';
+
+.input-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: $tab-bar-height;
+  z-index: 9;
+  background: transparent;
+}

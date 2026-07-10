@@ -1,0 +1,48 @@
+@import '../../styles/tokens.scss';
+
+.structural-tension-card {
+  background: rgba(110, 106, 248, 0.04);
+  border: 1px solid rgba(110, 106, 248, 0.1);
+  border-radius: $radius-card;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.structural-tension-card.compact {
+  margin-top: 0;
+}
+
+.structural-tension-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e6af8;
+  margin-bottom: 10px;
+}
+
+.structural-tension-item {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: 10px;
+}
+
+.structural-tension-item:last-child {
+  margin-bottom: 0;
+}
+
+.structural-tension-item-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: $ink;
+  margin-bottom: 4px;
+}
+
+.structural-tension-item-body {
+  display: block;
+  font-size: 13px;
+  line-height: 1.6;
+  color: $ink-soft;
+}

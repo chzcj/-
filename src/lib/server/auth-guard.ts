@@ -24,9 +24,11 @@ export async function verifyAppApi(request: Request | NextRequest): Promise<bool
 
   const user = await getCurrentUser()
   if (user !== undefined) {
-    // 已登录：优先信任会话。部分 WebView 可能不带 Origin/Referer，不应因此拦 hydration。
     const origin = request.headers.get('origin')
     const referer = request.headers.get('referer')
+    const authHeader = request.headers.get('authorization') || ''
+    const hasBearerSession = /^Bearer\s+\S+/i.test(authHeader) && !hasValidInternalToken(request)
+    if (hasBearerSession) return true
     if (!origin && !referer) return true
     return isSameOriginRequest(request)
   }

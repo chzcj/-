@@ -1,0 +1,56 @@
+/* 从 app/hifi-app.css 提取，与 Web hi-fi 绿色系对齐 */
+/* 映射说明见 miniprogram/docs/DESIGN-TOKENS.md */
+
+$green: #9dcc75;
+$green-deep: #6f9f56;
+$green-soft: #f1f8df;
+$mint: #eef7cf;
+$butter: #f6edb4;
+$butter-soft: #fbf7dc;
+$ink: #202633;
+$ink-soft: #5c616d;
+$muted: #868b94;
+$card: rgba(255, 255, 247, 0.88);
+$line: rgba(73, 91, 45, 0.08);
+$shadow-card: 0 14px 36px rgba(31, 39, 51, 0.06);
+$shadow-soft: 0 6px 18px rgba(31, 39, 51, 0.05);
+$shadow-lift: 0 2px 8px rgba(31, 39, 51, 0.04);
+$radius-card: 24px;
+$radius-row: 20px;
+$radius-control: 16px;
+$radius-inner: 12px;
+$radius-pill: 999px;
+
+$text-body: 15px;
+$text-body-lh: 1.68;
+$text-small: 13px;
+$text-small-lh: 1.55;
+$text-title: 17px;
+$text-hero: 26px;
+
+$spacing-xs: 8px;
+$spacing-sm: 12px;
+$spacing-md: 16px;
+$spacing-lg: 22px;
+$spacing-xl: 28px;
+
+$page-padding-x: 20px;
+$page-padding-y-top: 12px;
+$page-padding-y-bottom: 20px;
+$shell-max-width: 430px;
+
+$btn-height-primary: 52px;
+$btn-height-chip: 34px;
+$input-dock-height: 72px;
+
+$bubble-parent-max-ratio: 72%;
+$bubble-ai-max: 86%;
+
+$font-weight-display: 700; // Web 820，见 visual-diff P1
+
+$ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+$shell-gradient: radial-gradient(circle at 76% 12%, rgba(162, 216, 103, 0.34), transparent 31%),
+  radial-gradient(circle at 12% 22%, rgba(247, 233, 154, 0.42), transparent 30%),
+  radial-gradient(circle at 58% 52%, rgba(238, 247, 207, 0.72), transparent 38%),
+  linear-gradient(180deg, #fbfaec 0%, #f8f6e5 52%, #f6f4e6 100%);
+$tab-bar-height: calc(78px + env(safe-area-inset-bottom));

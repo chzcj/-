@@ -1,0 +1,692 @@
+@import './tokens.scss';
+
+.hifi-build-root {
+  min-height: 100vh;
+  color: $ink;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+}
+
+.hifi-build-root .app-shell {
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  background: $shell-gradient;
+}
+
+.hifi-build-root .app-safe-top {
+  height: max(42px, env(safe-area-inset-top));
+  flex-shrink: 0;
+}
+
+.hifi-build-root .progress-wrap {
+  padding: 8px 24px 12px;
+  z-index: 4;
+}
+
+.hifi-build-root .progress-step-label {
+  display: none;
+}
+
+.hifi-build-root .progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: $radius-pill;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.74);
+}
+
+.hifi-build-root .progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+  box-shadow: 0 6px 14px rgba(125, 176, 86, 0.18);
+  transition: width 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hifi-build-root .page {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 20px 20px;
+  box-sizing: border-box;
+}
+
+// Web 共享玻璃卡片（hero / soft / record / summary / bottom-actions）
+.hifi-build-root .hero-card,
+.hifi-build-root .soft-card,
+.hifi-build-root .record-box,
+.hifi-build-root .summary-card,
+.hifi-build-root .bottom-actions {
+  background: $card;
+  box-shadow: $shadow-card;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+}
+
+.hifi-build-root .hero-card {
+  min-height: auto;
+  border-radius: $radius-card;
+  position: relative;
+  overflow: hidden;
+  padding: 26px 24px;
+  margin-bottom: 16px;
+  isolation: isolate;
+}
+
+.hifi-build-root .hero-card.compact {
+  min-height: auto;
+}
+
+.hifi-build-root .hero-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 90% 8%, rgba(155, 214, 110, 0.18), transparent 30%),
+    radial-gradient(circle at 8% 4%, rgba(255, 250, 220, 0.96), transparent 42%);
+  z-index: 0;
+}
+
+.hifi-build-root .hero-card.has-mascot {
+  min-height: 206px;
+  padding: 26px 28px;
+}
+
+.hifi-build-root .hero-card.has-mascot::before {
+  background: radial-gradient(circle at 80% 46%, rgba(155, 214, 110, 0.48), transparent 34%),
+    radial-gradient(circle at 84% 28%, rgba(248, 237, 159, 0.72), transparent 23%),
+    radial-gradient(circle at 10% 10%, rgba(255, 250, 220, 0.96), transparent 44%);
+}
+
+.hifi-build-root .module-kicker {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 30px;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: $radius-pill;
+  color: $green-deep;
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: $shadow-soft;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.hifi-build-root .hero-title {
+  display: block;
+  width: 100%;
+  margin: 0;
+  color: $ink;
+  font-size: $text-hero;
+  line-height: 1.32;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  position: relative;
+  z-index: 1;
+}
+
+.hifi-build-root .hero-card.has-mascot .hero-title {
+  width: min(56%, calc(100% - 148px));
+}
+
+.hifi-build-root .hero-copy {
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  color: $ink-soft;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+  position: relative;
+  z-index: 1;
+}
+
+.hifi-build-root .hero-card.has-mascot .hero-copy {
+  width: min(54%, calc(100% - 148px));
+  margin-top: 10px;
+}
+
+.hifi-build-root .hero-card .mascot {
+  width: 164px;
+  height: 146px;
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hifi-build-root .hero-card .mascot-img {
+  width: 100%;
+  height: 100%;
+}
+
+.hifi-build-root .section {
+  margin-bottom: 14px;
+}
+
+.hifi-build-root .section-label {
+  display: block;
+  margin: 0 0 9px;
+  color: $muted;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.hifi-build-root .soft-card {
+  border-radius: $radius-row;
+  padding: 17px;
+  color: $ink;
+  margin-bottom: 14px;
+}
+
+.hifi-build-root .soft-card-title {
+  display: block;
+  color: $ink;
+  font-size: $text-title;
+  font-weight: 780;
+  line-height: 1.45;
+}
+
+.hifi-build-root .soft-card-body {
+  display: block;
+  margin-top: 7px;
+  color: $ink-soft;
+  font-size: 14px;
+  line-height: 1.68;
+}
+
+.hifi-build-root .hint-block {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: $radius-control;
+  color: $green-deep;
+  background: $green-soft;
+  font-size: 14px;
+  line-height: 1.62;
+  font-weight: 650;
+}
+
+.hifi-build-root .record-box {
+  border-radius: $radius-row;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.hifi-build-root .record-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.hifi-build-root .record-head-title {
+  color: $ink;
+  font-size: $text-title;
+  font-weight: 780;
+}
+
+.hifi-build-root .record-status {
+  min-height: 30px;
+  padding: 6px 11px;
+  border-radius: $radius-pill;
+  color: $green-deep;
+  background: $green-soft;
+  font-size: $text-small;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.hifi-build-root .record-area,
+.hifi-build-root .record-textarea {
+  width: 100%;
+  min-height: 184px;
+  border-radius: $radius-row;
+  padding: 14px;
+  color: $ink;
+  font-size: 16px;
+  line-height: 1.55;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: $shadow-soft;
+  box-sizing: border-box;
+}
+
+.hifi-build-root .record-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  color: $muted;
+  font-size: $text-small;
+  font-weight: 650;
+}
+
+.hifi-build-root .hint-text {
+  display: block;
+  margin-top: 8px;
+  color: $ink-soft;
+  font-size: $text-small;
+  line-height: 1.55;
+}
+
+.hifi-build-root .text-link {
+  display: block;
+  margin-top: 4px;
+  padding: 8px 0;
+  color: $green-deep;
+  font-size: $text-small;
+  font-weight: 650;
+  text-align: center;
+}
+
+.hifi-build-root .light-prompt {
+  display: none;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: $radius-control;
+  color: $green-deep;
+  background: $green-soft;
+  font-size: 14px;
+  line-height: 1.62;
+  font-weight: 650;
+}
+
+.hifi-build-root .light-prompt.active {
+  display: block;
+}
+
+.hifi-build-root .recording-strip {
+  display: none;
+  margin-top: 12px;
+}
+
+.hifi-build-root .recording-strip.active {
+  display: block;
+}
+
+.hifi-build-root .recording-card {
+  max-width: 254px;
+  margin: 0 auto;
+  border-radius: $radius-row;
+  padding: 13px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: $shadow-card;
+}
+
+.hifi-build-root .wave {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: $green;
+}
+
+.hifi-build-root .wave-bar {
+  width: 5px;
+  border-radius: 99px;
+  background: currentColor;
+  animation: wave 0.9s infinite ease-in-out;
+}
+
+.hifi-build-root .wave-bar:nth-child(1) { height: 8px; animation-delay: 0s; }
+.hifi-build-root .wave-bar:nth-child(2) { height: 16px; animation-delay: 0.08s; }
+.hifi-build-root .wave-bar:nth-child(3) { height: 26px; animation-delay: 0.16s; }
+.hifi-build-root .wave-bar:nth-child(4) { height: 34px; animation-delay: 0.24s; }
+.hifi-build-root .wave-bar:nth-child(5) { height: 26px; animation-delay: 0.32s; }
+.hifi-build-root .wave-bar:nth-child(6) { height: 16px; animation-delay: 0.4s; }
+.hifi-build-root .wave-bar:nth-child(7) { height: 8px; animation-delay: 0.48s; }
+
+.hifi-build-root .recording-text {
+  display: block;
+  margin-top: 6px;
+  color: $ink;
+  font-size: 14px;
+  font-weight: 720;
+}
+
+.hifi-build-root .cancel-hint {
+  display: block;
+  margin-top: 2px;
+  color: $ink-soft;
+  font-size: 12px;
+}
+
+.hifi-build-root .record-voice-row {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.hifi-build-root .hold-chip {
+  min-height: 44px;
+  padding: 9px 20px;
+  border-radius: $radius-pill;
+  color: $green-deep;
+  background: $green-soft;
+  font-size: 15px;
+  font-weight: 760;
+  text-align: center;
+}
+
+.hifi-build-root .hold-chip.active {
+  color: #fff;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+}
+
+.hifi-build-root .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.hifi-build-root .chip {
+  min-height: 34px;
+  padding: 7px 13px;
+  border-radius: $radius-pill;
+  color: $green-deep;
+  background: $green-soft;
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.hifi-build-root .entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hifi-build-root .entry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-radius: $radius-row;
+  background: $card;
+  border: 1px solid $line;
+  box-shadow: $shadow-card;
+  margin-bottom: 0;
+}
+
+.hifi-build-root .entry-row.completed {
+  border-color: rgba(111, 159, 86, 0.2);
+}
+
+.hifi-build-root .entry-row-title {
+  font-size: $text-title;
+  font-weight: 700;
+  color: $ink;
+}
+
+.hifi-build-root .entry-row-desc {
+  font-size: $text-small;
+  color: $muted;
+  margin-top: 4px;
+}
+
+.hifi-build-root .entry-row-status {
+  font-size: $text-small;
+  color: $green-deep;
+  font-weight: 600;
+}
+
+.hifi-build-root .summary-card {
+  border-radius: $radius-row;
+  padding: 17px;
+  margin-bottom: 12px;
+  color: $ink;
+}
+
+.hifi-build-root .summary-card-title {
+  display: block;
+  color: $ink;
+  font-size: $text-title;
+  font-weight: 780;
+  line-height: 1.45;
+}
+
+.hifi-build-root .summary-lead {
+  display: block;
+  margin-top: 7px;
+  color: $ink-soft;
+  font-size: 14px;
+  line-height: 1.68;
+}
+
+.hifi-build-root .summary-note {
+  display: block;
+  margin-top: 7px;
+  color: $ink-soft;
+  font-size: 14px;
+  line-height: 1.68;
+}
+
+.hifi-build-root .follow-up-directions,
+.hifi-build-root .follow-up-voice-prompt {
+  margin-top: 14px;
+}
+
+.hifi-build-root .insufficient-banner {
+  margin-bottom: 14px;
+  padding: 14px;
+  border-radius: $radius-control;
+  background: $green-soft;
+  border: 1px solid rgba(111, 159, 86, 0.15);
+}
+
+.hifi-build-root .insufficient-banner-title {
+  display: block;
+  color: $green-deep;
+  font-size: 15px;
+  font-weight: 760;
+  margin-bottom: 6px;
+}
+
+.hifi-build-root .insufficient-banner-copy {
+  display: block;
+  color: $ink-soft;
+  font-size: 14px;
+  line-height: 1.62;
+}
+
+.hifi-build-root .hifi-voice-error {
+  display: block;
+  margin: 10px 0 0;
+  color: #c0392b;
+  font-size: $text-small;
+  font-weight: 650;
+}
+
+.hifi-build-root .hifi-voice-live {
+  display: block;
+  margin: 8px 0 0;
+  color: $green-deep;
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 650;
+}
+
+.hifi-build-root .loading-wrap {
+  min-height: 40vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.hifi-build-root .loader {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  margin-bottom: 18px;
+  border: 7px solid rgba(255, 255, 255, 0.72);
+  border-top-color: $green;
+  box-shadow: $shadow-soft;
+  animation: spin 0.9s linear infinite;
+}
+
+.hifi-build-root .loading-title {
+  color: $ink;
+  font-size: 22px;
+  font-weight: 820;
+  line-height: 1.35;
+}
+
+.hifi-build-root .bottom-actions {
+  position: relative;
+  z-index: 30;
+  flex-shrink: 0;
+  margin: 0 16px calc(10px + env(safe-area-inset-bottom));
+  border-radius: 24px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.hifi-build-root .bottom-actions.dense {
+  grid-template-columns: 1fr 1fr;
+}
+
+.hifi-build-root .bottom-actions.dense .primary-button:first-child {
+  grid-column: 1 / -1;
+}
+
+.hifi-build-root .primary-button,
+.hifi-build-root .secondary-button,
+.hifi-build-root .quiet-button {
+  width: 100%;
+  min-height: 48px;
+  padding: 9px 15px;
+  border-radius: $radius-pill;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 760;
+  text-align: center;
+}
+
+.hifi-build-root .primary-button {
+  color: #fff;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+  box-shadow: 0 12px 24px rgba(125, 176, 86, 0.22);
+}
+
+.hifi-build-root .primary-button.disabled {
+  color: #b5b8be;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: $shadow-soft;
+}
+
+.hifi-build-root .secondary-button {
+  color: $green-deep;
+  background: $green-soft;
+}
+
+.hifi-build-root .quiet-button {
+  color: $ink-soft;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: $shadow-soft;
+}
+
+.hifi-build-root .choice-button {
+  min-height: 34px;
+  padding: 7px 13px;
+  border-radius: $radius-pill;
+  color: $green-deep;
+  background: $green-soft;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.hifi-build-root .choice-button.selected {
+  color: #fff;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+}
+
+.hifi-build-root .step-pill {
+  display: block;
+  padding: 10px 0;
+  font-size: $text-small;
+  color: $muted;
+}
+
+.hifi-build-root .step-pill.active {
+  color: $green-deep;
+  font-weight: 700;
+}
+
+.hifi-build-root .step-pill.done {
+  color: $ink-soft;
+}
+
+.hifi-build-root .loading-dots {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.hifi-build-root .loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: $green-deep;
+  opacity: 0.4;
+  animation: dotPulse 1.2s infinite ease-in-out;
+}
+
+.hifi-build-root .loading-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.hifi-build-root .loading-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes dotPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.55);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hifi-build-root .wave-bar,
+  .hifi-build-root .loader {
+    animation: none;
+  }
+}

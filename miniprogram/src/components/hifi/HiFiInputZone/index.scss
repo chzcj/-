@@ -1,0 +1,123 @@
+@import '../../../styles/tokens.scss';
+
+.input-dock-inner {
+  width: 100%;
+}
+
+.recording-panel {
+  display: none;
+  padding: 0 20px 8px;
+}
+
+.recording-panel.active {
+  display: block;
+}
+
+.recording-card {
+  border-radius: $radius-card;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  text-align: center;
+}
+
+.recording-text {
+  display: block;
+  font-size: $text-body;
+  font-weight: 700;
+  color: $ink;
+}
+
+.cancel-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: $text-small;
+  color: $muted;
+}
+
+.input-zone {
+  padding: 8px 20px 10px;
+}
+
+.input-bar {
+  min-height: $btn-height-primary;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.voice-mode .hold-button {
+  flex: 1;
+}
+
+.text-mode .text-input-wrap {
+  flex: 1;
+}
+
+.hold-button,
+.mode-button,
+.send-button {
+  min-height: $btn-height-primary;
+  min-width: $btn-height-primary;
+  border-radius: $radius-control;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $green-deep;
+  background: rgba(255, 255, 255, 0.84);
+  border: none;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+}
+
+.hold-button::after,
+.mode-button::after,
+.send-button::after {
+  border: none;
+}
+
+.hold-button {
+  color: #fff;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+  font-weight: 700;
+}
+
+.send-button {
+  color: #fff;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+}
+
+.send-button[disabled] {
+  color: #b5b8be;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.text-input-wrap {
+  min-height: $btn-height-primary;
+  border-radius: $radius-control;
+  padding: 13px 15px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: $shadow-soft;
+  box-sizing: border-box;
+}
+
+.text-input {
+  width: 100%;
+  min-height: 24px;
+  max-height: 112px;
+  color: $ink;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+}
+
+.hint-text {
+  display: block;
+  padding: 4px 4px 0;
+  font-size: $text-small;
+  color: $muted;
+}
+
+.hold-button-label {
+  font-size: $text-body;
+  font-weight: 700;
+}

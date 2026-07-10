@@ -1,0 +1,239 @@
+// 动效库 — 对齐 Web app/hifi-app.css（390px 感知）
+
+@keyframes page-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes section-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes thinking-pulse {
+  0%,
+  100% {
+    opacity: 0.32;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes chipFloat {
+  0%,
+  100% {
+    opacity: 0.88;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.55);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// 页面进场 stagger
+.page.page-entering .hero-card,
+.page.page-entering .section,
+.page.page-entering .task-card,
+.page.page-entering .profile-block,
+.page.page-entering .profile-data-card,
+.page.page-entering .profile-section,
+.page.page-entering .flow-card,
+.page.page-entering .feedback-panel,
+.page.page-entering .scenario-card,
+.page.page-entering .rehearsal-header,
+.page.page-entering .hifi-card,
+.page.page-entering .page-heading {
+  animation: page-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.page.page-entering .section:nth-of-type(2),
+.page.page-entering .task-card:nth-child(2),
+.page.page-entering .profile-data-card:nth-child(2),
+.page.page-entering .profile-block:nth-child(2),
+.page.page-entering .hifi-card:nth-child(2),
+.page.page-entering .scenario-card:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+.page.page-entering .section:nth-of-type(3),
+.page.page-entering .task-card:nth-child(3),
+.page.page-entering .profile-data-card:nth-child(3),
+.page.page-entering .profile-block:nth-child(3),
+.page.page-entering .hifi-card:nth-child(3),
+.page.page-entering .scenario-card:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.page.page-entering .section:nth-of-type(4),
+.page.page-entering .task-card:nth-child(4),
+.page.page-entering .profile-data-card:nth-child(4),
+.page.page-entering .profile-block:nth-child(4),
+.page.page-entering .hifi-card:nth-child(4),
+.page.page-entering .scenario-card:nth-child(4) {
+  animation-delay: 105ms;
+}
+
+.message-row {
+  animation: rise 240ms ease both;
+}
+
+.bubble-section.section-reveal {
+  animation: section-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.thinking-dots-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #9dcc75;
+  animation: thinking-pulse 1.35s infinite cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.thinking-dots-dot:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.thinking-dots-dot:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+.suggestion-strip .pill.chip-float {
+  animation: chipFloat 2.8s ease-in-out infinite;
+}
+
+.suggestion-strip .pill.chip-float:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.suggestion-strip .pill.chip-float:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.suggestion-strip .pill.chip-float:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+.pill:active:not(.disabled),
+.tab-button:active:not(.active),
+.hold-button:active:not([disabled]) {
+  transform: scale(0.97);
+  transition: transform 160ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+// Voice overlay
+.voice-overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background: rgba(20, 30, 22, 0.42);
+  animation: overlay-in 200ms ease both;
+}
+
+.voice-overlay.is-closing {
+  animation: overlay-out 200ms ease both;
+}
+
+.voice-overlay-card {
+  width: 100%;
+  max-width: 398px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(111, 159, 86, 0.12);
+  padding: 20px;
+  animation: sheet-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page.page-entering .hero-card,
+  .page.page-entering .section,
+  .page.page-entering .task-card,
+  .page.page-entering .profile-block,
+  .page.page-entering .profile-data-card,
+  .page.page-entering .hifi-card,
+  .page.page-entering .scenario-card,
+  .message-row,
+  .bubble-section.section-reveal,
+  .suggestion-strip .pill.chip-float,
+  .thinking-dots-dot {
+    animation: none !important;
+  }
+
+  .pill:active:not(.disabled),
+  .tab-button:active:not(.active) {
+    transform: none;
+  }
+}

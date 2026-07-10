@@ -7,6 +7,7 @@ import { HiFiBuildHero } from '@/components/profile/HiFiBuildHero'
 import { HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { getEntryConfig } from '@/data/entryConfig'
 import { hasSubmittableEntryText, requestEntryFollowUp } from '@/lib/profile/entryAnalyze'
+import { getEntryCaptureCharHint } from '@/lib/profile/entryCharHint'
 import {
   buildEntryPath,
   getEntryProgressPercent,
@@ -76,15 +77,8 @@ export function EntryCapturePage({ entryType }: { entryType: BuildEntryType }) {
     setLightPromptActive(true)
   }
 
-  const TARGET_CHARS = 400
-  const IDEAL_CHARS = 800
   const charCount = draft.trim().length
-  const charHint =
-    charCount < TARGET_CHARS
-      ? `再讲具体一点会更好：还差约 ${TARGET_CHARS - charCount} 字，帮我们看清这个模块里的真实场景（不用整理成道理）。`
-      : charCount < IDEAL_CHARS
-        ? `信息量不错。若还能再补 ${IDEAL_CHARS - charCount} 字左右的细节，深度建模会更准。`
-        : '信息量很充分，可以继续。'
+  const charHint = getEntryCaptureCharHint(charCount)
 
   async function handleContinue() {
     const merged = draft.trim()
@@ -92,21 +86,7 @@ export function EntryCapturePage({ entryType }: { entryType: BuildEntryType }) {
     setLoading(true)
     setApiError('')
 
-    // 硬规则：<50 字强制追问，不调 AI、绝对不可绕过。
-    // 四模块（daily/homework/communication/family）都适用；final 收尾追问走独立页面，天然豁免，避免死循环。
-    // 目的：信息太薄时 AI 容易 shouldAsk:false 跳过，导致阶段总结无料可写；强制至少一个具体场景。
-    const forceFollowUp = merged.length < 50
-    const gate = forceFollowUp
-      ? {
-          ok: true as const,
-          data: {
-            shouldAsk: true,
-            purpose: '信息太少了，想先听一个具体场景，好区分方向。',
-            directions: [] as string[],
-            voicePrompt: '能不能挑最近最头疼的一次，按当时发生的原话多讲几句？不用整理成道理，顺着说就行。',
-          },
-        }
-      : await requestEntryFollowUp(entryType, merged)
+    const gate = await requestEntryFollowUp(entryType, merged)
 
     if (!gate.ok) {
       setApiError(gate.error.message || '这一步暂时没有整理成功，可以稍后再试。')
@@ -188,7 +168,7 @@ export function EntryCapturePage({ entryType }: { entryType: BuildEntryType }) {
             <span>系统会先整理，不直接下结论</span>
             <span>{draft.length} 字</span>
           </div>
-          {charCount > 0 && charCount < IDEAL_CHARS ? (
+          {charHint ? (
             <p className="hint-text" style={{ marginTop: 8 }}>{charHint}</p>
           ) : null}
           {hasText && !loading ? (

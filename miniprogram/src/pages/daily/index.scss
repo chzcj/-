@@ -1,0 +1,10 @@
+/* Daily 页局部样式；全局 hi-fi 在 hifi-base.scss */
+
+.hero-title,
+.hero-copy {
+  display: block;
+}
+
+.pill:active {
+  opacity: 0.85;
+}

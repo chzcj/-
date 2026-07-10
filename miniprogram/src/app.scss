@@ -1,0 +1,9 @@
+@import './styles/hifi-base.scss';
+@import './styles/hifi-build.scss';
+
+page {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: #202633;
+  background: #f8f6e5;
+  box-sizing: border-box;
+}

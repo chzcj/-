@@ -53,6 +53,16 @@ function getExternalOrigin(request: NextRequest): string {
   return `${proto}://${host}`
 }
 
+function hasSessionAuthorization(request: NextRequest): boolean {
+  const auth = request.headers.get('authorization') || ''
+  const match = auth.match(/^Bearer\s+(\S+)/i)
+  if (!match) return false
+  const token = match[1]
+  const internal = process.env.INTERNAL_API_TOKEN || process.env.FAST_AI_API_KEY || ''
+  if (internal && token === internal) return false
+  return token.length >= 16
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get('childos_session')?.value
@@ -82,8 +92,8 @@ export function middleware(request: NextRequest) {
 
   if (isStatic || isAuth || isApiPublic) return NextResponse.next()
 
-  // 受保护路由：要求有效会话 cookie（存在性，路由内 verifyAppApi 再验真实性）或内部 token。
-  if (!token && !hasValidInternalToken(request)) {
+  // 受保护路由：有效会话 cookie、Bearer session token（小程序）或内部 token。
+  if (!token && !hasValidInternalToken(request) && !hasSessionAuthorization(request)) {
     if (pathname.startsWith('/api/')) {
       const id = requestId()
       return NextResponse.json(

@@ -1,0 +1,54 @@
+@import '../../styles/tokens.scss';
+
+.feedback-panel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid $line;
+}
+
+.feedback-title {
+  font-size: $text-title;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.feedback-group {
+  margin-bottom: 12px;
+}
+
+.feedback-question {
+  font-size: $text-small;
+  color: $muted;
+  margin-bottom: 8px;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice-button {
+  min-height: 34px;
+  padding: 7px 13px;
+  border-radius: $radius-pill;
+  color: $green-deep;
+  background: $green-soft;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.choice-button.selected {
+  color: #fff;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+}
+
+.feedback-note {
+  width: 100%;
+  min-height: 72px;
+  padding: 12px;
+  border-radius: $radius-control;
+  background: rgba(241, 248, 223, 0.5);
+  box-sizing: border-box;
+  font-size: $text-body;
+}

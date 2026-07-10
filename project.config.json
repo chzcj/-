@@ -1,35 +1,15 @@
 {
+  "miniprogramRoot": "miniprogram/dist/",
+  "projectname": "yujian",
+  "description": "育见 ChildOS — 网页 + 微信小程序",
+  "appid": "wx85cc99d660b0c0ac",
   "setting": {
+    "urlCheck": true,
     "es6": true,
     "postcss": true,
     "minified": true,
-    "uglifyFileName": false,
-    "enhance": true,
-    "packNpmRelationList": [],
-    "babelSetting": {
-      "ignore": [],
-      "disablePlugins": [],
-      "outputPath": ""
-    },
-    "useCompilerPlugins": false,
-    "minifyWXML": true,
-    "compileWorklet": false,
-    "uploadWithSourceMap": true,
-    "packNpmManually": false,
-    "minifyWXSS": true,
-    "localPlugins": false,
-    "disableUseStrict": false,
-    "condition": false,
-    "swc": false,
-    "disableSWC": true
+    "enhance": true
   },
   "compileType": "miniprogram",
-  "simulatorPluginLibVersion": {},
-  "packOptions": {
-    "ignore": [],
-    "include": []
-  },
-  "appid": "wx2314508a129bc841",
-  "editorSetting": {},
-  "libVersion": "3.16.1"
+  "libVersion": "3.5.5"
 }

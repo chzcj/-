@@ -28,9 +28,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await registerWithPhonePassword(parsed.data.phone, parsed.data.password);
+    const { user, sessionToken } = await registerWithPhonePassword(parsed.data.phone, parsed.data.password);
     logAuthEvent('register', { requestId: reqId, ip, phone, outcome: 'ok', durationMs: Date.now() - started });
-    return ok({ user }, reqId);
+    return ok({ user, sessionToken }, reqId);
   } catch (error) {
     const code = error instanceof Error ? error.message : 'AUTH_FAILED';
     logAuthEvent('register', { requestId: reqId, ip, phone, outcome: code, durationMs: Date.now() - started, error: String(error) });

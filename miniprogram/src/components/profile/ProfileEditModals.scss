@@ -1,0 +1,31 @@
+.modal-field {
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(241, 248, 223, 0.6);
+  box-sizing: border-box;
+}
+
+.modal-toast {
+  display: block;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #e54d42;
+}
+
+.modal-warn {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6f7480;
+  margin-bottom: 10px;
+}
+
+.pill.danger {
+  color: #fff;
+  background: linear-gradient(135deg, #e57373, #d32f2f);
+  text-align: center;
+  margin-top: 8px;
+}

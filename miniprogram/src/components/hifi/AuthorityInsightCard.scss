@@ -1,0 +1,55 @@
+@import '../../styles/tokens.scss';
+
+.authority-insight-card {
+  background: $card;
+  border-radius: $radius-card;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  box-shadow: $shadow-soft;
+  border: 1px solid rgba(111, 159, 86, 0.12);
+}
+
+.authority-badge {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: $muted;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.authority-insight-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: $ink;
+  margin-bottom: 8px;
+}
+
+.authority-insight-body {
+  display: block;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+  color: $ink-soft;
+  margin-bottom: 6px;
+}
+
+.summary-facts {
+  margin-top: 10px;
+  padding-left: 4px;
+}
+
+.summary-fact-item {
+  display: block;
+  font-size: 13px;
+  line-height: 1.55;
+  color: $ink-soft;
+  margin-bottom: 4px;
+}
+
+.summary-hypotheses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}

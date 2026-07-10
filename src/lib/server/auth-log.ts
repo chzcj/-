@@ -6,7 +6,7 @@ export function maskPhone(phone: string): string {
 }
 
 export function logAuthEvent(
-  route: 'login' | 'register' | 'demo',
+  route: 'login' | 'register' | 'demo' | 'wechat_login',
   detail: {
     requestId: string
     ip: string

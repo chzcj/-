@@ -1,13 +1,15 @@
 import 'server-only';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
 import {
   createAuthSession,
   createUser,
+  createUserWechat,
   deleteAuthSession,
   findUserByPhone,
   findUserBySessionTokenHash,
+  findUserByWechatOpenid,
   isDatabaseEnabled,
   isUserDeleted,
   restoreUser,
@@ -29,7 +31,11 @@ export interface AuthUser {
   onboardingComplete: boolean;
 }
 
-// 管理员手机号白名单（声明式）：登录/注册时把名单内的号落库 is_admin=true。
+export type AuthSessionResult = {
+  user: AuthUser;
+  sessionToken: string;
+};
+
 function adminPhones(): string[] {
   return (process.env.ADMIN_PHONES || '').split(',').map((s) => normalizePhone(s)).filter(Boolean);
 }
@@ -46,13 +52,20 @@ export function normalizePhone(phone: string) {
   return phone.replace(/[^\d+]/g, '').trim();
 }
 
-/** 生产环境默认关闭 demo 登录；开发环境始终开放。 */
 export function isDemoLoginEnabled(): boolean {
   if (process.env.NODE_ENV !== 'production') return true;
   return process.env.DEMO_LOGIN_ENABLED === 'true';
 }
 
-export async function registerWithPhonePassword(phoneInput: string, password: string) {
+function readSessionToken(): string | undefined {
+  const cookieToken = cookies().get(COOKIE_NAME)?.value;
+  if (cookieToken) return cookieToken;
+  const authHeader = headers().get('authorization') || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || undefined;
+}
+
+export async function registerWithPhonePassword(phoneInput: string, password: string): Promise<AuthSessionResult> {
   requireAuthDatabase();
   const phone = normalizePhone(phoneInput);
   validateCredentials(phone, password);
@@ -60,27 +73,64 @@ export async function registerWithPhonePassword(phoneInput: string, password: st
   if (existing) throw new Error('PHONE_EXISTS');
   const user = await createUser(phone, hashPassword(password));
   if (!user) throw new Error('AUTH_DATABASE_UNAVAILABLE');
-  await setLoginSession(user);
+  const sessionToken = await setLoginSession(user);
   await maybePromoteAdmin(user);
-  return publicUser(user);
+  return { user: publicUser(user), sessionToken };
 }
 
-export async function loginWithPhonePassword(phoneInput: string, password: string) {
+export async function loginWithPhonePassword(phoneInput: string, password: string): Promise<AuthSessionResult> {
   requireAuthDatabase();
   const phone = normalizePhone(phoneInput);
   validateCredentials(phone, password);
   const user = await findUserByPhone(phone);
-  if (!user || !verifyPassword(password, user.passwordHash)) throw new Error('BAD_CREDENTIALS');
-  // 注销账号 30 天恢复期：重新登录即恢复（清除 deleted_at）。
+  if (!user || user.passwordHash === 'wechat_no_password' || !verifyPassword(password, user.passwordHash)) {
+    throw new Error('BAD_CREDENTIALS');
+  }
   if (await isUserDeleted(user.userId)) {
     await restoreUser(user.userId).catch((err) => console.error('[auth] 恢复已注销账号失败', err));
   }
-  await setLoginSession(user);
+  const sessionToken = await setLoginSession(user);
   await maybePromoteAdmin(user);
-  return publicUser(user);
+  return { user: publicUser(user), sessionToken };
 }
 
-/** 修改密码：验证旧密码后更新。 */
+export async function loginWithWechatCode(code: string): Promise<AuthSessionResult & { isNewUser: boolean }> {
+  requireAuthDatabase();
+  const { openid, unionid } = await exchangeWechatCode(code);
+  let user = await findUserByWechatOpenid(openid);
+  let isNewUser = false;
+  if (!user) {
+    user = await createUserWechat(openid, unionid);
+    if (!user) throw new Error('AUTH_DATABASE_UNAVAILABLE');
+    isNewUser = true;
+  } else if (await isUserDeleted(user.userId)) {
+    await restoreUser(user.userId).catch((err) => console.error('[auth] 恢复已注销账号失败', err));
+  }
+  const sessionToken = await setLoginSession(user);
+  await maybePromoteAdmin(user);
+  return { user: publicUser(user), sessionToken, isNewUser };
+}
+
+async function exchangeWechatCode(code: string): Promise<{ openid: string; unionid?: string }> {
+  const appid = process.env.WECHAT_APPID;
+  const secret = process.env.WECHAT_SECRET;
+  if (!appid || !secret) throw new Error('WECHAT_NOT_CONFIGURED');
+  const url = new URL('https://api.weixin.qq.com/sns/jscode2session');
+  url.searchParams.set('appid', appid);
+  url.searchParams.set('secret', secret);
+  url.searchParams.set('js_code', code);
+  url.searchParams.set('grant_type', 'authorization_code');
+  const res = await fetch(url.toString());
+  const json = (await res.json()) as { openid?: string; unionid?: string; errcode?: number; errmsg?: string };
+  if (!json.openid || json.errcode) {
+    if (json.errcode === 40125 || json.errmsg?.includes('invalid appsecret')) {
+      throw new Error('WECHAT_INVALID_SECRET');
+    }
+    throw new Error(`WECHAT_CODE_INVALID:${json.errmsg || json.errcode}`);
+  }
+  return { openid: json.openid, unionid: json.unionid };
+}
+
 export async function changeUserPassword(userId: string, phone: string, oldPassword: string, newPassword: string): Promise<void> {
   requireAuthDatabase();
   const normalizedPhone = normalizePhone(phone);
@@ -92,7 +142,7 @@ export async function changeUserPassword(userId: string, phone: string, oldPassw
 }
 
 export async function logoutCurrentUser() {
-  const token = cookies().get(COOKIE_NAME)?.value;
+  const token = readSessionToken();
   if (token && token !== DEMO_SESSION_TOKEN) {
     await deleteAuthSession(hashToken(token)).catch((error) => {
       console.error('[childos] delete auth session failed', error);
@@ -102,7 +152,7 @@ export async function logoutCurrentUser() {
 }
 
 export async function getCurrentUser(): Promise<AuthUser | undefined> {
-  const token = cookies().get(COOKIE_NAME)?.value;
+  const token = readSessionToken();
   if (!token) return undefined;
   if (token === DEMO_SESSION_TOKEN) return demoUser();
   const user = await findUserBySessionTokenHash(hashToken(token)).catch((error) => {
@@ -146,6 +196,7 @@ function hashPassword(password: string) {
 }
 
 function verifyPassword(password: string, stored: string) {
+  if (stored === 'wechat_no_password') return false;
   const [scheme, salt, key] = stored.split('$');
   if (scheme !== 'scrypt' || !salt || !key) return false;
   const expected = Buffer.from(key, 'hex');
@@ -153,7 +204,7 @@ function verifyPassword(password: string, stored: string) {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
-async function setLoginSession(user: UserRecord) {
+async function setLoginSession(user: UserRecord): Promise<string> {
   const token = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
   await createAuthSession(user.userId, hashToken(token), expiresAt);
@@ -167,6 +218,7 @@ async function setLoginSession(user: UserRecord) {
     path: '/',
     expires: expiresAt
   });
+  return token;
 }
 
 function hashToken(token: string) {
@@ -190,7 +242,6 @@ function demoUser(): AuthUser {
     phone: '13800002641',
     familyId: 'f_demo',
     childId: 'c_demo',
-    // Demo 会话永无管理员权限，避免公开 demo 接口被滥用提权。
     isAdmin: false,
     onboardingComplete: false
   };
