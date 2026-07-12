@@ -1,9 +1,15 @@
 import { View, Text } from '@tarojs/components'
+import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
+import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { apiRequest } from '@/services/api'
-import { canAccessProfileGenerating } from '@/services/entryStorage'
+import {
+  canAccessProfileGenerating,
+  isPendingProfileRegen,
+  setPendingProfileRegen,
+} from '@/services/entryStorage'
 import { runProfileGeneratingPipeline } from '@/services/profilePipeline'
 
 const STEPS = [
@@ -15,11 +21,20 @@ const STEPS = [
 ]
 
 export default function OnboardingGenerating() {
+  useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
+  const router = useRouter()
+  const isRegen = router.params.regen === '1' || isPendingProfileRegen()
   const [allowed, setAllowed] = useState(false)
   const [step, setStep] = useState(0)
   const [error, setError] = useState('')
   const [retryKey, setRetryKey] = useState(0)
   const cancelledRef = useRef(false)
+
+  const handleCancelToDaily = () => {
+    cancelledRef.current = true
+    setPendingProfileRegen(false)
+    void Taro.switchTab({ url: '/pages/daily/index' })
+  }
 
   useEffect(() => {
     cancelledRef.current = false
@@ -34,23 +49,27 @@ export default function OnboardingGenerating() {
 
       if (cancelledRef.current) return
 
-      if (built.ok && built.data.snapshot?.coreJudgment?.trim()) {
+      if (!isRegen && built.ok && built.data.snapshot?.coreJudgment?.trim()) {
+        setPendingProfileRegen(false)
         await mpGoReplace('/packageOnboarding/pages/result/index')
         return
       }
 
       if (!canAccessProfileGenerating()) {
+        setPendingProfileRegen(false)
         await mpGoReplace('/packageOnboarding/pages/hub/index')
         return
       }
 
       setAllowed(true)
       setStep(0)
-      const result = await runProfileGeneratingPipeline((s, label) => {
+      const result = await runProfileGeneratingPipeline((s) => {
         if (!cancelledRef.current) setStep(s)
       })
 
       if (cancelledRef.current) return
+
+      setPendingProfileRegen(false)
 
       if (!result.ok) {
         setError(result.message)
@@ -64,9 +83,12 @@ export default function OnboardingGenerating() {
     return () => {
       cancelledRef.current = true
     }
-  }, [retryKey])
+  }, [retryKey, isRegen])
 
-  const handleRetry = () => setRetryKey((k) => k + 1)
+  const handleRetry = () => {
+    cancelledRef.current = false
+    setRetryKey((k) => k + 1)
+  }
 
   if (!allowed && !error) {
     return (
@@ -95,16 +117,23 @@ export default function OnboardingGenerating() {
                 onClick: () => void mpGoReplace('/packageOnboarding/pages/hub/index'),
               },
             ]
-          : []
+          : [
+              {
+                id: 'cancel',
+                label: '先去日常交流',
+                variant: 'secondary',
+                onClick: handleCancelToDaily,
+              },
+            ]
       }
     >
       <HiFiBuildHero
         kicker='建模中'
-        title='正在综合四个模块'
+        title={isRegen ? '正在根据补充信息更新画像' : '正在综合四个模块'}
         copy={
           error
             ? '可以重试一次，或返回继续补充模块信息。'
-            : '四个模块的信息正在综合，请稍候片刻。'
+            : '画像生成会在后台继续；你可以先去交流页，稍后再回来看结果。'
         }
         compact
         mascot={!error}

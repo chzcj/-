@@ -1,27 +1,9 @@
 import { fail, ok, requestId } from '@/lib/api-response';
 import { authCredentialsSchema } from '@/lib/schemas';
 import { loginWithPhonePassword } from '@/lib/server/auth';
+import { maybeEnqueueProfileRewrite } from '@/lib/server/auth-profile-rewrite';
 import { logAuthEvent } from '@/lib/server/auth-log';
 import { checkRateLimit, clientIp } from '@/lib/server/rate-limit';
-import { getLatestBuiltProfileSnapshot } from '@/lib/server/memory/database-manager';
-import { enqueueJob, profileRewriteBucketKey } from '@/lib/server/jobs/queue';
-import type { TenantId } from '@/lib/server/memory/tenant';
-
-const PROFILE_REWRITE_INTERVAL_MS = 2 * 24 * 60 * 60 * 1000 // 2 天
-
-/** 登录后检查画像是否超过 2 天未更新，是则入队后台重写（静默，不阻塞登录）。 */
-async function maybeEnqueueProfileRewrite(familyId: string, childId: string): Promise<void> {
-  try {
-    const tenant: TenantId = { familyId, childId }
-    const built = await getLatestBuiltProfileSnapshot(tenant)
-    if (!built) return // 还没首次建模，不重写
-    const ageMs = Date.now() - new Date(built.updatedAt).getTime()
-    if (ageMs < PROFILE_REWRITE_INTERVAL_MS) return // 不到 2 天，跳过
-    await enqueueJob('profile_rewrite', { tenant }, profileRewriteBucketKey(tenant), null)
-  } catch (err) {
-    console.error('[login] 入队 profile_rewrite 失败（不影响登录）', err)
-  }
-}
 
 export async function POST(request: Request) {
   const started = Date.now();

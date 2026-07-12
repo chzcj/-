@@ -4,6 +4,8 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { ProfileEditModals, type EditModalKind } from '@/components/profile/ProfileEditModals'
 import { useTabBar } from '@/hooks/useTabBar'
+import { usePublicPageShare } from '@/hooks/useSharePage'
+import { SHARE_PATHS } from '@/lib/shareMessages'
 import {
   buildHubProfileCards,
   formatRefreshedAt,
@@ -14,7 +16,8 @@ import {
 } from '@/lib/portraitCard'
 import { readProfileTabCache, writeProfileTabCache } from '@/lib/profileTabCache'
 import { apiRequest } from '@/services/api'
-import { fetchCurrentUser } from '@/services/auth'
+import { logout, fetchCurrentUser } from '@/services/auth'
+import { forceAccountSyncToServer } from '@/services/accountSync'
 import {
   getLatestProfile,
   hasProfile,
@@ -51,6 +54,10 @@ type WeeklyPayload = {
 
 export default function ProfilePage() {
   useTabBar('profile')
+  usePublicPageShare({
+    title: '育见 · 孩子画像',
+    path: SHARE_PATHS.profile,
+  })
   const [hubLoading, setHubLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [hubError, setHubError] = useState('')
@@ -75,6 +82,7 @@ export default function ProfilePage() {
   const [backgroundRefreshing, setBackgroundRefreshing] = useState(false)
   const [updateNotice, setUpdateNotice] = useState('')
   const [modal, setModal] = useState<EditModalKind>(null)
+  const [isWechatUser, setIsWechatUser] = useState(true)
 
   const bootedRef = useRef(false)
 
@@ -186,6 +194,7 @@ export default function ProfilePage() {
     void (async () => {
       const user = await fetchCurrentUser()
       if (!requireOnboardingComplete(user)) return
+      setIsWechatUser(Boolean(user?.phone?.startsWith('wx_')))
 
       syncLocalProfile()
 
@@ -368,8 +377,38 @@ export default function ProfilePage() {
           >
             机制链解释
           </Text>
+          <Text
+            className={`pill${hasLocalProfile ? '' : ' disabled'}`}
+            onClick={() => {
+              if (!hasLocalProfile) return
+              void Taro.navigateTo({ url: '/pages/profile/evidence/index' })
+            }}
+          >
+            判断依据
+          </Text>
+          <Text
+            className={`pill${hasLocalProfile ? '' : ' disabled'}`}
+            onClick={() => {
+              if (!hasLocalProfile) return
+              void Taro.navigateTo({ url: '/pages/profile/verify/index' })
+            }}
+          >
+            待验证点
+          </Text>
           <Text className='pill primary' onClick={goToRehearsalTab}>
             沟通预演
+          </Text>
+        </View>
+      </View>
+
+      <View className='profile-section'>
+        <Text className='section-label'>画像维护</Text>
+        <View className='hifi-card setting-group'>
+          <Text
+            className='setting-row'
+            onClick={() => void Taro.navigateTo({ url: '/packageOnboarding/pages/hub/index' })}
+          >
+            补充画像 ›
           </Text>
         </View>
       </View>
@@ -383,11 +422,34 @@ export default function ProfilePage() {
           <Text className='setting-row' onClick={() => setModal('child')}>
             编辑孩子信息 ›
           </Text>
-          <Text className='setting-row' onClick={() => setModal('password')}>
-            修改密码 ›
-          </Text>
+          {!isWechatUser ? (
+            <Text className='setting-row' onClick={() => setModal('password')}>
+              修改密码 ›
+            </Text>
+          ) : null}
           <Text className='setting-row danger' onClick={() => setModal('delete')}>
             注销账号 ›
+          </Text>
+          <Text
+            className='setting-row logout-row'
+            onClick={() => {
+              Taro.showModal({
+                title: '退出登录',
+                content: '确定退出登录？',
+                success: (res) => {
+                  if (res.confirm) {
+                    void forceAccountSyncToServer()
+                      .catch(() => undefined)
+                      .then(() => logout())
+                      .then(() => {
+                        void Taro.reLaunch({ url: '/pages/login/index' })
+                      })
+                  }
+                },
+              })
+            }}
+          >
+            退出登录 ›
           </Text>
         </View>
       </View>

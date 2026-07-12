@@ -1,6 +1,7 @@
 import type { BuildEntryType, BuildState } from '@/services/buildState'
 import { BUILD_MODULES, loadBuildState, saveBuildState } from '@/services/buildState'
 import { loadChildBasicInfo, saveChildBasicInfoLocal } from '@/services/childStorage'
+import { loadParentInfo, saveParentInfo } from '@/services/parentStorage'
 import { getLatestProfile, hydrateProfileFromRemote } from '@/services/profileStorage'
 
 const FAMILY_ID = 'family_default'
@@ -81,6 +82,7 @@ export type ChildOSLocalStorageV1 = {
   evidenceRecords: unknown[]
   verificationPoints: unknown[]
   dailyObservations: unknown[]
+  parentInfo?: { identity?: string; nickname?: string; updatedAt?: number }
   updatedAt: string
 }
 
@@ -100,6 +102,7 @@ function isV1Storage(value: unknown): value is ChildOSLocalStorageV1 {
 export function assembleChildOSV1(): ChildOSLocalStorageV1 {
   const now = new Date().toISOString()
   const basic = loadChildBasicInfo()
+  const parent = loadParentInfo()
   const buildState = loadBuildState()
   const profile = getLatestProfile()
   const sessionId = createId('build')
@@ -211,6 +214,11 @@ export function assembleChildOSV1(): ChildOSLocalStorageV1 {
     evidenceRecords: [],
     verificationPoints: [],
     dailyObservations: [],
+    parentInfo: {
+      identity: parent.identity,
+      nickname: parent.nickname,
+      updatedAt: parent.updatedAt,
+    },
     updatedAt: now,
   }
 }
@@ -225,6 +233,11 @@ export function hydrateFromChildOSV1(raw: unknown): boolean {
       childName: String(child.nickname || ''),
       grade: String(child.grade || ''),
     })
+  }
+
+  const parentInfo = raw.parentInfo as { identity?: string; nickname?: string } | undefined
+  if (parentInfo?.nickname) {
+    saveParentInfo({ identity: parentInfo.identity, nickname: parentInfo.nickname })
   }
 
   const session =

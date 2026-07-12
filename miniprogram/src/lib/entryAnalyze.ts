@@ -8,14 +8,22 @@ export function hasSubmittableEntryText(text: string): boolean {
   return text.trim().length >= 2
 }
 
-export async function requestEntryFollowUp(entryType: BuildEntryType, rawText: string) {
+export async function requestEntryFollowUp(
+  entryType: BuildEntryType,
+  rawText: string,
+  appendMode = false
+) {
   return apiRequest<EntryFollowUpGate & { shouldAsk?: boolean }>('/api/entry/analyze', {
     method: 'POST',
-    data: { entryType, rawText, stage: 'entry' },
+    data: { entryType, rawText, stage: 'entry', appendMode },
   })
 }
 
-export async function requestEntrySummary(entryType: BuildEntryType, rawText: string) {
+export async function requestEntrySummary(
+  entryType: BuildEntryType,
+  rawText: string,
+  appendMode = false
+) {
   return apiRequest<{
     mainJudgment?: string
     facts?: string[]
@@ -23,6 +31,6 @@ export async function requestEntrySummary(entryType: BuildEntryType, rawText: st
     note?: string
   }>('/api/entry/analyze', {
     method: 'POST',
-    data: { entryType, rawText, stage: 'summary' },
+    data: { entryType, rawText, stage: 'summary', appendMode },
   })
 }

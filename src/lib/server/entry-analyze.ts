@@ -88,10 +88,15 @@ export function normalizeFollowUp(raw: unknown): EntryFollowUpResult | undefined
     return undefined
   }
 
+  const cleanedDirections = directions
+    .slice(0, 4)
+    .map((d) => sanitizeForParent(d).trim())
+    .filter(Boolean)
+
   return {
     shouldAsk,
     purpose: sanitizeForParent(purpose || voicePrompt),
-    directions: directions.slice(0, 4).map((d) => sanitizeForParent(d)),
+    directions: cleanedDirections,
     voicePrompt: sanitizeForParent(voicePrompt || purpose),
   }
 }
@@ -143,13 +148,16 @@ export function fastAiFailureMessage(error: unknown): string {
   return '这一步暂时没有整理成功，可以稍后再试。'
 }
 
-export async function runEntryFollowUp(entryType: string, rawText: string) {
+export async function runEntryFollowUp(entryType: string, rawText: string, appendMode = false) {
   const topic = TITLE_MAP[entryType] || entryType
   const agent = resolveEntryFollowUpAgent(entryType)
   const isFinal = entryType === 'final'
+  const appendHint = appendMode
+    ? '注意：这是一次在已有信息基础上的增量补充，请综合全部文本判断，不要当作首次建档。'
+    : ''
   let lastError: unknown
   const raw = await callParentJson<Record<string, unknown>>(buildEntryAnalyzeSystem(agent), {
-    task: `家长在「${topic}」入口输入了以下描述。请判断是否需要继续追问，并生成追问内容。只输出 JSON。`,
+    task: `家长在「${topic}」入口输入了以下描述。${appendHint}请判断是否需要继续追问，并生成追问内容。只输出 JSON。`,
     entryType,
     topic,
     rawText: isFinal ? rawText.slice(0, 6000) : rawText.slice(0, 4000),
@@ -162,12 +170,15 @@ export async function runEntryFollowUp(entryType: string, rawText: string) {
   return { result: normalized, error: normalized ? undefined : lastError }
 }
 
-export async function runEntrySummary(entryType: string, rawText: string) {
+export async function runEntrySummary(entryType: string, rawText: string, appendMode = false) {
   const topic = TITLE_MAP[entryType] || entryType
   const agent = resolveEntrySummaryAgent(entryType)
+  const appendHint = appendMode
+    ? '注意：这是一次增量补充后的阶段总结，请综合已有与新补充信息更新判断，不要忽视旧内容。'
+    : ''
   let lastError: unknown
   const raw = await callParentJson<Record<string, unknown>>(buildEntryAnalyzeSystem(agent), {
-    task: `家长在「${topic}」入口完成了描述（含可能的追问补充）。请写阶段总结。只输出 JSON。`,
+    task: `家长在「${topic}」入口完成了描述（含可能的追问补充）。${appendHint}请写阶段总结。只输出 JSON。`,
     entryType,
     topic,
     rawText: rawText.slice(0, 5000),

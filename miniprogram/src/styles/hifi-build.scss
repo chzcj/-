@@ -1,4 +1,5 @@
 @import './tokens.scss';
+@import './motion.scss';
 
 .hifi-build-root {
   min-height: 100vh;
@@ -41,11 +42,13 @@
 
 .hifi-build-root .progress-bar {
   display: block;
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(135deg, #a7d77a, #7fb964);
   box-shadow: 0 6px 14px rgba(125, 176, 86, 0.18);
-  transition: width 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: left center;
+  transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .hifi-build-root .page {
@@ -55,12 +58,11 @@
   box-sizing: border-box;
 }
 
-// Web 共享玻璃卡片（hero / soft / record / summary / bottom-actions）
+// Web 共享玻璃卡片（hero / soft / record / summary）
 .hifi-build-root .hero-card,
 .hifi-build-root .soft-card,
 .hifi-build-root .record-box,
-.hifi-build-root .summary-card,
-.hifi-build-root .bottom-actions {
+.hifi-build-root .summary-card {
   background: $card;
   box-shadow: $shadow-card;
   border: 1px solid rgba(255, 255, 255, 0.62);
@@ -239,7 +241,10 @@
   background: $green-soft;
   font-size: $text-small;
   font-weight: 720;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: right;
+  max-width: 48%;
+  line-height: 1.35;
 }
 
 .hifi-build-root .record-area,
@@ -362,23 +367,31 @@
 .hifi-build-root .record-voice-row {
   margin-top: 12px;
   display: flex;
-  justify-content: center;
+  width: 100%;
 }
 
-.hifi-build-root .hold-chip {
+.hifi-build-root .build-hold-button {
+  width: 100%;
   min-height: 44px;
-  padding: 9px 20px;
-  border-radius: $radius-pill;
-  color: $green-deep;
-  background: $green-soft;
-  font-size: 15px;
-  font-weight: 760;
-  text-align: center;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
 }
 
-.hifi-build-root .hold-chip.active {
+.hifi-build-root .build-hold-button.active {
+  background: linear-gradient(135deg, #e8a06a, #d98b2b);
+}
+
+.hifi-build-root .build-hold-button.disabled {
+  opacity: 0.55;
+}
+
+.hifi-build-root .build-hold-button-text {
+  font-size: 15px;
+  font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #a7d77a, #7fb964);
 }
 
 .hifi-build-root .chips {
@@ -395,6 +408,29 @@
   background: $green-soft;
   font-size: 14px;
   font-weight: 760;
+  line-height: 1.4;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 长文案方向：整行展示，避免双列裁切 */
+.hifi-build-root .chip.chip-full,
+.hifi-build-root .follow-up-directions .chip {
+  display: flex;
+  width: 100%;
+  border-radius: $radius-control;
+  padding: 12px 14px;
+  white-space: normal;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+
+.hifi-build-root .follow-up-directions .chip-text {
+  color: $green-deep;
+  font-size: 14px;
+  font-weight: 760;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .hifi-build-root .entry-list {
@@ -405,8 +441,9 @@
 
 .hifi-build-root .entry-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
   padding: 16px 18px;
   border-radius: $radius-row;
   background: $card;
@@ -415,23 +452,38 @@
   margin-bottom: 0;
 }
 
+.hifi-build-root .entry-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hifi-build-root .entry-row-title {
+  display: block;
+  font-size: $text-title;
+  font-weight: 700;
+  color: $ink;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.hifi-build-root .entry-row-desc {
+  display: block;
+  font-size: $text-small;
+  color: $muted;
+  line-height: $text-small-lh;
+  word-break: break-word;
+}
+
 .hifi-build-root .entry-row.completed {
   border-color: rgba(111, 159, 86, 0.2);
 }
 
-.hifi-build-root .entry-row-title {
-  font-size: $text-title;
-  font-weight: 700;
-  color: $ink;
-}
-
-.hifi-build-root .entry-row-desc {
-  font-size: $text-small;
-  color: $muted;
-  margin-top: 4px;
-}
-
 .hifi-build-root .entry-row-status {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: $text-small;
   color: $green-deep;
   font-weight: 600;
@@ -552,20 +604,39 @@
   grid-template-columns: 1fr;
   gap: 9px;
   background: rgba(255, 255, 255, 0.76);
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow: $shadow-card;
+  overflow: hidden;
 }
 
 .hifi-build-root .bottom-actions.dense {
   grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .hifi-build-root .bottom-actions.dense .primary-button:first-child {
   grid-column: 1 / -1;
 }
 
+.hifi-build-root .bottom-actions.dense .secondary-button,
+.hifi-build-root .bottom-actions.dense .quiet-button {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+  line-height: 1.35;
+  word-break: break-word;
+  padding: 10px 10px;
+  font-size: 14px;
+}
+
 .hifi-build-root .primary-button,
 .hifi-build-root .secondary-button,
 .hifi-build-root .quiet-button {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   min-height: 48px;
   padding: 9px 15px;
   border-radius: $radius-pill;
@@ -577,6 +648,12 @@
   text-align: center;
 }
 
+.hifi-build-root .bottom-actions .primary-button,
+.hifi-build-root .bottom-actions .secondary-button,
+.hifi-build-root .bottom-actions .quiet-button {
+  margin: 0;
+}
+
 .hifi-build-root .primary-button {
   color: #fff;
   background: linear-gradient(135deg, #a7d77a, #7fb964);
@@ -585,8 +662,9 @@
 
 .hifi-build-root .primary-button.disabled {
   color: #b5b8be;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: $shadow-soft;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: none;
 }
 
 .hifi-build-root .secondary-button {
@@ -596,8 +674,14 @@
 
 .hifi-build-root .quiet-button {
   color: $ink-soft;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: $shadow-soft;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: none;
+}
+
+.hifi-build-root .build-deep-nav-wrap {
+  padding: 0 16px;
+  flex-shrink: 0;
 }
 
 .hifi-build-root .choice-button {
@@ -682,6 +766,28 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.supplement-existing {
+  margin-bottom: 12px;
+}
+
+.supplement-existing-body {
+  display: block;
+  margin-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5c616d;
+  white-space: pre-wrap;
+}
+
+.picker-field {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: #2f3b2f;
 }
 
 @media (prefers-reduced-motion: reduce) {

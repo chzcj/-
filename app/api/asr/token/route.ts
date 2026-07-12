@@ -25,6 +25,8 @@ export async function GET(request: Request) {
     timestamp,
     expired,
     nonce,
+    // 标准实时引擎：抵扣「实时语音识别」资源包。
+    // 勿用 16k_zh_large（大模型版独立计费，无免费额度，易出现 4004 资源包耗尽）。
     engine_model_type: '16k_zh',
     voice_id: voiceId,
     voice_format: 1,

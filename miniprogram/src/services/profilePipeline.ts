@@ -190,6 +190,16 @@ export async function runProfileGeneratingPipeline(
     return { ok: false, message: '画像已生成，但未能保存到服务器，请检查网络后重试' }
   }
 
+  const { hydrateProfileFromRemote } = await import('@/services/profileStorage')
+  hydrateProfileFromRemote({
+    coreJudgment: snapshot.coreJudgment,
+    completeness: snapshot.completeness,
+    supportFocus: snapshot.supportFocus,
+    deepMechanism: snapshot.deepMechanism,
+    evidence: snapshot.evidence,
+    verificationPoints: snapshot.verificationPoints,
+  })
+
   const { forceAccountSyncToServer } = await import('@/services/accountSync')
   await forceAccountSyncToServer()
 

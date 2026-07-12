@@ -1,12 +1,14 @@
 {
   "mcpServers": {
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-    },
-    "spec-kit": {
-      "command": "npx",
-      "args": ["-y", "@lsendel/spec-kit-mcp"]
+    "wechat-devtools": {
+      "command": "/Library/Frameworks/Python.framework/Versions/3.14/bin/wechat-devtools-mcp",
+      "args": [],
+      "env": {
+        "PATH": "/Library/Frameworks/Python.framework/Versions/3.14/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        "WECHAT_DEVTOOLS_CLI": "/Applications/wechatwebdevtools.app/Contents/MacOS/cli",
+        "WECHAT_PROJECT_PATH": "/Users/mac/Desktop/育见-2/miniprogram",
+        "NODE_PATH": "/opt/homebrew/opt/node@22/bin/node"
+      }
     }
   }
 }

@@ -77,18 +77,18 @@ export default function ObservationPage() {
         </div>
 
         {loading && streaming ? (
-          <div className="card" style={{ padding: 18, borderRadius: 22, marginTop: 16, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>系统解读中…</div>
+          <div className="card" style={{ padding: 18, borderRadius: 22, marginTop: 16, background: 'rgba(157,204,117,0.04)', border: '1px solid rgba(157,204,117,0.10)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 8 }}>系统解读中…</div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{streaming}</div>
           </div>
         ) : null}
 
         {saved && insight ? (
-          <div className="card" style={{ padding: 18, borderRadius: 22, marginTop: 16, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>系统解读</div>
+          <div className="card" style={{ padding: 18, borderRadius: 22, marginTop: 16, background: 'rgba(157,204,117,0.04)', border: '1px solid rgba(157,204,117,0.10)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 8 }}>系统解读</div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F', marginBottom: 10 }}>{insight.insight}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {insight.linkedAreas.map((a) => <span key={a} className="chip" style={{ fontSize: 11, background: 'rgba(110,106,248,0.06)', color: '#6E6AF8', border: '1px solid rgba(110,106,248,0.12)' }}>{a}</span>)}
+              {insight.linkedAreas.map((a) => <span key={a} className="chip" style={{ fontSize: 11, background: 'rgba(157,204,117,0.06)', color: '#6f9f56', border: '1px solid rgba(157,204,117,0.12)' }}>{a}</span>)}
             </div>
           </div>
         ) : null}

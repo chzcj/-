@@ -313,7 +313,7 @@ export default function FamilyProfilePage() {
             ) : null}
           </h2>
           {updateNotice ? (
-            <p className="hint-text" style={{ marginTop: 4, color: '#6E6AF8' }}>{updateNotice}</p>
+            <p className="hint-text" style={{ marginTop: 4, color: '#6f9f56' }}>{updateNotice}</p>
           ) : null}
           <div className="profile-data-grid">
             {hubLoading ? (

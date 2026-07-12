@@ -23,9 +23,306 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 部署状态
+
+- 本地 `miniprogram build:weapp` + typecheck 通过（2026-07-12 假UI修复）
+- BFF：`npm run deploy` 已执行（ASR 密钥同步 + 预演画像加深）；小程序需开发者工具重新编译 + 预览扫码
+- 线上 readiness：`ready:false`（failed jobs → jobHealthy=false；库/worker 正常）
+
 ---
 
-## 2026-07-07 23:05 | Cursor | DESIGN.md 与文档同步（hi-fi 主站）
+## 2026-07-12 15:30 | Cursor | 假UI/回滚/键盘/预演深度
+
+**做了什么**
+- 删除 `debugLog` 裸 `fetch`（微信无 fetch → 假 UI 根因）
+- TENCENT_* 写入 `.env.local` 并 deploy（不入库）
+- `useChatAutoScroll`：键盘不再永久关跟滚；发送强制回底
+- 预演自定义场景 focus 时 `pageScrollTo` 到底 + cursorSpacing 180
+- 预演传 `profileContext`/`rehearsalContext`；BFF 加强机制约束 + 非 fast 检索
+
+**验证**
+- miniprogram/root typecheck ✅；build:weapp ✅；deploy exit 0；dist 无 debug ingest
+
+**下一步**
+- 真机预览：按住应真实录音并松手出字；交流回底；自定义场景键盘；预演更贴画像
+
+**风险**
+- 勿把 TENCENT/SSH 写入 Git/HANDOFF
+
+---
+
+## 2026-07-12 14:55 | Cursor | BFF deploy（任务/流式/action-composer）
+
+**做了什么**
+- 用本机 shell 环境变量执行 `npm run deploy`，上线 action-composer 祈使任务标题兜底、tasks observation、流式 delta 防重复
+
+**验证**
+- deploy exit 0；随后 curl readiness
+
+**下一步**
+- 小程序：开发者工具编译 → 预览重新扫码验收语音
+
+**风险**
+- 勿把 SSH/AUTH 写入 Git 或 HANDOFF 正文
+
+---
+
+## 2026-07-12 14:50 | Cursor | 真机语音零反馈 + 输出/任务闭环
+
+**做了什么**
+- P0-1：hold 用 View + 同步 uiHolding 立刻波浪/「连接中」；`startListening` 首行 `setIsConnecting(true)`；`asrUnavailable` 不再含 simulator
+- P0-2：`stripParentFacingMarkdown` + `mergeStreamChunk`；contracts/web/mp 流式防累计重复
+- P0-3：任务短祈使标题 + 副文案；BFF `deriveImperativeTaskTitle`；tasks API 支持 observation
+- P1：pill / end-actions 36px
+
+**验证**
+- miniprogram typecheck + build:weapp ✅；根 typecheck ✅
+- dist：无 catchTouch、无 scope.record permission、有连接中/wave
+
+**下一步**
+- 设置 SSH_* 后 `npm run deploy`
+- 开发者工具编译 → 预览重新扫码：按住立刻波浪 → 松手发送
+
+**风险**
+- BFF 未上线前，真机任务标题仍可能缺 AI taskTitle（前端有 advice 兜底）
+- debugLog 埋点仍在，验收后删
+
+---
+
+## 2026-07-12 14:45 | Cursor | 交流页白屏崩溃 + 产品决策落地
+
+**做了什么**
+- 移除 `app.config` 里无效的 `permission.scope.record`（官方 permission 仅支持地理位置类）
+- `HiFiInputZone`：去掉 `catchTouch*`/`onTouch*` 双绑（疑似导致 `n[e] is not a function` 白屏），只保留 `onTouch*`
+- 交流 busy 改为排队，不打断当前生成
+- 保存任务：仅接受 AI `payload.taskTitle`，无则 toast
+- 预演 fill：光标落文末；自定义场景 Textarea 防父级抢焦点
+- action pill 更扁；交流气泡去位移/梯形相关 transform
+
+**为什么**
+- 开发者工具报「无效 permission scope.record」+ 交流页 `n[e] is not a function`
+- 用户确认：排队、AI 标题、文末光标、扁胶囊、梯形在交流气泡、键盘问题在自定义场景
+
+**验证**
+- `miniprogram typecheck` ✅；`build:weapp` ✅
+- dist：`permission` 已无；`catchTouchStart` 计数 0；hold 仅 `onTouchStart/End/Cancel`
+
+**下一步**
+- 开发者工具重新编译后打开交流页，确认不再白屏
+- 真机调试按住说话：应先见「正在准备录音…」
+- 麦克风仍靠隐私协议 + 运行时 authorize，勿把 record 写回 permission
+
+**风险/冲突**
+- debugLog 埋点仍在，验收后删
+- 若 AI 未返回 taskTitle，保存任务会 toast（预期行为）
+
+---
+
+## 2026-07-11 22:50 | Cursor | 语音/预演体验修复批次
+
+**做了什么**
+- ASR 松手 fast-path（交流立刻 send；预演 fill + 后台精修）
+- HiFiInputZone：按钮内波浪、去 voice strip、短按提示、adjustPosition
+- 去回到底部按钮；滚底 pauseUntilSend；input-dock 实色底
+- 预演 placeholder 缩短；entry Textarea 键盘属性
+- BFF 预演 digest 并行加载 + 有缓存跳过 sync build；rehearsalAnalyze chunk 去重
+
+**验证**
+- `miniprogram release-check` ✅；根 `npm run typecheck` ✅
+
+**下一步**
+- 真机 iPhone：交流松手即发、预演 fill+→、键盘稳定
+
+**部署**
+- 2026-07-11 23:02 `npm run deploy` exit 0；PM2 yujian/yujian-jobs online
+- readiness `ready:false`（jobHealthy=false，历史 failed jobs）
+- 小程序需在开发者工具重新 `build:weapp` 编译（deploy 不含 miniprogram）
+
+---
+
+**做了什么**
+- 全链路审计：Auth、entry→synthesis→diagnosis→built、daily NDJSON、rehearsal、tasks、hub、account/state
+- 文档：`docs/contracts/CONTRACT-ALIGNMENT-AUDIT.md`
+- 修复：`DiagnosisTaskType` +profile_build；`AuthUser` onboardingComplete；DailyTurn linkedAreas；contracts final runtime/timing
+- 修复：`test-retrieval-packet.mjs` 与 read-contract 同步（childQuotes、deep_mechanism pipeline）
+
+**验证**
+- `npm run test:contracts` ✅ 全通过
+- `miniprogram typecheck` ✅
+
+**结论**
+- 主流程无字段级罢工；软风险为 job 超时后继续、Web 部分 untyped fetch、双份类型系统
+
+---
+
+## 2026-07-11 19:05 | Cursor | 隐私合规 + 提审材料
+
+**做了什么**
+- 新增 `wechatPrivacy.ts` + 全局 `PrivacyAgreementGate`（`onNeedPrivacyAuthorization` + 同意按钮）
+- ASR 链路：`ensureRecordPermission` 前置 `ensurePrivacyAuthorized`
+- 登录页隐私指引链接；`app.ts` → `app.tsx` 挂载 Gate
+- 文档：`REVIEW-SUBMISSION.md`（审核说明 + 公众平台隐私文案模板）；更新 `RELEASE-CHECKLIST.md`
+
+**验证**
+- `npm run release-check` ✅
+
+**下一步**
+- mp 后台按 REVIEW-SUBMISSION §2 填写隐私指引
+- 真机：首次按住说话 → 隐私弹窗 → 同意 → ASR
+- 上传提审
+
+**风险**
+- 基础库 < 2.32 可能无隐私 API，已 graceful degrade
+
+---
+
+## 2026-07-11 18:30 | Cursor | 正式发布就绪批次（分享/滚底/隐私）
+
+**做了什么**
+- **分享**：22 页 `index.config.ts` 开启 enableShare*；页面级 `usePublicPageShare` / `useSafeShareAppMessage`；朋友圈 timeline；移除 HiFiBuildShell 无效 hook
+- **滚底**：`useChatAutoScroll` 增加 scrollTop 双轨；daily runTurn try/finally 保证 input 解锁
+- **隐私**：app.config `requiredPrivateInfos: getRecorderManager` + `__usePrivacyCheck__`
+- **发布**：`RELEASE-CHECKLIST.md`、`audit-share.mjs`（校验 config+hook+dist）、`npm run release-check`
+
+**验证**
+- `npm run release-check` ✅（typecheck + build + audit-share 22/22）
+
+**下一步**
+- 真机 M9 + 分享好友/朋友圈 E2E
+- mp 后台配置隐私指引与合法域名
+- 开发者工具上传提审
+
+**风险**
+- `__usePrivacyCheck__` 需在公众平台补隐私协议文案
+
+---
+
+## 2026-07-11 18:00 | Cursor | 小程序稳定性 + UX 全局修复
+
+**做了什么**
+- 新增 `.cursor/rules/miniprogram-stability-ux.mdc` 系统提示词
+- ASR：先录后连、帧缓冲、优雅 end 2s、touch 100ms 防抖、模拟器降级横幅
+- 自动滚：daily/rehearsal 三触发 + anchor 24px；流式页 `disableEntering`
+- UI：hero/mascot 防遮挡、bubble 换行、hub 两行、任务展开/收起、chip 瘦身、motion active
+- 流式：`dailyStream` 结束补发 finalActions
+- 文档：`streaming-asr-architecture.md`、`stability-audit-2026-07-11.md`
+- 脚本：`miniprogram/scripts/health-check.mjs`
+
+**为什么**
+- 用户反馈：单字 ASR（模拟器）、真机按住失败、不自动滚、hero 遮挡、任务展开不明、流式不稳
+
+**验证**
+- `npm run build:weapp` ✅
+- `npx impeccable detect miniprogram/src/` ✅（148 既有 token 告警）
+- health-check：readiness ready:false；asr/token 需登录 Bearer
+
+**下一步**
+- 真机 M9 验收按住说话 ×5（交流/预演/capture）
+- 开发者工具重新编译预览
+
+**风险/冲突**
+- 模拟器 ASR 故意降级，勿当回归
+- 真机 socket 白名单 `wss://asr.cloud.tencent.com`
+
+---
+
+## 2026-07-11 17:15 | Cursor | 生产部署 + ASR/录音 BFF 验证
+
+**做了什么**
+- `npm run deploy` 成功（BFF + server.js + dialogue-transcribe + entry-analyze）
+- 远程 `pm2 reload asr-proxy`（引擎 `16k_zh`）
+- 线上验 `/api/asr/token` → `engine_model_type=16k_zh`
+- 线上验 `/api/rehearsal/dialogue-transcribe` → 非 501（`请先完成录音`）
+
+**验证**
+- deploy exit 0；PM2 yujian / yujian-jobs / asr-proxy online
+- readiness `ready: false`（jobHealthy 历史失败，非阻塞 ASR）
+
+**下一步**
+- 微信开发者工具重新编译小程序（UI 修复在本地 miniprogram，不进 deploy rsync）
+- 真机复测：采集按住说话、亲子对话录音上传
+
+**风险/冲突**
+- 部署凭据曾在聊天出现，建议轮换 SSH 密码
+- 勿把密码/token 写入 HANDOFF
+
+---
+
+## 2026-07-11 17:15 | Cursor | 小程序 UI 一致性审查（Impeccable）
+
+**做了什么**
+- Impeccable context + detect；输出 `miniprogram/docs/screenshot-audit-2026-07-11.md`
+- A1：FollowUpCard 过滤空 directions + chip 改 View/Text；BFF `normalizeFollowUp` 同步过滤
+- A2：去除「清北学霸」badge、summary「系统抓到/系统整理」文案
+- A4/A5：hub entry-row、tasks status-tag 加 nowrap/flex-shrink
+- A7/A8：`.bottom-actions` 从共享 card 样式拆出；dense 底栏 overflow + 14px 副按钮
+
+**为什么**
+- 用户截图 8 项与已锁定产品决策不一致；静态 detect 无法覆盖真机布局/空数据问题
+
+**验证**
+- 根目录 + miniprogram `typecheck` 通过
+- `npm run build` / `build:weapp` 通过
+- Impeccable detect 复扫无 P0/P1
+- deploy 未执行（缺 SSH 变量）
+
+**下一步**
+- 设置部署变量后 `npm run deploy`；部署后验 A3（ASR 16k_zh）与 A6（dialogue-transcribe）
+- 微信开发者工具重新编译预览，按 screenshot-audit 8 条路径人工走一遍
+
+**风险/冲突**
+- A3/A6 依赖线上 BFF；本地代码已就绪
+- 勿把 SSH/AUTH 写入 HANDOFF
+
+---
+
+
+**做了什么**
+- 新建 `VoiceHoldOverlay`：全屏按住说话浮层（7 条波形、大字转写）；`send` 松手发送 / `fill` 松手填入
+- `HiFiInputZone` 接入浮层，移除内联 recording-panel；daily=`send`，rehearsal active=`fill`
+- 新建 `useChatAutoScroll`：发送+流式滚底，用户上滑暂停，「回到底部」恢复
+- daily / rehearsal active 使用 `ScrollView` + 滚底锚点
+- `RehearsalDialogueCapture` 统一 `VoiceHoldOverlay`
+
+**验证**
+- 根目录 + miniprogram `typecheck` / `build` / `build:weapp` 通过
+- `npm run deploy` exit 0；PM2 online；readiness `ready:false`（历史 failed jobs=11，与本次无关）
+- **未改** BFF / 输出文案 prompt
+
+**下一步**
+- 微信开发者工具上传体验版：验交流发送滚底、上滑暂停、按住说话浮层、预演松手填入
+- 真机 ASR（socket 域名已配）
+
+**风险/冲突**
+- 部署凭据勿写入 HANDOFF/Git；建议后续轮换 SSH 密码
+- `jobHealthy=false` 需运维清理 failed jobs
+
+---
+
+**做了什么**
+- BFF：`entry/analyze` 支持 `appendMode`；`asr/token` 改为 `16k_zh_large`
+- 补充画像闭环：hub supplement → capture 追加 → summary 确认 → `generating?regen=1`；修复 `canAccessProfileGenerating` 门禁（`pendingProfileRegen`）
+- generating 页增加「先去日常交流」取消（后台 pipeline 继续）
+- ASR：`stopListening` 发腾讯 end 帧 + 800ms 等待；调用方改 async
+- FE：`app.ts` onHide `pushAccountSync`；profile 退出前 `forceAccountSync`
+- UI：pill 44px/primary/disabled；DailyAiMessage `sectionsComplete` 门控；tasks 空态 CTA；basic 年级 Picker
+- `childosV1Storage` 纳入 `parentInfo`；parity-verification-log Phase 0 审查包
+
+**验证**
+- 根目录 `npm run typecheck` + `npm run build` 通过
+- `miniprogram` typecheck + `build:weapp` 通过（CSS order 警告，非阻断）
+- `curl readiness`：`ready:false`（`failed:11`，jobHealthy=false，与历史 failed jobs 有关）
+- **deploy 未执行**：本机 shell 未设置 `SSH_HOST`/`SSH_PASS`/`AUTH_TOKEN`
+
+**下一步**
+- 设置部署变量后 `npm run deploy`；部署后验 `/api/asr/token` 含 `16k_zh_large`
+- 微信开发者工具上传体验版：分享 / 补充画像 / 语音 / 任务 / 退出
+- 运维：`node scripts/replay-failed-jobs.mjs`（需连生产 DB）或 SSH 上清理 failed jobs
+
+**风险/冲突**
+- 勿提交 `.env.local`；正式版需 socket 域名 `wss://asr.cloud.tencent.com`
+
+---
 
 **做了什么**
 - 重写 `DESIGN.md`：黄绿 hi-fi token、`HiFiMainShell`/`HiFiInputZone`/四 Tab/流式体验；标注旧紫色 AppShell 废弃
@@ -906,4 +1203,51 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **待补充**
 - 团队姓名/履历、法人主体、留存与活跃数据、签约合作证据、收入成本、融资条款、隐私与法律审查。
 - 对外使用前需统一“清华公益项目/试点”等背书口径，未经授权不要使用校徽或官方标识。
+
+---
+
+## 2026-07-10 16:45 | Cursor | 小程序像素/动效对齐 Phase 0–4
+
+**做了什么**
+- Phase 0：`motion.scss` + `usePageEntering`；HiFiMainShell / HiFiBuildShell `page-entering`；style-parity-audit 增 C-motion
+- Phase 1：daily chipFloat、section-reveal、VoiceOverlay（ASR 降级打字 + wave）
+- Phase 2：tasks/rehearsal/profile 间距与 checkpoint 每 4 轮动效；去掉 profile 紫色 update-notice
+- Phase 3：hifi-build 引入 motion；intro/basic/hub 感知收口
+- Phase 4：新建 `pages/profile/evidence` · `verify`；profile/deep/result 导航链；本地 snapshot 含 evidence/verificationPoints
+- 文档：visual-diff / DESIGN-TOKENS / parity-verification-log / web-component-map
+
+**为什么**
+- 按已确认方案做 Web↔MP 感知对齐（全量动效 + 画像子页补齐）
+
+**验证**
+- `miniprogram`: typecheck pass；style-parity-audit P0/P1 fail 0；build:weapp 成功（已知 CSS order warning）
+
+**下一步**
+- 真机 390 对照截图；M9-01 ASR E2E（socket 白名单）
+- 未 commit / 未 push（等用户指示）
+
+**风险/冲突**
+- 仅改 `miniprogram/` 与文档；未改 Web CSS
+- 本地有未推送提交与大量未提交变更，收工 push 前请先 `git status` 分拣
+
+---
+
+## 2026-07-10 17:10 | Cursor | 部署 ASR 密钥 + 底栏防漏字
+
+**做了什么**
+- 将腾讯云 ASR（TENCENT_APPID/SECRET_*）写入本机 `.env.local` 并 `npm run deploy` 同步到线上
+- 验证：`GET /api/asr/token`（Bearer）返回 `wsUrl`（不再 ASR_UNCONFIGURED）
+- 小程序底栏/输入区实色 + 高度下调；ASR 瞬时失败可重试
+
+**验证**
+- 本地 typecheck/build 通过；deploy exit 0；PM2 yujian/yujian-jobs online
+- readiness 仍可能因历史 failed jobs 显示 jobHealthy=false（与 ASR 无关）
+
+**下一步**
+- 小程序重新编译预览后试「按住说话」
+- 真机需公众平台 socket 合法域名：`wss://asr.cloud.tencent.com`
+- 聊天中暴露过密钥/SSH，建议后续轮换
+
+**风险/冲突**
+- 勿把 `.env.local`、SSH 密码、SecretKey 写入 Git / HANDOFF 正文
 

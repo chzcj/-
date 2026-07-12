@@ -60,7 +60,7 @@ function handleAsrWebSocket(socket) {
     timestamp,
     expired,
     nonce,
-    engine_model_type: '16k_zh_large',
+    engine_model_type: '16k_zh',
     voice_id: voiceId,
     voice_format: 1,
     needvad: 1,

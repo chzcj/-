@@ -1,13 +1,13 @@
 # Style Parity Report
 
-生成时间：2026-07-09 12:07:49 (UTC)
+生成时间：2026-07-10 08:34:17 (UTC)
 
 基准：Web `app/hifi-app.css` / `hifi-build.css`，视口 390px。本报告为**静态 class/token 审计**，真机感知仍需人工对照。
 
 ## 摘要
 
 - Token 检查：4/4 通过
-- 组件 class 检查：7/7 通过
+- 组件 class 检查：8/8 通过
 - P0 未通过：0
 - P1 未通过：0
 
@@ -31,6 +31,7 @@
 | C-tab-bar | P1 | 自定义 TabBar | `src/custom-tab-bar/index.scss` | pass |
 | C-profile-card | P1 | 画像 Tab 数据卡 | `src/pages/profile/index.scss` | pass |
 | C-checkpoint | P2 | 预演 checkpoint | `src/pages/rehearsal/index.scss` | pass |
+| C-motion | P1 | 动效库 page-rise / section-reveal | `src/styles/motion.scss` | pass |
 
 ## 登记 P2（不阻断）
 

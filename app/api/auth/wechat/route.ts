@@ -1,5 +1,6 @@
 import { fail, ok, requestId } from '@/lib/api-response';
 import { loginWithWechatCode } from '@/lib/server/auth';
+import { maybeEnqueueProfileRewrite } from '@/lib/server/auth-profile-rewrite';
 import { logAuthEvent } from '@/lib/server/auth-log';
 import { checkRateLimit, clientIp } from '@/lib/server/rate-limit';
 import { z } from 'zod';
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
 
   try {
     const { user, sessionToken, isNewUser } = await loginWithWechatCode(parsed.data.code);
+    void maybeEnqueueProfileRewrite(user.familyId, user.childId);
     logAuthEvent('wechat_login', { requestId: reqId, ip, outcome: 'ok', durationMs: Date.now() - started });
     return ok({ user, sessionToken, isNewUser }, reqId);
   } catch (error) {

@@ -106,19 +106,19 @@ export default function FamilyPlannerPage() {
 
         {mode === 'result_view' && plan ? (
           <div>
-            <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 16, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
+            <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 16, background: 'rgba(157,204,117,0.04)', border: '1px solid rgba(157,204,117,0.10)' }}>
               <div style={{ fontSize: 15, lineHeight: 1.6, color: '#1D1D1F', marginBottom: 14 }}>{plan.acknowledgement}</div>
 
               {plan.boundaryFirst ? (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>先稳一个边界</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 6 }}>先稳一个边界</div>
                   <div style={{ fontSize: 14, lineHeight: 1.6, color: '#1D1D1F', marginBottom: 14 }}>{plan.boundaryFirst}</div>
                 </>
               ) : null}
 
               {plan.actions.length > 0 ? (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>接下来可以先做（{plan.actions.length} 件）</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 8 }}>接下来可以先做（{plan.actions.length} 件）</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
                     {plan.actions.map((a, i) => (
                       <div key={i} style={{ background: '#fff', borderRadius: 14, padding: 12, border: '1px solid rgba(0,0,0,0.05)' }}>

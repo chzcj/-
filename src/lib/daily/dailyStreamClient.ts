@@ -113,7 +113,14 @@ export function parseDailyStreamLine(line: string, state: DailyStreamResult) {
   try {
     const evt = JSON.parse(line) as StreamEvent
     if (evt.type === 'delta' && evt.delta) {
-      state.acc += evt.delta
+      const d = evt.delta
+      if (d.startsWith(state.acc) && d.length >= state.acc.length) {
+        state.acc = d
+      } else if (state.acc.startsWith(d) && d.length < state.acc.length) {
+        /* ignore shorter replay */
+      } else {
+        state.acc += d
+      }
     } else if (evt.type === 'thinking' && Array.isArray(evt.chips)) {
       state.thinkingChips = evt.chips
     } else if (evt.type === 'start' && evt.traceId) {

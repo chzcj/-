@@ -2,11 +2,27 @@ import Taro from '@tarojs/taro'
 
 const PROFILE_KEY = 'childos_profile_snapshot_v1'
 
+export type LocalEvidenceItem = {
+  id?: string
+  sourceLabel: string
+  evidenceText: string
+  explanation?: string
+  strength?: 'weak' | 'medium' | 'strong'
+}
+
+export type LocalVerificationPoint = {
+  id?: string
+  title: string
+  description: string
+}
+
 export type LocalProfileSnapshot = {
   coreJudgment: string
   completeness: number
   supportFocus?: string
   deepMechanism?: string
+  evidence?: LocalEvidenceItem[]
+  verificationPoints?: LocalVerificationPoint[]
 }
 
 export function getLatestProfile(): LocalProfileSnapshot | null {
@@ -28,7 +44,14 @@ export function hasProfile(): boolean {
 export function hydrateProfileFromRemote(snapshot: LocalProfileSnapshot) {
   if (!snapshot?.coreJudgment?.trim()) return
   try {
-    Taro.setStorageSync(PROFILE_KEY, JSON.stringify(snapshot))
+    const prev = getLatestProfile()
+    const merged: LocalProfileSnapshot = {
+      ...prev,
+      ...snapshot,
+      evidence: snapshot.evidence ?? prev?.evidence,
+      verificationPoints: snapshot.verificationPoints ?? prev?.verificationPoints,
+    }
+    Taro.setStorageSync(PROFILE_KEY, JSON.stringify(merged))
   } catch {
     /* ignore */
   }

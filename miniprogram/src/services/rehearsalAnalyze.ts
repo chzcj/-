@@ -61,6 +61,11 @@ function decodeArrayBuffer(buf: ArrayBuffer): string {
   return decodeUtf8(new Uint8Array(buf))
 }
 
+function isApiEnvelope(raw: string): boolean {
+  const t = raw.trim()
+  return t.startsWith('{') && t.includes('"ok"')
+}
+
 export type RehearsalAnalyzeCallbacks = {
   onReactionDelta?: (text: string) => void
   onFinal?: (data: RehearsalAnalyzeData) => void
@@ -72,28 +77,42 @@ export type RehearsalAnalyzeResult = {
   httpError?: string
 }
 
+export type RehearsalAnalyzeOptions = {
+  profileContext?: {
+    primaryConditionalProfile?: string
+    dominantProtectiveStrategies?: string[]
+    pendingHypotheses?: string[]
+    parentNarrativePattern?: string
+  }
+  rehearsalContext?: {
+    parentGoal?: string
+    parentWorry?: string
+    whatHappenedBeforeTalk?: string
+    sceneTitle?: string
+    sceneSummary?: string
+  }
+}
+
 export function analyzeRehearsalTurn(
   parentText: string,
   parentRoundCount: number,
-  callbacks: RehearsalAnalyzeCallbacks
+  callbacks: RehearsalAnalyzeCallbacks,
+  options?: RehearsalAnalyzeOptions
 ): Promise<RehearsalAnalyzeResult> {
   const lineBuffer = new ChunkLineBuffer()
   let reactionAccum = ''
-  let childBubbleStarted = false
+  let streamMode: 'unknown' | 'ndjson' | 'json' = 'unknown'
   let finalData: RehearsalAnalyzeData | null = null
   const result: RehearsalAnalyzeResult = {}
 
   const handleLine = (line: string) => {
+    if (streamMode === 'json') return
     const evt = parseRehearsalStreamEvent(line)
     if (!evt) return
+    streamMode = 'ndjson'
     if (evt.type === 'reaction_delta') {
       reactionAccum += evt.delta
-      if (!childBubbleStarted) {
-        childBubbleStarted = true
-        callbacks.onReactionDelta?.(reactionAccum)
-      } else {
-        callbacks.onReactionDelta?.(reactionAccum)
-      }
+      callbacks.onReactionDelta?.(reactionAccum)
     } else if (evt.type === 'final') {
       finalData = { ...(evt.data as RehearsalAnalyzeData), traceId: evt.traceId }
     } else if (evt.type === 'error') {
@@ -101,10 +120,15 @@ export function analyzeRehearsalTurn(
     }
   }
 
-  const finishJsonBody = (raw: string) => {
+  const processBufferedText = (raw: string) => {
     const trimmed = raw.trim()
     if (!trimmed) return
-    if (trimmed.startsWith('{') && trimmed.includes('"ok"')) {
+    if (streamMode === 'ndjson') {
+      for (const line of trimmed.split('\n')) handleLine(line)
+      return
+    }
+    if (isApiEnvelope(trimmed)) {
+      streamMode = 'json'
       try {
         const json = JSON.parse(trimmed) as {
           ok?: boolean
@@ -128,6 +152,20 @@ export function analyzeRehearsalTurn(
 
   return new Promise((resolve) => {
     const token = getSessionToken()
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      for (const line of lineBuffer.flush()) handleLine(line)
+      if (finalData) {
+        callbacks.onFinal?.(finalData)
+        result.data = finalData
+      } else if (!result.httpError) {
+        result.httpError = '这次没有模拟出来，可以再试一次。'
+      }
+      resolve(result)
+    }
+
     const task = Taro.request({
       url: `${API_BASE_URL}/api/rehearsal/analyze`,
       method: 'POST',
@@ -139,6 +177,8 @@ export function analyzeRehearsalTurn(
         parentText,
         fromSpecialFeature: true,
         parentRoundCount,
+        ...(options?.profileContext ? { profileContext: options.profileContext } : {}),
+        ...(options?.rehearsalContext ? { rehearsalContext: options.rehearsalContext } : {}),
       },
       enableChunked: true,
       enableHttp2: false,
@@ -150,17 +190,10 @@ export function analyzeRehearsalTurn(
           resolve(result)
           return
         }
-        if (res.data) {
-          finishJsonBody(decodeArrayBuffer(res.data as ArrayBuffer))
+        if (res.data && streamMode !== 'ndjson') {
+          processBufferedText(decodeArrayBuffer(res.data as ArrayBuffer))
         }
-        for (const line of lineBuffer.flush()) handleLine(line)
-        if (finalData) {
-          callbacks.onFinal?.(finalData)
-          result.data = finalData
-        } else if (!result.httpError) {
-          result.httpError = '这次没有模拟出来，可以再试一次。'
-        }
-        resolve(result)
+        finish()
       },
       fail: (err) => {
         result.httpError = err.errMsg || '网络不太稳定'
@@ -175,6 +208,8 @@ export function analyzeRehearsalTurn(
       reqTask.onChunkReceived((res) => {
         for (const line of lineBuffer.push(res.data)) handleLine(line)
       })
+    } else {
+      // 无 chunked 时 success 回调处理整包
     }
   })
 }

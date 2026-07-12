@@ -3,6 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useMemo, useState } from 'react'
 import { BuildRecordBox } from '@/components/profile/BuildRecordBox'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
+import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { getEntryConfig } from '@/data/entryConfig'
 import {
   getEntryProgressPercent,
@@ -10,23 +11,29 @@ import {
   mpSummaryPath,
   normalizeBuildEntryType,
 } from '@/lib/buildEntries'
-import { mpGoReplace } from '@/lib/mpOnboardingNav'
+import { mpGoReplace, exitSupplementToProfile, goOnboardingHub } from '@/lib/mpOnboardingNav'
 import { apiRequest } from '@/services/api'
-import { getCombinedEntryText, saveCaptureText, saveEntryGate } from '@/services/entryStorage'
+import { getCombinedEntryText, saveCaptureText, saveEntryGate, appendSupplementText, getExistingEntryPreview, isSupplementFlow } from '@/services/entryStorage'
 
 export default function EntryCapturePage() {
+  useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
   const router = useRouter()
   const entryType = normalizeBuildEntryType(router.params.entryType || '') || 'daily'
+  const supplementMode = router.params.mode === 'supplement' || isSupplementFlow()
   const config = getEntryConfig(entryType)
   const [draft, setDraft] = useState('')
+  const [showExisting, setShowExisting] = useState(false)
+  const existingPreview = supplementMode ? getExistingEntryPreview(entryType) : ''
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState('')
   const [promptIndex, setPromptIndex] = useState(0)
 
   useEffect(() => {
-    const existing = getCombinedEntryText(entryType)
-    if (existing) setDraft(existing)
-  }, [entryType])
+    if (!supplementMode) {
+      const existing = getCombinedEntryText(entryType)
+      if (existing) setDraft(existing)
+    }
+  }, [entryType, supplementMode])
 
   const currentPrompt = useMemo(
     () => config.prompts[promptIndex % config.prompts.length] || config.prompts[0],
@@ -42,7 +49,12 @@ export default function EntryCapturePage() {
     }
     setLoading(true)
     setApiError('')
-    saveCaptureText(entryType, merged)
+    if (supplementMode) {
+      appendSupplementText(entryType, merged)
+    } else {
+      saveCaptureText(entryType, merged)
+    }
+    const combined = getCombinedEntryText(entryType)
     const res = await apiRequest<{
       shouldAsk?: boolean
       purpose?: string
@@ -50,7 +62,7 @@ export default function EntryCapturePage() {
       directions?: string[]
     }>('/api/entry/analyze', {
       method: 'POST',
-      data: { entryType, rawText: merged, stage: 'entry' },
+      data: { entryType, rawText: combined, stage: 'entry', appendMode: supplementMode },
     })
     setLoading(false)
     if (!res.ok) {
@@ -75,21 +87,42 @@ export default function EntryCapturePage() {
       topTitle={config.title}
       stepLabel={`${config.stepLabel} 专项采集`}
       progress={getEntryProgressPercent(entryType, 'input')}
+      deepNav={{
+        title: supplementMode ? `补充${config.title}` : config.title,
+        onBack: goOnboardingHub,
+        onExit: supplementMode ? exitSupplementToProfile : goOnboardingHub,
+      }}
       actions={[
         {
           id: 'submit',
-          label: loading ? '系统正在看信息够不够…' : '提交，让系统看看',
+          label: loading ? '正在确认信息…' : '提交',
           onClick: () => void handleContinue(),
           disabled: loading || !hasText,
         },
       ]}
     >
       <HiFiBuildHero
-        kicker={`${config.stepLabel} 专项采集`}
-        title={config.title}
-        copy={`${config.subtitle} 讲得越多我们对孩子越了解，清北教育专家会耐心听您讲完。`}
+        kicker={supplementMode ? `${config.stepLabel} 补充信息` : `${config.stepLabel} 专项采集`}
+        title={supplementMode ? `补充${config.title}` : config.title}
+        copy={
+          supplementMode
+            ? '再补一段真实场景即可，不会覆盖已有记录。'
+            : config.subtitle
+        }
         compact
+        mascot={false}
       />
+
+      {supplementMode && existingPreview ? (
+        <View className='soft-card supplement-existing'>
+          <Text className='section-label' onClick={() => setShowExisting((v) => !v)}>
+            {showExisting ? '收起已采集内容' : '查看已采集内容'}
+          </Text>
+          {showExisting ? (
+            <Text className='soft-card-body supplement-existing-body'>{existingPreview}</Text>
+          ) : null}
+        </View>
+      ) : null}
 
       <View className='soft-card'>
         <Text className='soft-card-body'>{config.body}</Text>
@@ -100,7 +133,7 @@ export default function EntryCapturePage() {
 
       <BuildRecordBox
         label='真实情况记录'
-        status='请您尽量按住说话 1–2 分钟'
+        status='按住说话 1–2 分钟'
         value={draft}
         placeholder={config.placeholder}
         disabled={loading}
@@ -116,23 +149,13 @@ export default function EntryCapturePage() {
         </View>
       ) : null}
 
-      <View className='section'>
-        <Text className='section-label'>可以顺着这些方向讲</Text>
-        <View className='chips'>
-          {config.chips.map((chip) => (
-            <Text
-              key={chip}
-              className='chip'
-              onClick={() => setDraft((prev) => (prev ? `${prev}\n${chip}：` : `${chip}：`))}
-            >
-              {chip}
-            </Text>
-          ))}
+      {currentPrompt ? (
+        <View className='section'>
+          <Text className='hint-text' onClick={() => setPromptIndex((i) => i + 1)}>
+            换一个问题
+          </Text>
         </View>
-        <Text className='hint-text' onClick={() => setPromptIndex((i) => i + 1)}>
-          换一个问题
-        </Text>
-      </View>
+      ) : null}
     </HiFiBuildShell>
   )
 }

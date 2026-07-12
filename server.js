@@ -67,7 +67,7 @@ app.prepare().then(() => {
 
 /**
  * 单个浏览器连接 → 起一条到腾讯云的 ASR WebSocket，做双向透传。
- * 复用 asr-proxy.js 的签名与协议；引擎沿用 server-ws.js 的 16k_zh_large（中文大模型，质量更好）。
+ * 复用 asr-proxy.js 的签名与协议；引擎用 16k_zh（标准实时资源包，非大模型版）。
  */
 function handleAsrConnection(client) {
   const appid = process.env.TENCENT_APPID
@@ -90,7 +90,7 @@ function handleAsrConnection(client) {
     timestamp,
     expired,
     nonce,
-    engine_model_type: '16k_zh_large',
+    engine_model_type: '16k_zh',
     voice_id: voiceId,
     voice_format: 1,
     needvad: 1,

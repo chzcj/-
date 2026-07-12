@@ -1,0 +1,85 @@
+---
+description: 育见小程序稳定性/UX/ASR/流式输出全局修复；Impeccable 审计 + 防幻觉门禁
+globs:
+  - miniprogram/**
+---
+
+# 育见微信小程序 · 稳定性与 UX 全局修复 Agent 指令
+
+你是育见 hi-fi 四 Tab 小程序（`miniprogram/`）的专项修复 Agent。**禁止幻觉**：任何「已修复」结论必须对应具体文件 diff + `npm run build:weapp` 通过 + 对应验收项。
+
+## 0. 开工必读（每次会话）
+
+1. `npm run sync:gitee` → 读 `.agents/HANDOFF.md` 最新一条
+2. 设计基准：`DESIGN.md`、`miniprogram/docs/DESIGN-TOKENS.md`
+3. Porting 流程：`miniprogram/docs/PORTING.md`、`PORTING-SELF-CHECK.md`
+4. Web 对照：同路由 `https://yujian.yihe.site` + `miniprogram/docs/web-component-map.md`
+5. Impeccable UI：`node .agents/skills/impeccable/scripts/context.mjs` → 改 UI 前读上下文；完成后 `npx impeccable detect miniprogram/src/`
+6. ASR 运维：`miniprogram/docs/M9-DEVICE-QA.md`、`miniprogram/docs/module-reports/M9-asr.md`
+
+## 1. 平台真相（防误判）
+
+| 环境 | 语音 ASR | 流式输出 | 说明 |
+|------|----------|----------|------|
+| **微信开发者工具模拟器** | 不可靠，常只识别单字/无麦克风 | 可测 UI，不可作 ASR 签收 | UI 标注「模拟器不支持语音验收，请用真机预览」 |
+| **真机预览/体验版** | ASR 验收标准 | 流式签收标准 | socket 域名 `wss://asr.cloud.tencent.com` + `GET /api/asr/token` |
+
+**禁止**把「模拟器只能单字」当 ASR 代码 bug 主因；**必须**单独修复真机「按住易失败、按住说话无反应」。
+
+## 2. 用户反馈问题注册表（P0→P2）
+
+### P0-A · 文字遮挡 / 第二行孤字
+
+**文件**：`DailyAiMessage.tsx`、`hifi-base.scss`、`HiFiInputZone/index.scss`
+
+**原则**：`word-break: break-word`；避免固定高度裁字；禁止第二行单字。
+
+### P0-B · 真机 ASR 按住易失败 / 无反应
+
+**文件**：`useTencentAsrInput.ts`、`HiFiInputZone`、`BuildRecordBox`、`pages/rehearsal/index.tsx`
+
+**原则**：touch 防抖；先录后连 + 帧缓冲；优雅结束等 slice_type=2；连接态 UI；模拟器降级。
+
+### P0-C · hero 被吉祥物遮挡
+
+**文件**：`pages/daily`、`pages/login`、`HiFiMascot`、`hifi-base.scss`
+
+### P0-D · 输入后自动滚到输出
+
+**文件**：`useChatAutoScroll.ts`、`pages/daily/index.tsx`、`pages/rehearsal/index.tsx`
+
+### P0-E · 流式输出不稳定
+
+**文件**：`services/dailyStream.ts`、`pages/daily/index.tsx`
+
+### P1-F · Hub 横条小字换行
+
+**文件**：`hifi-build.scss` `.entry-row`
+
+### P1-G · 任务页展开收起 + chip 瘦身
+
+**文件**：`pages/tasks/*`、`TaskFeedbackPanel`
+
+### P1-H · 页面/按钮灵动性
+
+**文件**：`motion.scss`、`usePageEntering.ts`
+
+### P1-I · 全局稳定性
+
+每次收工：`cd miniprogram && npm run build:weapp`；可选 `miniprogram/scripts/health-check.mjs`
+
+## 3. Impeccable 审计清单 U1–U7
+
+交流、任务、预演、画像、Onboarding、TabBar、登录/intro。触控 ≥ 44px，禁止 purple。
+
+## 4. 逻辑文档
+
+`miniprogram/docs/streaming-asr-architecture.md` — ASR / 流式 / 自动滚数据流。
+
+## 5. 推荐修复顺序
+
+P0-D → P0-B → P0-C → P0-A → P0-E → P1-F/G → P1-H → P1-I
+
+## 6. 收工格式（HANDOFF）
+
+做了什么、文件列表、build:weapp、真机/模拟器分别测了什么、风险、下一步。Commit 前缀 `[cursor]`；**仅用户要求时** push。

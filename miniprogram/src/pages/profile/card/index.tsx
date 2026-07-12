@@ -2,7 +2,9 @@ import { View, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
+import { usePublicPageShare } from '@/hooks/useSharePage'
 import { formatRefreshedAt, type PortraitCardSection, type StructuralTension } from '@/lib/portraitCard'
+import { buildProfileCardSharePath } from '@/lib/shareMessages'
 import { apiRequest } from '@/services/api'
 import './index.scss'
 
@@ -35,6 +37,10 @@ function normalizeSections(raw?: ApiSection[]): PortraitCardSection[] {
 export default function ProfileCardPage() {
   const router = useRouter()
   const cardId = router.params.id || ''
+  usePublicPageShare(() => ({
+    title: CARD_TITLES[cardId] ? `育见 · ${CARD_TITLES[cardId]}` : '育见 · 孩子画像',
+    path: buildProfileCardSharePath(cardId),
+  }))
   const [title, setTitle] = useState('')
   const [summary, setSummary] = useState('')
   const [lead, setLead] = useState('')

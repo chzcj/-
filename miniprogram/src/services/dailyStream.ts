@@ -12,6 +12,7 @@ export type DailyTurn = {
   role: 'parent' | 'ai'
   text: string
   traceId?: string
+  linkedAreas?: string[]
   sections?: DailySection[]
   actions?: DailyAction[]
   memoryLabel?: string
@@ -125,6 +126,7 @@ export function streamDailyMessage(
   const state: DailyStreamResult = { acc: '' }
   const lineBuffer = new ChunkLineBuffer()
   let startFired = false
+  let actionsFired = false
   let task: Taro.RequestTask<unknown> | null = null
 
   const flushPending = () => {
@@ -172,6 +174,7 @@ export function streamDailyMessage(
     if (state.earlyActions && callbacks.onActions) {
       callbacks.onActions(state.earlyActions)
       state.earlyActions = undefined
+      actionsFired = true
     }
   }
 
@@ -200,6 +203,10 @@ export function streamDailyMessage(
           return
         }
         for (const line of lineBuffer.flush()) processLine(line)
+        flushPending()
+        if (!actionsFired && state.finalActions?.length && callbacks.onActions) {
+          callbacks.onActions(state.finalActions)
+        }
         resolve(state)
       },
       fail: (err) => {

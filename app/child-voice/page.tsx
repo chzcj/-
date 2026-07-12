@@ -46,7 +46,7 @@ export default function ChildVoicePage() {
         </div>
 
         {saved ? (
-          <div className="card" style={{ padding: 16, borderRadius: 22, marginBottom: 20, textAlign: 'center', background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
+          <div className="card" style={{ padding: 16, borderRadius: 22, marginBottom: 20, textAlign: 'center', background: 'rgba(157,204,117,0.04)', border: '1px solid rgba(157,204,117,0.10)' }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: '#4f9f72' }}>已保存。正在打开多视角校正...</div>
           </div>
         ) : (

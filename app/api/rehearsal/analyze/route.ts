@@ -61,18 +61,33 @@ export async function POST(request: Request) {
 
   /* profile-aware 路径：标准入口(fromSpecialFeature)默认画像感知，从服务端记忆检索；
      或有前端画像/家长采集的预演上下文亦进入。画像优先用前端传入，缺失则从记忆检索。 */
-  const rc = (rehearsalContext || {}) as { parentGoal?: string; parentWorry?: string; whatHappenedBeforeTalk?: string }
+  const rc = (rehearsalContext || {}) as {
+    parentGoal?: string
+    parentWorry?: string
+    whatHappenedBeforeTalk?: string
+    sceneTitle?: string
+    sceneSummary?: string
+  }
   const parentRoundCount = typeof body.parentRoundCount === 'number' ? body.parentRoundCount : 0
-  const hasRehearsalCtx = Boolean(rc.parentGoal || rc.parentWorry || rc.whatHappenedBeforeTalk)
+  const hasRehearsalCtx = Boolean(
+    rc.parentGoal || rc.parentWorry || rc.whatHappenedBeforeTalk || rc.sceneTitle || rc.sceneSummary
+  )
   // 路由级 traceId/tenant：贯穿 TurnEvent 快照与采集写回（强字段闭环），各结果路径共享。
   const tenant = await resolveTenant()
   const traceId = createId('trace')
   if (parentText && mode !== 'conflict' && (fromSpecialFeature || profileContext || hasRehearsalCtx)) {
     try {
       const ctx = (profileContext || {}) as RehearsalProfileContext
-      const packet = await buildDailyDialogueRetrievalPacket(parentText, tenant, { fast: true }).catch(() => undefined)
-      let digest = await loadDeepModelDigest(tenant).catch(() => null)
-      if (!digest?.mechanismNarrative) {
+      const [packet, digestLoaded] = await Promise.all([
+        // 预演需要更完整机制包，不用过激 fast 裁剪
+        buildDailyDialogueRetrievalPacket(parentText, tenant, { fast: false }).catch(() => undefined),
+        loadDeepModelDigest(tenant).catch(() => null),
+      ])
+      let digest = digestLoaded
+      const digestPack = pickDeepModelDigestPack(digest)
+      const digestUsable = Boolean(digestPack.mechanismNarrative?.trim())
+      if (!digestUsable) {
+        // 仅当缓存完全不可用时同步 build，避免每轮预演阻塞首字
         digest = await buildDeepModelDigest(tenant).catch(() => digest)
       }
       const deepModelDigest = pickDeepModelDigestPack(digest)
@@ -83,11 +98,16 @@ export async function POST(request: Request) {
         ctx.primaryConditionalProfile
           ? `画像：${ctx.primaryConditionalProfile.slice(0, 360)}`
           : (packet?.relevantChildStructureModels?.length ? `画像：${packet.relevantChildStructureModels.join('；').slice(0, 360)}` : ''),
+        deepModelDigest.mechanismNarrative
+          ? `机制叙事：${deepModelDigest.mechanismNarrative.slice(0, 420)}`
+          : '',
         ctx.dominantProtectiveStrategies?.length ? `保护策略：${ctx.dominantProtectiveStrategies.slice(0, 4).join('；')}` : '',
         ctx.familyInteractionCycles?.length
           ? `家庭循环：${ctx.familyInteractionCycles.slice(0, 4).map(c => c.patternName).join('；')}`
           : (packet?.matchedMechanisms?.length ? `家庭机制：${packet.matchedMechanisms.slice(0, 4).join('；')}` : ''),
         memHypotheses.length ? `待验证：${memHypotheses.slice(0, 3).join('；')}` : '',
+        rc.sceneTitle ? `当前预演场景：${rc.sceneTitle}` : '',
+        rc.sceneSummary ? `场景摘要：${rc.sceneSummary.slice(0, 200)}` : '',
         rc.parentGoal ? `家长这次真正想达成：${rc.parentGoal}` : '',
         rc.parentWorry ? `家长最担心孩子的反应：${rc.parentWorry}` : '',
         rc.whatHappenedBeforeTalk ? `沟通前置背景：${rc.whatHappenedBeforeTalk}` : '',
@@ -104,10 +124,11 @@ export async function POST(request: Request) {
 规则：
 - 家长发来的就是一段完整自述：他这次真正想达成什么、最担心孩子怎么反应、谈话前发生了什么，可能都内联在这段话里——请主动从中识别并使用，不要因为没有单独字段就忽略。
 - 必须结合家长这次真正想达成的目标，以及过往类似沟通的结果——避免重复已经失败过的说法。
-- 必须使用画像中的机制、保护策略或家庭循环。
+- 必须使用画像/机制叙事中的具体机制、保护策略或家庭循环；孩子回话要像「这个孩子」在说，而不是通用小孩模板。
+- possibleChildReaction.immediateReaction：用孩子口吻，短句、带情绪与防御；至少呼应一条画像机制（如催促→控制感、检查→被评价）。
+- childLikelyHearing：对照画像里的具体模式，写孩子内心如何理解家长这句话（分析，不是孩子原话）；禁止空泛「觉得被批评」。
 - 不要泛泛说"多鼓励少批评"。
 - 不要说家长控制欲强、孩子就是懒。
-- childLikelyHearing 写孩子内心怎么理解家长的话（分析，不是孩子原话）。
 - saferVersion 写一句家长可以直接说的更稳版本（仅用于结束页建议，模拟对话中不展示）。
 - closingAdvice 结合本轮预演对话，给家长 2-3 句针对性沟通建议（总结预演中的卡点 + 下一步怎么试），禁止泛泛鸡汤。
 - taskTitle 是从 saferVersion 提炼的"今晚要试"任务标题，祈使句式 6–24 字，描述动作而非照抄台词。

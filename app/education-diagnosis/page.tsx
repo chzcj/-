@@ -104,17 +104,17 @@ export default function EducationDiagnosisPage() {
               <div style={{ fontSize: 15, lineHeight: 1.6, color: '#1D1D1F', marginBottom: 14 }}>{data.acknowledgement}</div>
             ) : null}
 
-            <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 16, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
+            <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 16, background: 'rgba(157,204,117,0.04)', border: '1px solid rgba(157,204,117,0.10)' }}>
               {data.result.modeReading ? (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>这个家大概怎么运转</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 6 }}>这个家大概怎么运转</div>
                   <div style={{ fontSize: 14, lineHeight: 1.6, color: '#1D1D1F', marginBottom: data.result.keyTensions.length ? 16 : 4 }}>{data.result.modeReading}</div>
                 </>
               ) : null}
 
               {data.result.keyTensions.length > 0 ? (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>最该先看的张力（{data.result.keyTensions.length} 个）</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 8 }}>最该先看的张力（{data.result.keyTensions.length} 个）</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: data.result.gentleNextStep ? 16 : 4 }}>
                     {data.result.keyTensions.map((t, i) => (
                       <div key={i} style={{ background: '#fff', borderRadius: 14, padding: 12, border: '1px solid rgba(0,0,0,0.05)' }}>
@@ -135,7 +135,7 @@ export default function EducationDiagnosisPage() {
             <button
               type="button"
               onClick={() => router.push('/family-planner')}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '14px 16px', marginBottom: 16, background: '#fff', border: '1px solid rgba(110,106,248,0.12)', borderRadius: 16, cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '14px 16px', marginBottom: 16, background: '#fff', border: '1px solid rgba(157,204,117,0.12)', borderRadius: 16, cursor: 'pointer', textAlign: 'left' }}
             >
               <span style={{ flex: 1 }}>
                 <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1D1D1F' }}>看清了，按承受力定个下一步规划</span>

@@ -2,11 +2,17 @@ import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
+import { usePublicPageShare } from '@/hooks/useSharePage'
 import { humanizeEntryRef } from '@/lib/entry-name-i18n'
+import { SHARE_PATHS } from '@/lib/shareMessages'
 import { getLatestProfile, hasProfile } from '@/services/profileStorage'
 import './index.scss'
 
 export default function ProfileDeepPage() {
+  usePublicPageShare({
+    title: '育见 · 家庭机制链',
+    path: SHARE_PATHS.profileDeep,
+  })
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState(getLatestProfile())
 
@@ -75,6 +81,18 @@ export default function ProfileDeepPage() {
         )}
       </View>
 
+      <Text
+        className='pill'
+        onClick={() => void Taro.navigateTo({ url: '/pages/profile/evidence/index' })}
+      >
+        判断依据
+      </Text>
+      <Text
+        className='pill'
+        onClick={() => void Taro.navigateTo({ url: '/pages/profile/verify/index' })}
+      >
+        待验证观察点
+      </Text>
       <Text
         className='pill primary'
         onClick={() => void Taro.navigateTo({ url: '/packageOnboarding/pages/result/index' })}

@@ -59,16 +59,16 @@ console.log('=== retrieval packet 契约测试 ===\n')
   const pack = read('src/lib/server/daily/frontend-read-pack.ts')
   assert(prose.includes('pickFrontendReadPack'), 'prose-context 使用 pickFrontendReadPack')
   const keysBlock = pack.slice(pack.indexOf('FRONTEND_READ_PACK_KEYS'), pack.indexOf('] as const', pack.indexOf('FRONTEND_READ_PACK_KEYS')) + 9)
-  assert(!keysBlock.includes('childQuotes'), 'FRONTEND_READ_PACK_KEYS 数组不含 childQuotes')
+  assert(keysBlock.includes('childQuotes'), 'FRONTEND_READ_PACK_KEYS 含 childQuotes（read-contract.md 动态字段）')
   assert(pack.includes('BACKEND_ONLY_CONTEXT_FIELDS'), '声明后端专用上下文字段')
 }
 
 // 6. parent narrative 有写路径
 {
   const de = read('src/lib/server/memory/write/decision-engine.ts')
-  const dm = read('src/lib/server/memory/deep-mechanism/reviewer.ts')
+  const dm = read('src/lib/server/memory/deep-mechanism/pipeline.ts')
   assert(de.includes('saveParentNarrativePattern'), 'decision-engine 写 parent_narrative')
-  assert(dm.includes('saveParentNarrativePattern'), 'deep_mechanism 写 parent_narrative')
+  assert(dm.includes('saveParentNarrativePattern'), 'deep_mechanism pipeline 写 parent_narrative')
 }
 
 console.log(`\n=== 结果: ${pass} 通过, ${fail} 失败 ===`)

@@ -274,7 +274,7 @@ a {
   height: 26px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(110, 106, 248, 0.10);
+  background: rgba(157, 204, 117, 0.10);
   color: var(--brand);
   font-size: 12px;
   line-height: 18px;
@@ -331,9 +331,9 @@ a {
   min-height: 38px;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(110, 106, 248, 0.06);
+  background: rgba(157, 204, 117, 0.06);
   color: var(--brand);
-  border: 1px solid rgba(110, 106, 248, 0.14);
+  border: 1px solid rgba(157, 204, 117, 0.14);
   font-size: 14px;
   cursor: pointer;
   transition: transform 140ms ease, background 140ms ease, opacity 140ms ease;
@@ -341,7 +341,7 @@ a {
 
 .chip:active:not(:disabled) {
   transform: scale(0.97);
-  background: rgba(110, 106, 248, 0.12);
+  background: rgba(157, 204, 117, 0.12);
 }
 
 .chip:disabled {
@@ -425,8 +425,8 @@ a {
   width: 84px;
   height: 84px;
   box-shadow:
-    0 0 0 12px rgba(110, 106, 248, 0.08),
-    0 6px 18px rgba(110, 106, 248, 0.16);
+    0 0 0 12px rgba(157, 204, 117, 0.08),
+    0 6px 18px rgba(157, 204, 117, 0.16);
 }
 
 .mic-button:active:not(:disabled) {
@@ -446,14 +446,14 @@ a {
   position: absolute;
   inset: -9px;
   border-radius: 999px;
-  background: rgba(110, 106, 248, 0.16);
+  background: rgba(157, 204, 117, 0.16);
   animation: pulse 1.6s infinite;
   z-index: -1;
 }
 
 .mic-button.recording::after {
   inset: -18px;
-  background: rgba(110, 106, 248, 0.08);
+  background: rgba(157, 204, 117, 0.08);
   animation-delay: 0.25s;
 }
 
@@ -670,7 +670,7 @@ a {
   margin-top: 16px;
   padding: 12px;
   border-radius: 16px;
-  background: rgba(110, 106, 248, 0.04);
+  background: rgba(157, 204, 117, 0.04);
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 20px;
@@ -768,7 +768,7 @@ a {
 .quote-box {
   border-left: 3px solid var(--brand);
   border-radius: 12px;
-  background: rgba(110, 106, 248, 0.05);
+  background: rgba(157, 204, 117, 0.05);
   padding: 10px 12px;
   font-size: 15px;
   line-height: 24px;
@@ -790,7 +790,7 @@ a {
   width: 72px;
   height: 72px;
   border-radius: 999px;
-  border: 6px solid rgba(110, 106, 248, 0.12);
+  border: 6px solid rgba(157, 204, 117, 0.12);
   border-top-color: var(--brand);
   animation: spin 1.25s linear infinite;
 }
@@ -833,8 +833,8 @@ a {
   height: 330px;
   border-radius: 50% 50% 0 0;
   background:
-    repeating-radial-gradient(ellipse at 50% 100%, rgba(110, 106, 248, 0.06) 0 2px, transparent 2px 20px),
-    radial-gradient(ellipse at 50% 100%, rgba(110, 106, 248, 0.05), transparent 70%);
+    repeating-radial-gradient(ellipse at 50% 100%, rgba(157, 204, 117, 0.06) 0 2px, transparent 2px 20px),
+    radial-gradient(ellipse at 50% 100%, rgba(157, 204, 117, 0.05), transparent 70%);
   opacity: 0.75;
   pointer-events: none;
 }
@@ -887,7 +887,7 @@ a {
   border-radius: 999px;
   background: var(--brand);
   display: inline-block;
-  box-shadow: 0 0 0 6px rgba(110, 106, 248, 0.08);
+  box-shadow: 0 0 0 6px rgba(157, 204, 117, 0.08);
 }
 
 .talk-question {
@@ -942,7 +942,7 @@ a {
   justify-content: center;
   color: #fff;
   background: linear-gradient(145deg, #8ab86a, var(--brand));
-  box-shadow: 0 6px 14px rgba(110, 106, 248, 0.18);
+  box-shadow: 0 6px 14px rgba(157, 204, 117, 0.18);
   transition: transform 150ms ease, opacity 150ms ease;
 }
 
@@ -993,10 +993,10 @@ a {
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.54);
-  border: 2px solid rgba(110, 106, 248, 0.28);
+  border: 2px solid rgba(157, 204, 117, 0.28);
   box-shadow:
-    0 0 0 12px rgba(110, 106, 248, 0.08),
-    0 0 0 25px rgba(110, 106, 248, 0.04),
+    0 0 0 12px rgba(157, 204, 117, 0.08),
+    0 0 0 25px rgba(157, 204, 117, 0.04),
     inset 0 1px 1px rgba(255, 255, 255, 0.55),
     0 2px 8px rgba(0, 0, 0, 0.06);
   color: var(--brand);
@@ -1054,7 +1054,7 @@ a {
 
 .home-text-input button {
   border-radius: 16px;
-  background: rgba(110, 106, 248, 0.76);
+  background: rgba(157, 204, 117, 0.76);
   color: #fff;
   font-weight: 750;
   min-height: 44px;
@@ -1136,7 +1136,7 @@ a {
   gap: 6px;
   padding: 14px 12px;
   background: #fff;
-  border: 1px solid rgba(110, 106, 248, 0.12);
+  border: 1px solid rgba(157, 204, 117, 0.12);
   border-radius: 16px;
   cursor: pointer;
   text-align: left;
@@ -1149,7 +1149,7 @@ a {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: rgba(110, 106, 248, 0.08);
+  background: rgba(157, 204, 117, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1175,7 +1175,7 @@ a {
   padding: 18px 18px 18px 16px;
   grid-template-columns: 48px 1fr auto;
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(110, 106, 248, 0.1);
+  border: 1px solid rgba(157, 204, 117, 0.1);
   box-shadow: 0 10px 28px rgba(36, 36, 44, 0.05);
 }
 
@@ -1197,7 +1197,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: 0 16px;
-  background: rgba(110, 106, 248, 0.1);
+  background: rgba(157, 204, 117, 0.1);
   color: var(--brand);
   font-size: 15px;
   line-height: 20px;
@@ -1329,8 +1329,8 @@ a {
 }
 
 .profile-summary-grid button.active {
-  border-color: rgba(110, 106, 248, 0.28);
-  background: rgba(110, 106, 248, 0.06);
+  border-color: rgba(157, 204, 117, 0.28);
+  background: rgba(157, 204, 117, 0.06);
 }
 
 .profile-summary-grid strong {
@@ -1523,8 +1523,8 @@ a {
 .rehearsal-ai-bubble {
   border-radius: 20px;
   padding: 16px;
-  background: rgba(110, 106, 248, 0.04);
-  border: 1px solid rgba(110, 106, 248, 0.12);
+  background: rgba(157, 204, 117, 0.04);
+  border: 1px solid rgba(157, 204, 117, 0.12);
   margin-right: 36px;
   animation: card-fade 180ms ease both;
 }

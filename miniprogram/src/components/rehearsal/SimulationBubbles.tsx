@@ -63,7 +63,11 @@ export function SimulationThinkingBubble() {
   return (
     <View className='message-row ai'>
       <View className='bubble thinking-bubble'>
-        <Text className='thinking-dots'>···</Text>
+        <View className='thinking-dots'>
+          <View className='thinking-dots-dot' />
+          <View className='thinking-dots-dot' />
+          <View className='thinking-dots-dot' />
+        </View>
       </View>
     </View>
   )

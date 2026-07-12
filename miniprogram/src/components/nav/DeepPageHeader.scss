@@ -1,0 +1,34 @@
+@import '../../styles/tokens.scss';
+
+.deep-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 4px 14px;
+}
+
+.deep-page-back,
+.deep-page-close {
+  font-size: 14px;
+  font-weight: 600;
+  color: $green-deep;
+  padding: 8px 4px;
+  min-width: 56px;
+}
+
+.deep-page-close {
+  text-align: right;
+}
+
+.deep-page-close-spacer {
+  min-width: 56px;
+}
+
+.deep-page-title {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: $ink;
+}

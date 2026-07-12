@@ -29,3 +29,19 @@
   text-align: center;
   margin-top: 8px;
 }
+
+.pill.block {
+  display: block;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  line-height: 30px;
+}
+
+.picker-field {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: #2f3b2f;
+}

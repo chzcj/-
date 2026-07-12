@@ -53,6 +53,7 @@ export type FrontResponseType =
 
 export type DiagnosisTaskType =
   | 'initial_model'
+  | 'profile_build'
   | 'stage_diagnosis'
   | 'daily_event_explanation'
   | 'model_update'

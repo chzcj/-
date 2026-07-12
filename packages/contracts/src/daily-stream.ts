@@ -31,6 +31,8 @@ export type DailyStreamEvent =
       linkedAreas?: string[]
       cards?: DailyCards
       traceId: string
+      runtime?: unknown
+      timing?: unknown
     }
   | { type: 'error'; code: string; message: string }
 
@@ -85,7 +87,15 @@ export function parseDailyStreamLine(line: string, state: DailyStreamResult) {
   try {
     const evt = JSON.parse(line) as DailyStreamEvent
     if (evt.type === 'delta' && evt.delta) {
-      state.acc += evt.delta
+      const d = evt.delta
+      if (d.startsWith(state.acc) && d.length >= state.acc.length) {
+        // 服务端下发累计全文：赋值而非再累加，避免梯形重复
+        state.acc = d
+      } else if (state.acc.startsWith(d) && d.length < state.acc.length) {
+        // 异常回退/重放更短片段：忽略
+      } else {
+        state.acc += d
+      }
     } else if (evt.type === 'thinking' && Array.isArray(evt.chips)) {
       state.thinkingChips = evt.chips
     } else if (evt.type === 'start' && evt.traceId) {

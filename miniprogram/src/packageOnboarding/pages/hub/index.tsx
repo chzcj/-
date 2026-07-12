@@ -2,12 +2,14 @@ import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useMemo, useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
+import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { BUILD_ENTRY_COUNT, firstBuildEntryPath, mpCapturePath, type BuildEntryType } from '@/lib/buildEntries'
-import { mpGoReplace } from '@/lib/mpOnboardingNav'
+import { mpGoReplace, exitSupplementToProfile } from '@/lib/mpOnboardingNav'
 import { entryConfigs } from '@/data/entryConfig'
-import { getAllEntryStatuses } from '@/services/entryStorage'
+import { getAllEntryStatuses, setSupplementFlow } from '@/services/entryStorage'
 import { loadChildBasicInfo } from '@/services/childStorage'
 import { allModulesCompleted } from '@/services/entryStorage'
+import './index.scss'
 
 const STATUS_LABEL = {
   not_started: '未开始',
@@ -16,6 +18,7 @@ const STATUS_LABEL = {
 } as const
 
 export default function OnboardingHub() {
+  useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
   const [statuses, setStatuses] = useState(getAllEntryStatuses())
   const childName = loadChildBasicInfo().childName || '孩子'
 
@@ -29,20 +32,9 @@ export default function OnboardingHub() {
   const nextEntry = entryConfigs.find((e) => statuses[e.type] !== 'completed')
 
   const openEntry = (entryType: BuildEntryType, status: string) => {
-    const go = () => void mpGoReplace(mpCapturePath(entryType))
-    if (status === 'completed') {
-      Taro.showModal({
-        title: '重新填写本模块？',
-        content: '重填会清空本模块已整理的结果，需要重新采集与确认。',
-        confirmText: '继续重填',
-        cancelText: '取消',
-        success: (res) => {
-          if (res.confirm) go()
-        },
-      })
-      return
-    }
-    go()
+    const supplement = status === 'completed'
+    if (supplement) setSupplementFlow(true)
+    void mpGoReplace(mpCapturePath(entryType, supplement))
   }
 
   const actions = allDone
@@ -57,6 +49,11 @@ export default function OnboardingHub() {
       stepLabel={`四模块 · ${completedCount}/${BUILD_ENTRY_COUNT}`}
       progress={28 + completedCount * 14}
       actions={actions}
+      deepNav={{
+        title: `认识${childName}`,
+        onBack: exitSupplementToProfile,
+        onExit: exitSupplementToProfile,
+      }}
     >
       <HiFiBuildHero
         kicker='开始使用育见'
@@ -73,7 +70,7 @@ export default function OnboardingHub() {
               className={`entry-row${status === 'completed' ? ' completed' : ''}`}
               onClick={() => openEntry(entry.type as BuildEntryType, status)}
             >
-              <View>
+              <View className='entry-row-main'>
                 <Text className='entry-row-title'>{entry.title}</Text>
                 <Text className='entry-row-desc'>{entry.hubDesc}</Text>
               </View>

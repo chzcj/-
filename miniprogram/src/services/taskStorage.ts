@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro'
 import { apiRequest } from '@/services/api'
+import { normalizeTaskTitle } from '@/lib/textDisplay'
 
 export type TaskFeedback = {
   completed?: string
@@ -64,13 +65,28 @@ function mapServerTask(t: ServerTask): TaskItem {
   }
 }
 
+function mergeTasks(local: TaskItem[], server: TaskItem[]): TaskItem[] {
+  const byId = new Map<string, TaskItem>()
+  for (const t of [...server, ...local]) {
+    const existing = byId.get(t.id)
+    if (!existing || new Date(t.createdAt).getTime() >= new Date(existing.createdAt).getTime()) {
+      byId.set(t.id, t)
+    }
+  }
+  return [...byId.values()].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+}
+
 export async function fetchTasksFromServer(): Promise<TaskItem[]> {
   try {
+    const local = loadLocalTasks()
     const res = await apiRequest<{ tasks?: ServerTask[] }>('/api/tasks', { method: 'GET' })
-    if (!res.ok || !Array.isArray(res.data.tasks)) return loadLocalTasks()
-    const tasks = res.data.tasks.map(mapServerTask)
-    saveLocalTasks(tasks)
-    return tasks
+    if (!res.ok || !Array.isArray(res.data.tasks)) return local
+    const server = res.data.tasks.map(mapServerTask)
+    const merged = mergeTasks(local, server)
+    saveLocalTasks(merged)
+    return merged
   } catch {
     return loadLocalTasks()
   }
@@ -83,16 +99,21 @@ export function getTasks(): TaskItem[] {
 export async function saveTask(
   title: string,
   source = '交流',
-  sourceTraceId?: string
+  sourceTraceId?: string,
+  extras?: { observation?: string }
 ): Promise<boolean> {
   if (!title.trim()) return false
+  const normalizedTitle = normalizeTaskTitle(title, '今晚先试一次小步骤')
+  if (!normalizedTitle.trim()) return false
+  const observation = extras?.observation?.trim() || undefined
   try {
     const res = await apiRequest<{ task?: ServerTask }>('/api/tasks', {
       method: 'POST',
       data: {
-        title: title.trim(),
+        title: normalizedTitle,
         source,
         ...(sourceTraceId ? { sourceTraceId } : {}),
+        ...(observation ? { observation } : {}),
       },
     })
     if (res.ok) {
@@ -104,10 +125,11 @@ export async function saveTask(
   }
   const next: TaskItem = {
     id: `task_${Date.now()}`,
-    title: title.trim(),
+    title: normalizedTitle,
     source,
     status: '待执行',
     sourceTraceId,
+    observation,
     createdAt: new Date().toISOString(),
   }
   saveLocalTasks([next, ...loadLocalTasks()].slice(0, 20))

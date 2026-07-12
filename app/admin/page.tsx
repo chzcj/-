@@ -43,7 +43,7 @@ function sourceLabel(s: string) {
 
 function AIRow({ title, model, baseUrl, keyMasked, configured, source }: { title: string; model: string; baseUrl: string; keyMasked: string; configured: boolean; source: string }) {
   return (
-    <div style={{ padding: '10px 12px', borderRadius: 14, background: 'rgba(110,106,248,0.04)' }}>
+    <div style={{ padding: '10px 12px', borderRadius: 14, background: 'rgba(157,204,117,0.04)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{title}</span>
         <span style={{ fontSize: 11, color: configured ? 'var(--success)' : 'var(--warning)', fontWeight: 600 }}>
@@ -148,7 +148,7 @@ export default function AdminDashboardPage() {
           <div style={sectionTitle}>后台任务队列</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: data.jobs.recentFailures.length ? 12 : 0 }}>
             {(['pending', 'running', 'retrying', 'succeeded', 'failed'] as const).map((k) => (
-              <div key={k} style={{ padding: '6px 12px', borderRadius: 12, background: 'rgba(110,106,248,0.06)', fontSize: 12, color: 'var(--text-secondary)' }}>
+              <div key={k} style={{ padding: '6px 12px', borderRadius: 12, background: 'rgba(157,204,117,0.06)', fontSize: 12, color: 'var(--text-secondary)' }}>
                 {jobLabel(k)} <b style={{ color: k === 'failed' && data.jobs.totals.failed > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>{data.jobs.totals[k]}</b>
               </div>
             ))}

@@ -5,9 +5,13 @@ export default defineAppConfig({
     'pages/daily/how-to-speak/index',
     'pages/tasks/index',
     'pages/rehearsal/index',
+    'pages/rehearsal/dialogue/index',
+    'pages/rehearsal/dialogue-result/index',
     'pages/profile/index',
     'pages/profile/card/index',
     'pages/profile/deep/index',
+    'pages/profile/evidence/index',
+    'pages/profile/verify/index',
   ],
   subPackages: [
     {
@@ -34,11 +38,13 @@ export default defineAppConfig({
     backgroundColor: '#f8f6e5',
     navigationStyle: 'custom',
   },
-  permission: {
-    'scope.record': {
-      desc: '用于按住说话，记录你对孩子的观察与补充',
-    },
-  },
+  /**
+   * permission 仅支持地理位置类 scope（官方文档）。
+   * 麦克风不要写在这里——会报「无效的 app.json permission["scope.record"]」。
+   * 录音靠：隐私协议（公众平台声明麦克风）+ 运行时 authorize(scope.record) + PrivacyAgreementGate。
+   * 勿把 getRecorderManager 写入 requiredPrivateInfos（该字段仅用于地理位置 API）。
+   */
+  __usePrivacyCheck__: true,
   tabBar: {
     custom: true,
     color: '#868b94',

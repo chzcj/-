@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { BuildRecordBox } from '@/components/profile/BuildRecordBox'
 import { FollowUpCard } from '@/components/profile/FollowUpCard'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
+import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { getEntryConfig } from '@/data/entryConfig'
 import {
   hasSubmittableEntryText,
@@ -16,7 +17,7 @@ import {
   mpSummaryPath,
   normalizeBuildEntryType,
 } from '@/lib/buildEntries'
-import { mpGoReplace } from '@/lib/mpOnboardingNav'
+import { mpGoReplace, exitSupplementToProfile, goOnboardingHub } from '@/lib/mpOnboardingNav'
 import {
   appendFollowUpText,
   clearEntryGate,
@@ -24,12 +25,14 @@ import {
   getFollowUpCount,
   loadEntryGate,
   saveEntryGate,
+  isSupplementFlow,
   type EntryFollowUpGate,
 } from '@/services/entryStorage'
 
 const FOLLOW_UP_PLACEHOLDER = '把刚才想到的补充写在这里，或按住说话…'
 
 export default function EntryFollowUpPage() {
+  useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
   const router = useRouter()
   const entryType = normalizeBuildEntryType(router.params.entryType || '') || 'daily'
   const config = getEntryConfig(entryType)
@@ -66,7 +69,7 @@ export default function EntryFollowUpPage() {
       return
     }
 
-    const res = await requestEntryFollowUp(entryType, combined)
+    const res = await requestEntryFollowUp(entryType, combined, isSupplementFlow())
     if (!res.ok) {
       setApiError(res.error.message || '追问生成失败，可稍后重试。')
       setAiLoading(false)
@@ -115,7 +118,7 @@ export default function EntryFollowUpPage() {
     const canAskMore = round < MAX_ENTRY_FOLLOW_UP_ROUNDS
 
     if (canAskMore && combined) {
-      const res = await requestEntryFollowUp(entryType, combined)
+      const res = await requestEntryFollowUp(entryType, combined, isSupplementFlow())
       if (res.ok && res.data.shouldAsk !== false) {
         const payload: EntryFollowUpGate = {
           shouldAsk: true,
@@ -167,6 +170,11 @@ export default function EntryFollowUpPage() {
       topTitle='补充追问'
       stepLabel={`${config.stepLabel} · 追问`}
       progress={getEntryProgressPercent(entryType, 'follow-up')}
+      deepNav={{
+        title: '补充追问',
+        onBack: () => void mpGoReplace(mpCapturePath(entryType)),
+        onExit: isSupplementFlow() ? exitSupplementToProfile : goOnboardingHub,
+      }}
       actions={
         aiLoading
           ? []
@@ -190,7 +198,7 @@ export default function EntryFollowUpPage() {
       <HiFiBuildHero
         kicker={`${config.stepLabel} · ${roundLabel}`}
         title='补一段刚才没讲到的细节'
-        copy='系统会根据你已讲的内容，判断还要不要继续问。也可以先跳过，直接看整理结果。'
+        copy='也可以先跳过，直接看整理结果。'
         compact
         mascot={false}
       />
@@ -228,7 +236,7 @@ export default function EntryFollowUpPage() {
           value={text}
           placeholder={FOLLOW_UP_PLACEHOLDER}
           disabled={loading}
-          metaLeft='写多少都可以，系统会判断是否还要追问'
+          metaLeft='写多少都可以'
           showCharHint={false}
           onChange={setText}
         />

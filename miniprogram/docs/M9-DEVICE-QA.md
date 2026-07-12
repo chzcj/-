@@ -26,7 +26,7 @@ TENCENT_SECRET_KEY=<CAM SecretKey>
 
 ### 3. 小程序权限
 
-`app.config.ts` 已声明 `scope.record`。真机首次按住说话应弹出麦克风授权。
+`app.config.ts` 已声明 `scope.record` 与 `__usePrivacyCheck__`。**不要**把 `getRecorderManager` 写入 `requiredPrivateInfos`（微信规定该数组仅用于 8 个地理位置 API）。真机首次按住说话应依次弹出：**隐私保护指引** → **麦克风授权**。
 
 ---
 

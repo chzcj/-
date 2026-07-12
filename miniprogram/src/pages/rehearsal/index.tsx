@@ -1,10 +1,13 @@
-import { View, Text, Textarea } from '@tarojs/components'
+import { View, Text, Textarea, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
-import { RehearsalDialogueCapture } from '@/components/rehearsal/RehearsalDialogueCapture'
 import { HiFiInputZone } from '@/components/hifi/HiFiInputZone'
 import { useTabBar } from '@/hooks/useTabBar'
+import { useChatAutoScroll } from '@/hooks/useChatAutoScroll'
+import { usePublicPageShare } from '@/hooks/useSharePage'
+import { SHARE_PATHS } from '@/lib/shareMessages'
+import { normalizeTaskTitle } from '@/lib/textDisplay'
 import {
   SimulationParentBubble,
   SimulationSecondMeBubble,
@@ -22,6 +25,15 @@ import './index.scss'
 
 const CHECKPOINT_EVERY = 4
 const REHEARSAL_SCENE_SEED_KEY = 'childos_rehearsal_scene_seed'
+const REHEARSAL_DIALOGUE_CONTEXT_KEY = 'childos_rehearsal_dialogue_context'
+
+type DialogueRehearsalContext = {
+  sceneTitle?: string
+  sceneSummary?: string
+  openingHint?: string
+  tryTonight?: string
+  sampleDialogue?: string
+}
 
 type FeedItem =
   | { type: 'parent'; text: string }
@@ -44,6 +56,10 @@ function truncate(text: string, max = 72) {
 
 export default function RehearsalPage() {
   useTabBar('rehearsal')
+  usePublicPageShare({
+    title: '育见 · 沟通预演',
+    path: SHARE_PATHS.rehearsal,
+  })
   const [step, setStep] = useState<SimulationStep>('entry')
   const [selectedId, setSelectedId] = useState(REHEARSAL_SCENES[0].id)
   const [customText, setCustomText] = useState('')
@@ -67,6 +83,14 @@ export default function RehearsalPage() {
 
   const applySceneSeed = useCallback(() => {
     try {
+      const dialogueCtx = Taro.getStorageSync(REHEARSAL_DIALOGUE_CONTEXT_KEY) as DialogueRehearsalContext | ''
+      if (dialogueCtx && typeof dialogueCtx === 'object' && dialogueCtx.sceneSummary) {
+        setSelectedId(CUSTOM_SCENE.id)
+        setSceneTitle(dialogueCtx.sceneTitle || '根据真实对话预演')
+        setSummary(dialogueCtx.sceneSummary)
+        setStep('confirm')
+        return
+      }
       const seed = Taro.getStorageSync(REHEARSAL_SCENE_SEED_KEY)
       if (!seed) return
       Taro.removeStorageSync(REHEARSAL_SCENE_SEED_KEY)
@@ -78,6 +102,7 @@ export default function RehearsalPage() {
         setSelectedId(matched.id)
         setSummary(matched.summary)
         setSceneTitle(matched.title)
+        setStep('confirm')
       }
     } catch {
       /* ignore */
@@ -112,6 +137,16 @@ export default function RehearsalPage() {
   }
 
   const enterRehearsal = () => {
+    let openingHint =
+      selectedScene.openingHint || '他现在更像是在把你推开。'
+    try {
+      const dialogueCtx = Taro.getStorageSync(REHEARSAL_DIALOGUE_CONTEXT_KEY) as DialogueRehearsalContext | ''
+      if (dialogueCtx && typeof dialogueCtx === 'object' && dialogueCtx.openingHint) {
+        openingHint = dialogueCtx.openingHint
+      }
+    } catch {
+      /* ignore */
+    }
     setRound(0)
     setRoundsSinceCheckpoint(0)
     setShowCheckpoint(false)
@@ -125,8 +160,7 @@ export default function RehearsalPage() {
         type: 'child',
         childText: selectedScene.openingChild || '你别催我行不行，我又不是不写。',
         hintTitle: selectedScene.openingHintTitle || '他可能是这样听到的',
-        hintText:
-          selectedScene.openingHint || '他现在更像是在把你推开。',
+        hintText: openingHint,
       },
     ])
     setStep('active')
@@ -145,17 +179,52 @@ export default function RehearsalPage() {
     })
   }
 
+  const feedScrollKey = useMemo(
+    () =>
+      [
+        feed.length,
+        loading ? 1 : 0,
+        showCheckpoint ? 1 : 0,
+        feed.map((item) => ('text' in item ? item.text.length : item.type)).join('|'),
+      ].join(':'),
+    [feed, loading, showCheckpoint]
+  )
+
+  const { scrollIntoView, scrollTop, onScroll, scrollToBottom, resumeFollowOnSend, anchorId, setViewHeight } =
+    useChatAutoScroll([feedScrollKey])
+
+  useEffect(() => {
+    if (step !== 'active') return
+    const timer = setTimeout(() => {
+      Taro.createSelectorQuery()
+        .select('#rehearsal-chat-scroll')
+        .boundingClientRect((rect) => {
+          if (rect && !Array.isArray(rect) && rect.height) setViewHeight(rect.height)
+        })
+        .exec()
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [step, setViewHeight, feed.length])
+
   const runTurn = async (text: string) => {
     const value = text.trim()
     if (!value || loading || step !== 'active') return
 
+    resumeFollowOnSend()
     setFeed((prev) => [...prev, { type: 'parent', text: value }, { type: 'thinking' }])
     setLoading(true)
+    setTimeout(() => scrollToBottom(true), 32)
+    setTimeout(() => scrollToBottom(true), 120)
+    setTimeout(() => scrollToBottom(true), 280)
 
     let childBubbleStarted = false
     const parentText = `【预演场景：${sceneTitle}】\n场景摘要：${summary}\n家长说：${value}`
 
-    const result = await analyzeRehearsalTurn(parentText, round + 1, {
+    const profile = getLatestProfile()
+    const result = await analyzeRehearsalTurn(
+      parentText,
+      round + 1,
+      {
       onReactionDelta: (reactionText) => {
         setFeed((prev) => prev.filter((item) => item.type !== 'thinking'))
         if (!childBubbleStarted) {
@@ -227,7 +296,32 @@ export default function RehearsalPage() {
           },
         ])
       },
-    })
+      },
+      {
+        profileContext: profile
+          ? {
+              primaryConditionalProfile: [profile.coreJudgment, profile.deepMechanism]
+                .filter(Boolean)
+                .join('\n')
+                .slice(0, 500),
+              dominantProtectiveStrategies: profile.supportFocus
+                ? [profile.supportFocus.slice(0, 120)]
+                : undefined,
+              pendingHypotheses: (profile.verificationPoints || [])
+                .map((p) => p.title)
+                .filter(Boolean)
+                .slice(0, 4),
+              parentNarrativePattern: profile.supportFocus?.slice(0, 160),
+            }
+          : undefined,
+        rehearsalContext: {
+          whatHappenedBeforeTalk: summary.slice(0, 200),
+          sceneTitle,
+          sceneSummary: summary.slice(0, 240),
+          parentGoal: `在「${sceneTitle}」场景里把话说到孩子听得进去`,
+        },
+      }
+    )
 
     setLoading(false)
 
@@ -263,7 +357,7 @@ export default function RehearsalPage() {
   const saveDirection = async () => {
     const title = endData?.taskTitle || endData?.saferVersion || endData?.suggestedWording
     if (!title?.trim()) return
-    const ok = await saveTaskFromRehearsal(title.trim(), '预演方向', rehearsalTraceId)
+    const ok = await saveTaskFromRehearsal(normalizeTaskTitle(title), '预演方向', rehearsalTraceId)
     if (ok) {
       setTaskSaved(true)
       Taro.showToast({ title: '已保存', icon: 'success' })
@@ -272,7 +366,7 @@ export default function RehearsalPage() {
 
   const tryTonight = async () => {
     const title = endData?.taskTitle || endData?.saferVersion || endData?.suggestedWording || summary
-    const ok = await saveTaskFromRehearsal(title.trim(), '沟通预演', rehearsalTraceId)
+    const ok = await saveTaskFromRehearsal(normalizeTaskTitle(title), '沟通预演', rehearsalTraceId)
     if (ok) {
       setTonightSaved(true)
       Taro.showToast({ title: '已加入今晚任务', icon: 'success' })
@@ -280,6 +374,7 @@ export default function RehearsalPage() {
   }
 
   const profile = getLatestProfile()
+
   const confirmBullets = profile?.coreJudgment
     ? [
         truncate(profile.coreJudgment, 72),
@@ -296,11 +391,13 @@ export default function RehearsalPage() {
 
   return (
     <HiFiMainShell
+      disableEntering
       showInput={step === 'active'}
       inputZone={
         <HiFiInputZone
           busy={loading}
-          placeholder='你想怎么接？输入你真实想说的话……'
+          voiceMode='fill'
+          placeholder='输入你想说的话'
           onSubmit={(t) => void runTurn(t)}
         />
       }
@@ -320,28 +417,71 @@ export default function RehearsalPage() {
               </View>
             ))}
             <View
+              id='custom-scenario-card'
               className={`scenario-card custom-scenario${selectedId === CUSTOM_SCENE.id ? ' active' : ''}`}
               onClick={() => selectScenario(CUSTOM_SCENE.id)}
             >
               <Text className='scenario-title'>{CUSTOM_SCENE.title}</Text>
               <Text className='scenario-desc muted'>{CUSTOM_SCENE.subtitle}</Text>
-              <Textarea
-                className='rehearsal-textarea'
-                value={customText}
-                placeholder={CUSTOM_SCENE.placeholder}
-                onInput={(e) => {
-                  setCustomText(e.detail.value)
-                  if (selectedId === CUSTOM_SCENE.id) {
-                    setSummary(e.detail.value.trim() || CUSTOM_SCENE.summary)
-                  }
+              <View
+                className='custom-scenario-input'
+                catchMove
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (selectedId !== CUSTOM_SCENE.id) selectScenario(CUSTOM_SCENE.id)
                 }}
-                onClick={(e) => e.stopPropagation()}
-              />
+              >
+                <Textarea
+                  className='rehearsal-textarea'
+                  value={customText}
+                  placeholder={CUSTOM_SCENE.placeholder}
+                  maxlength={500}
+                  autoHeight
+                  adjustPosition
+                  holdKeyboard
+                  disableDefaultPadding
+                  cursorSpacing={180}
+                  showConfirmBar={false}
+                  onFocus={() => {
+                    if (selectedId !== CUSTOM_SCENE.id) selectScenario(CUSTOM_SCENE.id)
+                    // 滚到页底，给键盘留出空间，避免「抬一半就掉」
+                    try {
+                      void Taro.pageScrollTo({ scrollTop: 99999, duration: 200 })
+                    } catch {
+                      /* ignore */
+                    }
+                    setTimeout(() => {
+                      try {
+                        void Taro.pageScrollTo({ scrollTop: 99999, duration: 100 })
+                      } catch {
+                        /* ignore */
+                      }
+                    }, 280)
+                  }}
+                  onInput={(e) => {
+                    setCustomText(e.detail.value)
+                    if (selectedId === CUSTOM_SCENE.id) {
+                      setSummary(e.detail.value.trim() || CUSTOM_SCENE.summary)
+                    }
+                  }}
+                />
+              </View>
             </View>
           </View>
           <Text className='pill primary wide-pill' onClick={startSimulation}>
             开始预演
           </Text>
+
+          <View
+            className='dialogue-entry-card'
+            onClick={() => void Taro.navigateTo({ url: '/pages/rehearsal/dialogue/index' })}
+          >
+            <Text className='dialogue-entry-title'>亲子对话录音与分析</Text>
+            <Text className='dialogue-entry-desc muted'>
+              录一段真实对话，转写后获得解读，并可带入情景预演
+            </Text>
+          </View>
+
           <Text className='boundary-note muted'>
             这里不是预测孩子一定会这样说，而是基于已有记录，帮你提前看见可能的沟通走向。
           </Text>
@@ -350,6 +490,9 @@ export default function RehearsalPage() {
 
       {step === 'confirm' ? (
         <>
+          <Text className='section-label back-link' onClick={() => setStep('entry')}>
+            ← 返回选场景
+          </Text>
           <Text className='section-label'>这次先按这个场景来练</Text>
           <View className='hifi-card'>
             <Text className='section-label'>场景摘要</Text>
@@ -376,26 +519,44 @@ export default function RehearsalPage() {
       {step === 'active' ? (
         <>
           <View className='rehearsal-header'>
+            <Text className='section-label back-link' onClick={() => setStep('confirm')}>
+              ← 返回场景
+            </Text>
             <Text className='hero-title page-heading'>沟通预演｜{sceneTitle}</Text>
             <Text className='muted'>{statusText}</Text>
           </View>
           <Text className='section-label'>预演对话</Text>
-          <View className='chat-feed'>
-            {feed.map((item, i) => {
-              if (item.type === 'parent') return <SimulationParentBubble key={i} text={item.text} />
-              if (item.type === 'system_hint') return <SimulationSystemHintBubble key={i} text={item.text} />
-              if (item.type === 'thinking') return <SimulationThinkingBubble key={i} />
-              return (
-                <SimulationSecondMeBubble
-                  key={i}
-                  childText={item.childText}
-                  hintTitle={item.hintTitle}
-                  hintText={item.hintText}
-                  suggestedTitle={item.suggestedTitle}
-                  suggestedText={item.suggestedText}
-                />
-              )
-            })}
+          <View className='rehearsal-scroll-wrap'>
+            <ScrollView
+              id='rehearsal-chat-scroll'
+              className='chat-scroll-view'
+              scrollY
+              scrollWithAnimation
+              scrollIntoView={scrollIntoView}
+              scrollTop={scrollTop}
+              onScroll={onScroll}
+              enhanced
+              showScrollbar={false}
+            >
+              <View className='chat-feed'>
+                {feed.map((item, i) => {
+                  if (item.type === 'parent') return <SimulationParentBubble key={i} text={item.text} />
+                  if (item.type === 'system_hint') return <SimulationSystemHintBubble key={i} text={item.text} />
+                  if (item.type === 'thinking') return <SimulationThinkingBubble key={i} />
+                  return (
+                    <SimulationSecondMeBubble
+                      key={i}
+                      childText={item.childText}
+                      hintTitle={item.hintTitle}
+                      hintText={item.hintText}
+                      suggestedTitle={item.suggestedTitle}
+                      suggestedText={item.suggestedText}
+                    />
+                  )
+                })}
+              </View>
+              <View id={anchorId} className='scroll-anchor' />
+            </ScrollView>
           </View>
           {showCheckpoint ? (
             <View className='checkpoint-backdrop'>
@@ -468,8 +629,6 @@ export default function RehearsalPage() {
           </View>
         </>
       ) : null}
-
-      <RehearsalDialogueCapture />
     </HiFiMainShell>
   )
 }

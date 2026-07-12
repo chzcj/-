@@ -147,6 +147,24 @@ export async function ensureDbSchema() {
 
       CREATE INDEX IF NOT EXISTS idx_memory_layer_items_family_child
         ON memory_layer_items (family_id, child_id, layer_name, updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS dialogue_analyses (
+        analysis_id TEXT PRIMARY KEY,
+        family_id TEXT NOT NULL,
+        child_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'done',
+        summary TEXT NOT NULL DEFAULT '',
+        analysis TEXT NOT NULL DEFAULT '',
+        try_tonight TEXT NOT NULL DEFAULT '',
+        sample_dialogue TEXT NOT NULL DEFAULT '',
+        segments JSONB NOT NULL DEFAULT '[]'::jsonb,
+        rehearsal_seed JSONB NOT NULL DEFAULT '{}'::jsonb,
+        error_message TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_dialogue_analyses_family_child
+        ON dialogue_analyses (family_id, child_id, created_at DESC);
     `).then(() => pool.query(`
       DO $$ BEGIN
         -- 存量 demo 数据统一到 f_demo/c_demo（记忆域旧值 family_demo/child_demo）
@@ -1414,3 +1432,86 @@ function mapUser(row?: {
     wechatUnionid: row.wechat_unionid || undefined,
   };
 }
+
+export type DialogueAnalysisRecord = {
+  analysisId: string
+  familyId: string
+  childId: string
+  status: string
+  summary: string
+  analysis: string
+  tryTonight: string
+  sampleDialogue: string
+  segments: Array<{ speaker: string; text: string; highlight?: boolean; highlightReason?: string }>
+  rehearsalSeed: Record<string, unknown>
+  errorMessage: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export async function upsertDialogueAnalysis(row: DialogueAnalysisRecord): Promise<void> {
+  const pool = getPool()
+  if (!pool) return
+  await ensureDbSchema()
+  await pool.query(
+    `INSERT INTO dialogue_analyses (
+      analysis_id, family_id, child_id, status, summary, analysis, try_tonight,
+      sample_dialogue, segments, rehearsal_seed, error_message, updated_at
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,NOW())
+    ON CONFLICT (analysis_id) DO UPDATE SET
+      status = EXCLUDED.status,
+      summary = EXCLUDED.summary,
+      analysis = EXCLUDED.analysis,
+      try_tonight = EXCLUDED.try_tonight,
+      sample_dialogue = EXCLUDED.sample_dialogue,
+      segments = EXCLUDED.segments,
+      rehearsal_seed = EXCLUDED.rehearsal_seed,
+      error_message = EXCLUDED.error_message,
+      updated_at = NOW()`,
+    [
+      row.analysisId,
+      row.familyId,
+      row.childId,
+      row.status,
+      row.summary,
+      row.analysis,
+      row.tryTonight,
+      row.sampleDialogue,
+      JSON.stringify(row.segments || []),
+      JSON.stringify(row.rehearsalSeed || {}),
+      row.errorMessage || '',
+    ]
+  )
+}
+
+export async function loadDialogueAnalysis(
+  analysisId: string
+): Promise<DialogueAnalysisRecord | undefined> {
+  const pool = getPool()
+  if (!pool) return undefined
+  await ensureDbSchema()
+  const result = await pool.query(
+    `SELECT analysis_id, family_id, child_id, status, summary, analysis, try_tonight,
+            sample_dialogue, segments, rehearsal_seed, error_message, created_at, updated_at
+     FROM dialogue_analyses WHERE analysis_id = $1`,
+    [analysisId]
+  )
+  const r = result.rows[0]
+  if (!r) return undefined
+  return {
+    analysisId: r.analysis_id,
+    familyId: r.family_id,
+    childId: r.child_id,
+    status: r.status,
+    summary: r.summary || '',
+    analysis: r.analysis || '',
+    tryTonight: r.try_tonight || '',
+    sampleDialogue: r.sample_dialogue || '',
+    segments: Array.isArray(r.segments) ? r.segments : [],
+    rehearsalSeed: r.rehearsal_seed && typeof r.rehearsal_seed === 'object' ? r.rehearsal_seed : {},
+    errorMessage: r.error_message || '',
+    createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : undefined,
+    updatedAt: r.updated_at instanceof Date ? r.updated_at.toISOString() : undefined,
+  }
+}
+

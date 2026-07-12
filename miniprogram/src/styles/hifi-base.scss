@@ -73,25 +73,36 @@
   z-index: 0;
 }
 
+.hero-card.has-mascot {
+  padding-right: 172px;
+  min-height: 196px;
+}
+
 .hero-title {
   position: relative;
   z-index: 1;
-  width: min(56%, calc(100% - 148px));
+  display: block;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
   font-size: $text-hero;
   line-height: 1.32;
   font-weight: 700;
   color: $ink;
+  text-wrap: balance;
 }
 
 .hero-copy {
   position: relative;
   z-index: 1;
-  width: min(54%, calc(100% - 148px));
+  display: block;
+  width: 100%;
+  max-width: 100%;
   margin: 10px 0 0;
   color: $ink-soft;
   font-size: $text-body;
   line-height: $text-body-lh;
+  text-wrap: balance;
 }
 
 .chat-feed {
@@ -131,6 +142,8 @@
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.72);
   box-shadow: $shadow-lift;
+  /* 流式过程固定宽度，避免中途变成梯形 */
+  transform: none;
 }
 
 .user .bubble {
@@ -147,13 +160,29 @@
   border-top: 1px solid $line;
 }
 
+.bubble-section {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .section-body {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   font-size: $text-body;
   line-height: $text-body-lh;
+  color: $ink-soft;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .section-body-para {
   display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-bottom: 6px;
 }
 
@@ -215,14 +244,26 @@
 }
 
 .pill {
-  min-height: 34px;
-  padding: 7px 13px;
+  min-height: 36px;
+  padding: 6px 12px;
   border-radius: $radius-pill;
   color: $green-deep;
   background: $green-soft;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.35;
+  box-sizing: border-box;
+}
+
+.pill.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.pill.block {
+  display: block;
+  width: 100%;
+  text-align: center;
 }
 
 .pill.primary {
@@ -267,9 +308,16 @@
 }
 
 .bubble-reply {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   font-size: $text-body;
   line-height: $text-body-lh;
   white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .bubble-section + .bubble-reply {
@@ -279,16 +327,24 @@
 .end-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 9px;
+  gap: 6px;
   margin-top: 12px;
 }
 
+.end-actions .pill {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.35;
+  border-radius: 999px;
+}
+
 .mascot {
-  width: 164px;
-  height: 146px;
+  width: 148px;
+  height: 132px;
   position: absolute;
-  right: 2px;
-  bottom: 0;
+  right: 8px;
+  bottom: 4px;
   z-index: 0;
   pointer-events: none;
 }

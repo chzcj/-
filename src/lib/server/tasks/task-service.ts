@@ -20,7 +20,7 @@ export async function listRecentUserTasks(tenant: TenantId): Promise<UserTask[]>
 
 export async function createUserTask(
   tenant: TenantId,
-  args: { title: string; source?: string; sourceTraceId?: string }
+  args: { title: string; source?: string; sourceTraceId?: string; observation?: string }
 ): Promise<UserTask> {
   const title = args.title.trim()
   if (!title) throw new Error('EMPTY_TITLE')
@@ -34,6 +34,7 @@ export async function createUserTask(
     source: args.source?.trim() || '交流',
     status: '待执行',
     sourceTraceId: args.sourceTraceId?.trim() || undefined,
+    observation: args.observation?.trim() || undefined,
     createdAt: now,
     updatedAt: now,
   }

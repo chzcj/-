@@ -21,13 +21,14 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { entryType, rawText, stage } = body
+    const { entryType, rawText, stage, appendMode } = body
+    const isAppend = Boolean(appendMode)
     if (!entryType || !rawText) {
       return fail('BAD_REQUEST', '内容暂时没有收到，请返回重新录入。', undefined, 400)
     }
 
     if (stage === 'summary') {
-      const { result, error } = await runEntrySummary(entryType, rawText)
+      const { result, error } = await runEntrySummary(entryType, rawText, isAppend)
 
       const tenant = await resolveTenant()
       // episodeId 确定派生（tenant + sha(rawText)）：同用户同文本重做 → upsert 同一行 + idem 去重；
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
       return ok(result)
     }
 
-    const { result, error } = await runEntryFollowUp(entryType, rawText)
+    const { result, error } = await runEntryFollowUp(entryType, rawText, isAppend)
     if (!result || (result.shouldAsk !== false && !result.purpose)) {
       const message = fastAiFailureMessage(error)
       console.error('[entry/analyze] followUp failed', { entryType, error })

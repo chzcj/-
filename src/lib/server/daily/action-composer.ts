@@ -2,6 +2,43 @@ import type { OrchestrationOutput } from '@/types/database'
 import type { DailyCards } from '@/types/database'
 import type { DailyAction, DailySection } from '@/types/daily-message'
 
+const TASK_TITLE_BANNED =
+  /模式能对上|标记为|观察记录|当前输入|已有画像|写入记忆|判断有更新|待验证/i
+
+/** 从 advice / 正文抽 6–24 字祈使句；禁止 prose 叙事首句当标题 */
+function deriveImperativeTaskTitle(
+  sections: DailySection[],
+  fullText: string,
+  given?: string
+): string {
+  const fallback = '今晚先试一次小步骤'
+  if (given && given.trim().length >= 4 && !TASK_TITLE_BANNED.test(given)) {
+    return given.trim().slice(0, 24)
+  }
+
+  const advice = sections.find((s) => s.id === 'advice' && !s.hidden)
+  const candidates = [
+    ...(advice?.paragraphs || []),
+    ...(advice?.items || []),
+  ]
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 4 && !TASK_TITLE_BANNED.test(s))
+
+  const actionLike =
+    candidates.find((s) => /^(先|问|说|记录|观察|约定|只做|试|把|等|停|补|今晚|今天)/.test(s)) ||
+    candidates[0]
+
+  if (actionLike) {
+    const cut = actionLike.split(/[。！？\n]/)[0]?.trim() || actionLike
+    const title = cut.slice(0, 24)
+    if (/^(先|问|说|记录|观察|约定|只做|试|把|等|停|补|今晚|今天)/.test(title)) return title
+    return `先${title}`.slice(0, 24)
+  }
+
+  void fullText
+  return fallback
+}
+
 export function composeDailyActions(
   output: OrchestrationOutput,
   cards: DailyCards,
@@ -12,10 +49,12 @@ export function composeDailyActions(
   const actions: DailyAction[] = []
   const hiddenIds = sections.filter((s) => s.hidden).map((s) => s.id)
   const rel = output.relationshipToExistingModel.type
-  const highConf = cards.confidenceMode !== 'low'
   const lowConf =
     rel === 'insufficient' ||
     output.routingDecision.frontResponseType === 'one_key_followup'
+
+  const resolvedTaskTitle = deriveImperativeTaskTitle(sections, fullText, taskTitle)
+  const seedScene = fullText.split(/[。！？\n]/).find((s) => s.trim().length > 4)?.trim()?.slice(0, 28)
 
   if (output.inputType === 'risk_followup') {
     actions.push({
@@ -51,7 +90,7 @@ export function composeDailyActions(
       kind: 'how_to_speak',
       primary: !hiddenIds.length,
       payload: {
-        seedText: fullText.split(/[。！？\n]/).find((s) => s.trim().length > 4)?.trim()?.slice(0, 24),
+        seedText: seedScene,
         route: '/daily/how-to-speak',
       },
     })
@@ -59,7 +98,7 @@ export function composeDailyActions(
       id: 'save_task',
       label: '保存为今晚任务',
       kind: 'task',
-      payload: { seedText: fullText.slice(0, 48), taskTitle },
+      payload: { seedText: seedScene, taskTitle: resolvedTaskTitle },
     })
     return actions.slice(0, 4)
   }
@@ -94,7 +133,7 @@ export function composeDailyActions(
       kind: 'how_to_speak',
       primary: !hiddenIds.length,
       payload: {
-        seedText: fullText.split(/[。！？\n]/).find((s) => s.trim().length > 4)?.trim()?.slice(0, 24),
+        seedText: seedScene,
         route: '/daily/how-to-speak',
       },
     })
@@ -105,7 +144,7 @@ export function composeDailyActions(
       id: 'save_task',
       label: '保存为今晚任务',
       kind: 'task',
-      payload: { seedText: fullText.slice(0, 48), taskTitle },
+      payload: { seedText: seedScene, taskTitle: resolvedTaskTitle },
     })
   }
 

@@ -231,5 +231,6 @@ export interface AuthUser {
   phone: string;
   familyId: string;
   childId: string;
-  isAdmin?: boolean;
+  isAdmin: boolean;
+  onboardingComplete: boolean;
 }

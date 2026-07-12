@@ -5,32 +5,35 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 0 16px calc(10px + env(safe-area-inset-bottom));
+  padding: 0 16px calc(6px + env(safe-area-inset-bottom));
   z-index: 1000;
   box-sizing: border-box;
+  /* 实色封底：禁止正文从浮起 Tab 圆角/安全区透出 */
+  background: #f8f6e5;
+  border-top: 1px solid rgba(73, 91, 45, 0.08);
 }
 
 .bottom-tabs {
-  height: 68px;
-  border-radius: $radius-card;
-  padding: 6px 8px;
+  height: 56px;
+  border-radius: 18px;
+  padding: 4px 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: $shadow-soft;
 }
 
 .tab-button {
   width: 25%;
-  height: 56px;
-  border-radius: $radius-control;
+  height: 48px;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   color: rgba(91, 96, 106, 0.72);
 }
 
@@ -41,23 +44,23 @@
 }
 
 .tab-label {
-  font-size: 11.5px;
-  line-height: 1.15;
+  font-size: 11px;
+  line-height: 1.1;
 }
 
 .tab-icon {
-  width: 27px;
-  height: 27px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .tab-icon-img {
-  width: 27px;
-  height: 27px;
+  width: 22px;
+  height: 22px;
 }
 
 .tab-button.active .tab-icon {
-  transform: scale(1.05);
+  transform: scale(1.04);
 }

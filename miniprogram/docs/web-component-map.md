@@ -6,29 +6,32 @@
 |----------|-----------|------|
 | `hifi-app.css` tokens | `src/styles/tokens.scss` + `hifi-base.scss` | parity-verified |
 | `hifi-build.css` | `src/styles/hifi-build.scss` | parity-audit |
-| `HiFiMainShell` | `src/components/hifi/HiFiMainShell` | parity-audit |
+| `HiFiMainShell` | `src/components/hifi/HiFiMainShell` | parity-verified |
 | `HiFiBottomNav` | `src/custom-tab-bar/` | parity-audit |
 | `HiFiInputZone` | `src/components/hifi/HiFiInputZone` | parity-audit |
 | `HiFiMascot` | `src/components/hifi/HiFiMascot` | done |
 | Button/Card/Input/Tag/Modal/Loading | `src/components/ui/index.tsx` | done |
 | `DailyParentBubble` | `src/components/daily/DailyParentBubble.tsx` | parity-verified |
-| `DailyAiMessage` | `src/components/daily/DailyAiMessage.tsx` | parity-audit |
+| `DailyAiMessage` | `src/components/daily/DailyAiMessage.tsx` | parity-verified |
 | `DailyThinkingPanel` | `src/components/daily/DailyThinkingPanel.tsx` | done |
-| `DailySectionView` | `src/components/daily/DailySectionView.tsx` | done |
-| `DailyDeepExpandCard` | `src/components/daily/DailyDeepExpandCard.tsx` | parity-audit |
-| `HiFiBuildShell` | `src/components/profile/HiFiBuildShell` | parity-audit |
+| `DailySectionView` | `src/components/daily/DailySectionView.tsx` | parity-verified |
+| `DailyDeepExpandCard` | `src/components/daily/DailyDeepExpandCard.tsx` | parity-verified |
+| `VoiceOverlay` | `src/components/voice/VoiceOverlay.tsx` | parity-verified |
+| `HiFiBuildShell` | `src/components/profile/HiFiBuildShell` | parity-verified |
 | `BuildRecordBox` | `src/components/profile/BuildRecordBox.tsx` | parity-audit |
 | `FollowUpCard` | `src/components/profile/FollowUpCard.tsx` | parity-audit |
-| `EntryCapturePage` | `packageOnboarding/pages/capture` | parity-audit |
-| `EntryFollowUpPage` | `packageOnboarding/pages/follow-up` | parity-audit |
-| `EntrySummaryPage` | `packageOnboarding/pages/summary` | parity-audit |
-| Build hub | `packageOnboarding/pages/hub` | parity-audit |
-| intro / basic / generating / result | `packageOnboarding/pages/*` | parity-audit |
+| `EntryCapturePage` | `packageOnboarding/pages/capture` | parity-verified |
+| `EntryFollowUpPage` | `packageOnboarding/pages/follow-up` | parity-verified |
+| `EntrySummaryPage` | `packageOnboarding/pages/summary` | parity-verified |
+| Build hub | `packageOnboarding/pages/hub` | parity-verified |
+| intro / basic / generating / result | `packageOnboarding/pages/*` | parity-verified |
 | Final follow-up | `packageOnboarding/pages/final-follow-up` | parity-audit |
+| Evidence / Verify | `pages/profile/evidence` · `verify` | parity-verified |
 | `TaskFeedbackPanel` | `src/components/tasks/TaskFeedbackPanel.tsx` | done |
 | `Simulation*Bubble` | `src/components/rehearsal/SimulationBubbles.tsx` | done |
 | `ProfileEditModals` | `src/components/profile/ProfileEditModals.tsx` | done |
 | `useTencentAsrInput` | `src/hooks/useTencentAsrInput.ts` | done |
+| `motion.scss` / `usePageEntering` | `src/styles/motion.scss` · `hooks/usePageEntering` | parity-verified |
 
 ## 路由对照
 
@@ -38,6 +41,8 @@
 | `/tasks` | `pages/tasks` |
 | `/rehearsal` | `pages/rehearsal` |
 | `/family-profile` | `pages/profile` |
+| `/profile/evidence` | `pages/profile/evidence` |
+| `/profile/verify` | `pages/profile/verify` |
 | `/profile/build/intro` | `packageOnboarding/pages/intro` |
 | `/profile/build/basic` | `packageOnboarding/pages/basic` |
 | `/profile/build/{module}` | `packageOnboarding/pages/capture?entryType=` |

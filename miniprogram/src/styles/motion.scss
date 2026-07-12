@@ -25,11 +25,9 @@
 @keyframes section-reveal {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -99,6 +97,7 @@
 // 页面进场 stagger
 .page.page-entering .hero-card,
 .page.page-entering .section,
+.page.page-entering .bubble-section,
 .page.page-entering .task-card,
 .page.page-entering .profile-block,
 .page.page-entering .profile-data-card,
@@ -110,6 +109,22 @@
 .page.page-entering .hifi-card,
 .page.page-entering .page-heading {
   animation: page-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.page.page-entering .entry-row {
+  animation: page-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.page.page-entering .entry-row:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+.page.page-entering .entry-row:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.page.page-entering .entry-row:nth-child(4) {
+  animation-delay: 105ms;
 }
 
 .page.page-entering .section:nth-of-type(2),
@@ -143,8 +158,21 @@
   animation: rise 240ms ease both;
 }
 
+/* 交流 AI 气泡流式阶段：禁止位移动画，避免正文中途呈梯形 */
+.message-row.ai .bubble,
+.message-row.ai .bubble-reply,
+.message-row.ai .bubble-section {
+  transform: none !important;
+}
+
 .bubble-section.section-reveal {
   animation: section-reveal 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.thinking-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .thinking-dots-dot {
@@ -215,6 +243,65 @@
   border: 1px solid rgba(111, 159, 86, 0.12);
   padding: 20px;
   animation: sheet-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.wave-bars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 20px;
+  margin-top: 8px;
+}
+
+.wave-bar {
+  width: 3px;
+  height: 14px;
+  border-radius: 999px;
+  background: #7fb964;
+  transform-origin: center;
+  animation: wave 0.9s ease-in-out infinite;
+}
+
+.wave-bar:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.wave-bar:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.wave-bar:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+.wave-bar:nth-child(5) {
+  animation-delay: 0.4s;
+}
+
+.hold-button,
+.build-hold-button,
+.send-button,
+.mode-button,
+.tab-button,
+.pill:not(.disabled),
+.scenario-card,
+.entry-row,
+.task-card.hifi-card {
+  transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s ease;
+}
+
+.hold-button:active:not([disabled]),
+.build-hold-button:active:not(.disabled),
+.send-button:active:not([disabled]),
+.mode-button:active:not([disabled]),
+.tab-button:active:not(.active),
+.pill:active:not(.disabled),
+.scenario-card:active,
+.entry-row:active,
+.task-card.hifi-card:active {
+  transform: scale(0.98);
+  opacity: 0.94;
 }
 
 @media (prefers-reduced-motion: reduce) {

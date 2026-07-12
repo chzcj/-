@@ -39,8 +39,9 @@ export function getNextBuildEntry(
 }
 
 /** 小程序 onboarding 子包路径 */
-export function mpCapturePath(entryType: BuildEntryType): string {
-  return `/packageOnboarding/pages/capture/index?entryType=${entryType}`
+export function mpCapturePath(entryType: BuildEntryType, supplement = false): string {
+  const base = `/packageOnboarding/pages/capture/index?entryType=${entryType}`
+  return supplement ? `${base}&mode=supplement` : base
 }
 
 export function mpFollowUpPath(entryType: BuildEntryType): string {

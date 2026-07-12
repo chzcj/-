@@ -179,7 +179,7 @@ export default function HomePage() {
           onClick={() => router.push('/board')}
           style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px', marginBottom: 12, background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 18, cursor: 'pointer', textAlign: 'left' }}
         >
-          <span style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(110,106,248,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6E6AF8', flexShrink: 0 }}>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(157,204,117,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6f9f56', flexShrink: 0 }}>
             <LayoutDashboard size={20} />
           </span>
           <span style={{ flex: 1 }}>
@@ -195,7 +195,7 @@ export default function HomePage() {
             onClick={() => router.push('/admin')}
             style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px', marginBottom: 12, background: '#fff', border: '1px solid rgba(0,0,0,0.06)', borderRadius: 18, cursor: 'pointer', textAlign: 'left' }}
           >
-            <span style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(110,106,248,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6E6AF8', flexShrink: 0 }}>
+            <span style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(157,204,117,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6f9f56', flexShrink: 0 }}>
               <Settings size={20} />
             </span>
             <span style={{ flex: 1 }}>

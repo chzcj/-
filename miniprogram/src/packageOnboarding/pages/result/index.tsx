@@ -2,19 +2,17 @@ import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
+import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { apiRequest } from '@/services/api'
 import { fetchCurrentUser } from '@/services/auth'
 import { goToDailyTab } from '@/utils/navigation'
+import { hydrateProfileFromRemote, type LocalProfileSnapshot } from '@/services/profileStorage'
 
-type ProfileSnapshot = {
-  coreJudgment?: string
-  completeness?: number
-  supportFocus?: string
-  deepMechanism?: string
-}
+type ProfileSnapshot = LocalProfileSnapshot
 
 export default function OnboardingResult() {
+  useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
   const [loading, setLoading] = useState(true)
   const [entering, setEntering] = useState(false)
   const [snapshot, setSnapshot] = useState<ProfileSnapshot | null>(null)
@@ -34,6 +32,7 @@ export default function OnboardingResult() {
     }>('/api/profile/built', { method: 'GET' })
 
     if (built.ok && built.data.snapshot?.coreJudgment) {
+      hydrateProfileFromRemote(built.data.snapshot)
       setSnapshot(built.data.snapshot)
       setOnboardingComplete(Boolean(built.data.onboardingComplete))
       setLoading(false)
@@ -42,7 +41,7 @@ export default function OnboardingResult() {
 
     const hub = await apiRequest<{ completeness?: number }>('/api/profile/hub', { method: 'GET' })
     if (hub.ok && typeof hub.data.completeness === 'number') {
-      setSnapshot({ completeness: hub.data.completeness })
+      setSnapshot({ coreJudgment: '', completeness: hub.data.completeness })
     }
 
     if (!built.ok) {
@@ -139,6 +138,27 @@ export default function OnboardingResult() {
           <Text className='soft-card-body'>{snapshot.supportFocus}</Text>
         </View>
       ) : null}
+
+      <View className='end-actions' style={{ marginTop: '16px' }}>
+        <Text
+          className='pill'
+          onClick={() => void Taro.navigateTo({ url: '/pages/profile/evidence/index' })}
+        >
+          判断依据
+        </Text>
+        <Text
+          className='pill'
+          onClick={() => void Taro.navigateTo({ url: '/pages/profile/verify/index' })}
+        >
+          待验证观察点
+        </Text>
+        <Text
+          className='pill'
+          onClick={() => void Taro.navigateTo({ url: '/pages/profile/deep/index' })}
+        >
+          机制链解释
+        </Text>
+      </View>
     </HiFiBuildShell>
   )
 }

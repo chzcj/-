@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
 import { StructuralTensionCard } from '@/components/hifi/StructuralTensionCard'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
+import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { getEntryConfig } from '@/data/entryConfig'
 import { requestEntrySummary } from '@/lib/entryAnalyze'
 import type { StructuralTension } from '@/lib/portraitCard'
@@ -16,12 +17,15 @@ import {
   normalizeBuildEntryType,
   type BuildEntryType,
 } from '@/lib/buildEntries'
-import { mpGoReplace } from '@/lib/mpOnboardingNav'
+import { mpGoReplace, exitSupplementToProfile, goOnboardingHub } from '@/lib/mpOnboardingNav'
 import {
   confirmModuleComplete,
   getCombinedEntryText,
   getLatestStageSummary,
   saveStageSummary,
+  isSupplementFlow,
+  setSupplementFlow,
+  setPendingProfileRegen,
   type StageSummaryData,
 } from '@/services/entryStorage'
 
@@ -31,6 +35,7 @@ function isInsufficientSummary(mainJudgment: string, facts: string[]) {
 }
 
 export default function EntrySummaryPage() {
+  useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
   const router = useRouter()
   const entryType = normalizeBuildEntryType(router.params.entryType || '') || 'daily'
   const config = getEntryConfig(entryType)
@@ -59,7 +64,7 @@ export default function EntrySummaryPage() {
 
       setLoading(true)
       setSummary(null)
-      const res = await requestEntrySummary(entryType, combined)
+      const res = await requestEntrySummary(entryType, combined, isSupplementFlow())
       setLoading(false)
       if (!res.ok) {
         setError(res.error.message || '这一步暂时没有整理成功，可以稍后再试。')
@@ -72,6 +77,14 @@ export default function EntrySummaryPage() {
       }
       saveStageSummary(entryType, data)
       setSummary(data)
+      void apiRequest('/api/memory/write', {
+        method: 'POST',
+        data: {
+          rawMaterials: [combined],
+          newInput: `[${entryType}] 阶段总结：${data.mainJudgment}`,
+          cleanedFacts: data.facts,
+        },
+      }).catch(() => undefined)
     },
     [entryType]
   )
@@ -105,6 +118,13 @@ export default function EntrySummaryPage() {
 
   const handleConfirm = () => {
     if (!summary) return
+    if (isSupplementFlow()) {
+      confirmModuleComplete(entryType)
+      setSupplementFlow(false)
+      setPendingProfileRegen(true)
+      void mpGoReplace('/packageOnboarding/pages/generating/index?regen=1')
+      return
+    }
     confirmModuleComplete(entryType)
     goNext()
   }
@@ -127,7 +147,7 @@ export default function EntrySummaryPage() {
       variant: 'quiet' as const,
       onClick: () => void mpGoReplace(mpCapturePath(entryType)),
     },
-  ]
+  ].filter((a) => !(isSupplementFlow() && a.id === 'recapture'))
 
   const successActions = [
     {
@@ -156,12 +176,17 @@ export default function EntrySummaryPage() {
       topTitle={config.summaryTitle}
       stepLabel={`${config.stepLabel} · 整理`}
       progress={getEntryProgressPercent(entryType, 'summary')}
+      deepNav={{
+        title: config.summaryTitle,
+        onBack: () => void mpGoReplace(mpFollowUpPath(entryType)),
+        onExit: isSupplementFlow() ? exitSupplementToProfile : goOnboardingHub,
+      }}
       actions={actions}
     >
       <HiFiBuildHero
         kicker={`${config.stepLabel} 已整理`}
         title={config.summaryTitle}
-        copy='先确认系统抓到的背景是否贴近真实情况。信息不够也可以先继续，后面还能补。'
+        copy='看一下整理是否贴近真实情况。不够也可以先继续，后面还能补。'
         compact
         mascot={false}
       />
@@ -192,7 +217,7 @@ export default function EntrySummaryPage() {
 
       {summary ? (
         <>
-          <AuthorityInsightCard title='系统整理' body={summary.mainJudgment}>
+          <AuthorityInsightCard title='本模块整理' body={summary.mainJudgment}>
             {summary.facts.length ? (
               <View className='summary-facts'>
                 {summary.facts.map((f) => (

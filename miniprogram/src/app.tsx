@@ -1,6 +1,7 @@
 import { PropsWithChildren } from 'react'
-import { useLaunch } from '@tarojs/taro'
-import { restoreAccountStateFromServer } from '@/services/accountSync'
+import { useDidHide, useLaunch } from '@tarojs/taro'
+import { PrivacyAgreementGate } from '@/components/privacy/PrivacyAgreementGate'
+import { pushAccountSyncToServer, restoreAccountStateFromServer } from '@/services/accountSync'
 import { fetchCurrentUser } from '@/services/auth'
 import { getSessionToken } from '@/services/api'
 import { hydrateBuildStateFromServer } from '@/services/buildState'
@@ -9,6 +10,10 @@ import { routeAfterAuth } from '@/utils/navigation'
 import './app.scss'
 
 function App({ children }: PropsWithChildren) {
+  useDidHide(() => {
+    if (getSessionToken()) pushAccountSyncToServer()
+  })
+
   useLaunch(async () => {
     const token = getSessionToken()
     if (!token) return
@@ -27,7 +32,12 @@ function App({ children }: PropsWithChildren) {
     routeAfterAuth(fresh || user, false)
   })
 
-  return children
+  return (
+    <>
+      {children}
+      <PrivacyAgreementGate />
+    </>
+  )
 }
 
 export default App

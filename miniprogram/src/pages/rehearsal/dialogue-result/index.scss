@@ -1,0 +1,63 @@
+@import '../../../styles/tokens.scss';
+
+.dialogue-result-page {
+  min-height: 100vh;
+  padding: 0 16px 32px;
+  box-sizing: border-box;
+  background: $shell-gradient;
+}
+
+.dialogue-result-scroll {
+  height: calc(100vh - 88px);
+}
+
+.dialogue-line {
+  padding: 10px 0;
+  border-bottom: 1px solid $line;
+}
+
+.dialogue-line.highlight {
+  background: rgba(157, 204, 117, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  border-bottom: none;
+}
+
+.dialogue-speaker {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: $green-deep;
+  margin-bottom: 4px;
+}
+
+.dialogue-text {
+  display: block;
+  font-size: 15px;
+  line-height: 1.55;
+  color: $ink;
+}
+
+.dialogue-reason {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: $muted;
+}
+
+.sample-dialogue {
+  white-space: pre-wrap;
+}
+
+.dialogue-result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0 40px;
+}
+
+.dialogue-error {
+  color: #c0392b;
+  font-size: 14px;
+}

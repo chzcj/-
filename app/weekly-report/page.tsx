@@ -90,13 +90,13 @@ export default function WeeklyReportPage() {
       <div className="page without-voice with-bottom-tabs">
         <PageHeader title="本周周报" showBack onBack={() => router.push('/observation')} />
 
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>本周整理</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 6 }}>本周整理</div>
         <div style={{ fontSize: 16, fontWeight: 700, color: '#1D1D1F', marginBottom: 12, lineHeight: 1.4 }}>{r.headline}</div>
         <div style={{ fontSize: 15, lineHeight: 1.62, color: '#6E6E73', marginBottom: 20 }}>{r.summary}</div>
 
         {r.repeatedPatterns.length > 0 ? (
           <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 14, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>这一周反复出现</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 8 }}>这一周反复出现</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {r.repeatedPatterns.map((p) => <span key={p} className="chip" style={{ fontSize: 13, cursor: 'default' }}>{p}</span>)}
             </div>
@@ -105,16 +105,16 @@ export default function WeeklyReportPage() {
 
         {r.keyObservation ? (
           <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 14, background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(29,29,31,0.06)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>这一周最值得注意</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 6 }}>这一周最值得注意</div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{r.keyObservation}</div>
           </div>
         ) : null}
 
         {r.nextWatchPoints.length > 0 ? (
-          <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 20, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>下周继续留意</div>
+          <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 20, background: 'rgba(157,204,117,0.04)', border: '1px solid rgba(157,204,117,0.10)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 6 }}>下周继续留意</div>
             {r.nextWatchPoints.map((p, i) => (
-              <div key={i} style={{ fontSize: 15, color: '#1D1D1F', padding: '5px 0', borderTop: i > 0 ? '1px solid rgba(110,106,248,0.06)' : 'none' }}>{p}</div>
+              <div key={i} style={{ fontSize: 15, color: '#1D1D1F', padding: '5px 0', borderTop: i > 0 ? '1px solid rgba(157,204,117,0.06)' : 'none' }}>{p}</div>
             ))}
           </div>
         ) : null}

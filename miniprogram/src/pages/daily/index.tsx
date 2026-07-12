@@ -1,6 +1,6 @@
-import { View, Text } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DailyAction, DailySection, DailyThinkingChip } from '@yujian/contracts'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { HiFiInputZone } from '@/components/hifi/HiFiInputZone'
@@ -9,7 +9,11 @@ import { DailyAiMessage } from '@/components/daily/DailyAiMessage'
 import { DailyDeepExpandCard } from '@/components/daily/DailyDeepExpandCard'
 import { DailyParentBubble } from '@/components/daily/DailyParentBubble'
 import { useTabBar } from '@/hooks/useTabBar'
+import { useChatAutoScroll } from '@/hooks/useChatAutoScroll'
+import { usePublicPageShare } from '@/hooks/useSharePage'
+import { SHARE_PATHS } from '@/lib/shareMessages'
 import { collectRecentSectionIds } from '@/lib/dailyThreadUtils'
+import { mergeStreamChunk, stripParentFacingMarkdown } from '@/lib/textDisplay'
 import { apiRequest } from '@/services/api'
 import { pushAccountSyncToServer } from '@/services/accountSync'
 import { fetchCurrentUser } from '@/services/auth'
@@ -43,12 +47,17 @@ function mergeSection(sections: DailySection[] | undefined, section: DailySectio
 
 export default function DailyPage() {
   useTabBar('chat')
+  usePublicPageShare({
+    title: '育见 · 和孩子一起聊聊今天',
+    path: SHARE_PATHS.daily,
+  })
   const [turns, setTurns] = useState<DailyTurn[]>(() => loadDailyThread())
   const [threadReady, setThreadReady] = useState(false)
   const [thinkingSeed, setThinkingSeed] = useState<DailyThinkingChip[]>(LOADING_THINKING_CHIPS)
   const [inputReady, setInputReady] = useState(true)
   const [queuedCount, setQueuedCount] = useState(0)
   const [sending, setSending] = useState(false)
+  const [animatingSectionId, setAnimatingSectionId] = useState<string | null>(null)
 
   const abortRef = useRef({ aborted: false })
   const streamTaskRef = useRef<Taro.RequestTask<unknown> | null>(null)
@@ -119,6 +128,41 @@ export default function DailyPage() {
     }, 2000)
   }, [patchAiTurn])
 
+  const scrollFingerprint = useMemo(() => {
+    const last = turns[turns.length - 1]
+    if (!last) return String(turns.length)
+    const sectionChars =
+      last.sections?.reduce((sum, s) => {
+        const streaming = s.streamingText?.length || 0
+        const paras = s.paragraphs?.join('').length || 0
+        const items = s.items?.join('').length || 0
+        return sum + streaming + paras + items
+      }, 0) ?? 0
+    return [
+      turns.length,
+      last.text?.length ?? 0,
+      sectionChars,
+      last.streaming ? 1 : 0,
+      last.sectionsComplete ? 1 : 0,
+      last.showThinking ? 1 : 0,
+    ].join('|')
+  }, [turns])
+
+  const { scrollIntoView, scrollTop, onScroll, scrollToBottom, resumeFollowOnSend, anchorId, setViewHeight } =
+    useChatAutoScroll([scrollFingerprint])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      Taro.createSelectorQuery()
+        .select('#daily-chat-scroll')
+        .boundingClientRect((rect) => {
+          if (rect && !Array.isArray(rect) && rect.height) setViewHeight(rect.height)
+        })
+        .exec()
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [setViewHeight, turns.length])
+
   const runTurn = async (text: string) => {
     const value = text.trim()
     if (!value || sending) return
@@ -128,6 +172,8 @@ export default function DailyPage() {
     streamTaskRef.current = null
     setSending(true)
     setInputReady(false)
+
+    resumeFollowOnSend()
 
     const parentTurn: DailyTurn = { role: 'parent', text: value }
     const aiTurn: DailyTurn = {
@@ -148,31 +194,50 @@ export default function DailyPage() {
       return next
     })
 
+    setTimeout(() => scrollToBottom(true), 32)
+    setTimeout(() => scrollToBottom(true), 120)
+    setTimeout(() => scrollToBottom(true), 280)
+
     const recentSectionIds = collectRecentSectionIds(turnsRef.current, 3)
     const warmTurn = turnsRef.current.some((t) => t.role === 'parent')
 
+    try {
     const result = await streamDailyMessage(
       value,
       {
         onStart: (traceId) => patchAiTurn({ traceId }),
         onThinking: (chips) => patchAiTurn({ thinkingChips: chips, showThinking: true }),
-        onDelta: (display) => patchAiTurn({ text: display, showThinking: false }),
+        onDelta: (display) =>
+          patchAiTurn((t) => {
+            const cleaned = stripParentFacingMarkdown(display)
+            const prev = t.text || ''
+            // 异常短于旧值则忽略回退（防流式重放导致梯形）
+            if (t.streaming && cleaned.length + 8 < prev.length) return {}
+            return { text: cleaned, showThinking: false }
+          }),
         onProseComplete: () => patchAiTurn({ proseComplete: true }),
         onSectionStart: (section) =>
           patchAiTurn((t) => ({
             sections: mergeSection(t.sections, { ...section, streamingText: '' }),
           })),
-        onSectionDelta: (id, delta) =>
+        onSectionDelta: (id, chunk) =>
           patchAiTurn((t) => ({
             sections: (t.sections || []).map((s) =>
-              s.id === id ? { ...s, streamingText: (s.streamingText || '') + delta } : s
+              s.id === id
+                ? { ...s, streamingText: mergeStreamChunk(s.streamingText || '', chunk) }
+                : s
             ),
           })),
-        onSectionComplete: (section) =>
+        onSectionComplete: (section) => {
           patchAiTurn((t) => ({
             sections: mergeSection(t.sections, { ...section, streamingText: undefined }),
             sectionErrors: (t.sectionErrors || []).filter((eid) => eid !== section.id),
-          })),
+          }))
+          setAnimatingSectionId(section.id)
+          setTimeout(() => {
+            setAnimatingSectionId((current) => (current === section.id ? null : current))
+          }, 260)
+        },
         onSectionError: (id) =>
           patchAiTurn((t) => ({
             sectionErrors: [...new Set([...(t.sectionErrors || []), id])],
@@ -180,8 +245,6 @@ export default function DailyPage() {
         onSectionsComplete: () => patchAiTurn({ sectionsComplete: true }),
         onActions: (actions: DailyAction[]) => {
           patchAiTurn({ actions })
-          setInputReady(true)
-          flushQueue()
         },
       },
       {
@@ -194,9 +257,6 @@ export default function DailyPage() {
 
     if (abortRef.current.aborted) {
       patchAiTurn({ streaming: false, interrupted: true, showThinking: false })
-      setInputReady(true)
-      setSending(false)
-      flushQueue()
       return
     }
 
@@ -206,9 +266,6 @@ export default function DailyPage() {
         showThinking: false,
         text: result.httpError || result.streamError || '这次没有整理成功，可以再试一次。',
       })
-      setInputReady(true)
-      setSending(false)
-      flushQueue()
       return
     }
 
@@ -219,9 +276,6 @@ export default function DailyPage() {
         showThinking: false,
         text: '这次没有整理成功，可以再试一次。',
       })
-      setInputReady(true)
-      setSending(false)
-      flushQueue()
       return
     }
 
@@ -238,9 +292,11 @@ export default function DailyPage() {
 
     if (result.traceId) pollMemoryLabel(result.traceId)
     pushAccountSyncToServer()
-    setInputReady(true)
-    setSending(false)
-    flushQueue()
+    } finally {
+      setInputReady(true)
+      setSending(false)
+      flushQueue()
+    }
   }
 
   const retrySection = useCallback(async (traceId: string, sectionId: string) => {
@@ -283,9 +339,10 @@ export default function DailyPage() {
   const handleSubmit = (text: string) => {
     const value = text.trim()
     if (!value) return
+    // busy 时排队下一条，不打断当前生成（产品决策）
     if (!inputReady || sending) {
-      interruptStreaming()
-      void runTurn(value)
+      queueRef.current.push(value)
+      setQueuedCount(queueRef.current.length)
       return
     }
     void runTurn(value)
@@ -306,13 +363,31 @@ export default function DailyPage() {
 
   return (
     <HiFiMainShell
+      disableEntering
       showInput
       inputZone={
-        <HiFiInputZone busy={!inputReady || sending} queuedCount={queuedCount} onSubmit={handleSubmit} />
+        <HiFiInputZone
+          busy={!inputReady || sending}
+          queuedCount={queuedCount}
+          voiceMode='send'
+          onSubmit={handleSubmit}
+        />
       }
     >
+      <View className='daily-scroll-wrap'>
+        <ScrollView
+          id='daily-chat-scroll'
+          className='chat-scroll-view'
+          scrollY
+          scrollWithAnimation
+          scrollIntoView={scrollIntoView}
+          scrollTop={scrollTop}
+          onScroll={onScroll}
+          enhanced
+          showScrollbar={false}
+        >
       {turns.length === 0 && !anyStreaming ? (
-        <View className='hero-card'>
+        <View className='hero-card has-mascot'>
           <Text className='hero-title'>直接讲孩子今天发生了什么</Text>
           <Text className='hero-copy'>不用整理成问题，先把现场过程留下来。</Text>
           <HiFiMascot />
@@ -331,7 +406,7 @@ export default function DailyPage() {
               </View>
               <View className='suggestion-strip'>
                 {STARTER_CHIPS.map((chip) => (
-                  <Text key={chip} className='pill' onClick={() => seedChip(chip)}>
+                  <Text key={chip} className='pill chip-float' onClick={() => seedChip(chip)}>
                     {chip}
                   </Text>
                 ))}
@@ -360,6 +435,7 @@ export default function DailyPage() {
                 interrupted={t.interrupted}
                 memoryLabel={t.memoryLabel}
                 onFollowUpText={(seed) => handleSubmit(seed)}
+                animatingSectionId={animatingSectionId}
                 onRetrySection={
                   t.traceId ? (sectionId) => void retrySection(t.traceId!, sectionId) : undefined
                 }
@@ -389,6 +465,9 @@ export default function DailyPage() {
             </View>
           )
         )}
+      </View>
+          <View id={anchorId} className='scroll-anchor' />
+        </ScrollView>
       </View>
     </HiFiMainShell>
   )

@@ -19,12 +19,12 @@ export function StructuralTensionCard({
     <div
       className="soft-card"
       style={{
-        background: 'rgba(110,106,248,0.04)',
-        border: '1px solid rgba(110,106,248,0.10)',
+        background: 'rgba(157,204,117,0.10)',
+        border: '1px solid rgba(111,159,86,0.16)',
         marginTop: compact ? 0 : undefined,
       }}
     >
-      <h3 style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>
+      <h3 style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 8 }}>
         {title}
         {tensions.length > 1 ? `（${tensions.length} 个）` : ''}
       </h3>

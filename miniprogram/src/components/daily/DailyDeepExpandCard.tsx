@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, Textarea } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import type { DailySection } from '@yujian/contracts'
 import { apiRequest } from '@/services/api'
+import { VoiceOverlay } from '@/components/voice/VoiceOverlay'
 import { DailySectionView } from './DailySectionView'
 
 type DailyDeepExpandCardProps = {
@@ -15,7 +16,6 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
   const [feedback, setFeedback] = useState<'accurate' | 'partial' | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [partialOpen, setPartialOpen] = useState(false)
-  const [partialNote, setPartialNote] = useState('')
   const [toast, setToast] = useState('')
   const [collapsed, setCollapsed] = useState(false)
 
@@ -106,43 +106,23 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
               哪里不太像
             </Text>
           </View>
-          {partialOpen ? (
-            <View className='deep-expand-partial'>
-              <Textarea
-                className='deep-expand-note'
-                value={partialNote}
-                placeholder='说说哪里不太像（可留空）'
-                maxlength={500}
-                onInput={(e) => setPartialNote(e.detail.value)}
-              />
-              <View className='suggestion-strip'>
-                <Text
-                  className='pill'
-                  onClick={() => {
-                    if (submitting) return
-                    setSubmitting(true)
-                    setPartialOpen(false)
-                    setFeedback('partial')
-                    void postFeedback('partial', partialNote).finally(() => setSubmitting(false))
-                  }}
-                >
-                  提交校正
-                </Text>
-                <Text
-                  className='pill'
-                  onClick={() => {
-                    if (submitting) return
-                    setSubmitting(true)
-                    setPartialOpen(false)
-                    setFeedback('partial')
-                    void postFeedback('partial').finally(() => setSubmitting(false))
-                  }}
-                >
-                  先记不太像
-                </Text>
-              </View>
-            </View>
-          ) : null}
+          <VoiceOverlay
+            open={partialOpen}
+            title='哪里不太像'
+            description='可以直接说修正内容，也可以打字。'
+            loading={submitting}
+            allowEmpty
+            emptyFinishLabel='先记不太像'
+            finishLabel='提交校正'
+            onCancel={() => setPartialOpen(false)}
+            onFinish={(note) => {
+              if (submitting) return
+              setSubmitting(true)
+              setPartialOpen(false)
+              setFeedback('partial')
+              void postFeedback('partial', note).finally(() => setSubmitting(false))
+            }}
+          />
           {toast ? <Text className='deep-expand-toast'>{toast}</Text> : null}
         </View>
       ) : null}

@@ -39,9 +39,9 @@ $page-padding-y-top: 12px;
 $page-padding-y-bottom: 20px;
 $shell-max-width: 430px;
 
-$btn-height-primary: 52px;
+$btn-height-primary: 44px;
 $btn-height-chip: 34px;
-$input-dock-height: 72px;
+$input-dock-height: 112px;
 
 $bubble-parent-max-ratio: 72%;
 $bubble-ai-max: 86%;
@@ -53,4 +53,5 @@ $shell-gradient: radial-gradient(circle at 76% 12%, rgba(162, 216, 103, 0.34), t
   radial-gradient(circle at 12% 22%, rgba(247, 233, 154, 0.42), transparent 30%),
   radial-gradient(circle at 58% 52%, rgba(238, 247, 207, 0.72), transparent 38%),
   linear-gradient(180deg, #fbfaec 0%, #f8f6e5 52%, #f6f4e6 100%);
-$tab-bar-height: calc(78px + env(safe-area-inset-bottom));
+/* 56px tab + 6px 底边距 + safe-area */
+$tab-bar-height: calc(62px + env(safe-area-inset-bottom));

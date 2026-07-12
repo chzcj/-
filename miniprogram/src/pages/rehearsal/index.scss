@@ -38,13 +38,23 @@
 
 .rehearsal-textarea {
   width: 100%;
-  min-height: 100px;
+  min-height: 88px;
   margin-top: 10px;
   padding: 12px;
-  border-radius: 12px;
-  background: rgba(241, 248, 223, 0.5);
   box-sizing: border-box;
-  font-size: 15px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #202633;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.custom-scenario-input {
+  width: 100%;
+  margin-top: 4px;
+  padding-bottom: 24px;
+  /* 给键盘顶起留出底部缓冲，减少中段 focus 失焦 */
+  min-height: 120px;
 }
 
 .wide-pill {
@@ -72,6 +82,40 @@
 
 .chat-feed {
   margin-bottom: 16px;
+  padding-bottom: 12px;
+}
+
+.rehearsal-scroll-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 280px;
+  max-height: calc(100vh - 320px);
+}
+
+.chat-scroll-view {
+  height: 100%;
+  min-height: 280px;
+  box-sizing: border-box;
+}
+
+.scroll-anchor {
+  height: 24px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.jump-to-bottom {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  z-index: 8;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6f9f56;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 16px rgba(31, 39, 51, 0.12);
 }
 
 .thinking-bubble {
@@ -90,14 +134,47 @@
   bottom: 120px;
   padding: 0 16px;
   z-index: 20;
+  animation: overlay-in 200ms ease both;
 }
 
 .checkpoint-card {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  animation: sheet-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 .insight-card {
-  border-left: 3px solid #7fb964;
+  border: 1px solid rgba(111, 159, 86, 0.2);
+  background: rgba(157, 204, 117, 0.08);
+}
+
+.dialogue-entry-card {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 247, 0.92);
+  border: 1px solid rgba(73, 91, 45, 0.1);
+  box-shadow: 0 6px 18px rgba(31, 39, 51, 0.05);
+}
+
+.dialogue-entry-title {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: #202633;
+  margin-bottom: 6px;
+}
+
+.dialogue-entry-desc {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.back-link {
+  display: block;
+  margin-bottom: 8px;
+  color: #6f9f56 !important;
+  font-weight: 600;
 }
 
 .result-block {

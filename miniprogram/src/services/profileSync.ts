@@ -28,7 +28,7 @@ function profileToPayload(profile: LocalProfileSnapshot) {
     coreJudgment: profile.coreJudgment,
     deepMechanism: profile.deepMechanism || '',
     supportFocus: profile.supportFocus,
-    evidence: [],
-    verificationPoints: [],
+    evidence: profile.evidence || [],
+    verificationPoints: profile.verificationPoints || [],
   }
 }

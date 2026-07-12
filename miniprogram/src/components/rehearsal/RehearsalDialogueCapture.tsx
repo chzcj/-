@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
-import Taro from '@tarojs/taro'
 import { View, Text, Textarea } from '@tarojs/components'
 import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
+import { VoiceHoldOverlay } from '@/components/voice/VoiceHoldOverlay'
 import { useTencentAsrInput } from '@/hooks/useTencentAsrInput'
 import { apiRequest } from '@/services/api'
 import './RehearsalDialogueCapture.scss'
@@ -32,10 +32,17 @@ export function RehearsalDialogueCapture() {
     setTranscript((prev) => (prev ? `${prev}\n${t}` : t))
   }, [])
 
-  const handleTouchEnd = () => {
-    if (!voice.isListening) return
-    appendTranscript(voice.stopListening() || voice.liveTranscript)
-    voice.reset()
+  const startHold = () => {
+    if (loading || voice.asrUnavailable || voice.isListening || voice.isConnecting) return
+    void voice.startListening()
+  }
+
+  const finishHold = () => {
+    if (!voice.isListening && !voice.isConnecting) return
+    void voice.stopListening({ fast: true }).then((finalText) => {
+      appendTranscript(finalText || voice.liveTranscript)
+      voice.reset()
+    })
   }
 
   async function analyze() {
@@ -57,6 +64,14 @@ export function RehearsalDialogueCapture() {
 
   return (
     <View className='rehearsal-dialogue-section'>
+      <VoiceHoldOverlay
+        visible={voice.isListening}
+        mode='fill'
+        transcript={voice.transcript}
+        interimTranscript={voice.interimTranscript}
+        error={voice.error}
+      />
+
       <Text className='section-label'>记录亲子对话</Text>
       <Text className='hint-text'>
         按住录音转写，或把对话文字粘贴进来；我们会结合孩子画像标出值得留意的句子。
@@ -72,19 +87,25 @@ export function RehearsalDialogueCapture() {
           onInput={(e) => setTranscript(e.detail.value)}
         />
         <View className='rehearsal-dialogue-actions'>
-          <Text
-            className={`chip hold-chip${voice.isListening ? ' active' : ''}${voice.asrUnavailable ? ' disabled' : ''}`}
-            onTouchStart={() => {
-              if (loading || voice.asrUnavailable || voice.isListening) return
-              void voice.startListening()
-            }}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchEnd}
+          <View
+            className={`pill primary hold-pill${voice.isListening || voice.isConnecting ? ' active' : ''}${voice.asrUnavailable ? ' disabled' : ''}`}
+            hoverClass='none'
+            onTouchStart={startHold}
+            onTouchEnd={finishHold}
+            onTouchCancel={finishHold}
           >
-            {voice.asrUnavailable ? '请直接输入' : voice.isListening ? '松手结束' : '按住录音'}
-          </Text>
+            <Text>
+              {voice.asrUnavailable
+                ? '请直接输入'
+                : voice.isConnecting
+                  ? '连接中…'
+                  : voice.isListening
+                    ? '松手填入'
+                    : '按住录音'}
+            </Text>
+          </View>
           <Text
-            className={`pill primary${loading || !transcript.trim() ? ' disabled' : ''}`}
+            className={`pill${loading || !transcript.trim() ? ' disabled' : ''}`}
             onClick={() => void analyze()}
           >
             {loading ? '分析中…' : '深度解读'}
@@ -93,7 +114,9 @@ export function RehearsalDialogueCapture() {
       </View>
 
       {error ? <Text className='hint-text' style={{ color: '#e54d42' }}>{error}</Text> : null}
-      {voice.error ? <Text className='hint-text' style={{ color: '#e54d42' }}>{voice.error}</Text> : null}
+      {!voice.isListening && voice.error ? (
+        <Text className='hint-text' style={{ color: '#e54d42' }}>{voice.error}</Text>
+      ) : null}
 
       {result ? (
         <View>

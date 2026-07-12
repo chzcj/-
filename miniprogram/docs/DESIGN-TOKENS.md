@@ -57,6 +57,17 @@
 | shadow-soft | `0 6px 18px …` | `$shadow-soft` |
 | glass blur | `backdrop-filter blur(22px)` | 半透明白 → visual-diff |
 
+## 动效（motion.scss）
+
+| Token / 能力 | Web | 小程序 |
+|--------------|-----|--------|
+| page-entering | `.page.page-entering` + page-rise stagger | `usePageEntering` → HiFiMainShell / HiFiBuildShell |
+| section-reveal | 流式新节 200ms | `.bubble-section.section-reveal` |
+| chipFloat | starter pills | `.pill.chip-float` |
+| thinking-pulse | thinking dots | `.thinking-dots-dot` |
+| wave | 录音条 | `.wave-bar` |
+| reduced-motion | prefers-reduced-motion | motion.scss 同策略 |
+
 ## 间距
 
 | Token | Web (DESIGN.md) | 小程序 |
@@ -73,11 +84,11 @@
 
 | 组件 | Web | 意图 | 小程序 |
 |------|-----|------|--------|
-| primary-button | min-height 48–52px | 主 CTA 好点 | `$btn-height-primary: 52px` |
-| hold-button | 52px 高，绿渐变 | 交流主操作 | HiFiInputZone 同 |
+| primary-button | min-height 48–52px | 主 CTA 好点 | `$btn-height-primary: 44px`（MP 下调，少挡正文） |
+| hold-button | 52px 高，绿渐变 | 交流主操作 | HiFiInputZone 44px 实色绿 |
 | chip/pill | min-height 34px | 次要选项 | `$btn-height-chip: 34px` |
 | record-area | min-height 184px | onboarding 倾诉区 | hifi-build.scss |
-| tab-bar | 68px + padding | 底部导航 | custom-tab-bar |
+| tab-bar | 68px + padding | 底部导航 | custom-tab-bar 56px + 实色底 |
 
 ## 映射原则
 

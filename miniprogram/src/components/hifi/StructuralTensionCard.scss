@@ -1,8 +1,8 @@
 @import '../../styles/tokens.scss';
 
 .structural-tension-card {
-  background: rgba(110, 106, 248, 0.04);
-  border: 1px solid rgba(110, 106, 248, 0.1);
+  background: rgba(157, 204, 117, 0.1);
+  border: 1px solid rgba(111, 159, 86, 0.16);
   border-radius: $radius-card;
   padding: 14px 16px;
   margin-bottom: 12px;
@@ -16,7 +16,7 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #6e6af8;
+  color: $green-deep;
   margin-bottom: 10px;
 }
 

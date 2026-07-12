@@ -1,48 +1,21 @@
 @import '../../../styles/tokens.scss';
+@import '../../../styles/motion.scss';
 
 .input-dock-inner {
   width: 100%;
 }
 
-.recording-panel {
-  display: none;
-  padding: 0 20px 8px;
-}
-
-.recording-panel.active {
-  display: block;
-}
-
-.recording-card {
-  border-radius: $radius-card;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.9);
-  text-align: center;
-}
-
-.recording-text {
-  display: block;
-  font-size: $text-body;
-  font-weight: 700;
-  color: $ink;
-}
-
-.cancel-hint {
-  display: block;
-  margin-top: 6px;
-  font-size: $text-small;
-  color: $muted;
-}
-
 .input-zone {
-  padding: 8px 20px 10px;
+  padding: 8px 16px 10px;
 }
 
 .input-bar {
   min-height: $btn-height-primary;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .voice-mode .hold-button {
@@ -58,12 +31,12 @@
 .send-button {
   min-height: $btn-height-primary;
   min-width: $btn-height-primary;
-  border-radius: $radius-control;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: $green-deep;
-  background: rgba(255, 255, 255, 0.84);
+  background: #ffffff;
   border: none;
   padding: 0;
   margin: 0;
@@ -78,8 +51,20 @@
 
 .hold-button {
   color: #fff;
-  background: linear-gradient(135deg, #a7d77a, #7fb964);
+  background: linear-gradient(135deg, #a7d77a, #7fb964) !important;
   font-weight: 700;
+}
+
+/* 微信 button[disabled] 默认降 opacity，会透出背后正文 */
+.hold-button.is-disabled {
+  opacity: 0.72;
+}
+
+.hold-button[disabled],
+button.hold-button[disabled] {
+  color: #fff !important;
+  background: #7fb964 !important;
+  opacity: 1 !important;
 }
 
 .send-button {
@@ -88,15 +73,21 @@
 }
 
 .send-button[disabled] {
-  color: #b5b8be;
-  background: rgba(255, 255, 255, 0.78);
+  color: #b5b8be !important;
+  background: #f3f3f0 !important;
+  opacity: 1 !important;
+}
+
+.mode-button[disabled] {
+  opacity: 1 !important;
+  background: #ffffff !important;
 }
 
 .text-input-wrap {
   min-height: $btn-height-primary;
-  border-radius: $radius-control;
-  padding: 13px 15px;
-  background: rgba(255, 255, 255, 0.84);
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: #ffffff;
   box-shadow: $shadow-soft;
   box-sizing: border-box;
 }
@@ -110,12 +101,62 @@
   line-height: $text-body-lh;
 }
 
+.input-zone-status {
+  min-height: 22px;
+  box-sizing: border-box;
+}
+
 .hint-text {
   display: block;
   padding: 4px 4px 0;
   font-size: $text-small;
   color: $muted;
 }
+
+.input-voice-error {
+  color: #e54d42;
+}
+
+.input-voice-status {
+  color: $green-deep;
+  font-weight: 600;
+}
+
+.simulator-asr-hint {
+  display: block;
+  margin-bottom: 6px;
+  color: $muted;
+}
+
+.hold-button.connecting {
+  opacity: 0.88;
+}
+
+.hold-button.active {
+  opacity: 0.96;
+}
+
+.hold-button-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.hold-button-wave-bar {
+  width: 4px;
+  border-radius: 99px;
+  background: currentColor;
+  animation: wave 0.9s infinite ease-in-out;
+}
+
+.hold-button-wave-bar:nth-child(1) { height: 8px; animation-delay: 0s; }
+.hold-button-wave-bar:nth-child(2) { height: 14px; animation-delay: 0.08s; }
+.hold-button-wave-bar:nth-child(3) { height: 22px; animation-delay: 0.16s; }
+.hold-button-wave-bar:nth-child(4) { height: 14px; animation-delay: 0.24s; }
+.hold-button-wave-bar:nth-child(5) { height: 8px; animation-delay: 0.32s; }
 
 .hold-button-label {
   font-size: $text-body;

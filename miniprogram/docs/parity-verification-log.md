@@ -99,3 +99,57 @@
 | account/state | childos.v1 assemble + hydrate |
 
 **结论**：代码侧 backlog 除 M9-01 运维项外已全部 fixed。详见 `module-reports/M10-remaining-backlog.md`。
+
+## 2026-07-10 — 像素级与动效对齐（Phase 0–4）
+
+**范围**：motion 基础设施 → daily → 四 Tab → onboarding → evidence/verify
+
+### 三轮自检
+
+| 轮次 | 内容 | 结果 |
+|------|------|------|
+| 1 typecheck | `npm run typecheck` | pass |
+| 2 build | `npm run build:weapp` + `style-parity-audit` | pass（P0/P1 fail 0；CSS order warning 已知） |
+| 3 产品 smoke | 登录→建模→四 Tab→daily 流式/深度反馈→画像 evidence/verify | 代码路径已通；真机 ASR 仍见 M9-01 |
+
+### 对照验收
+
+| 路径 | P0 | P1 | 动效 | 备注 |
+|------|----|----|------|------|
+| daily | pass | verified | page-entering / chipFloat / section-reveal / VoiceOverlay | ASR 降级打字 |
+| tasks | pass | verified | task-card 进场 | — |
+| rehearsal | pass | verified | checkpoint 每 4 轮 | — |
+| profile | pass | verified | data-card 进场 | 相关操作含 evidence/verify |
+| intro/basic/hub | pass | verified | BuildShell page-entering | — |
+| build 三页 | pass | verified | motion via hifi-build | — |
+| evidence/verify | pass | verified | MainShell 进场 | 新建页 |
+
+### 文档
+
+- [x] visual-diff.md 更新（进场/checkpoint/VoiceOverlay 已对齐）
+- [x] DESIGN-TOKENS.md 增补 motion 节
+- [x] web-component-map 增补 VoiceOverlay / evidence / verify
+
+## 2026-07-11 — 小程序主端全栈审查包（Phase 0）
+
+**范围**：MP↔Web BFF 契约、四 Tab + onboarding + 弹窗 @390px
+
+### 差距矩阵（已修 / 待验）
+
+| ID | 项 | 状态 |
+|----|-----|------|
+| B1 | summary → memory/write | 已接 summary/index.tsx |
+| B2 | profileSync evidence 非空 | 已接 profileSync.ts |
+| B3 | account/profile | 改 parentStorage + pushAccountSync（无 PUT 路由） |
+| B4 | wechat profile_rewrite | 已接 auth/wechat |
+| appendMode | entry/analyze 增量补充 | BFF + capture/follow-up |
+| A1 | 分享 showShareMenu | 全页 useSharePage |
+| A5 | ASR 16k_zh_large + end 信号 | token + useTencentAsrInput |
+| 补充画像 | hub→capture supplement→generating regen | FE 闭环 + regen 门禁 |
+
+### Impeccable 390px 审计点
+
+- pill min-height 44px、primary/disabled/block
+- DailyAiMessage sectionsComplete 门控 end-actions
+- ProfileEditModals / basic 年级 Picker
+- tasks 空态 CTA、rehearsal chat-feed 底 padding

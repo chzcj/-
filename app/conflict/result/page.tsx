@@ -48,7 +48,7 @@ function ConflictResultInner() {
       <PageHeader title="冲突复盘" showBack onBack={() => router.push('/conflict')} />
 
       {rawText ? (
-        <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)', marginBottom: 16, whiteSpace: 'pre-wrap', fontSize: 13, color: '#A1A1A6', lineHeight: 1.6 }}>{rawText}</div>
+        <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(157,204,117,0.04)', border: '1px solid rgba(157,204,117,0.10)', marginBottom: 16, whiteSpace: 'pre-wrap', fontSize: 13, color: '#A1A1A6', lineHeight: 1.6 }}>{rawText}</div>
       ) : null}
 
       {loading ? (
@@ -64,15 +64,15 @@ function ConflictResultInner() {
           <div style={{ fontSize: 16, fontWeight: 700, color: '#1D1D1F', marginBottom: 10, lineHeight: 1.4 }}>{r.headline}</div>
           <div style={{ fontSize: 15, lineHeight: 1.6, color: '#6E6E73', marginBottom: 18 }}>{r.explanation}</div>
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>最容易让冲突升级的句子</div>
-            <div style={{ fontSize: 15, fontWeight: 650, color: '#1D1D1F', padding: '10px 14px', borderRadius: 16, background: 'rgba(110,106,248,0.06)' }}>&quot;{r.escalationSentence}&quot;</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 6 }}>最容易让冲突升级的句子</div>
+            <div style={{ fontSize: 15, fontWeight: 650, color: '#1D1D1F', padding: '10px 14px', borderRadius: 16, background: 'rgba(157,204,117,0.06)' }}>&quot;{r.escalationSentence}&quot;</div>
           </div>
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>孩子当时更可能听成</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 6 }}>孩子当时更可能听成</div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: '#6E6E73' }}>{r.childMayHear}</div>
           </div>
-          <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(110,106,248,0.05)', border: '1px solid rgba(110,106,248,0.10)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>更稳的替换说法</div>
+          <div style={{ padding: '14px 16px', borderRadius: 20, background: 'rgba(157,204,117,0.05)', border: '1px solid rgba(157,204,117,0.10)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 8 }}>更稳的替换说法</div>
             <div style={{ fontSize: 15, lineHeight: 1.55, color: '#1D1D1F' }}>{r.suggestedReplacement}</div>
           </div>
         </div>

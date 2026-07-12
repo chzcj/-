@@ -1,7 +1,11 @@
 import Taro from '@tarojs/taro'
+import { ensurePrivacyAuthorized } from '@/lib/wechatPrivacy'
 
 /** 请求麦克风权限；已拒绝时引导打开设置页 */
 export async function ensureRecordPermission(): Promise<{ ok: true } | { ok: false; message: string }> {
+  const privacy = await ensurePrivacyAuthorized()
+  if (!privacy.ok) return privacy
+
   try {
     const { authSetting } = await Taro.getSetting()
     if (authSetting['scope.record']) return { ok: true }

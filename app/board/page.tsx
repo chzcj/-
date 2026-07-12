@@ -91,7 +91,7 @@ export default function BoardPage() {
             {/* 看板二级入口：家庭规划（下一步行动）+ 完整档案 */}
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={() => router.push('/family-planner')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, background: 'rgba(110,106,248,0.06)', border: '1px solid rgba(110,106,248,0.14)', borderRadius: 14, fontSize: 14, fontWeight: 600, color: '#6E6AF8', cursor: 'pointer' }}>
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, background: 'rgba(157,204,117,0.06)', border: '1px solid rgba(157,204,117,0.14)', borderRadius: 14, fontSize: 14, fontWeight: 600, color: '#6f9f56', cursor: 'pointer' }}>
                 <CalendarRange size={16} />制定家庭规划
               </button>
               <button type="button" onClick={() => router.push('/family-profile')}
@@ -102,10 +102,10 @@ export default function BoardPage() {
 
             {board.evidenceRefs && board.evidenceRefs.length > 0 ? (
               <details style={{ marginTop: 2 }}>
-                <summary style={{ fontSize: 12, color: '#6E6AF8', cursor: 'pointer', listStyle: 'none' }}>这些判断的依据（{board.evidenceRefs.length}）</summary>
+                <summary style={{ fontSize: 12, color: '#6f9f56', cursor: 'pointer', listStyle: 'none' }}>这些判断的依据（{board.evidenceRefs.length}）</summary>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
                   {board.evidenceRefs.filter(e => e.snippet).slice(0, 8).map((e, i) => (
-                    <div key={i} style={{ fontSize: 12, lineHeight: 1.5, color: '#6E6E73', background: 'rgba(110,106,248,0.04)', borderLeft: '2px solid rgba(110,106,248,0.3)', borderRadius: 6, padding: '6px 10px' }}>{e.snippet}</div>
+                    <div key={i} style={{ fontSize: 12, lineHeight: 1.5, color: '#6E6E73', background: 'rgba(157,204,117,0.04)', borderLeft: '2px solid rgba(157,204,117,0.3)', borderRadius: 6, padding: '6px 10px' }}>{e.snippet}</div>
                   ))}
                 </div>
               </details>
@@ -120,7 +120,7 @@ export default function BoardPage() {
               {failed ? '看板这次没加载出来，可能是网络或后台还在整理。' : '看板暂时还没有内容。'}
             </div>
             <button type="button" onClick={retry}
-              style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, color: '#6E6AF8', background: 'rgba(110,106,248,0.06)', border: '1px solid rgba(110,106,248,0.16)', borderRadius: 999, cursor: 'pointer' }}>
+              style={{ padding: '10px 24px', fontSize: 14, fontWeight: 600, color: '#6f9f56', background: 'rgba(157,204,117,0.06)', border: '1px solid rgba(157,204,117,0.16)', borderRadius: 999, cursor: 'pointer' }}>
               重试
             </button>
           </div>
@@ -134,9 +134,9 @@ function Section({ title, children, accent }: { title: string; children: ReactNo
   return (
     <div
       className="card"
-      style={{ padding: 16, borderRadius: 18, background: accent ? 'rgba(110,106,248,0.04)' : '#fff', border: `1px solid ${accent ? 'rgba(110,106,248,0.10)' : 'rgba(0,0,0,0.05)'}` }}
+      style={{ padding: 16, borderRadius: 18, background: accent ? 'rgba(157,204,117,0.04)' : '#fff', border: `1px solid ${accent ? 'rgba(157,204,117,0.10)' : 'rgba(0,0,0,0.05)'}` }}
     >
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 8 }}>{title}</div>
       {children}
     </div>
   )

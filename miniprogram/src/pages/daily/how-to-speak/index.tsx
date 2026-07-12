@@ -2,6 +2,7 @@ import { View, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
+import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { apiRequest } from '@/services/api'
 import { loadDailyThread } from '@/services/dailyStream'
 import './index.scss'
@@ -16,6 +17,7 @@ type GuideData = {
 }
 
 export default function HowToSpeakPage() {
+  useSafeShareAppMessage({ title: '育见 · 和孩子一起聊聊今天' })
   const router = useRouter()
   const traceId = (router.params.traceId || '').trim()
   const [loading, setLoading] = useState(true)

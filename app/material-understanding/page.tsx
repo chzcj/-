@@ -90,9 +90,9 @@ export default function MaterialUnderstandingPage() {
                       padding: '6px 14px',
                       borderRadius: 999,
                       cursor: 'pointer',
-                      color: active ? '#fff' : '#6E6AF8',
-                      background: active ? '#6E6AF8' : 'rgba(110,106,248,0.06)',
-                      border: `1px solid ${active ? '#6E6AF8' : 'rgba(110,106,248,0.16)'}`,
+                      color: active ? '#fff' : '#6f9f56',
+                      background: active ? '#6f9f56' : 'rgba(157,204,117,0.06)',
+                      border: `1px solid ${active ? '#6f9f56' : 'rgba(157,204,117,0.16)'}`,
                     }}
                   >
                     {t.label}
@@ -116,13 +116,13 @@ export default function MaterialUnderstandingPage() {
 
         {mode === 'result_view' && data ? (
           <div>
-            <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 16, background: 'rgba(110,106,248,0.04)', border: '1px solid rgba(110,106,248,0.10)' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 6 }}>这份材料能看出什么</div>
+            <div className="card" style={{ padding: 18, borderRadius: 22, marginBottom: 16, background: 'rgba(157,204,117,0.04)', border: '1px solid rgba(157,204,117,0.10)' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 6 }}>这份材料能看出什么</div>
               <div style={{ fontSize: 14, lineHeight: 1.6, color: '#1D1D1F', marginBottom: data.keyPoints.length ? 16 : 4 }}>{data.reading}</div>
 
               {data.keyPoints.length > 0 ? (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6E6AF8', marginBottom: 8 }}>值得留意的线索</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#6f9f56', marginBottom: 8 }}>值得留意的线索</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {data.keyPoints.map((p, i) => (
                       <div key={i} style={{ background: '#fff', borderRadius: 14, padding: 12, border: '1px solid rgba(0,0,0,0.05)', fontSize: 13, lineHeight: 1.6, color: '#1D1D1F' }}>
@@ -137,7 +137,7 @@ export default function MaterialUnderstandingPage() {
             <button
               type="button"
               onClick={readAnother}
-              style={{ width: '100%', padding: '13px 0', fontSize: 15, fontWeight: 600, color: '#6E6AF8', background: 'rgba(110,106,248,0.06)', border: '1px solid rgba(110,106,248,0.16)', borderRadius: 14, cursor: 'pointer' }}
+              style={{ width: '100%', padding: '13px 0', fontSize: 15, fontWeight: 600, color: '#6f9f56', background: 'rgba(157,204,117,0.06)', border: '1px solid rgba(157,204,117,0.16)', borderRadius: 14, cursor: 'pointer' }}
             >
               再看一份材料
             </button>

@@ -2,6 +2,7 @@ import { View, Text } from '@tarojs/components'
 import type { DailySection } from '@yujian/contracts'
 import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
 import { parseStreamingSectionBody } from '@/lib/parseStreamingSection'
+import { stripParentFacingMarkdown } from '@/lib/textDisplay'
 
 const AUTHORITY_SECTION_IDS = new Set(['diagnosis_headline', 'this_time', 'profile_reading'])
 
@@ -13,7 +14,7 @@ function sectionPlainBody(section: DailySection): string {
     ...(section.quotes || []),
     section.note || '',
   ].filter(Boolean)
-  return parts.join('\n')
+  return stripParentFacingMarkdown(parts.join('\n'))
 }
 
 function SectionBody({ section }: { section: DailySection }) {
@@ -32,17 +33,17 @@ function SectionBody({ section }: { section: DailySection }) {
         <View className='section-body section-body-streaming'>
           {parsed.paragraphs?.map((p, i) => (
             <Text key={i} className='section-body-para'>
-              {p}
+              {stripParentFacingMarkdown(p)}
             </Text>
           ))}
           {parsed.items?.map((item) => (
             <Text key={item} className='bubble-list-item'>
-              · {item}
+              · {stripParentFacingMarkdown(item)}
             </Text>
           ))}
           {parsed.quotes?.map((q) => (
             <Text key={q} className='quote-line'>
-              「{q}」
+              「{stripParentFacingMarkdown(q)}」
             </Text>
           ))}
         </View>
@@ -50,7 +51,7 @@ function SectionBody({ section }: { section: DailySection }) {
     }
     return (
       <View className='section-body section-body-streaming'>
-        <Text className='section-body-para'>{section.streamingText}</Text>
+        <Text className='section-body-para'>{stripParentFacingMarkdown(section.streamingText)}</Text>
       </View>
     )
   }
@@ -59,20 +60,20 @@ function SectionBody({ section }: { section: DailySection }) {
     <View className='section-body'>
       {section.paragraphs?.map((p, i) => (
         <Text key={i} className='section-body-para'>
-          {p}
+          {stripParentFacingMarkdown(p)}
         </Text>
       ))}
       {section.items?.map((item) => (
         <Text key={item} className='bubble-list-item'>
-          · {item}
+          · {stripParentFacingMarkdown(item)}
         </Text>
       ))}
       {section.quotes?.map((q) => (
         <Text key={q} className='quote-line'>
-          「{q}」
+          「{stripParentFacingMarkdown(q)}」
         </Text>
       ))}
-      {section.note ? <Text className='section-footnote'>{section.note}</Text> : null}
+      {section.note ? <Text className='section-footnote'>{stripParentFacingMarkdown(section.note)}</Text> : null}
     </View>
   )
 }
@@ -81,11 +82,12 @@ type DailySectionViewProps = {
   section: DailySection
   hasError?: boolean
   onRetry?: () => void
+  animate?: boolean
 }
 
-export function DailySectionView({ section, hasError, onRetry }: DailySectionViewProps) {
+export function DailySectionView({ section, hasError, onRetry, animate }: DailySectionViewProps) {
   return (
-    <View className='bubble-section' data-section-id={section.id}>
+    <View className={`bubble-section${animate ? ' section-reveal' : ''}`} data-section-id={section.id}>
       {!AUTHORITY_SECTION_IDS.has(section.id) || section.streamingText ? (
         <Text className='section-label'>{section.label}</Text>
       ) : null}

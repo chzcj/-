@@ -1,0 +1,100 @@
+@import '../../styles/tokens.scss';
+@import '../../styles/motion.scss';
+
+.voice-hold-overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(48px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: rgba(20, 30, 22, 0.52);
+  animation: overlay-in 200ms ease both;
+}
+
+.voice-hold-transcript-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  box-sizing: border-box;
+}
+
+.voice-hold-transcript {
+  width: 100%;
+  max-height: 50vh;
+  text-align: center;
+  font-size: 22px;
+  line-height: 1.55;
+  font-weight: 600;
+  color: #fff;
+  word-break: break-word;
+}
+
+.voice-hold-transcript.placeholder {
+  font-size: 17px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.voice-hold-interim {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.voice-hold-panel {
+  width: 100%;
+  max-width: 320px;
+  border-radius: $radius-card;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 20px 16px 16px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.voice-hold-hint {
+  display: block;
+  font-size: $text-body;
+  font-weight: 700;
+  color: $ink;
+  margin-bottom: 12px;
+}
+
+.voice-hold-wave {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: $green;
+}
+
+.voice-hold-wave-bar {
+  width: 5px;
+  border-radius: 99px;
+  background: currentColor;
+  animation: wave 0.9s infinite ease-in-out;
+}
+
+.voice-hold-wave-bar:nth-child(1) { height: 8px; animation-delay: 0s; }
+.voice-hold-wave-bar:nth-child(2) { height: 16px; animation-delay: 0.08s; }
+.voice-hold-wave-bar:nth-child(3) { height: 26px; animation-delay: 0.16s; }
+.voice-hold-wave-bar:nth-child(4) { height: 34px; animation-delay: 0.24s; }
+.voice-hold-wave-bar:nth-child(5) { height: 26px; animation-delay: 0.32s; }
+.voice-hold-wave-bar:nth-child(6) { height: 16px; animation-delay: 0.4s; }
+.voice-hold-wave-bar:nth-child(7) { height: 8px; animation-delay: 0.48s; }
+
+.voice-hold-error {
+  display: block;
+  margin-top: 10px;
+  font-size: $text-small;
+  color: #e54d42;
+  line-height: 1.45;
+}

@@ -11,7 +11,7 @@ type Props = {
 export function AuthorityInsightCard({ title = '育见解读', body, children }: Props) {
   return (
     <View className='authority-insight-card profile-block'>
-      <Text className='authority-badge'>清北学霸 · 家庭智慧</Text>
+      <Text className='authority-badge'>育见解读</Text>
       {title ? <Text className='authority-insight-title'>{title}</Text> : null}
       {body
         .split('\n')

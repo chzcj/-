@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { View, Text, Textarea } from '@tarojs/components'
 import { useTencentAsrInput } from '@/hooks/useTencentAsrInput'
-import '@/styles/motion.scss'
 
 type VoiceOverlayProps = {
   open: boolean
@@ -55,9 +54,10 @@ export function VoiceOverlay({
   const toggleVoice = () => {
     if (loading || voice.asrUnavailable) return
     if (voice.isListening) {
-      const finalText = voice.stopListening()
-      if (finalText) setText(finalText)
-      voice.reset()
+      void voice.stopListening().then((finalText) => {
+        if (finalText) setText(finalText)
+        voice.reset()
+      })
       return
     }
     void voice.startListening()
@@ -84,7 +84,19 @@ export function VoiceOverlay({
           maxlength={500}
           onInput={(e) => setText(e.detail.value)}
         />
+        {voice.isListening ? (
+          <View className='wave-bars' aria-hidden>
+            <View className='wave-bar' />
+            <View className='wave-bar' />
+            <View className='wave-bar' />
+            <View className='wave-bar' />
+            <View className='wave-bar' />
+          </View>
+        ) : null}
         {voice.error ? <Text className='hint-text' style={{ color: '#e54d42' }}>{voice.error}</Text> : null}
+        {voice.asrUnavailable ? (
+          <Text className='hint-text'>语音暂不可用，可直接打字提交。</Text>
+        ) : null}
         <View className='end-actions' style={{ marginTop: '12px' }}>
           {!voice.asrUnavailable ? (
             <Text

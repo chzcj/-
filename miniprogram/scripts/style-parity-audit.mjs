@@ -34,16 +34,16 @@ const tokenChecks = [
   {
     id: 'T-btn-primary',
     severity: 'P1',
-    label: '主按钮高度 52px',
+    label: '主按钮高度 44px',
     file: 'src/styles/tokens.scss',
-    patterns: ['$btn-height-primary: 52px'],
+    patterns: ['$btn-height-primary: 44px'],
   },
   {
     id: 'T-input-dock',
     severity: 'P0',
     label: '输入区占位高度',
     file: 'src/styles/tokens.scss',
-    patterns: ['$input-dock-height: 72px', '$tab-bar-height'],
+    patterns: ['$input-dock-height: 58px', '$tab-bar-height'],
   },
   {
     id: 'T-bubble-ratio',

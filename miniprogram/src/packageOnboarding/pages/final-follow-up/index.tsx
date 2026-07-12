@@ -2,12 +2,14 @@ import { View, Text, Textarea } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
+import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { allModulesCompleted } from '@/services/entryStorage'
 import { loadBuildState, saveBuildState } from '@/services/buildState'
 import { apiRequest } from '@/services/api'
 
 export default function FinalFollowUpPage() {
+  useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
   const [text, setText] = useState(loadBuildState().finalFollowUpText || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')

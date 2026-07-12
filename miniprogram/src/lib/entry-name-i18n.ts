@@ -34,3 +34,18 @@ export function humanizeEntryRef(text: string): string {
   }
   return out
 }
+
+/** 机制名/标签人话化：优先整体映射，否则按 entry ref 规则处理 */
+export function humanizeMechanismLabel(raw: string): string {
+  const trimmed = (raw || '').trim()
+  if (!trimmed) return ''
+  if (ALL_KEY_CN[trimmed]) return ALL_KEY_CN[trimmed]
+  if (trimmed.includes('+')) {
+    return trimmed
+      .split('+')
+      .map((part) => humanizeMechanismLabel(part.trim()) || part.trim())
+      .filter(Boolean)
+      .join(' · ')
+  }
+  return humanizeEntryRef(trimmed)
+}

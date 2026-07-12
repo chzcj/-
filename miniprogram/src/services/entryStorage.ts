@@ -22,6 +22,60 @@ export type StageSummaryData = {
 }
 
 const GATE_KEY = 'yujian_entry_gate'
+const SUPPLEMENT_FLOW_KEY = 'yujian_supplement_flow'
+const PROFILE_REGEN_KEY = 'yujian_profile_regen'
+
+export function setPendingProfileRegen(active: boolean) {
+  try {
+    if (active) Taro.setStorageSync(PROFILE_REGEN_KEY, '1')
+    else Taro.removeStorageSync(PROFILE_REGEN_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function isPendingProfileRegen(): boolean {
+  try {
+    return Taro.getStorageSync(PROFILE_REGEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function setSupplementFlow(active: boolean) {
+  try {
+    if (active) Taro.setStorageSync(SUPPLEMENT_FLOW_KEY, '1')
+    else Taro.removeStorageSync(SUPPLEMENT_FLOW_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function isSupplementFlow(): boolean {
+  try {
+    return Taro.getStorageSync(SUPPLEMENT_FLOW_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** 增量补充：追加新采集段，不覆盖已有 rawTexts */
+export function appendSupplementText(entryType: BuildEntryType, text: string) {
+  const state = loadBuildState()
+  const m = ensureModule(state, entryType)
+  const chunk = text.trim()
+  if (!chunk) return
+  m.rawTexts.push(chunk)
+  invalidateStageSummary(m)
+  saveBuildState(state)
+}
+
+export function getExistingEntryPreview(entryType: BuildEntryType): string {
+  const state = loadBuildState()
+  const m = state.entryMap[entryType]
+  if (!m) return ''
+  return [...m.rawTexts, ...m.followUps].join('\n\n').trim()
+}
 
 function invalidateStageSummary(m: BuildModuleState) {
   m.stageSummary = ''
@@ -145,8 +199,10 @@ export function allModulesCompleted(state?: BuildState): boolean {
   })
 }
 
-/** 对齐 Web canAccessProfileGenerating：四模块已确认 + 已提交收尾追问 */
+/** 首次建模或增量补充后允许进入 generating */
 export function canAccessProfileGenerating(state?: BuildState): boolean {
+  if (isPendingProfileRegen()) return true
+  if (isSupplementFlow()) return true
   if (!allModulesCompleted(state)) return false
   const finalText = (state || loadBuildState()).finalFollowUpText?.trim() || ''
   return finalText.length >= 20

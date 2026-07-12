@@ -1,0 +1,43 @@
+---
+description: 社区小程序 Skill/MCP 与育见 Visual Parity 的优先级；改 miniprogram 时生效
+globs:
+  - miniprogram/**
+  - .agents/skills/wechat-devtools/**
+  - .agents/skills/miniprogram-dev/**
+---
+
+# 社区 Skill / MCP 使用边界（育见）
+
+项目已接入：
+
+| 能力 | 路径 | 用途 |
+|------|------|------|
+| wechat-devtools Skill | `.agents/skills/wechat-devtools/` | 开发者工具 SOP：编译、预览、截图、巡检 |
+| wechat-devtools MCP | 根目录 `.mcp.json` | CLI 自动化（需开启服务端口） |
+| miniprogram-dev Skill | `.agents/skills/miniprogram-dev/` | **平台知识库**：rpx、权限、分包、提审 |
+
+## 优先级（冲突时）
+
+1. **最高**：`miniprogram/docs/PORTING.md` + `.cursor/rules/miniprogram-porting.mdc` + `DESIGN.md`
+2. **验收**：`PORTING-SELF-CHECK.md` → 可用 wechat-devtools 截图/巡检辅助，结果写入 `visual-diff.md`
+3. **平台知识**：`miniprogram-dev`（仅查 API/审核/陷阱）
+4. **禁止**：让 `miniprogram-dev` 主导 UI、信息架构、或「从零新建一版小程序」
+
+## 明确禁止
+
+- 按微信默认绿按钮 / 朴素列表 / 简化 Tab 重设计
+- 引入微信云开发（`wx.cloud`）替代现有 `https://yujian.yihe.site` BFF
+- 跳过 Web 源码对照，直接按社区模板生成页面
+- 未跑 P0 自检就声称 parity-verified
+
+## 推荐工作流
+
+```
+改 miniprogram 某页
+  → 先读 Web 同路由 + PORTING
+  → 写代码（Token / map / diff）
+  → wechat-devtools：compile → navigate → screenshot
+  → 对照 yujian.yihe.site → 更新 visual-diff / parity log
+```
+
+`miniprogram-dev` 仅在问到：合法域名、scope.record、分包、提审材料、rpx 换算、平台 API 差异时使用。

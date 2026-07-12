@@ -1,14 +1,32 @@
-import { View, Text, Textarea, Input } from '@tarojs/components'
+import { View, Text, Textarea, Input, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui'
 import { loadChildBasicInfo, saveChildBasicInfo } from '@/services/childStorage'
+import { loadParentInfo, saveParentInfo } from '@/services/parentStorage'
+import { pushAccountSyncToServer } from '@/services/accountSync'
 import { apiRequest } from '@/services/api'
 import { logout } from '@/services/auth'
 import { clearAllChildOSData } from '@/services/localStorageService'
 import './ProfileEditModals.scss'
 
 export type EditModalKind = 'profile' | 'child' | 'password' | 'delete' | null
+
+const GRADES = [
+  '幼儿园',
+  '一年级',
+  '二年级',
+  '三年级',
+  '四年级',
+  '五年级',
+  '六年级',
+  '初一',
+  '初二',
+  '初三',
+  '高一',
+  '高二',
+  '高三',
+] as const
 
 type ProfileEditModalsProps = {
   kind: EditModalKind
@@ -35,6 +53,9 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
       setChildName(basic.childName)
       setGrade(basic.grade)
     }
+    if (kind === 'profile') {
+      setNickname(loadParentInfo().nickname)
+    }
     if (kind === 'password' || kind === 'delete') {
       setOldPwd('')
       setNewPwd('')
@@ -46,7 +67,7 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
   if (!kind) return null
 
   const titles: Record<Exclude<EditModalKind, null>, string> = {
-    profile: '账号设置',
+    profile: '编辑个人资料',
     child: '编辑孩子信息',
     password: '修改密码',
     delete: '注销账号',
@@ -54,27 +75,23 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
 
   const saveChild = async () => {
     if (!childName.trim()) return setToast('请填写孩子称呼')
+    if (!grade.trim()) return setToast('请选择年级')
     setSubmitting(true)
     await saveChildBasicInfo({ childName: childName.trim(), grade: grade.trim() })
+    await pushAccountSyncToServer()
     setSubmitting(false)
     Taro.showToast({ title: '已保存', icon: 'success' })
     onClose()
   }
 
   const saveProfile = async () => {
-    if (!nickname.trim()) return setToast('请填写昵称')
+    if (!nickname.trim()) return setToast('请填写称呼')
     setSubmitting(true)
-    const res = await apiRequest('/api/account/profile', {
-      method: 'PUT',
-      data: { nickname: nickname.trim() },
-    })
+    saveParentInfo({ nickname: nickname.trim() })
+    await pushAccountSyncToServer()
     setSubmitting(false)
-    if (res.ok) {
-      Taro.showToast({ title: '已更新', icon: 'success' })
-      onClose()
-    } else {
-      setToast(res.error.message)
-    }
+    Taro.showToast({ title: '已更新', icon: 'success' })
+    onClose()
   }
 
   const submitPassword = async () => {
@@ -107,12 +124,7 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
     void Taro.reLaunch({ url: '/pages/login/index' })
   }
 
-  const handleLogout = () => {
-    void logout().then(() => {
-      onClose()
-      void Taro.reLaunch({ url: '/pages/login/index' })
-    })
-  }
+  const gradeIndex = Math.max(0, GRADES.findIndex((g) => g === grade))
 
   return (
     <Modal open title={titles[kind]} onClose={onClose}>
@@ -122,17 +134,25 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
             className='modal-field'
             value={childName}
             placeholder='孩子昵称'
+            maxlength={32}
             onInput={(e) => setChildName(e.detail.value)}
           />
-          <Textarea
-            className='modal-field'
-            value={grade}
-            placeholder='年级'
-            onInput={(e) => setGrade(e.detail.value)}
-          />
-          <Text className='pill primary' onClick={() => void saveChild()}>
-            保存
-          </Text>
+          <Picker
+            mode='selector'
+            range={[...GRADES]}
+            value={gradeIndex >= 0 ? gradeIndex : 0}
+            onChange={(e) => setGrade(GRADES[Number(e.detail.value)] || '')}
+          >
+            <View className='modal-field picker-field'>
+              <Text>{grade || '请选择年级'}</Text>
+            </View>
+          </Picker>
+          <View
+            className={`pill primary block${submitting ? ' disabled' : ''}`}
+            onClick={() => !submitting && void saveChild()}
+          >
+            {submitting ? '保存中…' : '保存'}
+          </View>
         </View>
       ) : null}
 
@@ -141,15 +161,16 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
           <Textarea
             className='modal-field'
             value={nickname}
-            placeholder='你的昵称'
+            placeholder='你的称呼（如：妈妈）'
+            maxlength={24}
             onInput={(e) => setNickname(e.detail.value)}
           />
-          <Text className='pill primary' onClick={() => void saveProfile()}>
-            保存昵称
-          </Text>
-          <Text className='pill' style={{ marginTop: '10px' }} onClick={handleLogout}>
-            退出登录
-          </Text>
+          <View
+            className={`pill primary block${submitting ? ' disabled' : ''}`}
+            onClick={() => !submitting && void saveProfile()}
+          >
+            {submitting ? '保存中…' : '保存'}
+          </View>
         </View>
       ) : null}
 
@@ -176,9 +197,12 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
             placeholder='再次输入新密码'
             onInput={(e) => setConfirmPwd(e.detail.value)}
           />
-          <Text className='pill primary' onClick={() => void submitPassword()}>
+          <View
+            className={`pill primary block${submitting ? ' disabled' : ''}`}
+            onClick={() => !submitting && void submitPassword()}
+          >
             {submitting ? '提交中…' : '保存'}
-          </Text>
+          </View>
         </View>
       ) : null}
 
@@ -193,9 +217,12 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
             placeholder='确认注销'
             onInput={(e) => setDeleteConfirm(e.detail.value)}
           />
-          <Text className='pill danger' onClick={() => void submitDelete()}>
+          <View
+            className={`pill danger block${submitting ? ' disabled' : ''}`}
+            onClick={() => !submitting && void submitDelete()}
+          >
             {submitting ? '提交中…' : '确认注销'}
-          </Text>
+          </View>
         </View>
       ) : null}
 

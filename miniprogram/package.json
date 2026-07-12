@@ -11,7 +11,10 @@
     "build:weapp": "taro build --type weapp",
     "dev:weapp": "taro build --type weapp --watch",
     "typecheck": "tsc --noEmit",
-    "style-parity-audit": "node scripts/style-parity-audit.mjs"
+    "style-parity-audit": "node scripts/style-parity-audit.mjs",
+    "health-check": "node scripts/health-check.mjs",
+    "audit-share": "node scripts/audit-share.mjs",
+    "release-check": "npm run typecheck && npm run build:weapp && npm run audit-share"
   },
   "browserslist": ["last 3 versions", "Android >= 4.1", "ios >= 8"],
   "dependencies": {
