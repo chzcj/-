@@ -42,15 +42,18 @@ BFF 仅签发已签名 `wsUrl`（`GET /api/asr/iflytek/url`），**不要把 API
 
 ### 服务端环境变量（网页 API 部署侧）
 
-在服务器 `.env` / `.env.local` 配置（与小程序 AppSecret 不同）：
+在服务器 `.env.local` 配置（与小程序 AppSecret 不同）：
 
 ```
-TENCENT_APPID=<语音识别应用 AppId>
-TENCENT_SECRET_ID=<CAM 密钥 ID>
-TENCENT_SECRET_KEY=<CAM 密钥 Key>
+IFLYTEK_APP_ID=…
+IFLYTEK_API_KEY=…
+IFLYTEK_API_SECRET=…
+TENCENT_APPID=…          # 亲子文件转写
+TENCENT_SECRET_ID=…
+TENCENT_SECRET_KEY=…
 ```
 
-未配置时 `/api/asr/token` 返回 `ASR_UNCONFIGURED`，客户端会提示「语音暂时不可用，可以先打字输入」。
+未配置讯飞时 `/api/asr/iflytek/url` 返回 `ASR_UNCONFIGURED`；未配置腾讯时亲子文件转写不可用。
 
 **真机验收**：见 [docs/M9-DEVICE-QA.md](./docs/M9-DEVICE-QA.md)。
 
