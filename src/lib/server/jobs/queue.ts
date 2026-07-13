@@ -305,11 +305,14 @@ async function claimAndRunOne(pool: pg.Pool): Promise<boolean> {
 
   const idStr = String(job.id)
   ;(g.__childosJobInflight ||= new Set()).add(idStr)
-  // 心跳：长任务每 30s 推 updated_at，避免被僵尸回收误判。失败记日志（此前静默吞掉，连续失败会被误判僵尸却无从察觉）。
+  // 心跳：执行期间每 5s 同时推「job updated_at」（防僵尸误判）与「worker 心跳」——
+  // 此前 worker 心跳只在 tick 间隙写，长 LLM job（30-60s+）执行中停更，
+  // readiness 会误报 workerAlive=false（阈值 ~9s）。失败记日志。
   const hb = setInterval(() => {
     void pool.query(`UPDATE job_queue SET updated_at=NOW() WHERE id=$1 AND status='running'`, [job!.id])
       .catch(err => console.warn(`[jobs] 心跳更新失败 id=${job!.id}:`, err instanceof Error ? err.message : err))
-  }, 30_000)
+    void writeWorkerHeartbeat(pool)
+  }, 5_000)
   hb.unref?.()
 
   try {

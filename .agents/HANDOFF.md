@@ -25,9 +25,235 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
-- 本地 `miniprogram build:weapp` + typecheck 通过（2026-07-12 假UI修复）
-- BFF：`npm run deploy` 已执行（ASR 密钥同步 + 预演画像加深）；小程序需开发者工具重新编译 + 预览扫码
-- 线上 readiness：`ready:false`（failed jobs → jobHealthy=false；库/worker 正常）
+- 2026-07-13 16:45 | Cursor | 审核驳回修复：隐私默认不勾选；登录不取手机号/头像/昵称；语音已锁定
+- 小程序 `build:weapp` 后重新上传提审；公众平台隐私指引勿勾选手机号/头像/昵称
+
+---
+
+## 2026-07-13 16:45 | Cursor | 审核合规登录 + 语音锁定
+
+**做了什么**
+- 新增 `.cursor/rules/voice-input-locked.mdc`：语音已验收，改动须先问用户
+- 登录页：去掉「登录即同意」；隐私框默认未勾选；未勾选不可登录
+- 文案改为「微信登录」+ 明确不获取手机号/头像/昵称（仍仅 `wx.login`）
+- 更新 `REVIEW-SUBMISSION.md` 审核备注与驳回应对
+
+**验证**
+- typecheck + build:weapp（进行中/见下）
+
+**下一步**
+- 开发者工具预览登录页勾选流程；公众平台核对隐私指引收集项；重新提审
+
+**风险/冲突**
+- 勿改语音相关文件（见 voice-input-locked 规则）
+
+---
+
+## 2026-07-13 01:50 | Cursor | 讯飞解析 + end sessionId + PCM 节流
+
+**做了什么**
+- `iflytekRtasrParse`：认 `data.action=started/end/error`（实测包形）
+- end 只用引擎 `sessionId`，禁用 BFF uuid 冒充
+- PCM 统一入队 + 40ms 冲刷，避免瞬时倾倒
+- README 拆清实时讯飞 vs 亲子腾讯文件 ASR
+
+**验证**
+- 线上 iflytek/url + wss OPEN + started 包形 ✅；parser 单测 ✅；typecheck/build:weapp
+
+**下一步**
+- 真机：亲子录音；交流按住出字（确认公众平台讯飞 socket 域名）
+
+---
+
+## 2026-07-13 01:45 | Cursor | 亲子录音误杀 + 讯飞 Key
+
+**做了什么**
+- `recorderState` claim 所有权：失权后 realtime cleanup 绝不 `stop()` 全局录音器
+- `useTapFileRecorder`：session/started 守卫；开录前接管残留录音
+- `.env.local` `IFLYTEK_API_KEY` 31→32 位（末尾缺 1 导致 35010）
+
+**为什么**
+- 预演页 `navigateTo` 后 HiFiInputZone 仍存活，握手超时 cleanup 掐死亲子 mp3 录音 →「录音失败」
+- 讯飞 Key 截断 → 全入口「语音连接超时」
+
+**验证**
+- miniprogram typecheck + build:weapp ✅；deploy 同步 env
+
+**下一步**
+- 真机：先测亲子录音（不测实时也可）；再测交流按住（需讯飞域名）
+
+---
+
+## 2026-07-13 01:33 | Cursor | 讯飞实时转写方案 A 直连
+
+**做了什么**
+- BFF：`GET /api/asr/iflytek/url`（HMAC 签名 wss）
+- 小程序：RecorderManager + 直连讯飞；临时/最终分句合并
+- 移除 QCloudAIVoice 插件；亲子对话仍腾讯文件 ASR
+
+**验证**
+- typecheck + build:weapp ✅；线上 iflytek/url ✅
+
+**下一步**
+- 公众平台加讯飞 socket 域名；真机按住说话验收
+
+---
+
+## 2026-07-13 01:25 | Cursor | 官方 ASR 插件替代自拼 WebSocket
+
+**做了什么**
+- 新增 `GET /api/asr/credentials`（STS 临时密钥，仅 asr:* 权限）
+- `useTencentAsrInput` 改接 `QCloudAIVoice.speechRecognizerManager()`：插件内录音+识别
+- 临时结果覆盖、句末固化（OnRecognitionResultChange / OnSentenceEnd）
+- `app.config.ts` 声明插件 2.3.12；亲子对话 file ASR 未动
+
+**为什么**
+- 自拼 connectSocket+RecorderManager 在真机反复握手超时/录音误杀；官方插件由腾讯维护 wss 与分片
+
+**验证**
+- 根目录 + miniprogram typecheck ✅；build:weapp ✅；deploy ✅；credentials API 线上可签发
+
+**下一步**
+- 真机按住 ≥2s 测交流/预演/四模块；若报「未加载插件」→ 公众平台添加腾讯云智能语音
+
+**风险/冲突**
+- 主账号 CAM 须允许 GetFederationToken；勿把密钥写入 Git
+
+---
+
+## 2026-07-13 01:06 | Cursor | 录音误杀回归 + ASR 代理
+
+**做了什么**
+- 按 Claude「爽了」最小修法恢复 `recordingStartedRef`：空闲绝不 `stop()`
+- `recorderState` 全局 onStop/onError 不再无条件清 `active`；迟到回调按 session gen 丢弃
+- 小程序实时 ASR 改连 `wss://yujian.yihe.site/api/asr/stream`（与 Web 一致，去掉直连腾讯 token）
+- 短按误触静默；概括演进 N=2 写入 parentFacingStyle/Copy；PRODUCT 对内改称四模块
+- 生产 deploy 完成
+
+**为什么**
+- 「约1s自动退出 / 录音失败」与 idle-stop 幽灵 onError 同类；`recorderState.active` 守卫在迟到回调下会误杀新一轮
+
+**验证**
+- miniprogram typecheck + build:weapp ✅
+- 根目录 typecheck ✅；deploy 后 readiness ready:true
+
+**下一步**
+- 用户真机：重新编译预览 → 连按 6–8 次再按住 ≥2s；交流/预演/四模块同测
+- 语音通了再 `[cursor]` 小提交（本轮按约定未 commit）
+
+**风险/冲突**
+- 勿再把域名/真机调试甩给用户；勿再叠一层录音状态机
+- 勿把密钥写入 Git/HANDOFF
+
+---
+
+## 2026-07-12 17:35 | Cursor | 麦克风无弹窗 → Claude 迁移说明
+
+**做了什么**
+- 用户确认：其它修复 OK；语音仍无字且**完全没有授权弹窗**
+- 新增交付文档：`docs/handoff/2026-07-12-mic-permission-popup-claude.md`
+- 核心怀疑：`touchStart` 里 `await getSetting` 后丢失用户手势；以及 `!holdingRef` 提前 return 吞掉 interactive 申请
+
+**为什么**
+- 交给 Claude 继续；Cursor 侧权限改法未解决弹窗
+
+**验证**
+- 仅文档；未再改业务代码
+
+**下一步**
+- Claude 按该文档 Step A→B 做手势安全授权入口（独立 Button）并打 fail.errMsg
+
+**风险/冲突**
+- 勿与交流回底/预演跟滚/乱码已修好路径冲突
+
+---
+
+## 2026-07-12 17:25 | Cursor | 修复麦克风权限未真正弹出
+
+**做了什么**
+- 去掉对 `Taro.authorize` 的 8s `Promise.race`（会造 `(in promise) SystemError timeout`，弹窗还在就被判失败）
+- 隐私 API 优先走全局 `wx`；超时不再假装「无需授权」
+- 按住说话：若尚未授权，先交互式申请麦克风（showModal → authorize），成功后提示「再次按住」；不在按住过程中弹系统窗
+- 亲子录音 / BuildRecordBox 同步
+
+**为什么**
+- 用户反馈语音仍无字，怀疑没申请麦克风；根因是授权 race + 按住中弹窗被松手打断
+
+**验证**
+- typecheck + build:weapp 通过
+
+**下一步**
+- 真机：第一次按住应出现「允许使用麦克风」→ 系统授权 → 再按住 ≥2s 应有字
+
+**风险/冲突**
+- 仅 miniprogram；未 commit
+
+---
+
+## 2026-07-12 17:10 | Cursor | ASR 早开麦 / 亲子录音 / 乱码 / 预演跟滚
+
+**做了什么**
+- `useTencentAsrInput`：恢复权限后立刻开麦 + socket 并行；onOpen 后 50ms 节流 flush；松手短等握手 1.5s；无字时明确报错
+- 隐私/录音权限：`getPrivacySetting` / `requirePrivacyAuthorize` / `authorize` 8s 超时兜底
+- `useTapFileRecorder`：`!ok` → `!perm.ok`；亲子对话主按钮 `Text` → `View` 加大热区
+- 预演 active：去掉 `useChatAutoScroll` 自动跟滚（交流 daily 保持）
+- `dailyStream` / `rehearsalAnalyze`：`TextDecoder({ stream: true })` 防 UTF-8 截断乱码
+
+**为什么**
+- 上次「握手后再开麦」导致松手时录音未开始 → 空 transcript；亲子按钮权限判断与 Text 点击弱；流式中文乱码；预演不需要自动下滚
+
+**验证**
+- `miniprogram` typecheck pass；`build:weapp` 成功（已知 CSS order warning）
+- 未改 BFF，未 deploy
+
+**下一步**
+- 真机重新预览验收：按住 ≥2s 有字或明确错误；亲子「开始录音」可点；交流仍回底、预演不跟滚；长中文无乱码
+
+**风险/冲突**
+- 仅改 `miniprogram/`；勿动本批 ASR/流式文件除非真机仍失败
+- 未 commit / 未 push（等用户指示）
+
+---
+
+## 2026-07-12 16:55 | Cursor | BFF deploy（预演 transcript 等）
+
+**做了什么**
+- 用本机 shell 环境变量执行 `npm run deploy`，上线 rehearsal transcript / 厚 pack 等 BFF 改动
+
+**验证**
+- deploy exit 0；PM2 reload 成功；API 抽样 ok
+
+**下一步**
+- 小程序重新编译预览，验收语音松手复位+出字、回底、键盘、预演多轮
+
+**风险/冲突**
+- 勿把 SSH/AUTH 写入 Git 或 HANDOFF 正文
+
+---
+
+## 2026-07-12 16:50 | Cursor | 语音H0/H1/H2 + 回底/键盘/预演transcript
+
+**做了什么**
+- 语音 H0：按住不换子树（波浪 CSS 显隐），松手立刻清 fingerDown，避免丢 touchEnd / 二次点击才复位
+- 语音 H1：松手强制 stopListening；hold 视觉不再绑 isConnecting；删「连接中」；错误始终可见；BuildRecordBox 对齐
+- 语音 H2：先 token+socket 握手成功再开麦；握手/token 短超时；松手 bump sessionGen 打断异步开麦
+- 交流回底：daily 明确视口高度；useChatAutoScroll 只用 scrollIntoView
+- 预演自定义场景：entry ScrollView + focus scroll-into-view；关 adjustPosition 竞态
+- 预演深度：多轮 rehearsalTranscript + 证据字段；BFF 吃 transcript；孩子回复放宽 40–120 字
+
+**为什么**
+- 真因是状态机/触摸/推流，不是域名或未预览（用户已证伪）
+
+**验证**
+- miniprogram + 根 typecheck ✅；build:weapp ✅；根 build ✅
+- deploy：本 shell 无 SSH_HOST，未上线 BFF（预演深度需 deploy 后真机才吃到）
+
+**下一步**
+- 导出 SSH_* 后 `npm run deploy`
+- 小程序重新编译预览：验第一次松手复位 + 出字/明确错误；回底；中部键盘；多轮预演
+
+**风险/冲突**
+- 勿把密钥写入 Git/HANDOFF；纯小程序语音修复不依赖 deploy，预演 transcript 深度依赖 BFF deploy
 
 ---
 

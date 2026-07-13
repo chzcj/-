@@ -1,5 +1,5 @@
 import { fail, ok } from '@/lib/api-response'
-import { callFastJson, callFastTextStream, isFastAIEnabled } from '@/lib/server/ark-agents'
+import { callFastJson, callFastTextStream, isFastAIEnabled, frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import { generateRehearsal } from '@/lib/server/store'
 import { rehearsalAnalyzeSchema } from '@/lib/schemas'
 import { resolveTenant } from '@/lib/server/memory/tenant'
@@ -8,6 +8,7 @@ import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval
 import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import { getChildBasicInfo } from '@/lib/server/memory/database-manager'
 import { createId } from '@/lib/storage/storageIds'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { recordFeatureTurn } from '@/lib/server/memory/turn-event'
@@ -37,13 +38,14 @@ type RehearsalProfileContext = {
   familyInteractionCycles?: Array<{ patternName: string; description?: string; evidence?: string[] }>
   parentNarrativePattern?: string
   pendingHypotheses?: string[]
+  evidenceSnippets?: string[]
 }
 
 export async function POST(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
 
   const body = await request.json().catch(() => ({}))
-  const { parentText, mode, profileContext, rehearsalContext, fromSpecialFeature } = body
+  const { parentText, mode, profileContext, rehearsalContext, fromSpecialFeature, rehearsalTranscript } = body
 
   // 缺原话不预演（交付文档 5.2.3）：先要原话，给引导。
   // 标准沟通预演入口（fromSpecialFeature）走 5.3 切换：空原话返回 special_collection 引导（非报错）。
@@ -78,40 +80,68 @@ export async function POST(request: Request) {
   if (parentText && mode !== 'conflict' && (fromSpecialFeature || profileContext || hasRehearsalCtx)) {
     try {
       const ctx = (profileContext || {}) as RehearsalProfileContext
-      const [packet, digestLoaded] = await Promise.all([
-        // 预演需要更完整机制包，不用过激 fast 裁剪
-        buildDailyDialogueRetrievalPacket(parentText, tenant, { fast: false }).catch(() => undefined),
+      const [packet, digestLoaded, childBasic] = await Promise.all([
+        // 首轮深检索建立画像感知；第 2 轮起对话上下文已在 rehearsalTranscript 中，
+        // 用 fast 跳过 embedding 语义检索（实测每轮省 2–5s 首字延迟）
+        buildDailyDialogueRetrievalPacket(parentText, tenant, { fast: parentRoundCount >= 1 }).catch(() => undefined),
         loadDeepModelDigest(tenant).catch(() => null),
+        getChildBasicInfo(tenant).catch(() => null),
       ])
-      let digest = digestLoaded
+      const digest = digestLoaded
       const digestPack = pickDeepModelDigestPack(digest)
       const digestUsable = Boolean(digestPack.mechanismNarrative?.trim())
       if (!digestUsable) {
-        // 仅当缓存完全不可用时同步 build，避免每轮预演阻塞首字
-        digest = await buildDeepModelDigest(tenant).catch(() => digest)
+        // 冷启动不阻塞首字（实测同步 build 要 +4s）：后台补建供下一轮用，本轮以检索包兜底
+        void buildDeepModelDigest(tenant).catch(() => undefined)
       }
       const deepModelDigest = pickDeepModelDigestPack(digest)
       const pastSimilarTalks = (packet?.recentRelatedEvents || []).slice(0, 3)
       const memHypotheses = ctx.pendingHypotheses?.length ? ctx.pendingHypotheses : (packet?.pendingHypotheses || [])
 
+      const transcriptLines = Array.isArray(rehearsalTranscript)
+        ? (rehearsalTranscript as Array<{ role?: string; text?: string }>)
+            .filter((t) => t?.text?.trim())
+            .slice(-12)
+            .map((t) => `${t.role === 'child' ? '孩子' : '家长'}：${String(t.text).slice(0, 200)}`)
+        : []
+
+      const entryFactList = ((packet as { entryFacts?: string[] } | undefined)?.entryFacts || []).slice(0, 6)
+      const childBasicLine = [
+        childBasic?.age ? `${childBasic.age}岁` : '',
+        childBasic?.grade || '',
+      ].filter(Boolean).join('，')
       const profileSummary = [
+        // 孩子年龄/年级：决定预演孩子的用词、句长与发展阶段口吻
+        childBasicLine ? `孩子基础信息：${childBasicLine}` : '',
         ctx.primaryConditionalProfile
-          ? `画像：${ctx.primaryConditionalProfile.slice(0, 360)}`
-          : (packet?.relevantChildStructureModels?.length ? `画像：${packet.relevantChildStructureModels.join('；').slice(0, 360)}` : ''),
+          ? `画像：${ctx.primaryConditionalProfile.slice(0, 500)}`
+          : (packet?.relevantChildStructureModels?.length ? `画像：${packet.relevantChildStructureModels.join('；').slice(0, 500)}` : ''),
+        // 拟真优先：孩子真实语言样本与具体家庭事实排在机制之前，让「孩子」先像真人再谈机制
+        deepModelDigest.childQuotes.length
+          ? `孩子原话（复用其用词与句式）：${deepModelDigest.childQuotes.join('；')}`
+          : '',
+        deepModelDigest.anchoredFacts.length
+          ? `锚定事实（台词可自然提及）：${deepModelDigest.anchoredFacts.slice(0, 6).join('；')}`
+          : '',
+        entryFactList.length ? `采集到的具体家庭事实：${entryFactList.join('；')}` : '',
+        deepModelDigest.interactionLoops.length
+          ? `家庭互动循环（家长扳机→孩子接收→孩子反应，决定孩子怎么接话）：${deepModelDigest.interactionLoops.join('；')}`
+          : (ctx.familyInteractionCycles?.length
+              ? `家庭循环：${ctx.familyInteractionCycles.slice(0, 4).map(c => c.patternName).join('；')}`
+              : (packet?.matchedMechanisms?.length ? `家庭机制：${packet.matchedMechanisms.slice(0, 4).join('；')}` : '')),
         deepModelDigest.mechanismNarrative
           ? `机制叙事：${deepModelDigest.mechanismNarrative.slice(0, 420)}`
           : '',
         ctx.dominantProtectiveStrategies?.length ? `保护策略：${ctx.dominantProtectiveStrategies.slice(0, 4).join('；')}` : '',
-        ctx.familyInteractionCycles?.length
-          ? `家庭循环：${ctx.familyInteractionCycles.slice(0, 4).map(c => c.patternName).join('；')}`
-          : (packet?.matchedMechanisms?.length ? `家庭机制：${packet.matchedMechanisms.slice(0, 4).join('；')}` : ''),
+        ctx.evidenceSnippets?.length ? `证据片段：${ctx.evidenceSnippets.slice(0, 5).join('；')}` : '',
         memHypotheses.length ? `待验证：${memHypotheses.slice(0, 3).join('；')}` : '',
         rc.sceneTitle ? `当前预演场景：${rc.sceneTitle}` : '',
         rc.sceneSummary ? `场景摘要：${rc.sceneSummary.slice(0, 200)}` : '',
         rc.parentGoal ? `家长这次真正想达成：${rc.parentGoal}` : '',
         rc.parentWorry ? `家长最担心孩子的反应：${rc.parentWorry}` : '',
         rc.whatHappenedBeforeTalk ? `沟通前置背景：${rc.whatHappenedBeforeTalk}` : '',
-        pastSimilarTalks.length ? `过往类似沟通：${pastSimilarTalks.join('；')}` : ''
+        pastSimilarTalks.length ? `过往类似沟通：${pastSimilarTalks.join('；')}` : '',
+        transcriptLines.length ? `本场已发生对话：\n${transcriptLines.join('\n')}` : '',
       ].filter(Boolean).join('\n')
 
       if (profileSummary.trim() || fromSpecialFeature) {
@@ -121,11 +151,17 @@ export async function POST(request: Request) {
         const encoder = new TextEncoder()
         const system = `你是 ChildOS 的沟通预演 Agent。你只做画像感知的亲子沟通预演。
 
+字段阅读指引（payload 中逐项读取，优先具体事实、其次机制）：
+- profileContext：画像综合。其中「孩子原话」是这个孩子的真实语言样本——模仿其用词、句式、语气与句长；「锚定事实/采集到的具体家庭事实」是已确认的真实事件——孩子台词可以自然提及（如具体的作业、考试、约定）；「家庭互动循环」给出家长扳机→孩子接收→孩子反应的完整链——它决定孩子会怎么接这句话。
+- deepModelDigest：childQuotes（孩子原话）、anchoredFacts（锚定事实）、interactionLoops（互动循环）、parentInteractionStyle（家长惯常风格）——与 profileContext 互补，缺一边就读另一边。
+- retrievalPack：entryFacts（四模块采集的具体事实）、childQuotes、matchedMechanisms。
+
 规则：
+- 【先像孩子，再谈机制】孩子回复必须先像「这个孩子」真实说话：优先复用孩子原话样本中的用词与句式，按其句长说话；能提及锚定事实里最近真实发生的事时优先提及。机制只作为台词背后的动机自然流露，禁止让孩子说出分析式、说教式、总结式的话。没有孩子原话样本时，按画像中的年龄段与防御风格推断口吻，禁止用通用小孩模板。
+- 若提供了「本场已发生对话」，必须延续该对话上下文：孩子回复要接住前文，可引用家长上一轮原话中的关键词，禁止当作互不相关的单句分析。
 - 家长发来的就是一段完整自述：他这次真正想达成什么、最担心孩子怎么反应、谈话前发生了什么，可能都内联在这段话里——请主动从中识别并使用，不要因为没有单独字段就忽略。
 - 必须结合家长这次真正想达成的目标，以及过往类似沟通的结果——避免重复已经失败过的说法。
-- 必须使用画像/机制叙事中的具体机制、保护策略或家庭循环；孩子回话要像「这个孩子」在说，而不是通用小孩模板。
-- possibleChildReaction.immediateReaction：用孩子口吻，短句、带情绪与防御；至少呼应一条画像机制（如催促→控制感、检查→被评价）。
+- possibleChildReaction.immediateReaction：用孩子口吻，带情绪与防御；用词句式贴近孩子原话样本；机制（如催促→控制感、检查→被评价）只体现在情绪与反应方式上，不得说出机制名词。
 - childLikelyHearing：对照画像里的具体模式，写孩子内心如何理解家长这句话（分析，不是孩子原话）；禁止空泛「觉得被批评」。
 - 不要泛泛说"多鼓励少批评"。
 - 不要说家长控制欲强、孩子就是懒。
@@ -154,18 +190,23 @@ export async function POST(request: Request) {
                   {
                     task: buildRehearsalStreamTask(),
                     parentMessage: parentText,
-                    profileContext: profileSummary.slice(0, 1500),
+                    profileContext: profileSummary.slice(0, 3000),
                     deepModelDigest,
                     retrievalPack: packet ? {
                       childStructureModels: packet.relevantChildStructureModels || [],
                       matchedMechanisms: packet.matchedMechanisms || [],
                       pendingHypotheses: packet.pendingHypotheses || [],
                       familyPatterns: packet.familyInteractionPatterns || [],
+                      entryFacts: (packet as { entryFacts?: string[] }).entryFacts || [],
+                      childQuotes: (packet as { childQuotes?: string[] }).childQuotes || [],
                     } : undefined,
+                    rehearsalTranscript: transcriptLines,
                     parentRoundCount,
                   },
                   (delta) => tracker.feed(delta),
-                  { maxTokens: 1200 }
+                  // 前台表达层关闭隐式思考：孩子怎么回应由注入的画像/原话/循环决定，
+                  // 无需模型现场推理（实测省数秒首字）。FRONT_AI_THINKING=on 回滚。
+                  { maxTokens: 1400, disableThinking: frontAiThinkingDisabled() }
                 )
 
                 const { reaction, restJson } = tracker.finalize()

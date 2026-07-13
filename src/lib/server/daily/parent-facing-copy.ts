@@ -10,6 +10,7 @@ import {
   filterParentFacingList,
 } from '@/lib/server/daily/parent-facing-filter'
 import { requireFastJson, requireTextStream } from '@/lib/server/daily/llm-required'
+import { frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import {
   buildSectionStreamTask,
   createSectionStreamTracker,
@@ -91,7 +92,10 @@ export async function fillDailySectionCopy(
     },
     {
       // section 文案常因 2048 默认值在段落中途截断（如"…交流发生在他…"），提到 3072 给足空间。
-      maxTokens: 2048,
+      maxTokens: 3072,
+      // hidden section 也是前台表达层：内容深度来自注入的上下文包，关闭隐式思考
+      // 让「深度展开」在正文后数秒内就绪，而不是十几秒。FRONT_AI_THINKING=on 回滚。
+      disableThinking: frontAiThinkingDisabled(),
     }
   )
 

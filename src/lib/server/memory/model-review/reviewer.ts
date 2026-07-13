@@ -48,7 +48,9 @@ export async function runModelReview(tenant: TenantId): Promise<void> {
       hypotheses: active.map((h, i) => ({ i, hypothesis: h.hypothesis, supportingEvidence: (h.supportingEvidence || []).slice(0, 3) })),
       recentEpisodes,
       highValueAtoms,
-    }
+    },
+    // 多条假设逐一复核时输出较长，默认 2048 截断 JSON（failed job "Unexpected end of JSON input" 主因之一）
+    { maxTokens: 3072 }
   )
   if (!ai?.reviews || !Array.isArray(ai.reviews)) return // LLM 未启用/失败 → 不改动，保持原假设
 

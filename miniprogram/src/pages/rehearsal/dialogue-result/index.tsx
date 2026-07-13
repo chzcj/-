@@ -100,6 +100,14 @@ export default function DialogueResultPage() {
           <Text className='dialogue-error'>{data.errorMessage || '分析失败'}</Text>
         ) : null}
 
+        {data?.status === 'insufficient' ? (
+          <View className='soft-card'>
+            <Text className='soft-card-body'>
+              {data.errorMessage || '这段录音里没有听到有效的亲子对话，下次真实交流时再录一段就好。'}
+            </Text>
+          </View>
+        ) : null}
+
         {data && data.status === 'done' ? (
           <>
             {data.summary ? (

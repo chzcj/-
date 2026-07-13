@@ -4,6 +4,7 @@ import type { OrchestrationOutput } from '@/types/database'
 import type { DailySection } from '@/types/daily-message'
 import { buildDailyProsePayload, buildDailyProseTask, clampProse, resolveProseMode } from '@/lib/server/daily/prose-context'
 import { requireTextStream } from '@/lib/server/daily/llm-required'
+import { frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import { agentPrompts } from '@/lib/server/agent-prompts'
 import {
   createSectionStreamTracker,
@@ -124,7 +125,9 @@ export async function streamProseAndSections(
         }
       }
     },
-    { maxTokens: 3072 }
+    // 前台表达层关闭模型隐式思考（深度来自注入的上下文包，后台 agent 已完成思考）：
+    // 实测思考模式让首字延迟 3-12s，关闭后 ~1s 级。FRONT_AI_THINKING=on 可回滚。
+    { maxTokens: 3072, disableThinking: frontAiThinkingDisabled() }
   )
 
   if (!proseDone) {

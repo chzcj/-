@@ -15,25 +15,30 @@
 
 开发阶段可勾选：**不校验合法域名、web-view、TLS 版本**（语音识别 WebSocket 在开发期也依赖此项）。
 
-## 腾讯云语音识别（ASR）
+## 语音识别（ASR）
 
-小程序语音走服务端签发，**不要把 SecretId/SecretKey 写进小程序代码**。
+**实时按住说话（交流 / 预演 / 四模块）**：讯飞实时转写大模型，方案 A 直连。  
+BFF 仅签发已签名 `wsUrl`（`GET /api/asr/iflytek/url`），**不要把 APIKey/APISecret 写进小程序**。
+
+**亲子对话整段录音**：仍走腾讯云录音文件识别（`POST /api/rehearsal/dialogue-transcribe`），与实时链路无关。
+
+`.env.local` 需配置：`IFLYTEK_APP_ID`、`IFLYTEK_API_KEY`、`IFLYTEK_API_SECRET`（实时）；`TENCENT_*`（亲子文件转写）。
 
 链路：
 
 ```
-小程序 → GET /api/asr/token（Bearer 登录）
-       → wss://asr.cloud.tencent.com/...（实时 ASR）
+实时：小程序 → GET /api/asr/iflytek/url → wss://office-api-ast-dx.iflyaisol.com/...
+亲子：RecorderManager(mp3) → uploadFile → /api/rehearsal/dialogue-transcribe → 腾讯文件 ASR
 ```
 
-### Socket 合法域名（必配，否则语音必失败）
+### Socket 合法域名（实时语音必配）
 
 | 环境 | 配置 |
 |------|------|
 | 开发者工具（开发） | 详情 → 本地设置 → **不校验合法域名、web-view、TLS 版本** |
-| 真机预览 / 上线 | 微信公众平台 → 开发 → 开发管理 → 开发设置 → **socket 合法域名** 添加 `wss://asr.cloud.tencent.com` |
+| 真机预览 / 上线 | 微信公众平台 → **socket 合法域名** 添加 `wss://office-api-ast-dx.iflyaisol.com` |
 
-未配置时控制台会出现：`wss://asr.cloud.tencent.com 不在 socket 合法域名列表中`，与密钥是否正确无关。
+未配置时控制台会出现讯飞域名「不在 socket 合法域名列表中」。
 
 ### 服务端环境变量（网页 API 部署侧）
 

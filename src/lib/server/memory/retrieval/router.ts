@@ -163,15 +163,23 @@ export async function buildDailyDialogueRetrievalPacket(
     .slice(-4)
   // 具体事实直喂：四模块采集的 verifiableFacts/childBehaviors/triggerPoints 合并去重，
   // 让前端 AI 直接读到"错题本只抄答案"这类具体场景，而不是只拿 episode 摘要。
+  // 2026-07 增补：维度字段（方法-效果/夫妻分歧/陪伴节律/兴趣/科目状态）格式化后一并直喂。
   const entryFacts = [
     ...new Set(
       packs.flatMap(p => [
         ...(p.decomposedInput.verifiableFacts || []),
         ...(p.decomposedInput.childBehaviors || []),
         ...(p.decomposedInput.triggerPoints || []),
+        ...(p.decomposedInput.triedMethods || []).map((t) =>
+          t.effect ? `试过：${t.method}（结果：${t.effect}）` : `试过：${t.method}`
+        ),
+        ...(p.decomposedInput.parentDisagreements || []).map((s) => `家庭教育分歧：${s}`),
+        ...(p.decomposedInput.companionshipTime ? [`陪伴节律：${p.decomposedInput.companionshipTime}`] : []),
+        ...(p.decomposedInput.childInterests || []).map((s) => `孩子兴趣：${s}`),
+        ...(p.decomposedInput.subjectStates || []).map((s) => `学科状态·${s.subject}：${s.state}`),
       ]).filter(Boolean)
     ),
-  ].slice(0, 6)
+  ].slice(0, 10)
   const familyInteractionPatterns = cycles
     .map((c) => {
       const parts = [c.cycleName, c.parentTriggerAction, c.childReaction].filter(Boolean)

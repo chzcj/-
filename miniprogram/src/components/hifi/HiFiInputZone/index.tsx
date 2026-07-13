@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { View, Text, Textarea, Button } from '@tarojs/components'
 import { useTencentAsrInput } from '@/hooks/useTencentAsrInput'
+import { ensureRecordPermission, getRecordAuthStatus } from '@/lib/asrPermission'
 import './index.scss'
 
 export type VoiceHoldMode = 'send' | 'fill'
@@ -27,14 +28,13 @@ export function HiFiInputZone({
   const [text, setText] = useState('')
   const [cursor, setCursor] = useState(-1)
   const [shortTapHint, setShortTapHint] = useState('')
-  /** 同步按住态：不依赖 ASR，按下立刻出波浪/连接中 */
-  const [uiHolding, setUiHolding] = useState(false)
+  /** 仅表示手指是否按下——松手立刻 false，不绑 ASR connecting */
+  const [fingerDown, setFingerDown] = useState(false)
   const touchStartAtRef = useRef(0)
   const holdingRef = useRef(false)
-  const pendingStopRef = useRef(false)
   const voiceSubmittedRef = useRef(false)
+  const finishingRef = useRef(false)
 
-  /** busy 时仍可输入并排队；仅外部 disabled 才真正锁住 */
   const holdBlocked = Boolean(disabled)
 
   const submitText = () => {
@@ -78,31 +78,24 @@ export function HiFiInputZone({
   }
 
   const finishVoice = () => {
+    // H0：松手立刻退出按住视觉，不依赖 ASR 状态
+    setFingerDown(false)
     const wasHolding = holdingRef.current
     holdingRef.current = false
-    setUiHolding(false)
-    if (!wasHolding && !pendingStopRef.current) return
+    if (!wasHolding || finishingRef.current) return
 
     const heldMs = Date.now() - touchStartAtRef.current
-    if (wasHolding && heldMs < voice.minHoldMs) {
-      setShortTapHint('请按住说话')
-      setTimeout(() => setShortTapHint(''), 2200)
+    if (heldMs < voice.minHoldMs) {
+      // 短于误触阈值：静默，不提示、不撑 dock
       void voice.stopListening({ fast: true })
       voice.reset()
       return
     }
 
-    if (voice.isConnecting) {
-      pendingStopRef.current = true
-      return
-    }
-
-    const snapshot = voice.getTranscript()
-    if (!voice.isListening && !snapshot && !pendingStopRef.current) return
-
-    pendingStopRef.current = false
+    finishingRef.current = true
     voiceSubmittedRef.current = false
 
+    const snapshot = voice.getTranscript()
     if (snapshot) applyVoiceText(snapshot)
 
     void voice
@@ -120,63 +113,75 @@ export function HiFiInputZone({
         },
       })
       .then((snapshotText) => {
-        if (!snapshotText.trim()) {
+        finishingRef.current = false
+        if (!snapshotText.trim() && !voiceSubmittedRef.current) {
           setShortTapHint('没听清，请再试或改用文字')
           setTimeout(() => setShortTapHint(''), 2400)
         }
       })
+      .catch(() => {
+        finishingRef.current = false
+      })
   }
 
   const startVoice = () => {
-    // 同步 UI：按下立刻波浪 + 连接中，不依赖 await
-    setUiHolding(true)
     setShortTapHint('')
     if (holdingRef.current) return
     if (holdBlocked) {
-      setUiHolding(false)
+      setFingerDown(false)
       setShortTapHint('当前不可输入')
       setTimeout(() => setShortTapHint(''), 2200)
       return
     }
+    // H0：先标按下，子树结构不变（波浪用 CSS 显隐）
+    setFingerDown(true)
     holdingRef.current = true
     touchStartAtRef.current = Date.now()
-    pendingStopRef.current = false
     voiceSubmittedRef.current = false
+    finishingRef.current = false
     voice.clearError()
-    void voice.startListening()
+
+    void (async () => {
+      // 首次必须先拿到麦克风权限（隐私+authorize 弹窗都不依赖按住手势，
+      // 即使松手也要走完申请——否则快速点按会静默吞掉授权，什么弹窗都不出现）
+      const status = await getRecordAuthStatus()
+
+      if (status !== 'granted') {
+        setFingerDown(false)
+        holdingRef.current = false
+        const perm = await ensureRecordPermission({ interactive: true })
+        if (!perm.ok) {
+          // 失败提示持久显示，下次按住时清除（authorize 可能数秒后才返回，定时消失会没人看见）
+          setShortTapHint(perm.message)
+          return
+        }
+        setShortTapHint('麦克风已开启，请再次按住说话')
+        setTimeout(() => setShortTapHint(''), 2800)
+        return
+      }
+
+      if (!holdingRef.current) return
+      void voice.startListening()
+    })()
   }
 
   useEffect(() => {
     if (!voice.error) return
     holdingRef.current = false
-    pendingStopRef.current = false
-    setUiHolding(false)
+    finishingRef.current = false
+    setFingerDown(false)
   }, [voice.error])
 
-  useEffect(() => {
-    if (!pendingStopRef.current) return
-    if (voice.isConnecting) return
-    if (voice.isListening || voice.liveTranscript) finishVoice()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [voice.isConnecting, voice.isListening, voice.liveTranscript])
-
-  const holdActive = uiHolding || voice.isListening || voice.isConnecting
-
+  // 视觉：跟手指；录音就绪时加强 active。禁止绑 isConnecting 导致松手不复位
+  const pressVisual = fingerDown || voice.isListening
   const holdLabel = voice.asrUnavailable
     ? '语音不可用'
-    : uiHolding && !voice.isListening
-      ? '连接中…'
-      : voice.isConnecting
-        ? '连接中…'
-        : voice.isListening
-          ? '松手结束'
-          : '按住说话'
+    : fingerDown || voice.isListening
+      ? '松手结束'
+      : '按住说话'
 
-  const busyHint = busy
-    ? queuedCount > 0
-      ? `生成中，已排队 ${queuedCount} 条`
-      : '生成中…可继续输入，将排队发送'
-    : ''
+  // busy/queuedCount 暂不渲染任何提示：生成中的排队提示会把底部 dock 撑高，
+  // 黄色背景遮住正文、按钮位置跳动（用户反馈体感差）。排队逻辑本身保留。
 
   return (
     <View className='input-dock-inner'>
@@ -190,23 +195,21 @@ export function HiFiInputZone({
         {!textMode ? (
           <View className='input-bar voice-mode'>
             <View
-              className={`hold-button${holdActive ? ' active' : ''}${
-                voice.isConnecting || (uiHolding && !voice.isListening) ? ' connecting' : ''
-              }${holdBlocked || voice.asrUnavailable ? ' is-disabled' : ''}`}
+              className={`hold-button${pressVisual ? ' active' : ''}${
+                holdBlocked || voice.asrUnavailable ? ' is-disabled' : ''
+              }`}
               hoverClass='none'
               onTouchStart={startVoice}
               onTouchEnd={finishVoice}
               onTouchCancel={finishVoice}
             >
-              {holdActive ? (
-                <View className='hold-button-wave' aria-hidden>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <View key={i} className='hold-button-wave-bar' />
-                  ))}
-                </View>
-              ) : (
-                <Text className='hold-button-label'>{holdLabel}</Text>
-              )}
+              {/* H0：波浪与文案始终同在，只用 class 显隐，避免换子树丢 touchEnd */}
+              <View className={`hold-button-wave${pressVisual ? ' is-visible' : ''}`} aria-hidden>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <View key={i} className='hold-button-wave-bar' />
+                ))}
+              </View>
+              <Text className={`hold-button-label${pressVisual ? ' is-hidden' : ''}`}>{holdLabel}</Text>
             </View>
             <Button
               className='mode-button'
@@ -258,12 +261,8 @@ export function HiFiInputZone({
           </View>
         )}
         <View className='input-zone-status'>
-          {busyHint ? <Text className='hint-text'>{busyHint}</Text> : null}
-          {holdActive && holdLabel !== '按住说话' ? (
-            <Text className='hint-text input-voice-status'>{holdLabel}</Text>
-          ) : null}
           {shortTapHint ? <Text className='hint-text'>{shortTapHint}</Text> : null}
-          {!holdActive && !textMode && voice.error ? (
+          {!textMode && voice.error ? (
             <Text className='hint-text input-voice-error'>{voice.error}</Text>
           ) : null}
         </View>

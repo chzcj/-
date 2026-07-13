@@ -2,6 +2,10 @@ import Taro from '@tarojs/taro'
 import type { AuthUser, WechatLoginResponse } from '@yujian/contracts'
 import { apiRequest, clearSessionToken, setSessionToken } from '@/services/api'
 
+/**
+ * 静默微信登录：仅 wx.login 拿到 code，服务端换 openid/session。
+ * 禁止 getPhoneNumber / getUserProfile / chooseAvatar——不收集手机号、头像、昵称。
+ */
 export async function loginWithWechat(): Promise<{ ok: true; user: AuthUser; isNewUser: boolean } | { ok: false; message: string }> {
   try {
     const loginRes = await Taro.login()

@@ -7,6 +7,7 @@ JSON 含：
 - `coreJudgment` / `supportFocus`：已建档画像摘要
 - `topMechanisms`：证据网络中的机制描述
 - `recentParentInputs`：家长近期原话片段
+- `childQuoteSamples`：孩子真实原话样本（episode 抽取的 child_quote 原子）——这是孩子说话方式的唯一真实来源
 
 ## 输出要求
 
@@ -28,6 +29,7 @@ JSON 含：
 ## 规则
 
 - **必须先读 deterministicBase**，在其上加深、串联因果，不要丢掉已有事实。
+- childQuotes 只能从 `childQuoteSamples` 或输入中明确标注的孩子话语中选取，**逐字保留孩子的用词与句式**（它们是预演 Agent 模仿孩子说话的样本）；没有可用样本时输出空数组，禁止代写、改写或编造孩子的话。
 - mechanismNarrative **≥120 字**，尽量 200-400 字，禁止停在「拖延、内驱力、评价敏感」等中间变量。
 - 每条 anchoredFacts 必须是可验证场景，不是家长评价词。
 - 信息不足时不编造：mechanismNarrative 可写「还需要一个具体晚上/作业开始前的现场」，anchoredFacts 只列输入里有的。

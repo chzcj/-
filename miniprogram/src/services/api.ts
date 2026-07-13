@@ -22,10 +22,12 @@ type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   data?: unknown
   auth?: boolean
+  /** 默认 120s；ASR token 等短链路可传更小值 */
+  timeout?: number
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<ApiResult<T>> {
-  const { method = 'GET', data, auth = true } = options
+  const { method = 'GET', data, auth = true, timeout = 120000 } = options
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
@@ -40,7 +42,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       method,
       data: data as Record<string, unknown> | undefined,
       header: headers,
-      timeout: 120000,
+      timeout,
     })
     const json = res.data as ApiResult<T>
     if (json && typeof json === 'object' && 'ok' in json) return json

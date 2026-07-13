@@ -3,15 +3,11 @@
  * 后端 emitter（app/api/rehearsal/analyze/route.ts）与前端 parser 共用，禁止各写各的松散 shape。
  */
 
-/** 一轮预演 BFF → 前端的 NDJSON 事件流（每行一个事件）。 */
+/** 一轮预演 BFF → 前端的 NDJSON 事件流（每行一个事件）。
+ *  注：曾声明过 hearing/suggested 等分段流事件，但后端从未 emit、前端从未消费（死契约），已移除。 */
 export type RehearsalStreamEvent =
   | { type: 'start'; traceId: string }
   | { type: 'reaction_delta'; delta: string }
-  | { type: 'reaction_complete'; text: string }
-  | { type: 'hearing_delta'; delta: string }
-  | { type: 'hearing_complete'; text: string }
-  | { type: 'suggested_delta'; delta: string }
-  | { type: 'suggested_complete'; text: string }
   | {
       type: 'final'
       /** 完整结构化字段（结束页用：closingAdvice/taskTitle/saferVersion/riskPoints 等） */
@@ -30,10 +26,8 @@ export function parseRehearsalStreamEvent(line: string): RehearsalStreamEvent | 
   }
 }
 
-/** Marker 流式分段标记（LLM 输出格式） */
+/** Marker 流式分段标记（LLM 输出格式）。hearing/suggested 标记同为死契约，已移除。 */
 export const REHEARSAL_MARKERS = {
   reaction: '---reaction---',
-  hearing: '---hearing---',
-  suggested: '---suggested---',
   rest: '---rest---',
 } as const

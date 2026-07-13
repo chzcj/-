@@ -142,7 +142,10 @@ npm run lint     # 需 eslint-config-next（npm install 后可用）
 | `FAST_AI_MODEL` | 模型名（默认 `deepseek-v4-flash`） |
 | `PARENT_AI_*` / `ARK_API_KEY` | 可选：家长向 prose/section 专用豆包端点；未配置时回落 `FAST_AI_*` |
 | `INTERNAL_API_TOKEN` | 内部 API 鉴权 |
-| `TENCENT_APPID` | 腾讯云实时语音识别 |
+| `IFLYTEK_APP_ID` | 讯飞实时转写大模型 APPID（小程序按住说话） |
+| `IFLYTEK_API_KEY` | 讯飞 APIKey（即 accessKeyId） |
+| `IFLYTEK_API_SECRET` | 讯飞 APISecret（仅服务端签名，不进小程序） |
+| `TENCENT_APPID` | 腾讯云录音文件识别（亲子对话录完转写） |
 | `TENCENT_SECRET_ID` | 腾讯云 ASR |
 | `TENCENT_SECRET_KEY` | 腾讯云 ASR |
 
@@ -167,7 +170,7 @@ export AUTH_TOKEN="与 INTERNAL_API_TOKEN 相同的值"
 
 ## 线上部署
 
-服务器使用 PM2 管理，启动入口是 `server-ws.js`（支持 WebSocket ASR 语音识别代理）。
+服务器使用 PM2 管理，启动入口是 `server.js`（内联 WebSocket ASR 语音识别代理）。
 
 `deploy.sh` 会依次：同步代码 → 上传 `.env.local` → `npm install` → `npm run build` → 重启 PM2 → 调用 `/api/readiness` 验证。
 
@@ -211,7 +214,7 @@ curl -s https://yujian.yihe.site/api/readiness
 | `/api/daily/section-retry` | section 生成失败重试 |
 | `/api/daily/memory-status` | 按 traceId 查记忆写入状态 |
 | `/api/asr/token` | ASR 鉴权 token |
-| `/api/asr/stream` | ASR WebSocket 代理（server-ws.js 处理） |
+| `/api/asr/stream` | ASR WebSocket 代理（server.js 处理） |
 | `/api/readiness` | 健康检查 |
 
 ## 项目目录结构

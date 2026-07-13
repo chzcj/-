@@ -1,6 +1,7 @@
 import { View, Text, Textarea } from '@tarojs/components'
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useTencentAsrInput } from '@/hooks/useTencentAsrInput'
+import { ensureRecordPermission, getRecordAuthStatus } from '@/lib/asrPermission'
 import { getEntryCaptureCharHint } from '@/lib/entryCharHint'
 
 const MAX_LENGTH = 4000
@@ -35,51 +36,79 @@ export function BuildRecordBox({
   const charHint = getEntryCaptureCharHint(charCount)
   const touchStartAtRef = useRef(0)
   const holdingRef = useRef(false)
-  const pendingStopRef = useRef(false)
+  const finishingRef = useRef(false)
+  const [fingerDown, setFingerDown] = useState(false)
+  const [permHint, setPermHint] = useState('')
 
   const finishVoice = () => {
+    setFingerDown(false)
     const wasHolding = holdingRef.current
     holdingRef.current = false
-    if (!wasHolding && !pendingStopRef.current) return
-    if (wasHolding && Date.now() - touchStartAtRef.current < voice.minHoldMs) return
-    if (voice.isConnecting) {
-      pendingStopRef.current = true
+    if (!wasHolding || finishingRef.current) return
+    if (Date.now() - touchStartAtRef.current < voice.minHoldMs) {
+      void voice.stopListening({ fast: true })
+      voice.reset()
       return
     }
-    if (!voice.isListening && !voice.liveTranscript) return
-    void voice.stopListening({ fast: true }).then((finalText) => {
-      pendingStopRef.current = false
-      voice.reset()
-      if (finalText) {
-        onChange(value ? `${value.trim()}\n${finalText}` : finalText)
-        onVoiceText?.(finalText)
-      }
-    })
+    finishingRef.current = true
+    void voice
+      .stopListening({ fast: true })
+      .then((finalText) => {
+        finishingRef.current = false
+        voice.reset()
+        if (finalText) {
+          onChange(value ? `${value.trim()}\n${finalText}` : finalText)
+          onVoiceText?.(finalText)
+        }
+      })
+      .catch(() => {
+        finishingRef.current = false
+      })
   }
 
   useEffect(() => {
-    if (!pendingStopRef.current) return
-    if (voice.isConnecting) return
-    if (voice.isListening || voice.liveTranscript) finishVoice()
-  }, [voice.isConnecting, voice.isListening, voice.liveTranscript])
+    if (!voice.error) return
+    holdingRef.current = false
+    finishingRef.current = false
+    setFingerDown(false)
+  }, [voice.error])
 
   const handleTouchStart = () => {
     if (disabled || voice.asrUnavailable || holdingRef.current) return
+    setFingerDown(true)
     holdingRef.current = true
     touchStartAtRef.current = Date.now()
-    pendingStopRef.current = false
+    finishingRef.current = false
     voice.clearError()
-    void voice.startListening()
+    setPermHint('')
+
+    void (async () => {
+      // 权限申请不依赖按住态：松手后也要走完（否则快速点按会静默吞掉授权弹窗）
+      const status = await getRecordAuthStatus()
+
+      if (status !== 'granted') {
+        setFingerDown(false)
+        holdingRef.current = false
+        const perm = await ensureRecordPermission({ interactive: true })
+        if (!perm.ok) {
+          setPermHint(perm.message)
+          return
+        }
+        setPermHint('麦克风已开启，请再次按住说话')
+        return
+      }
+
+      if (!holdingRef.current) return
+      void voice.startListening()
+    })()
   }
 
-  const holdActive = voice.isListening || voice.isConnecting
+  const holdActive = fingerDown || voice.isListening
   const holdLabel = voice.asrUnavailable
     ? '请直接输入'
-    : voice.isConnecting
-      ? '连接中…'
-      : voice.isListening
-        ? '松手结束'
-        : '按住说话'
+    : holdActive
+      ? '松手结束'
+      : '按住说话'
 
   return (
     <View className='record-box'>
@@ -116,14 +145,14 @@ export function BuildRecordBox({
               <View key={i} className='wave-bar' />
             ))}
           </View>
-          <Text className='recording-text'>{voice.isConnecting ? '连接中' : '正在记录'}</Text>
+          <Text className='recording-text'>{holdActive ? '正在记录' : '准备记录'}</Text>
           <Text className='cancel-hint'>{voice.liveTranscript || '不用停下来整理，顺着讲就好'}</Text>
         </View>
       </View>
 
       <View className='record-voice-row'>
         <View
-          className={`build-hold-button${holdActive ? ' active' : ''}${voice.isConnecting ? ' connecting' : ''}${voice.asrUnavailable ? ' disabled' : ''}`}
+          className={`build-hold-button${holdActive ? ' active' : ''}${voice.asrUnavailable ? ' disabled' : ''}`}
           hoverClass='none'
           onTouchStart={handleTouchStart}
           onTouchEnd={finishVoice}
@@ -133,6 +162,7 @@ export function BuildRecordBox({
         </View>
       </View>
 
+      {permHint ? <Text className='hifi-voice-error'>{permHint}</Text> : null}
       {voice.error ? <Text className='hifi-voice-error'>{voice.error}</Text> : null}
     </View>
   )

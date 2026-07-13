@@ -1,6 +1,5 @@
 import { PropsWithChildren } from 'react'
 import { useDidHide, useLaunch } from '@tarojs/taro'
-import { PrivacyAgreementGate } from '@/components/privacy/PrivacyAgreementGate'
 import { pushAccountSyncToServer, restoreAccountStateFromServer } from '@/services/accountSync'
 import { fetchCurrentUser } from '@/services/auth'
 import { getSessionToken } from '@/services/api'
@@ -32,12 +31,9 @@ function App({ children }: PropsWithChildren) {
     routeAfterAuth(fresh || user, false)
   })
 
-  return (
-    <>
-      {children}
-      <PrivacyAgreementGate />
-    </>
-  )
+  // 入口组件在小程序端不渲染 UI，勿在此挂任何弹窗组件（会静默不可见）。
+  // 隐私授权走微信官方弹窗：见 lib/wechatPrivacy.ts。
+  return children
 }
 
 export default App

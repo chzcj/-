@@ -1,10 +1,9 @@
 import { View, Text, Textarea, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { HiFiInputZone } from '@/components/hifi/HiFiInputZone'
 import { useTabBar } from '@/hooks/useTabBar'
-import { useChatAutoScroll } from '@/hooks/useChatAutoScroll'
 import { usePublicPageShare } from '@/hooks/useSharePage'
 import { SHARE_PATHS } from '@/lib/shareMessages'
 import { normalizeTaskTitle } from '@/lib/textDisplay'
@@ -179,46 +178,29 @@ export default function RehearsalPage() {
     })
   }
 
-  const feedScrollKey = useMemo(
-    () =>
-      [
-        feed.length,
-        loading ? 1 : 0,
-        showCheckpoint ? 1 : 0,
-        feed.map((item) => ('text' in item ? item.text.length : item.type)).join('|'),
-      ].join(':'),
-    [feed, loading, showCheckpoint]
-  )
-
-  const { scrollIntoView, scrollTop, onScroll, scrollToBottom, resumeFollowOnSend, anchorId, setViewHeight } =
-    useChatAutoScroll([feedScrollKey])
-
-  useEffect(() => {
-    if (step !== 'active') return
-    const timer = setTimeout(() => {
-      Taro.createSelectorQuery()
-        .select('#rehearsal-chat-scroll')
-        .boundingClientRect((rect) => {
-          if (rect && !Array.isArray(rect) && rect.height) setViewHeight(rect.height)
-        })
-        .exec()
-    }, 80)
-    return () => clearTimeout(timer)
-  }, [step, setViewHeight, feed.length])
+  const [entryScrollIntoView, setEntryScrollIntoView] = useState('')
 
   const runTurn = async (text: string) => {
     const value = text.trim()
     if (!value || loading || step !== 'active') return
 
-    resumeFollowOnSend()
     setFeed((prev) => [...prev, { type: 'parent', text: value }, { type: 'thinking' }])
     setLoading(true)
-    setTimeout(() => scrollToBottom(true), 32)
-    setTimeout(() => scrollToBottom(true), 120)
-    setTimeout(() => scrollToBottom(true), 280)
 
     let childBubbleStarted = false
     const parentText = `【预演场景：${sceneTitle}】\n场景摘要：${summary}\n家长说：${value}`
+
+    const priorTurns = feed
+      .filter((item): item is Extract<FeedItem, { type: 'parent' | 'child' }> =>
+        item.type === 'parent' || item.type === 'child'
+      )
+      .map((item) =>
+        item.type === 'parent'
+          ? { role: 'parent' as const, text: item.text }
+          : { role: 'child' as const, text: item.childText }
+      )
+      .slice(-10)
+    const rehearsalTranscript = [...priorTurns, { role: 'parent' as const, text: value }]
 
     const profile = getLatestProfile()
     const result = await analyzeRehearsalTurn(
@@ -303,15 +285,17 @@ export default function RehearsalPage() {
               primaryConditionalProfile: [profile.coreJudgment, profile.deepMechanism]
                 .filter(Boolean)
                 .join('\n')
-                .slice(0, 500),
-              dominantProtectiveStrategies: profile.supportFocus
-                ? [profile.supportFocus.slice(0, 120)]
-                : undefined,
+                .slice(0, 800),
+              // supportFocus 是家长侧支持焦点，不当作孩子保护策略
+              parentNarrativePattern: profile.supportFocus?.slice(0, 200),
               pendingHypotheses: (profile.verificationPoints || [])
-                .map((p) => p.title)
+                .map((p) => [p.title, p.description].filter(Boolean).join('：'))
                 .filter(Boolean)
-                .slice(0, 4),
-              parentNarrativePattern: profile.supportFocus?.slice(0, 160),
+                .slice(0, 5),
+              evidenceSnippets: (profile.evidence || [])
+                .map((e) => e.evidenceText)
+                .filter(Boolean)
+                .slice(0, 5),
             }
           : undefined,
         rehearsalContext: {
@@ -320,6 +304,7 @@ export default function RehearsalPage() {
           sceneSummary: summary.slice(0, 240),
           parentGoal: `在「${sceneTitle}」场景里把话说到孩子听得进去`,
         },
+        rehearsalTranscript,
       }
     )
 
@@ -403,7 +388,15 @@ export default function RehearsalPage() {
       }
     >
       {step === 'entry' ? (
-        <>
+        <ScrollView
+          id='rehearsal-entry-scroll'
+          className='rehearsal-entry-scroll'
+          scrollY
+          scrollWithAnimation
+          scrollIntoView={entryScrollIntoView}
+          enhanced
+          showScrollbar={false}
+        >
           <Text className='hero-title page-heading'>选个场景，练怎么开口</Text>
           <View className='scenario-grid'>
             {REHEARSAL_SCENES.map((scene) => (
@@ -431,33 +424,29 @@ export default function RehearsalPage() {
                   if (selectedId !== CUSTOM_SCENE.id) selectScenario(CUSTOM_SCENE.id)
                 }}
               >
+                {/* 自绘占位：原生 textarea 的 placeholder 在页面滚动时会重排换行（每行末字跳行）。
+                    用普通 Text 覆盖显示，原生 placeholder 置空，滚动不再抖动。 */}
+                {!customText ? (
+                  <Text className='rehearsal-textarea-placeholder'>{CUSTOM_SCENE.placeholder}</Text>
+                ) : null}
                 <Textarea
                   className='rehearsal-textarea'
                   value={customText}
-                  placeholder={CUSTOM_SCENE.placeholder}
+                  placeholder=''
                   maxlength={500}
                   autoHeight
-                  adjustPosition
+                  adjustPosition={false}
                   holdKeyboard
                   disableDefaultPadding
-                  cursorSpacing={180}
+                  cursorSpacing={120}
                   showConfirmBar={false}
                   onFocus={() => {
                     if (selectedId !== CUSTOM_SCENE.id) selectScenario(CUSTOM_SCENE.id)
-                    // 滚到页底，给键盘留出空间，避免「抬一半就掉」
-                    try {
-                      void Taro.pageScrollTo({ scrollTop: 99999, duration: 200 })
-                    } catch {
-                      /* ignore */
-                    }
-                    setTimeout(() => {
-                      try {
-                        void Taro.pageScrollTo({ scrollTop: 99999, duration: 100 })
-                      } catch {
-                        /* ignore */
-                      }
-                    }, 280)
+                    setEntryScrollIntoView('')
+                    requestAnimationFrame(() => setEntryScrollIntoView('custom-scenario-card'))
+                    setTimeout(() => setEntryScrollIntoView('custom-scenario-card'), 200)
                   }}
+                  onBlur={() => setEntryScrollIntoView('')}
                   onInput={(e) => {
                     setCustomText(e.detail.value)
                     if (selectedId === CUSTOM_SCENE.id) {
@@ -485,7 +474,8 @@ export default function RehearsalPage() {
           <Text className='boundary-note muted'>
             这里不是预测孩子一定会这样说，而是基于已有记录，帮你提前看见可能的沟通走向。
           </Text>
-        </>
+          <View id='rehearsal-entry-bottom' className='scroll-anchor' />
+        </ScrollView>
       ) : null}
 
       {step === 'confirm' ? (
@@ -532,9 +522,6 @@ export default function RehearsalPage() {
               className='chat-scroll-view'
               scrollY
               scrollWithAnimation
-              scrollIntoView={scrollIntoView}
-              scrollTop={scrollTop}
-              onScroll={onScroll}
               enhanced
               showScrollbar={false}
             >
@@ -555,7 +542,6 @@ export default function RehearsalPage() {
                   )
                 })}
               </View>
-              <View id={anchorId} className='scroll-anchor' />
             </ScrollView>
           </View>
           {showCheckpoint ? (
@@ -610,6 +596,24 @@ export default function RehearsalPage() {
                 '今晚如果又卡在作业开始前，可以先让孩子自己选第一项，你暂时离开十分钟。'}
             </Text>
           </View>
+          {endData?.avoidPhrases?.length ? (
+            <View className='hifi-card result-block'>
+              <Text className='section-label'>建议避免的说法</Text>
+              <Text>{endData.avoidPhrases.slice(0, 3).join('；')}</Text>
+            </View>
+          ) : null}
+          {endData?.likelyTriggeredMechanisms?.length ? (
+            <View className='hifi-card result-block'>
+              <Text className='section-label'>这句话容易触发的机制</Text>
+              <Text>{endData.likelyTriggeredMechanisms.slice(0, 3).join('；')}</Text>
+            </View>
+          ) : null}
+          {endData?.usedProfileEvidence?.length ? (
+            <View className='hifi-card result-block'>
+              <Text className='section-label'>这次分析用到的孩子画像依据</Text>
+              <Text>{endData.usedProfileEvidence.slice(0, 3).join('；')}</Text>
+            </View>
+          ) : null}
           <View className='hifi-card result-block'>
             <Text className='section-label'>这次还不能直接进入档案的内容</Text>
             <Text>

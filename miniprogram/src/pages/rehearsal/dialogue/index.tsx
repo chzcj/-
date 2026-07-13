@@ -88,6 +88,13 @@ export default function DialogueRecordPage() {
         Taro.showToast({ title: '已跳过分析', icon: 'none' })
         return
       }
+      if (body.data?.status === 'insufficient') {
+        // 录音里没有有效亲子对话：温和提示重录，不进入分析结果页
+        setPhase('idle')
+        setError(body.data?.message || '这段录音里没有听到有效的亲子对话，可以再录一段。')
+        recorder.reset()
+        return
+      }
       try {
         Taro.setStorageSync('childos_last_dialogue_analysis_id', analysisId)
         if (body.data?.rehearsalSeed) {
@@ -142,15 +149,18 @@ export default function DialogueRecordPage() {
           <Text className='dialogue-error'>{error || recorder.error}</Text>
         )}
 
-        <Text
+        <View
           className={`dialogue-main-btn${phase === 'uploading' ? ' disabled' : ''}${recorder.isRecording ? ' recording' : ''}`}
+          hoverClass='none'
           onClick={() => {
             if (phase === 'uploading') return
             void toggleRecord()
           }}
         >
-          {recorder.isRecording ? '结束录音' : phase === 'uploading' ? '处理中…' : '开始录音'}
-        </Text>
+          <Text className='dialogue-main-btn-text'>
+            {recorder.isRecording ? '结束录音' : phase === 'uploading' ? '处理中…' : '开始录音'}
+          </Text>
+        </View>
 
         <Text
           className='dialogue-skip'

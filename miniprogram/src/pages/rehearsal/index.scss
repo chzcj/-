@@ -1,7 +1,14 @@
-.page-heading {
-  display: block;
+@import '../../styles/tokens.scss';
+
+.rehearsal-entry-scroll {
+  height: calc(100vh - #{$tab-bar-height} - 24px);
+  max-height: calc(100vh - #{$tab-bar-height} - 24px);
+  box-sizing: border-box;
+}
+
+.scroll-anchor {
+  height: 24px;
   width: 100%;
-  margin: 0 0 16px;
 }
 
 .scenario-grid {
@@ -50,11 +57,26 @@
 }
 
 .custom-scenario-input {
+  position: relative;
   width: 100%;
   margin-top: 4px;
   padding-bottom: 24px;
   /* 给键盘顶起留出底部缓冲，减少中段 focus 失焦 */
   min-height: 120px;
+}
+
+/* 自绘占位层：对齐 textarea 的 margin-top(10) + padding(12)；
+   原生 placeholder 在滚动中会重排换行，普通 Text 不会 */
+.rehearsal-textarea-placeholder {
+  position: absolute;
+  top: 22px;
+  left: 12px;
+  right: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #9aa4b2;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .wide-pill {

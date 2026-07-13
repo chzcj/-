@@ -8,7 +8,9 @@ import {
   getLatestBuiltProfileSnapshot,
   getMergedParentInputHistory,
   getLatestEvidenceNetwork,
+  getChildBasicInfo,
 } from '@/lib/server/memory/database-manager'
+import { loadHighValueAtoms } from '@/lib/server/db'
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
@@ -28,10 +30,12 @@ export async function buildLlmDeepModelDigest(
   tenant: TenantId,
   base: DeepModelDigest
 ): Promise<DeepModelDigest | undefined> {
-  const [built, network, history] = await Promise.all([
+  const [built, network, history, highValueAtoms, childBasic] = await Promise.all([
     getLatestBuiltProfileSnapshot(tenant).catch(() => null),
     getLatestEvidenceNetwork(tenant).catch(() => null),
     getMergedParentInputHistory(tenant, 8).catch(() => []),
+    loadHighValueAtoms(tenant.familyId, tenant.childId, 12).catch(() => []),
+    getChildBasicInfo(tenant).catch(() => null),
   ])
 
   const topMechanisms =
@@ -39,6 +43,13 @@ export async function buildLlmDeepModelDigest(
       ?.filter((m) => m.mechanismName)
       .slice(0, 3)
       .map((m) => `${m.mechanismName}：${m.description || ''}`.trim()) || []
+
+  // 孩子真实话语样本（child_quote 高价值原子）：此前 payload 只有家长原话，
+  // LLM 被要求输出 childQuotes 却没有孩子话语输入，导致该字段结构性为空。
+  const childQuoteSamples = highValueAtoms
+    .filter((a) => a.sourceType === 'child_quote' && a.content?.trim())
+    .slice(0, 6)
+    .map((a) => a.content.trim())
 
   const payload = {
     deterministicBase: {
@@ -52,6 +63,10 @@ export async function buildLlmDeepModelDigest(
     supportFocus: built?.supportFocus || '',
     topMechanisms,
     recentParentInputs: history.map((h) => h.text).filter(Boolean).slice(0, 5),
+    childQuoteSamples,
+    childBasic: childBasic
+      ? [childBasic.age ? `${childBasic.age}岁` : '', childBasic.grade || ''].filter(Boolean).join('，')
+      : '',
   }
 
   const raw = await callFastJson<Record<string, unknown>>(

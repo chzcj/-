@@ -33,6 +33,11 @@ interface AiEntryEvidence {
     parentAssumptions?: string[]
     parentGoals?: string[]
     missingInformation?: string[]
+    triedMethods?: Array<{ method?: string; effect?: string }>
+    parentDisagreements?: string[]
+    companionshipTime?: string
+    childInterests?: string[]
+    subjectStates?: Array<{ subject?: string; state?: string }>
   }
   candidateMechanisms?: Array<{
     mechanismName?: string
@@ -83,6 +88,18 @@ function assemblePack(ai: AiEntryEvidence, payload: EntryEvidencePayload): Entry
       parentEvaluations: arr(d.parentEvaluations),
       parentGoals: arr(d.parentGoals),
       missingInformation: arr(d.missingInformation).length > 0 ? arr(d.missingInformation) : (payload.hypotheses || []),
+      // 维度字段（可选，家长未提及则为空/省略）：方法-效果配对、夫妻分歧、陪伴节律、兴趣、科目状态
+      triedMethods: (Array.isArray(d.triedMethods) ? d.triedMethods : [])
+        .filter((m) => m && typeof m.method === 'string' && m.method.trim())
+        .slice(0, 6)
+        .map((m) => ({ method: m.method!.trim(), effect: typeof m.effect === 'string' ? m.effect.trim() : '' })),
+      parentDisagreements: arr(d.parentDisagreements).slice(0, 4),
+      companionshipTime: typeof d.companionshipTime === 'string' ? d.companionshipTime.trim() : '',
+      childInterests: arr(d.childInterests).slice(0, 4),
+      subjectStates: (Array.isArray(d.subjectStates) ? d.subjectStates : [])
+        .filter((s) => s && typeof s.subject === 'string' && s.subject.trim() && typeof s.state === 'string' && s.state.trim())
+        .slice(0, 6)
+        .map((s) => ({ subject: s.subject!.trim(), state: s.state!.trim() })),
     },
     candidateMechanisms: (ai.candidateMechanisms || [])
       .filter(m => typeof m?.mechanismName === 'string' && m.mechanismName.trim())

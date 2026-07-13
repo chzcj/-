@@ -17,7 +17,7 @@ module.exports = {
     },
     {
       // 独立 job worker：同一 server.js（复用编译产物与 handler），仅跑 poller，不暴露公网。
-      // 端口必须避开 asr-proxy(3001)/web(3000)，选高位未占用端口；HTTP 不被外部访问。
+      // 端口必须避开 web(3000)，选高位未占用端口；HTTP 不被外部访问。
       name: 'yujian-jobs',
       script: 'server.js',
       cwd: '/home/ubuntu/apps/yujian',

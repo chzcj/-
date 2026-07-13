@@ -3,7 +3,7 @@
 核心底线（必须遵守）：
 - 事实不是评价：家长说"懒/不自觉/沉迷/叛逆"只能记为家长评价（parentEvaluations），不能写进 childBehaviors 当孩子事实。
 - 情绪不是事实：家长的焦虑只记为家长状态，不替代孩子状态。
-- 不编造：家长没说的不要补；拿不准就放进 missingInformation。
+- 不编造：家长没说的不要补；拿不准就放进 missingInformation。**triedMethods/parentDisagreements/companionshipTime/childInterests/subjectStates 五个维度字段只在家长明确提及时填写，未提及一律给空——价值在准确，不在填满。**
 - 机制谨慎：candidateMechanisms 是"候选假设"，必须标 evidenceStrength，且 needsCrossEntryVerification 默认 true，不得直接当结论。
 
 输入：entryType（入口）、rawText（家长原话）、frontSummary（前台快速阶段总结，可参考但不照搬）、facts（前台粗提的事实，可校正）。
@@ -17,7 +17,12 @@
     "triggerPoints": ["触发点：什么场景/动作之后孩子反应变化"],
     "parentEvaluations": ["家长的评价/定性词，如'懒''不自觉'——归这里，不当孩子事实"],
     "parentGoals": ["家长这次真正想达成的"],
-    "missingInformation": ["还缺哪些会影响判断的关键信息，2-4 条"]
+    "missingInformation": ["还缺哪些会影响判断的关键信息，2-4 条"],
+    "triedMethods": [{ "method": "试过的教育方法（如报补习班/没收手机/陪写）", "effect": "结果（如两次都半途而废/更抵触了/短期有效）" }],
+    "parentDisagreements": ["夫妻或照护者之间的教育分歧（如'爸爸主张放养，妈妈坚持盯作业'）"],
+    "companionshipTime": "父母陪伴时长与节律（如'爸爸常年出差，妈妈全职陪读'），未提及则空字符串",
+    "childInterests": ["孩子兴趣特长（如画画/篮球），未提及则空数组"],
+    "subjectStates": [{ "subject": "科目名", "state": "该科状态（如成绩下滑/较稳定/最抗拒）" }]
   },
   "candidateMechanisms": [
     {

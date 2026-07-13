@@ -60,6 +60,17 @@ export default function ProfileBuildBasicPage() {
       grade: resolvedGrade,
       age: parsedAge && !Number.isNaN(parsedAge) ? parsedAge : undefined,
     })
+    // 同步上送服务端（fire-and-forget）：年龄/年级供预演口吻与发展阶段判断，仅存本地则后端一无所知
+    void fetch('/api/profile/basic', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nickname: nickname.trim(),
+        grade: resolvedGrade,
+        age: parsedAge && !Number.isNaN(parsedAge) ? String(parsedAge) : '',
+      }),
+    }).catch(() => {})
     router.push(firstBuildEntryPath())
   }
 

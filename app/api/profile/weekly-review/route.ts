@@ -76,59 +76,46 @@ export async function GET(request: Request) {
     idleTimeoutMillis: 10_000
   });
   try {
-    const [memories, events, conversations] = await Promise.all([
+    // 数据源对齐活跃记忆链：episodes（线索）+ memory_layer_items.turn_events（会话数）。
+    // 旧版读 memory_records/child_events/conversations 三张 legacy 表——child_events 已无写入方、
+    // conversations 属已下线问题流，导致周报永远空。
+    const [episodes, turnCount] = await Promise.all([
       pool.query<{
-        type: string;
-        title: string;
-        content: string;
+        summary: string;
+        scene_tags: string[];
         created_at: Date;
       }>(
-        `SELECT type, title, content, created_at
-         FROM memory_records
+        `SELECT summary, scene_tags, created_at
+         FROM evidence_episodes
          WHERE family_id = $1 AND child_id = $2
            AND created_at > NOW() - INTERVAL '7 days'
          ORDER BY created_at DESC
          LIMIT 20`,
         [identity.familyId, identity.childId]
       ),
-      pool.query<{
-        title: string;
-        event_text: string;
-        created_at: Date;
-      }>(
-        `SELECT title, event_text, created_at
-         FROM child_events
-         WHERE family_id = $1 AND child_id = $2
-           AND created_at > NOW() - INTERVAL '7 days'
-         ORDER BY created_at DESC
-         LIMIT 10`,
-        [identity.familyId, identity.childId]
-      ),
       pool.query<{ count: number }>(
         `SELECT COUNT(*)::int AS count
-         FROM conversations
+         FROM memory_layer_items
          WHERE family_id = $1 AND child_id = $2
+           AND layer_name = 'turn_events'
            AND created_at > NOW() - INTERVAL '7 days'`,
         [identity.familyId, identity.childId]
       )
     ]);
 
-    const sessionCount = conversations.rows[0]?.count || 0;
-    const recentClues = memories.rows.map((row) => ({
-      type: row.type,
-      title: row.title,
-      content: row.content,
+    const sessionCount = turnCount.rows[0]?.count || 0;
+    const recentClues = episodes.rows.map((row) => ({
+      type: row.scene_tags?.[0] || 'episode',
+      title: row.summary.slice(0, 24),
+      content: row.summary,
       createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : undefined
     }));
-    const childEvents = events.rows.map((row) => ({
-      title: row.title,
-      eventText: row.event_text,
-      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : undefined
-    }));
+    // child_events 表已无活跃写入方，保留响应键以兼容前端，恒为空
+    const childEvents: Array<{ title: string; eventText: string; createdAt?: string }> = [];
 
-    const hasData = recentClues.length > 0 || childEvents.length > 0;
+    const hasData = recentClues.length > 0 || sessionCount > 0;
     const weeklySummary = hasData
-      ? `本周完成了 ${sessionCount} 次对话，新增 ${recentClues.length} 条线索，记录了 ${childEvents.length} 个孩子事件。`
+      ? `本周完成了 ${sessionCount} 次交流，新增 ${recentClues.length} 条线索。`
       : '本周还没有记录。完成一次对话并确认存档后，这里会出现本周的亲子互动线索。';
 
     return ok({ sessionCount, recentClues, childEvents, weeklySummary });

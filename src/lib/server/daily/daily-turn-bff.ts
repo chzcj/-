@@ -19,7 +19,7 @@ import {
 } from '@/lib/server/daily/prose-context'
 import { applySectionPolicy } from '@/lib/server/daily/section-policy'
 import { dedupeProseFromSections } from '@/lib/server/daily/prose-dedupe'
-import { isFastAIEnabled } from '@/lib/server/ark-agents'
+import { isFastAIEnabled, frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import {
   combinedProseSystem,
   fillDailySectionCopy,
@@ -84,7 +84,11 @@ async function generateDailyProse(
   const prosePayload = buildDailyProsePayload(output, userText)
   const task = buildDailyProseTask(output)
 
-  return requireTextStream(combinedProseSystem(), task, prosePayload, onDelta, { maxTokens: 1024 })
+  return requireTextStream(combinedProseSystem(), task, prosePayload, onDelta, {
+    maxTokens: 1024,
+    // 前台表达层关闭隐式思考（安全轮 prose 同样受益）；FRONT_AI_THINKING=on 回滚
+    disableThinking: frontAiThinkingDisabled(),
+  })
 }
 
 async function ensureDigestPack(tenant: TenantId) {

@@ -83,7 +83,7 @@ export async function requireTextStream(
   task: string,
   payload: unknown,
   onDelta?: (delta: string) => void,
-  options?: { maxTokens?: number }
+  options?: { maxTokens?: number; disableThinking?: boolean }
 ): Promise<string> {
   assertFastAiConfigured()
   let lastErr: unknown
@@ -111,14 +111,17 @@ export async function requireTextStream(
 export async function requireFastJson<T>(
   system: string,
   payload: unknown,
-  options?: { maxTokens?: number; validate?: (raw: T) => void }
+  options?: { maxTokens?: number; disableThinking?: boolean; validate?: (raw: T) => void }
 ): Promise<T> {
   assertFastAiConfigured()
   let lastErr: unknown
 
   for (let attempt = 1; attempt <= DEFAULT_RETRIES; attempt++) {
     try {
-      const raw = await callParentJson<T>(system, payload, { maxTokens: options?.maxTokens })
+      const raw = await callParentJson<T>(system, payload, {
+        maxTokens: options?.maxTokens,
+        disableThinking: options?.disableThinking,
+      })
       if (raw === undefined || raw === null) throw new Error('LLM_EMPTY_JSON')
       options?.validate?.(raw)
       return raw

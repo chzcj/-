@@ -90,11 +90,17 @@ export async function warmFastAI() {
   return agentGlobal.__childosFastWarmupPromise;
 }
 
-export async function callAgentJson<T>(agent: AgentPromptKey, task: string, payload: unknown): Promise<T | undefined> {
+export async function callAgentJson<T>(
+  agent: AgentPromptKey,
+  task: string,
+  payload: unknown,
+  options?: { maxTokens?: number }
+): Promise<T | undefined> {
   if (!isFastAIEnabled()) return undefined;
   return callOpenAICompatibleJson<T>({
     system: agentPrompts[agent],
-    user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`
+    user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
+    maxTokens: options?.maxTokens
   });
 }
 
@@ -131,13 +137,14 @@ export async function callSupportTextStream(system: string, payload: unknown, on
 export async function callParentJson<T>(
   system: string,
   payload: unknown,
-  options?: { maxTokens?: number }
+  options?: { maxTokens?: number; disableThinking?: boolean }
 ): Promise<T | undefined> {
   if (!isParentAIEnabled() && !isFastAIEnabled()) return undefined;
   return callOpenAICompatibleJson<T>({
     system,
     user: `只输出 JSON，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
     maxTokens: options?.maxTokens,
+    disableThinking: options?.disableThinking,
     lane: 'parent',
   });
 }
@@ -146,7 +153,7 @@ export async function callParentTextStream(
   system: string,
   payload: unknown,
   onDelta: (delta: string) => void,
-  options?: { maxTokens?: number }
+  options?: { maxTokens?: number; disableThinking?: boolean }
 ): Promise<string | undefined> {
   if (!isParentAIEnabled() && !isFastAIEnabled()) return undefined;
   return callOpenAICompatibleTextStream(
@@ -155,6 +162,7 @@ export async function callParentTextStream(
       user: `只输出要展示给用户的文本，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
       maxTokens: options?.maxTokens,
       lane: 'parent',
+      disableThinking: options?.disableThinking,
     },
     onDelta
   );
@@ -200,13 +208,14 @@ export async function callFastJson<T>(
   });
 }
 
-export async function callFastTextStream(system: string, payload: unknown, onDelta: (delta: string) => void, options?: { maxTokens?: number }): Promise<string | undefined> {
+export async function callFastTextStream(system: string, payload: unknown, onDelta: (delta: string) => void, options?: { maxTokens?: number; disableThinking?: boolean }): Promise<string | undefined> {
   if (!isFastAIEnabled()) return undefined;
   return callOpenAICompatibleTextStream(
     {
       system,
       user: `只输出要展示给用户的文本，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
       maxTokens: options?.maxTokens,
+      disableThinking: options?.disableThinking,
       lane: 'fast',
     },
     onDelta
@@ -218,11 +227,13 @@ async function callOpenAICompatibleJson<T>({
   user,
   maxTokens,
   lane = 'fast',
+  disableThinking,
 }: {
   system: string
   user: string
   maxTokens?: number
   lane?: ModelLane
+  disableThinking?: boolean
 }): Promise<T | undefined> {
   const { apiKey, model, base, temp } = laneConfig(lane)
   if (!apiKey || !model) return undefined
@@ -245,7 +256,9 @@ async function callOpenAICompatibleJson<T>({
         ],
         temperature: temp,
         max_tokens: maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 2048),
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
+        // 仅前台表达类调用传入；后台 agent 不传，保留完整思考
+        ...(disableThinking ? { thinking: { type: 'disabled' } } : {})
       })
     });
 
@@ -264,8 +277,18 @@ async function callOpenAICompatibleJson<T>({
   }
 }
 
+/** 前台流式调用是否关闭模型隐式思考。
+ *  实测（DeepSeek v4-flash）：默认开思考时首 token 2.4s（小 prompt）~12s（生产大 prompt），
+ *  关闭后 0.6-0.7s。前台 prose/reaction 的深度来自注入的上下文包（digest+retrievalPack，
+ *  后台 agent 已完成思考），表达层无需模型再想一遍——正是「后台深度建模、前台减压」的架构。
+ *  后台 agent（机制复核/综合/诊断等）不走此开关，保留完整思考。
+ *  回滚开关：环境变量 FRONT_AI_THINKING=on 恢复前台思考。 */
+export function frontAiThinkingDisabled(): boolean {
+  return process.env.FRONT_AI_THINKING !== 'on'
+}
+
 async function callOpenAICompatibleTextStream(
-  { system, user, maxTokens, lane = 'fast' }: { system: string; user: string; maxTokens?: number; lane?: ModelLane },
+  { system, user, maxTokens, lane = 'fast', disableThinking }: { system: string; user: string; maxTokens?: number; lane?: ModelLane; disableThinking?: boolean },
   onDelta: (delta: string) => void
 ): Promise<string | undefined> {
   const { apiKey, model, base, temp } = laneConfig(lane)
@@ -296,7 +319,9 @@ async function callOpenAICompatibleTextStream(
         stream: true,
         stream_options: { include_usage: true },
         temperature: temp,
-        max_tokens: maxTokens ?? Number(process.env.FAST_AI_STREAM_MAX_TOKENS || 1024)
+        max_tokens: maxTokens ?? Number(process.env.FAST_AI_STREAM_MAX_TOKENS || 1024),
+        // thinking 参数放在 body 末尾，不影响 messages 前缀的 prompt cache
+        ...(disableThinking ? { thinking: { type: 'disabled' } } : {})
       })
     });
 

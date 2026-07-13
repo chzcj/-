@@ -35,8 +35,20 @@ function deriveImperativeTaskTitle(
     return `先${title}`.slice(0, 24)
   }
 
-  void fullText
+  // 三级兜底前先从正文挖「今晚/今天…」祈使句（advice section 缺席但正文含具体建议的轮次）
+  const proseSentence = fullText
+    .split(/[。！？\n]/)
+    .map((s) => s.trim())
+    .find((s) => s.length >= 6 && s.length <= 40 && /^(今晚|今天|先|试着|只)/.test(s) && !TASK_TITLE_BANNED.test(s))
+  if (proseSentence) return proseSentence.slice(0, 24)
+
   return fallback
+}
+
+/** 是否有资格提供「保存为今晚任务」：拿不出具体标题（只能用写死兜底）说明本轮没有可执行建议，
+ *  保存出来就是「今晚先试一次小步骤」这种空壳任务卡（真实用户投诉），不如不给按钮。 */
+function hasSubstantiveTask(resolvedTitle: string): boolean {
+  return resolvedTitle !== '今晚先试一次小步骤'
 }
 
 export function composeDailyActions(
@@ -94,12 +106,14 @@ export function composeDailyActions(
         route: '/daily/how-to-speak',
       },
     })
-    actions.push({
-      id: 'save_task',
-      label: '保存为今晚任务',
-      kind: 'task',
-      payload: { seedText: seedScene, taskTitle: resolvedTaskTitle },
-    })
+    if (hasSubstantiveTask(resolvedTaskTitle)) {
+      actions.push({
+        id: 'save_task',
+        label: '保存为今晚任务',
+        kind: 'task',
+        payload: { seedText: seedScene, taskTitle: resolvedTaskTitle },
+      })
+    }
     return actions.slice(0, 4)
   }
 
@@ -139,7 +153,7 @@ export function composeDailyActions(
     })
   }
 
-  if (output.routingDecision.frontResponseType === 'model_based_explanation') {
+  if (output.routingDecision.frontResponseType === 'model_based_explanation' && hasSubstantiveTask(resolvedTaskTitle)) {
     actions.push({
       id: 'save_task',
       label: '保存为今晚任务',

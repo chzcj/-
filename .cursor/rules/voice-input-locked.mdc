@@ -1,0 +1,32 @@
+---
+description: 语音输入已真机验收锁定；未经用户明确同意不得改动 ASR/录音相关代码
+alwaysApply: true
+---
+
+# 语音输入锁定（用户铁律）
+
+2026-07-13 用户确认：**小程序语音输入已可用**，此部分 **基本不能改动**。
+
+## 必须遵守
+
+1. **默认禁止**修改下列文件及同类语音链路，除非用户在本轮对话中 **明确授权** 改语音：
+   - `miniprogram/src/hooks/useTencentAsrInput.ts`（实时按住说话 · 讯飞）
+   - `miniprogram/src/hooks/useTapFileRecorder.ts`（亲子整段录音）
+   - `miniprogram/src/lib/recorderState.ts`
+   - `miniprogram/src/lib/iflytekRtasrParse.ts`
+   - `miniprogram/src/lib/asrPermission.ts`
+   - `miniprogram/src/lib/wechatPrivacy.ts`（影响按住说话隐私弹窗时）
+   - `app/api/asr/**`
+   - `src/lib/server/iflytek/**`
+   - `app/api/rehearsal/dialogue-transcribe/**`（亲子文件转写）
+2. 若任务「可能」波及语音（登录、隐私、录音权限、socket 域名、全局 RecorderManager）：
+   - **先向用户商量**，说明要动哪些文件、为什么；
+   - **未获同意前只读排查，不改代码**。
+3. 不变量（改语音时若获授权仍须保持）：
+   - 空闲 RecorderManager **绝不** `stop()`；
+   - 实时 ASR 与亲子文件录音用 claim 所有权，失权不得误杀；
+   - 亲子整段录音保持腾讯文件 ASR；实时按住说话保持讯飞方案 A。
+
+## 例外
+
+仅当用户明确说「可以改语音 / 修一下语音 / 解锁语音」等时，才可改上述文件。

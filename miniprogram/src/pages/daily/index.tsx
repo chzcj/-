@@ -148,7 +148,7 @@ export default function DailyPage() {
     ].join('|')
   }, [turns])
 
-  const { scrollIntoView, scrollTop, onScroll, scrollToBottom, resumeFollowOnSend, anchorId, setViewHeight } =
+  const { scrollIntoView, onScroll, scrollToBottom, resumeFollowOnSend, anchorId, setViewHeight } =
     useChatAutoScroll([scrollFingerprint])
 
   useEffect(() => {
@@ -381,7 +381,6 @@ export default function DailyPage() {
           scrollY
           scrollWithAnimation
           scrollIntoView={scrollIntoView}
-          scrollTop={scrollTop}
           onScroll={onScroll}
           enhanced
           showScrollbar={false}

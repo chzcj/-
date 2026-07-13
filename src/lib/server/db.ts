@@ -34,7 +34,13 @@ export async function ensureDbSchema() {
   const pool = getPool();
   if (!pool) return;
   if (!globalDb.__childosPgSchemaReady) {
-    globalDb.__childosPgSchemaReady = pool.query(`
+    // 跨进程 DDL 互斥：web 与 jobs worker 同时冷启动会并发执行 CREATE，
+    // 撞 pg_type 唯一约束（历史 failed job 元凶）。advisory lock 串行化（会话级，须同一连接）。
+    globalDb.__childosPgSchemaReady = (async () => {
+      const client = await pool.connect();
+      try {
+        await client.query(`SELECT pg_advisory_lock(hashtext('childos_schema_ddl'))`);
+        await client.query(`
       CREATE TABLE IF NOT EXISTS conversations (
         conversation_id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL,
@@ -72,14 +78,6 @@ export async function ensureDbSchema() {
         CHECK (id = 1)
       );
 
-      CREATE TABLE IF NOT EXISTS archives (
-        archive_id TEXT PRIMARY KEY,
-        conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id) ON DELETE CASCADE,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
       CREATE TABLE IF NOT EXISTS memory_records (
         memory_id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL,
@@ -92,18 +90,6 @@ export async function ensureDbSchema() {
         evidence TEXT,
         confidence TEXT,
         tags JSONB NOT NULL DEFAULT '[]'::jsonb,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS child_events (
-        event_id TEXT PRIMARY KEY,
-        family_id TEXT NOT NULL,
-        child_id TEXT NOT NULL,
-        title TEXT NOT NULL,
-        event_text TEXT NOT NULL,
-        change_text TEXT NOT NULL DEFAULT '',
-        worry_text TEXT NOT NULL DEFAULT '',
-        draft JSONB,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
@@ -165,7 +151,9 @@ export async function ensureDbSchema() {
       );
       CREATE INDEX IF NOT EXISTS idx_dialogue_analyses_family_child
         ON dialogue_analyses (family_id, child_id, created_at DESC);
-    `).then(() => pool.query(`
+    `);
+        // 迁移块同样在锁内、同一连接上执行
+        await client.query(`
       DO $$ BEGIN
         -- 存量 demo 数据统一到 f_demo/c_demo（记忆域旧值 family_demo/child_demo）
         UPDATE memory_layer_items SET family_id='f_demo' WHERE family_id='family_demo';
@@ -204,7 +192,12 @@ export async function ensureDbSchema() {
         ) >= 3;
       EXCEPTION WHEN others THEN RAISE NOTICE 'memory_layer_items migration skipped: %', SQLERRM;
       END $$;
-    `)).then(() => undefined);
+    `);
+      } finally {
+        await client.query(`SELECT pg_advisory_unlock(hashtext('childos_schema_ddl'))`).catch(() => {});
+        client.release();
+      }
+    })();
   }
   await globalDb.__childosPgSchemaReady;
 }
@@ -967,59 +960,6 @@ export async function insertMemoryRecords(records: MemoryRecordInput[]) {
   return records.length;
 }
 
-export async function saveChildEvent(input: {
-  familyId: string;
-  childId: string;
-  title: string;
-  eventText: string;
-  changeText?: string;
-  worryText?: string;
-  draft?: unknown;
-}) {
-  const pool = getPool();
-  if (!pool) return undefined;
-  await ensureDbSchema();
-  const eventId = createId('evt');
-  await pool.query(
-    `INSERT INTO child_events (event_id, family_id, child_id, title, event_text, change_text, worry_text, draft)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
-    [
-      eventId,
-      input.familyId,
-      input.childId,
-      input.title,
-      input.eventText,
-      input.changeText || '',
-      input.worryText || '',
-      JSON.stringify(input.draft || null)
-    ]
-  );
-  return eventId;
-}
-
-export async function loadRecentContext(familyId = 'f_demo', childId = 'c_demo') {
-  const pool = getPool();
-  if (!pool) return { memories: [], events: [] };
-  await ensureDbSchema();
-  const memories = await pool.query(
-    `SELECT type, title, content, evidence, confidence, tags, created_at
-     FROM memory_records
-     WHERE family_id = $1 AND child_id = $2
-     ORDER BY created_at DESC
-     LIMIT 20`,
-    [familyId, childId]
-  );
-  const events = await pool.query(
-    `SELECT title, event_text, change_text, worry_text, draft, created_at
-     FROM child_events
-     WHERE family_id = $1 AND child_id = $2
-     ORDER BY created_at DESC
-     LIMIT 10`,
-    [familyId, childId]
-  );
-  return { memories: memories.rows, events: events.rows };
-}
-
 export async function loadFamilyBriefMemory(familyId = 'f_demo', childId = 'c_demo'): Promise<FamilyBriefMemory | undefined> {
   const pool = getPool();
   if (!pool) return undefined;
@@ -1038,7 +978,9 @@ export async function loadProfileSnapshotContext(familyId = 'f_demo', childId = 
   const pool = getPool();
   if (!pool) return { digest: undefined, memories: [], events: [], latestUnderstandingCard: undefined };
   await ensureDbSchema();
-  const [digest, memories, events, latestConversation] = await Promise.all([
+  // child_events（写入方已随 record-child 下线，永远为空）与 conversations（旧问题流废弃表）
+  // 不再查询；保留返回键以兼容调用方形状。
+  const [digest, memories] = await Promise.all([
     pool.query<{ profile_board: ProfileBoardDigest }>(
       `SELECT profile_board
        FROM family_memory_digests
@@ -1052,36 +994,14 @@ export async function loadProfileSnapshotContext(familyId = 'f_demo', childId = 
        ORDER BY created_at DESC
        LIMIT 6`,
       [familyId, childId]
-    ),
-    pool.query(
-      `SELECT title, LEFT(event_text, 140) AS event_text, LEFT(change_text, 100) AS change_text, LEFT(worry_text, 100) AS worry_text, created_at
-       FROM child_events
-       WHERE family_id = $1 AND child_id = $2
-       ORDER BY created_at DESC
-       LIMIT 5`,
-      [familyId, childId]
-    ),
-    pool.query<{
-      conversation_id: string;
-      updated_at: Date;
-      understanding_card: UnderstandingCardData | null;
-    }>(
-      `SELECT conversation_id, updated_at, state -> 'understandingCard' AS understanding_card
-       FROM conversations
-       WHERE family_id = $1
-         AND child_id = $2
-         AND state ? 'understandingCard'
-       ORDER BY updated_at DESC
-       LIMIT 1`,
-      [familyId, childId]
     )
   ]);
   const profileBoard = sanitizeProfileBoardDigest(digest.rows[0]?.profile_board);
   return {
     digest: profileBoard && Object.keys(profileBoard).length > 0 ? profileBoard : undefined,
     memories: memories.rows,
-    events: events.rows,
-    latestUnderstandingCard: mapLatestUnderstandingCard(latestConversation.rows[0])
+    events: [] as Array<Record<string, unknown>>,
+    latestUnderstandingCard: mapLatestUnderstandingCard(undefined)
   };
 }
 
@@ -1089,7 +1009,7 @@ export async function rebuildFamilyMemoryDigest(familyId = 'f_demo', childId = '
   const pool = getPool();
   if (!pool) return undefined;
   await ensureDbSchema();
-  const [memories, events] = await Promise.all([
+  const [memories] = await Promise.all([
     pool.query<{
       type: string;
       title: string;
@@ -1104,26 +1024,13 @@ export async function rebuildFamilyMemoryDigest(familyId = 'f_demo', childId = '
        ORDER BY created_at DESC
        LIMIT 12`,
       [familyId, childId]
-    ),
-    pool.query<{
-      title: string;
-      event_text: string;
-      change_text: string;
-      worry_text: string;
-      created_at: Date;
-    }>(
-      `SELECT title, event_text, change_text, worry_text, created_at
-       FROM child_events
-       WHERE family_id = $1 AND child_id = $2
-       ORDER BY created_at DESC
-       LIMIT 8`,
-      [familyId, childId]
     )
   ]);
 
   const now = formatBeijingDate();
   const memoryRows = memories.rows;
-  const eventRows = events.rows;
+  // child_events 表已随 record-child 下线（写入方为零、表待 DROP），legacy digest 不再读它
+  const eventRows: Array<{ title: string; event_text: string; change_text: string; worry_text: string; created_at: Date }> = [];
   const pendingRows = memoryRows.filter((row) => /pending|hypothesis|线索/i.test(row.type));
   const stableRows = memoryRows.filter((row) => /stable|profile/i.test(row.type));
   const rawRows = memoryRows.filter((row) => /raw|event|record/i.test(row.type));
@@ -1305,24 +1212,22 @@ export async function debugDatabase() {
   const pool = getPool();
   if (!pool) return { enabled: false };
   await ensureDbSchema();
-  const [conversations, archives, memories, events, digests, layerItems] = await Promise.all([
-    pool.query('SELECT COUNT(*)::int AS count FROM conversations'),
-    pool.query('SELECT COUNT(*)::int AS count FROM archives'),
+  // 只统计活跃表：conversations/archives/child_events 属已下线功能（备份后待 DROP），
+  // readiness 不再依赖它们，DROP 后此端点不受影响。
+  const [memories, digests, layerItems, episodes] = await Promise.all([
     pool.query('SELECT COUNT(*)::int AS count FROM memory_records'),
-    pool.query('SELECT COUNT(*)::int AS count FROM child_events'),
     pool.query('SELECT COUNT(*)::int AS count FROM family_memory_digests'),
-    pool.query('SELECT COUNT(*)::int AS count FROM memory_layer_items')
+    pool.query('SELECT COUNT(*)::int AS count FROM memory_layer_items'),
+    pool.query("SELECT COUNT(*)::int AS count FROM evidence_episodes").catch(() => ({ rows: [{ count: 0 }] }))
   ]);
   const users = await pool.query('SELECT COUNT(*)::int AS count FROM users');
   return {
     enabled: true,
     users: users.rows[0]?.count || 0,
-    conversations: conversations.rows[0]?.count || 0,
-    archives: archives.rows[0]?.count || 0,
     memoryRecords: memories.rows[0]?.count || 0,
-    childEvents: events.rows[0]?.count || 0,
     familyMemoryDigests: digests.rows[0]?.count || 0,
-    memoryLayerItems: layerItems.rows[0]?.count || 0
+    memoryLayerItems: layerItems.rows[0]?.count || 0,
+    evidenceEpisodes: episodes.rows[0]?.count || 0
   };
 }
 

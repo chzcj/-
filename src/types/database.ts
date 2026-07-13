@@ -181,6 +181,18 @@ export interface EntryEvidencePack {
     parentEvaluations: string[]
     parentGoals: string[]
     missingInformation: string[]
+    /* ---- 可选维度字段（2026-07 增补）：family/communication 模块 prompt 一直在问，
+       但抽取 schema 无字段承接，信息在结构化时被稀释。全部可选、只在家长明确提及时填。 ---- */
+    /** 试过的教育方法及其效果配对（如"报补习班→两次都半途而废"） */
+    triedMethods?: Array<{ method: string; effect: string }>
+    /** 夫妻/照护者之间的教育分歧 */
+    parentDisagreements?: string[]
+    /** 父母陪伴时长与节律（如"爸爸常年出差，妈妈全职陪读"） */
+    companionshipTime?: string
+    /** 孩子兴趣特长 */
+    childInterests?: string[]
+    /** 分科目学习状态（如"数学下滑、语文稳定"） */
+    subjectStates?: Array<{ subject: string; state: string }>
   }
   candidateMechanisms: EntryCandidateMechanism[]
   evidenceUnits: EntryEvidenceUnit[]

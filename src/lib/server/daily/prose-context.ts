@@ -115,12 +115,14 @@ export function buildDailyProseTask(output: OrchestrationOutput): string {
 
   if (mode === 'follow_up') {
     lines.push(
-      '4. 低置信/追问轮：正文极短（一两句即可），把关键追问留给 section；若需追问，先说明「想区分 A 还是 B」。'
+      '4. 低置信/追问轮：正文极短（一两句即可），概括只到「这一幕」层面（如「今晚这一幕，卡的是开工，不是能力」），不下孩子类型判断；把关键追问留给 section；若需追问，先说明「想区分 A 还是 B」。'
     )
   } else if (mode === 'analysis') {
-    lines.push('4. 高置信分析轮：给出有家庭情境感的一句理解或承接，不展开长诊断（诊断在 section）。')
+    lines.push(
+      '4. 高置信分析轮：第二句必须是「对孩子的概括」（这孩子…/你家孩子…/说白了…，家长能记住、能转述），概括优先取材 deepModelDigest.mechanismNarrative 或 retrievalPack.childStructureModels（后台已验证的判断，翻译成人话）；不展开长诊断（诊断在 section）。'
+    )
   } else {
-    lines.push('4. 轻回应：简短确认收到，可点出与检索材料的一个连接。')
+    lines.push('4. 轻回应：简短确认收到，可点出与检索材料的一个连接；无需强行概括。')
   }
 
   return lines.join('\n')

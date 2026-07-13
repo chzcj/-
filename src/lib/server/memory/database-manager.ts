@@ -277,6 +277,27 @@ export async function getAccountClientBackup(tenant: TenantId): Promise<AccountC
   return (await readLayer<AccountClientBackup>('account_client_backup', tenant)).slice(-1)[0] || null
 }
 
+/** 孩子基础档（昵称/年级/年龄）：Onboarding basic 页采集。
+ *  此前仅存前端 localStorage、从不上送，后端推理对孩子年龄一无所知（预演口吻/发展阶段判断均无据）。 */
+export type ChildBasicInfo = {
+  nickname?: string
+  grade?: string
+  age?: string
+  updatedAt: string
+}
+
+export async function saveChildBasicInfo(info: ChildBasicInfo, tenant: TenantId) {
+  await replaceLayer(
+    'child_basic',
+    [toItem('child_basic', info, tenant, `${tenant.familyId}:${tenant.childId}:latest`)],
+    tenant
+  )
+}
+
+export async function getChildBasicInfo(tenant: TenantId): Promise<ChildBasicInfo | null> {
+  return (await readLayer<ChildBasicInfo>('child_basic', tenant)).slice(-1)[0] || null
+}
+
 export async function saveConditionalProfile(profile: ConditionalProfile, tenant: TenantId) {
   await upsertLayer('conditional_profiles', [toItem('conditional_profiles', profile, tenant)], tenant)
 }

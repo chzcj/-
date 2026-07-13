@@ -6,6 +6,7 @@
 }
 
 .input-zone {
+  position: relative;
   padding: 8px 16px 10px;
 }
 
@@ -101,14 +102,21 @@ button.hold-button[disabled] {
   line-height: $text-body-lh;
 }
 
+/* 悬浮在输入条上方：不占布局高度，出现/消失都不会撑高 dock、不会顶动按钮 */
 .input-zone-status {
-  min-height: 22px;
-  box-sizing: border-box;
+  position: absolute;
+  bottom: 100%;
+  left: 16px;
+  right: 16px;
+  pointer-events: none;
 }
 
 .hint-text {
-  display: block;
-  padding: 4px 4px 0;
+  display: inline-block;
+  padding: 4px 10px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: rgba(248, 246, 229, 0.94);
   font-size: $text-small;
   color: $muted;
 }
@@ -137,12 +145,16 @@ button.hold-button[disabled] {
 }
 
 .hold-button-wave {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   gap: 4px;
   height: 28px;
   color: rgba(255, 255, 255, 0.95);
+}
+
+.hold-button-wave.is-visible {
+  display: flex;
 }
 
 .hold-button-wave-bar {
@@ -161,4 +173,8 @@ button.hold-button[disabled] {
 .hold-button-label {
   font-size: $text-body;
   font-weight: 700;
+}
+
+.hold-button-label.is-hidden {
+  display: none;
 }

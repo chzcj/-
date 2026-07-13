@@ -13,3 +13,4 @@ pnpm-debug.log*
 deploy.sh
 .deploy.env
 scripts/test-reports/
+backup-dead-tables-*.sql

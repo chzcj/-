@@ -41,7 +41,7 @@ export default defineAppConfig({
   /**
    * permission 仅支持地理位置类 scope（官方文档）。
    * 麦克风不要写在这里——会报「无效的 app.json permission["scope.record"]」。
-   * 录音靠：隐私协议（公众平台声明麦克风）+ 运行时 authorize(scope.record) + PrivacyAgreementGate。
+   * 录音靠：隐私协议（公众平台声明麦克风，微信官方弹窗）+ 运行时 authorize(scope.record)。
    * 勿把 getRecorderManager 写入 requiredPrivateInfos（该字段仅用于地理位置 API）。
    */
   __usePrivacyCheck__: true,

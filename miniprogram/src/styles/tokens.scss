@@ -41,7 +41,9 @@ $shell-max-width: 430px;
 
 $btn-height-primary: 44px;
 $btn-height-chip: 34px;
-$input-dock-height: 112px;
+/* 输入 dock 实际高度：input-zone padding(8+10) + 按钮 44 = 62，留 2px 余量。
+   勿再放大：偏大会在输入条上方留出一条空白页面底色带（视觉像黄绿色遮罩，盖住正文）。 */
+$input-dock-height: 64px;
 
 $bubble-parent-max-ratio: 72%;
 $bubble-ai-max: 86%;

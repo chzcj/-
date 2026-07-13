@@ -13,6 +13,7 @@ import type { DeepModelDigest, StructuralTension } from '@/types/deep-model-dige
 import { saveDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
 import { buildLlmDeepModelDigest } from '@/lib/server/memory/deep-modeling/llm-digest-builder'
 import { loadDeepMechanismHandoff } from '@/lib/server/memory/deep-mechanism/handoff-store'
+import { loadHighValueAtoms } from '@/lib/server/db'
 
 function truncate(text: string, max: number): string {
   const t = text.trim()
@@ -25,7 +26,7 @@ export async function buildDeepModelDigest(
   tenant: TenantId,
   structuralTensionsOverride?: StructuralTension[]
 ): Promise<DeepModelDigest> {
-  const [built, network, cycles, hypotheses, history, narratives, handoff] = await Promise.all([
+  const [built, network, cycles, hypotheses, history, narratives, handoff, highValueAtoms] = await Promise.all([
     getLatestBuiltProfileSnapshot(tenant).catch(() => null),
     getLatestEvidenceNetwork(tenant).catch(() => null),
     getFamilyInteractionCycles(tenant).catch(() => []),
@@ -33,6 +34,7 @@ export async function buildDeepModelDigest(
     getMergedParentInputHistory(tenant, 12).catch(() => []),
     getParentNarrativePattern(tenant).catch(() => null),
     loadDeepMechanismHandoff(tenant).catch(() => null),
+    loadHighValueAtoms(tenant.familyId, tenant.childId, 12).catch(() => []),
   ])
 
   const topMechanism = network?.candidateMechanismMatrix?.find((m) => m.overallStrength !== 'low')
@@ -69,10 +71,21 @@ export async function buildDeepModelDigest(
     .slice(0, 5)
     .map((t) => truncate(t, 100))
 
-  const childQuotes: string[] = []
-  for (const m of network?.candidateMechanismMatrix || []) {
-    for (const b of m.explainedBehaviors || []) {
-      if (b?.includes('「') || b?.includes('"')) childQuotes.push(truncate(b, 80))
+  // 孩子原话主来源：episode 抽取管线标记的 child_quote 高价值原子（真实话语，已生产验证）。
+  // 旧来源（explainedBehaviors 里带引号的行为描述）仅作兜底补充——它结构性偏空，
+  // 曾导致 childQuotes 长期为空，预演的「孩子」无语言样本可模仿。
+  const childQuotes: string[] = highValueAtoms
+    .filter((a) => a.sourceType === 'child_quote' && a.content?.trim())
+    .slice(0, 4)
+    .map((a) => truncate(a.content, 80))
+  if (childQuotes.length < 4) {
+    for (const m of network?.candidateMechanismMatrix || []) {
+      for (const b of m.explainedBehaviors || []) {
+        if (childQuotes.length >= 4) break
+        if ((b?.includes('「') || b?.includes('"')) && !childQuotes.includes(truncate(b, 80))) {
+          childQuotes.push(truncate(b, 80))
+        }
+      }
     }
   }
 

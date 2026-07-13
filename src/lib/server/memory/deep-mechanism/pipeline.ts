@@ -265,8 +265,11 @@ function normStructuralTensions(raw: unknown): StructuralTension[] {
 async function runLegacyMonolith(payload: Record<string, unknown>): Promise<MechanismSynthesizeOutput | undefined> {
   return callAgentJson<MechanismSynthesizeOutput>(
     'deepMechanismReview',
-    '用五大生态系统+16家庭理论框架，产出回归家庭结构根因的深度机制（覆盖旧机制层）。',
-    payload
+    '用五大生态系统+20家庭理论框架，产出回归家庭结构根因的深度机制（覆盖旧机制层）。',
+    payload,
+    // 输出含 3-5 条机制矩阵+假设+叙事模式，默认 2048 会截断 JSON（历史 failed job 的
+    // "Unexpected end of JSON input" 即此因，机制层因此建不成），放宽到 4096。
+    { maxTokens: 4096 }
   )
 }
 
@@ -326,7 +329,9 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<void> {
   const classifyRaw = await callAgentJson<{ classifiedFacts?: ClassifiedFact[] }>(
     'ecosystemClassifier',
     '对每条家庭事实做五大生态系统分类。',
-    { facts: flatFacts }
+    { facts: flatFacts },
+    // 全量事实逐条分类输出很长，默认 2048 截断 JSON（"Unexpected end of JSON input" 主因）
+    { maxTokens: 4096 }
   )
   if (classifyRaw?.classifiedFacts?.length) {
     ecosystemMap = classifyRaw.classifiedFacts
@@ -351,7 +356,8 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<void> {
   const matchRaw = await callAgentJson<{ theoryMatches?: TheoryMatchHandoff[] }>(
     'theoryMatcher',
     '基于生态系统分类匹配理论卡。',
-    { ecosystemMap, theoryCards: THEORY_CARDS }
+    { ecosystemMap, theoryCards: THEORY_CARDS },
+    { maxTokens: 4096 }
   )
   if (matchRaw?.theoryMatches?.length) {
     theoryMatches = matchRaw.theoryMatches
@@ -369,7 +375,9 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<void> {
   let ai = await callAgentJson<MechanismSynthesizeOutput>(
     'mechanismSynthesizer',
     '综合理论匹配与全量证据，产出深度机制矩阵。',
-    { ...sharedContext, ecosystemMap, theoryMatches }
+    { ...sharedContext, ecosystemMap, theoryMatches },
+    // 机制矩阵输出体量大，默认 2048 会截断 JSON
+    { maxTokens: 4096 }
   )
 
   if (!ai?.candidateMechanismMatrix?.length) {
@@ -385,7 +393,8 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<void> {
       entryPacks: packDigest,
       candidateMechanismMatrix: ai.candidateMechanismMatrix,
       builtCoreJudgment: builtSnapshot?.coreJudgment || '',
-    }
+    },
+    { maxTokens: 3072 }
   )
   const structuralTensions = normStructuralTensions(riskRaw?.structuralTensions)
 

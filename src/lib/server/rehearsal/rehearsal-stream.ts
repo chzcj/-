@@ -78,7 +78,7 @@ export function buildRehearsalStreamTask(): string {
 
 输出格式（严格）：
 ---reaction---
-孩子即时回复（对话体，可用引号，20-60字，禁止写成给家长的建议）
+孩子即时回复（对话体，可用引号，40-120字，禁止写成给家长的建议；先像这个孩子平时说话——复用孩子原话样本的用词句式、可提及锚定事实里的具体近期事件；机制只作潜台词不直说；若有本场前文须接住）
 ---rest---
 { "childLikelyHearing": string, "likelyTriggeredMechanisms": string[], "possibleChildReaction": { "immediateReaction": string, "innerReaction": string, "behaviorRisk": string }, "riskPoints": string[], "saferVersion": string, "whyThisIsSafer": string, "avoidPhrases": string[], "usedProfileEvidence": string[], "closingAdvice": string, "taskTitle": string, "dailyToneDetected": boolean, "dailyToneReminder": string, "showSuggestedWording": boolean, "suggestedWordingHint": string }
 
@@ -86,5 +86,6 @@ export function buildRehearsalStreamTask(): string {
 - ---reaction--- 段只写孩子可能说出口的话，不写分析。
 - ---rest--- 段必须是合法 JSON（可跨多行），包含其余所有字段。
 - immediateReaction 字段与 ---reaction--- 段内容一致。
+- usedProfileEvidence 至少列出 1 条本轮用到的画像/证据要点。
 - 禁止输出 markdown 标题、解释性前后缀。`
 }

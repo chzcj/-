@@ -1,7 +1,7 @@
 import { fail, ok } from '@/lib/api-response';
 import { callAgentJson } from '@/lib/server/ark-agents';
 import { getRequestIdentity } from '@/lib/server/auth';
-import { loadProfileSnapshotContext } from '@/lib/server/db';
+import { loadProfileSnapshotContext, loadLatestBoardSnapshot } from '@/lib/server/db';
 import { verifyAppApi, authError } from '@/lib/server/auth-guard';
 import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store';
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder';
@@ -26,6 +26,27 @@ export async function GET(request: Request) {
       recentRecords: context.digest.recentRecords || [],
       communicationTip: context.digest.communicationTip || '',
       hasUnreadUpdate: Boolean(context.digest.hasUnreadUpdate),
+      latestUnderstandingCard: context.latestUnderstandingCard
+    });
+  }
+
+  // 1b) 活跃链（digest_update job）的看板正文写在 board_snapshots 表；
+  //     旧 profile_board 列已无活跃写入方（读写错位）。命中则映射为档案页形状，
+  //     避免每次请求都退化到 LLM 现场重生成（慢且不稳定）。
+  const board = await loadLatestBoardSnapshot(identity.familyId, identity.childId).catch(() => undefined);
+  const core = board?.snapshot as {
+    childCurrentState?: string;
+    stableUnderstanding?: string[];
+    recentChanges?: string[];
+    currentBestNextStep?: string;
+  } | undefined;
+  if (core && (core.childCurrentState || core.recentChanges?.length)) {
+    return ok({
+      recentChanges: (core.recentChanges || []).slice(0, 4).map((s) => ({ title: s.slice(0, 24), body: s })),
+      currentFocus: core.childCurrentState || '',
+      recentRecords: (core.stableUnderstanding || []).slice(0, 4).map((s) => ({ title: s.slice(0, 24), body: s })),
+      communicationTip: core.currentBestNextStep || '',
+      hasUnreadUpdate: false,
       latestUnderstandingCard: context.latestUnderstandingCard
     });
   }

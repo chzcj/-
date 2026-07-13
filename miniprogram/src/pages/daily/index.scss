@@ -1,4 +1,5 @@
 /* Daily 页局部样式；全局 hi-fi 在 hifi-base.scss */
+@import '../../styles/tokens.scss';
 
 .hero-title,
 .hero-copy {
@@ -11,8 +12,11 @@
 
 .daily-scroll-wrap {
   position: relative;
-  height: 100%;
-  min-height: 0;
+  /* 单滚动容器：明确视口高度，避免被 .page overflow 抢走 */
+  height: calc(100vh - #{$tab-bar-height} - #{$input-dock-height} - 12px);
+  max-height: calc(100vh - #{$tab-bar-height} - #{$input-dock-height} - 12px);
+  min-height: 280px;
+  overflow: hidden;
 }
 
 .chat-scroll-view {

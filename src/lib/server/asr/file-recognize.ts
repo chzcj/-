@@ -92,8 +92,6 @@ export async function recognizeAudioFile(args: {
   base64Data: string
   /** 原始字节长度 */
   dataLen: number
-  /** 如 mp3 / aac / wav / pcm */
-  voiceFormat?: string
   maxWaitMs?: number
 }): Promise<string> {
   const config = getAsrConfig()
@@ -110,7 +108,9 @@ export async function recognizeAudioFile(args: {
       SourceType: 1,
       Data: args.base64Data,
       DataLen: args.dataLen,
-      VoiceFormat: args.voiceFormat || 'mp3',
+      // 注意：CreateRecTask（录音文件识别）没有 VoiceFormat 参数（格式自动检测），
+      // 传了会被腾讯拒绝：The parameter 'VoiceFormat' is not recognized.
+      // VoiceFormat 只存在于「一句话识别」SentenceRecognition 接口。
     },
     config
   )

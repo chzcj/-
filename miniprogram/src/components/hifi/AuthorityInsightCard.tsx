@@ -12,7 +12,8 @@ export function AuthorityInsightCard({ title = '育见解读', body, children }:
   return (
     <View className='authority-insight-card profile-block'>
       <Text className='authority-badge'>育见解读</Text>
-      {title ? <Text className='authority-insight-title'>{title}</Text> : null}
+      {/* badge 已固定显示「育见解读」，title 相同（含默认值）时不再重复渲染大标题 */}
+      {title && title !== '育见解读' ? <Text className='authority-insight-title'>{title}</Text> : null}
       {body
         .split('\n')
         .filter(Boolean)

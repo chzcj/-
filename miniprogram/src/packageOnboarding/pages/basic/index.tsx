@@ -6,6 +6,7 @@ import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { firstBuildEntryPath } from '@/lib/buildEntries'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { loadChildBasicInfo, saveChildBasicInfo } from '@/services/childStorage'
+import { apiRequest } from '@/services/api'
 import './index.scss'
 
 const GRADES = [
@@ -39,6 +40,11 @@ export default function OnboardingBasic() {
     }
     setSaving(true)
     await saveChildBasicInfo({ childName: childName.trim(), grade: grade.trim() })
+    // 同步上送服务端（fire-and-forget）：年级供预演口吻与发展阶段判断
+    void apiRequest('/api/profile/basic', {
+      method: 'POST',
+      data: { nickname: childName.trim(), grade: grade.trim() },
+    }).catch(() => {})
     setSaving(false)
     await mpGoReplace(firstBuildEntryPath())
   }
