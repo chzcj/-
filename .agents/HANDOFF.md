@@ -33,6 +33,18 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ---
 
+## 2026-07-13 21:14 | Cursor | Agent/SP/Job 架构图
+
+**做了什么**
+- 新增 `docs/architecture/agent-memory-workflow.md`（10 张 Mermaid：BFF、SP 分层、记忆、Job 链、deep_mechanism 链）
+- README / PRODUCT / AGENTS 交叉引用
+- push origin + github
+
+**验证**
+- 文档-only
+
+---
+
 ## 2026-07-13 21:02 | Cursor | PRODUCT/DESIGN 记忆文档
 
 **做了什么**
