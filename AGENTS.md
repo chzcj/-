@@ -27,6 +27,7 @@ npm run sync:gitee
 
 - 产品边界：[PRODUCT.md](PRODUCT.md)
 - 设计系统：[DESIGN.md](DESIGN.md)（hi-fi 主站；旧紫色 AppShell 已废弃）
+- **技术架构**：[docs/architecture/agent-memory-workflow.md](docs/architecture/agent-memory-workflow.md)（Agent 工作流 · SP · Job · 记忆）
 - UI 像素参考：[design-reference/README.md](design-reference/README.md)
 - 对外合作材料：[docs/outreach/](docs/outreach/)
 - **Impeccable（UI）**：已安装于 `.agents/skills/impeccable/`（Cursor 入口：`.cursor/skills/impeccable`）

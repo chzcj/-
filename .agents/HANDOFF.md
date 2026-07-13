@@ -25,6 +25,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-13 21:14 | Cursor | 底层架构图 docs/architecture/agent-memory-workflow.md；推送 Gitee + GitHub
 - 2026-07-13 21:02 | Cursor | PRODUCT/DESIGN 记忆中心架构文档（功能×Agent×组件对照）
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）

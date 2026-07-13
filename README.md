@@ -176,5 +176,6 @@ docs/                # 契约、提审、产品文档
 
 - [PRODUCT.md](PRODUCT.md) — 产品边界全文  
 - [DESIGN.md](DESIGN.md) — 设计系统全文  
+- [docs/architecture/agent-memory-workflow.md](docs/architecture/agent-memory-workflow.md) — **底层架构图**（Agent / SP / Job / 记忆）  
 - [miniprogram/README.md](miniprogram/README.md) — 小程序构建与 ASR 域名  
 - [miniprogram/docs/REVIEW-SUBMISSION.md](miniprogram/docs/REVIEW-SUBMISSION.md) — 微信提审  

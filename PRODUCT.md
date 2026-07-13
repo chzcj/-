@@ -63,6 +63,8 @@ deep_model_digest（家长向 SecondMe 摘要）
 
 契约真源：`docs/contracts/memory-read.md` · `docs/contracts/memory-write.md` · `docs/contracts/read-contract.md`。
 
+**技术架构图**（前后端 Agent 工作流、SP 分层、Job 链）：[`docs/architecture/agent-memory-workflow.md`](docs/architecture/agent-memory-workflow.md)
+
 ### 两个记忆原则（产品铁律）
 
 1. **具体事实优先**：场景、原话、触发点越具体，模型越准；系统不嫌弃「乱说」，但会引导家长多说细节（四模块软引导 ≥800 字/模块）。
