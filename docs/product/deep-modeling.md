@@ -1,6 +1,8 @@
 # 育见【深度建模】产品宪法
 
-> 本文件是判断所有功能取舍的统一约束源。代码契约见 `docs/contracts/read-contract.md`；后台理论见 `prompts/background/deepMechanismReview.md`。
+> 本文件是判断所有功能取舍的统一约束源。  
+> **全景对照表**：[`PRODUCT.md`](../../PRODUCT.md)（功能 × 记忆 × Agent）· [`DESIGN.md`](../../DESIGN.md)（组件 × 记忆来源）  
+> 代码契约：`docs/contracts/read-contract.md`；后台理论：`prompts/background/deepMechanismReview.md`。
 
 ## 1. 我们在卖什么
 

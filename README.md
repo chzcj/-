@@ -69,7 +69,7 @@
 
 家长持续输入真实生活片段 → 多模块共建孩子理解 → 前台分析锚定家庭事实与机制闭环。介绍页对产品能力的概括：教育观念、陪伴、性格、学习、兴趣、情绪、家庭矛盾与过往方法，逐步形成**只属于这个孩子与家庭的成长模型**。
 
-更完整边界见 [PRODUCT.md](PRODUCT.md)、[docs/product/deep-modeling.md](docs/product/deep-modeling.md)。
+更完整边界见 [PRODUCT.md](PRODUCT.md)（含 **功能 × 记忆 × Agent** 对照表）、[docs/product/deep-modeling.md](docs/product/deep-modeling.md)。
 
 ---
 
@@ -116,7 +116,7 @@ thinking 四宫格 → prose 流式 → section 卡片（≤3）→ actions → 
 
 长篇系统说明、复杂多级菜单、评分暗示、冷灰临床感、ChatGPT 式万能对话框、恢复旧紫色心镜布局。
 
-完整 Token 与组件见 [DESIGN.md](DESIGN.md)、[miniprogram/docs/DESIGN-TOKENS.md](miniprogram/docs/DESIGN-TOKENS.md)、[design-reference/README.md](design-reference/README.md)。
+完整 Token 与组件见 [DESIGN.md](DESIGN.md)（含 **组件 × 记忆来源** 对照）、[miniprogram/docs/DESIGN-TOKENS.md](miniprogram/docs/DESIGN-TOKENS.md)、[design-reference/README.md](design-reference/README.md)。
 
 ---
 

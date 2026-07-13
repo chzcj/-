@@ -25,9 +25,25 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-13 21:02 | Cursor | PRODUCT/DESIGN 记忆中心架构文档（功能×Agent×组件对照）
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
 - 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-13 21:02 | Cursor | PRODUCT/DESIGN 记忆文档
+
+**做了什么**
+- `PRODUCT.md`：记忆中心架构、功能×记忆×Agent 表、越用越懂闭环、体验优先 onboarding
+- `DESIGN.md`：组件×记忆来源、Onboarding 组件表、流式与 memory-status 时序
+- `deep-modeling.md` / `README.md` 交叉引用
+
+**验证**
+- 文档-only，无代码变更
+
+**下一步**
+- 新功能/组件 PR 时对照 PRODUCT/DESIGN 表声明记忆读写路径
 
 ---
 
