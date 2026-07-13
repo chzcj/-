@@ -1,10 +1,13 @@
 import { fail, ok } from '@/lib/api-response'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
+import { getCurrentUser } from '@/lib/server/auth'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import {
   getChildBasicInfo,
   saveChildBasicInfo,
+  getLatestBuiltProfileSnapshot,
 } from '@/lib/server/memory/database-manager'
+import { setUserOnboardingComplete } from '@/lib/server/db'
 
 /**
  * 孩子基础档（昵称/年级/年龄）。
@@ -34,5 +37,17 @@ export async function POST(request: Request) {
     { nickname, grade, age, updatedAt: new Date().toISOString() },
     tenant
   )
-  return ok({ saved: true })
+  const user = await getCurrentUser()
+  const snapshot = await getLatestBuiltProfileSnapshot(tenant).catch(() => null)
+  let onboardingComplete = Boolean(user?.onboardingComplete)
+  if (
+    user?.userId &&
+    nickname &&
+    grade &&
+    snapshot?.coreJudgment?.trim()
+  ) {
+    await setUserOnboardingComplete(user.userId, true)
+    onboardingComplete = true
+  }
+  return ok({ saved: true, onboardingComplete })
 }

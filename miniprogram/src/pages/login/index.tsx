@@ -3,51 +3,46 @@ import Taro, { useLoad } from '@tarojs/taro'
 import { useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { HiFiMascot } from '@/components/hifi/HiFiMascot'
-import { resolvePostAuthRoute } from '@/lib/postAuthRoute'
 import { SHARE_PATHS } from '@/lib/shareMessages'
 import { openPrivacyContract } from '@/lib/wechatPrivacy'
 import { usePublicPageShare } from '@/hooks/useSharePage'
-import { loginWithWechat } from '@/services/auth'
+import { setPrivacyConsent } from '@/services/privacyConsent'
+import { getSessionToken } from '@/services/api'
+import { fetchCurrentUser } from '@/services/auth'
+import { routeAfterAuth } from '@/utils/navigation'
 import './index.scss'
 
 /**
- * 登录页（审核合规）：
- * - 不获取手机号 / 头像 / 昵称（仅 wx.login code → 服务端 openid）
- * - 隐私协议默认不勾选，用户自主勾选后方可登录
- * - 页面加载不自动拉起任何授权
+ * 开始页（审核合规）：
+ * - 仅「开始」进入体验，不强制微信登录
+ * - 隐私协议默认不勾选，用户自主同意
  */
 export default function LoginPage() {
   usePublicPageShare({
     title: '育见 - 帮家长看见孩子',
     path: SHARE_PATHS.login,
   })
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
 
   useLoad(() => {
     Taro.setNavigationBarTitle({ title: '育见' })
+    void (async () => {
+      const token = getSessionToken()
+      if (!token) return
+      const user = await fetchCurrentUser()
+      if (user) routeAfterAuth(user, true)
+    })()
   })
 
-  const handleLogin = async () => {
+  const handleStart = () => {
     if (!privacyAgreed) {
       setError('请先阅读并勾选同意《用户隐私保护指引》')
       return
     }
-    setLoading(true)
+    setPrivacyConsent(true)
     setError('')
-    const res = await loginWithWechat()
-    if (!res.ok) {
-      setLoading(false)
-      setError(res.message)
-      return
-    }
-    try {
-      await resolvePostAuthRoute(true)
-    } catch {
-      setError('登录成功，但同步数据失败，请重试')
-    }
-    setLoading(false)
+    void Taro.reLaunch({ url: '/packageOnboarding/pages/intro/index' })
   }
 
   return (
@@ -58,10 +53,6 @@ export default function LoginPage() {
         <HiFiMascot />
       </View>
       <View className='hifi-card login-card'>
-        <Text className='login-scope'>
-          登录仅使用微信登录凭证识别账号，不获取手机号、头像与昵称。
-        </Text>
-
         <View
           className='login-privacy-row'
           onClick={() => {
@@ -94,11 +85,10 @@ export default function LoginPage() {
 
         <Button
           className={`btn-primary login-btn${privacyAgreed ? '' : ' is-disabled'}`}
-          loading={loading}
-          disabled={!privacyAgreed || loading}
-          onClick={handleLogin}
+          disabled={!privacyAgreed}
+          onClick={handleStart}
         >
-          微信登录
+          开始
         </Button>
       </View>
     </HiFiMainShell>

@@ -171,7 +171,7 @@ export async function runProfileGeneratingPipeline(
   if (!diagRes.ok) return { ok: false, message: diagRes.error.message || '深度诊断失败' }
   const diag = diagRes.data.diagnosis || {}
 
-  onStep(3, '保存画像到服务器…')
+  onStep(3, '保存孩子画像…')
   const snapshot = buildSnapshotFromResults(syn, diag, completed)
 
   let persisted = false
@@ -187,7 +187,7 @@ export async function runProfileGeneratingPipeline(
     if (attempt < 2) await new Promise((r) => setTimeout(r, 800))
   }
   if (!persisted) {
-    return { ok: false, message: '画像已生成，但未能保存到服务器，请检查网络后重试' }
+    return { ok: false, message: '画像已生成，但未能保存，请检查网络后重试' }
   }
 
   const { hydrateProfileFromRemote } = await import('@/services/profileStorage')

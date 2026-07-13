@@ -29,7 +29,7 @@ const CustomTabBar = forwardRef<CustomTabBarHandle>((_, ref) => {
     if (index === selected) return
     const user = await fetchCurrentUser()
     if (user && !user.onboardingComplete) {
-      void Taro.reLaunch({ url: '/packageOnboarding/pages/intro/index' })
+      void Taro.reLaunch({ url: '/packageOnboarding/pages/hub/index' })
       return
     }
     setSelected(index)

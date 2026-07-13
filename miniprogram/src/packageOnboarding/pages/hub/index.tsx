@@ -1,6 +1,7 @@
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useMemo, useState } from 'react'
+import { WechatLoginSheet } from '@/components/auth/WechatLoginSheet'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { BUILD_ENTRY_COUNT, firstBuildEntryPath, mpCapturePath, type BuildEntryType } from '@/lib/buildEntries'
@@ -9,6 +10,7 @@ import { entryConfigs } from '@/data/entryConfig'
 import { getAllEntryStatuses, setSupplementFlow } from '@/services/entryStorage'
 import { loadChildBasicInfo } from '@/services/childStorage'
 import { allModulesCompleted } from '@/services/entryStorage'
+import { getSessionToken } from '@/services/api'
 import './index.scss'
 
 const STATUS_LABEL = {
@@ -20,6 +22,8 @@ const STATUS_LABEL = {
 export default function OnboardingHub() {
   useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
   const [statuses, setStatuses] = useState(getAllEntryStatuses())
+  const [loginSheetOpen, setLoginSheetOpen] = useState(false)
+  const [pendingCapturePath, setPendingCapturePath] = useState('')
   const childName = loadChildBasicInfo().childName || '孩子'
 
   useDidShow(() => setStatuses(getAllEntryStatuses()))
@@ -31,16 +35,25 @@ export default function OnboardingHub() {
   const allDone = allModulesCompleted()
   const nextEntry = entryConfigs.find((e) => statuses[e.type] !== 'completed')
 
+  const goCapture = (path: string) => {
+    if (getSessionToken()) {
+      void mpGoReplace(path)
+      return
+    }
+    setPendingCapturePath(path)
+    setLoginSheetOpen(true)
+  }
+
   const openEntry = (entryType: BuildEntryType, status: string) => {
     const supplement = status === 'completed'
     if (supplement) setSupplementFlow(true)
-    void mpGoReplace(mpCapturePath(entryType, supplement))
+    goCapture(mpCapturePath(entryType, supplement))
   }
 
   const actions = allDone
     ? [{ label: '四模块够了，生成孩子画像', onClick: () => void mpGoReplace('/packageOnboarding/pages/final-follow-up/index') }]
     : nextEntry
-      ? [{ label: `从${nextEntry.title}开始`, onClick: () => void mpGoReplace(mpCapturePath(nextEntry.type)) }]
+      ? [{ label: `从${nextEntry.title}开始`, onClick: () => goCapture(mpCapturePath(nextEntry.type)) }]
       : []
 
   return (
@@ -55,11 +68,14 @@ export default function OnboardingHub() {
         onExit: exitSupplementToProfile,
       }}
     >
-      <HiFiBuildHero
-        kicker='开始使用育见'
-        title={`讲四个模块的真实片段，建立${childName}的画像`}
-        copy='每类大约 3～5 分钟，尽量讲 30 秒以上的真实过程。日常 → 作业 → 沟通 → 家庭，按顺序完成即可。'
-      />
+      <View className='hub-hero-wrap'>
+        <HiFiBuildHero
+          kicker='开始使用育见'
+          title='四个模块，建立孩子画像'
+          copy='每类大约 3～5 分钟，尽量讲 30 秒以上的真实过程。按顺序完成：日常 → 作业 → 沟通 → 家庭。'
+          mascot
+        />
+      </View>
       <Text className='section-label'>四模块 · {completedCount}/{BUILD_ENTRY_COUNT}</Text>
       <View className='entry-list'>
         {entryConfigs.map((entry) => {
@@ -80,10 +96,24 @@ export default function OnboardingHub() {
         })}
       </View>
       {!nextEntry && !allDone ? (
-        <View onClick={() => void mpGoReplace(firstBuildEntryPath())}>
+        <View onClick={() => goCapture(firstBuildEntryPath())}>
           <Text className='pill primary'>从第一模块开始</Text>
         </View>
       ) : null}
+
+      <WechatLoginSheet
+        visible={loginSheetOpen}
+        onClose={() => {
+          setLoginSheetOpen(false)
+          setPendingCapturePath('')
+        }}
+        onSuccess={() => {
+          setLoginSheetOpen(false)
+          const path = pendingCapturePath
+          setPendingCapturePath('')
+          if (path) void mpGoReplace(path)
+        }}
+      />
     </HiFiBuildShell>
   )
 }

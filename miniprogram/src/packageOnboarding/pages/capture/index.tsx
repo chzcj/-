@@ -12,7 +12,7 @@ import {
   normalizeBuildEntryType,
 } from '@/lib/buildEntries'
 import { mpGoReplace, exitSupplementToProfile, goOnboardingHub } from '@/lib/mpOnboardingNav'
-import { apiRequest } from '@/services/api'
+import { apiRequest, getSessionToken } from '@/services/api'
 import { getCombinedEntryText, saveCaptureText, saveEntryGate, appendSupplementText, getExistingEntryPreview, isSupplementFlow } from '@/services/entryStorage'
 
 export default function EntryCapturePage() {
@@ -29,6 +29,10 @@ export default function EntryCapturePage() {
   const [promptIndex, setPromptIndex] = useState(0)
 
   useEffect(() => {
+    if (!getSessionToken()) {
+      void goOnboardingHub()
+      return
+    }
     if (!supplementMode) {
       const existing = getCombinedEntryText(entryType)
       if (existing) setDraft(existing)
@@ -150,10 +154,10 @@ export default function EntryCapturePage() {
       ) : null}
 
       {currentPrompt ? (
-        <View className='section'>
-          <Text className='hint-text' onClick={() => setPromptIndex((i) => i + 1)}>
-            换一个问题
-          </Text>
+        <View className='prompt-switch-wrap'>
+          <View className='prompt-switch-btn' onClick={() => setPromptIndex((i) => i + 1)}>
+            <Text className='prompt-switch-btn-text'>换一个问题</Text>
+          </View>
         </View>
       ) : null}
     </HiFiBuildShell>

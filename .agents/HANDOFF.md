@@ -25,8 +25,85 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
-- 2026-07-13 16:45 | Cursor | 审核驳回修复：隐私默认不勾选；登录不取手机号/头像/昵称；语音已锁定
-- 小程序 `build:weapp` 后重新上传提审；公众平台隐私指引勿勾选手机号/头像/昵称
+- 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
+- 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
+- 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README
+
+**做了什么**
+- 小程序：开始页仅隐私+开始；Hub 点模块前 WechatLoginSheet；画像后填 basic；BFF onboardingComplete 时机调整
+- UI：intro 边框、采集 chip/换题按钮、预演滚动、VoiceHoldLiveBanner
+- 重写 `README.md` 产品说明与设计说明（新 onboarding、四 Tab、hi-fi 视觉、ASR 分工）
+- push `origin master` + `github master`
+
+**验证**
+- 此前 typecheck / build:weapp 已通过；BFF 早前 deploy readiness true
+
+**下一步**
+- 真机走通：开始→intro→hub→登录→capture→result→basic→四 Tab
+- 按住说话通栏与预演滚动验收
+
+**风险/冲突**
+- 语音链路仍锁定；勿改 `useTencentAsrInput` 等除非用户授权
+
+---
+
+## 2026-07-13 20:42 | Cursor | 按住说话实时字幕通栏
+
+**做了什么**
+- 新建 `VoiceHoldLiveBanner`：输入条上方浅绿通栏，2～3 行实时转写
+- `HiFiInputZone` 挂载（交流页 send + 预演 fill），只读 transcript，未改 ASR 链路
+
+**验证**
+- typecheck / build:weapp 通过
+
+**回退**
+- 删除 `VoiceHoldLiveBanner.*` + 去掉 `HiFiInputZone` 内挂载即可
+
+---
+
+## 2026-07-13 20:22 | Cursor | 专项采集 · intro · 预演滚动 UI
+
+**做了什么**
+- `.record-status` chip flex 居中（capture + follow-up 共用 BuildRecordBox）
+- 采集页「换一个问题」→ 浅绿描边按钮
+- intro 两段正文加浅绿细边框
+- 预演 active 步：flex 布局 + 底部 anchor，修手动滑到底
+
+**验证**
+- typecheck / build / build:weapp 通过
+
+**下一步**
+- 真机：预演 3 轮后手动滑到底；chip 上下留白
+
+---
+
+## 2026-07-13 19:47 | Cursor | 体验优先建档 + UI 精修
+
+**做了什么**
+- 开始页仅「开始」+ 隐私勾选，不再首屏微信登录
+- intro 充实 AI/SecondMe 文案 + tag chips；hub 点模块**进采集前**弹 WechatLoginSheet（mergeLocal 登录）
+- capture 无 token 重定向 hub；basic 挪到画像结果后；`onboardingComplete` 延后到填昵称年级
+- BFF：`POST /api/profile/built` 不再置完成；`POST /api/profile/basic` 有画像时置完成
+- hub hero 换行修复；登录弹窗 UI 精修；去掉用户可见「服务器/同步」文案
+
+**为什么**
+- 审核「先体验后授权」；未登录不进采集避免与语音链路冲突（语音文件仍锁定）
+
+**验证**
+- `npm run typecheck` / `npm run build` / `miniprogram build:weapp` 通过
+- `npm run deploy` exit 0；`curl readiness` → `ready: true`
+
+**下一步**
+- 开发者工具真机预览：开始→intro→hub→点模块登录→采集语音→四模块→画像→填信息→四 Tab
+- 提审前核对公众平台隐私指引
+
+**风险/冲突**
+- 勿改 `useTencentAsrInput` / `recorderState` 等语音链路
+- 历史已 `onboardingComplete` 老用户不受影响
 
 ---
 

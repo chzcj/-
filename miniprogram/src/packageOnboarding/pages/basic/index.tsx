@@ -3,10 +3,10 @@ import Taro from '@tarojs/taro'
 import { useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
-import { firstBuildEntryPath } from '@/lib/buildEntries'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { loadChildBasicInfo, saveChildBasicInfo } from '@/services/childStorage'
 import { apiRequest } from '@/services/api'
+import { goToDailyTab } from '@/utils/navigation'
 import './index.scss'
 
 const GRADES = [
@@ -40,25 +40,32 @@ export default function OnboardingBasic() {
     }
     setSaving(true)
     await saveChildBasicInfo({ childName: childName.trim(), grade: grade.trim() })
-    // 同步上送服务端（fire-and-forget）：年级供预演口吻与发展阶段判断
-    void apiRequest('/api/profile/basic', {
+    const res = await apiRequest<{ saved?: boolean; onboardingComplete?: boolean }>('/api/profile/basic', {
       method: 'POST',
       data: { nickname: childName.trim(), grade: grade.trim() },
-    }).catch(() => {})
+    })
     setSaving(false)
-    await mpGoReplace(firstBuildEntryPath())
+    if (!res.ok) {
+      Taro.showToast({ title: res.error.message || '保存失败，请重试', icon: 'none' })
+      return
+    }
+    if (res.data.onboardingComplete) {
+      goToDailyTab()
+      return
+    }
+    await mpGoReplace('/packageOnboarding/pages/result/index')
   }
 
   return (
     <HiFiBuildShell
-      topTitle='基本信息'
-      stepLabel='1/4 准备'
-      progress={16}
-      actions={[{ label: saving ? '保存中…' : '下一步', onClick: () => void next(), disabled: saving }]}
+      topTitle='认识孩子'
+      stepLabel='最后一步'
+      progress={96}
+      actions={[{ label: saving ? '保存中…' : '开始交流', onClick: () => void next(), disabled: saving }]}
     >
       <HiFiBuildHero
-        title='先认识孩子'
-        copy='怎么称呼孩子、几年级（会保存到服务器，换机不丢）'
+        title='怎么称呼孩子？'
+        copy='填写昵称和年级，后续交流和预演会更贴近你家孩子。'
       />
       <View className='record-box'>
         <TaroInput

@@ -3,7 +3,6 @@ import { getCurrentUser } from '@/lib/server/auth'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { saveBuiltProfileSnapshot, getLatestBuiltProfileSnapshot, type BuiltProfileSnapshot } from '@/lib/server/memory/database-manager'
 import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
-import { setUserOnboardingComplete } from '@/lib/server/db'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
@@ -27,7 +26,7 @@ export async function GET(request: Request) {
         }),
       }
     : null
-  const onboardingComplete = Boolean(user?.onboardingComplete) || Boolean(humanized?.coreJudgment?.trim())
+  const onboardingComplete = Boolean(user?.onboardingComplete)
   return ok({ snapshot: humanized, onboardingComplete })
 }
 
@@ -77,10 +76,7 @@ export async function POST(request: Request) {
       null
     ).catch(() => {})
     void buildDeepModelDigest(tenant)
-    if (user?.userId) {
-      await setUserOnboardingComplete(user.userId, true)
-    }
-    return ok({ saved: true, onboardingComplete: true })
+    return ok({ saved: true, onboardingComplete: Boolean(user?.onboardingComplete) })
   } catch (error) {
     return failFromError(error)
   }

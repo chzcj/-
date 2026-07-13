@@ -234,17 +234,30 @@
 }
 
 .hifi-build-root .record-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 30px;
-  padding: 6px 11px;
+  padding: 7px 12px;
   border-radius: $radius-pill;
   color: $green-deep;
   background: $green-soft;
   font-size: $text-small;
   font-weight: 720;
   white-space: normal;
-  text-align: right;
+  text-align: center;
   max-width: 48%;
-  line-height: 1.35;
+  line-height: 1.2;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.hifi-build-root .record-status-text {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: center;
 }
 
 .hifi-build-root .record-area,
@@ -278,6 +291,30 @@
   color: $ink-soft;
   font-size: $text-small;
   line-height: 1.55;
+}
+
+.hifi-build-root .prompt-switch-wrap {
+  margin-top: 12px;
+}
+
+.hifi-build-root .prompt-switch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: $radius-pill;
+  border: 1px solid rgba(111, 159, 86, 0.38);
+  background: rgba(241, 248, 223, 0.55);
+  box-sizing: border-box;
+}
+
+.hifi-build-root .prompt-switch-btn-text {
+  color: $green-deep;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .hifi-build-root .text-link {

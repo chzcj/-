@@ -5,8 +5,9 @@ import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShe
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { apiRequest } from '@/services/api'
-import { fetchCurrentUser } from '@/services/auth'
 import { goToDailyTab } from '@/utils/navigation'
+import { fetchCurrentUser } from '@/services/auth'
+import { isBasicInfoComplete } from '@/services/childStorage'
 import { hydrateProfileFromRemote, type LocalProfileSnapshot } from '@/services/profileStorage'
 
 type ProfileSnapshot = LocalProfileSnapshot
@@ -60,8 +61,12 @@ export default function OnboardingResult() {
       goToDailyTab()
       return
     }
-    Taro.showToast({ title: '画像仍在同步，请稍后再试', icon: 'none' })
-    void loadProfile()
+    if (!isBasicInfoComplete()) {
+      void mpGoReplace('/packageOnboarding/pages/basic/index')
+      return
+    }
+    Taro.showToast({ title: '还差一步，请填写孩子信息', icon: 'none' })
+    void mpGoReplace('/packageOnboarding/pages/basic/index')
   }
 
   const goHub = () => void mpGoReplace('/packageOnboarding/pages/hub/index')

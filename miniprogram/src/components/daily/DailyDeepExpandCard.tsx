@@ -43,7 +43,7 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
   async function postFeedback(kind: 'accurate' | 'partial', note?: string) {
     const sectionIds = sections.map((s) => s.id)
     if (!traceId) {
-      setToast('已记录在本机；回到交流再生成一轮后可同步到服务器。')
+      setToast('已记录在本机；回到交流再生成一轮后可继续保存。')
       return
     }
     const res = await apiRequest<{ ok?: boolean }>('/api/daily/section-feedback', {
@@ -57,7 +57,7 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
           : note?.trim()
             ? '收到了，这条校正会进入记忆。'
             : '收到了，已记下不太像。'
-        : '反馈已记下；若未同步成功，可再试一次。'
+        : '反馈已记下；若未保存成功，可再试一次。'
     )
   }
 

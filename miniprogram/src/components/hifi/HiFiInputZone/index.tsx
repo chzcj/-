@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { View, Text, Textarea, Button } from '@tarojs/components'
 import { useTencentAsrInput } from '@/hooks/useTencentAsrInput'
 import { ensureRecordPermission, getRecordAuthStatus } from '@/lib/asrPermission'
+import { VoiceHoldLiveBanner } from '@/components/voice/VoiceHoldLiveBanner'
 import './index.scss'
 
 export type VoiceHoldMode = 'send' | 'fill'
@@ -191,6 +192,14 @@ export function HiFiInputZone({
             模拟器不支持语音，请用真机预览或点「文」打字
           </Text>
         ) : null}
+
+        <VoiceHoldLiveBanner
+          visible={!textMode && pressVisual}
+          transcript={voice.transcript}
+          interimTranscript={voice.interimTranscript}
+          hint={voiceMode === 'send' ? '松手发送' : '松手填入'}
+          error={pressVisual ? voice.error : undefined}
+        />
 
         {!textMode ? (
           <View className='input-bar voice-mode'>

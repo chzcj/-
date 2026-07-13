@@ -1,0 +1,58 @@
+@import '../../styles/tokens.scss';
+
+.voice-hold-live-banner {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 6px;
+  padding: 10px 14px 12px;
+  border-radius: 12px 12px 0 0;
+  background: rgba(241, 248, 223, 0.96);
+  border: 1px solid rgba(111, 159, 86, 0.14);
+  border-bottom: none;
+  box-shadow: 0 -4px 16px rgba(73, 91, 45, 0.08);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.voice-hold-live-hint {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: $green-deep;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.voice-hold-live-scroll {
+  max-height: 4.5em;
+}
+
+.voice-hold-live-text {
+  display: block;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: $ink;
+  word-break: break-word;
+}
+
+.voice-hold-live-text.placeholder {
+  font-weight: 500;
+  color: $ink-soft;
+}
+
+.voice-hold-live-interim {
+  color: $ink-soft;
+  font-weight: 500;
+}
+
+.voice-hold-live-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e54d42;
+}

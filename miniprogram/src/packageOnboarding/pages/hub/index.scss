@@ -1,3 +1,38 @@
 @import '../../../app.scss';
 
-/* hub 样式由 hifi-build.scss 的 .entry-list / .entry-row 提供 */
+.hub-hero-wrap {
+  .hero-card.has-mascot {
+    min-height: 188px;
+    padding-bottom: 20px;
+  }
+
+  .hero-title,
+  .hero-copy {
+    width: 100%;
+    max-width: 100%;
+    padding-right: 0;
+  }
+
+  .hero-card.has-mascot .hero-title {
+    width: 100%;
+    max-width: calc(100% - 120px);
+    font-size: 22px;
+    line-height: 1.36;
+  }
+
+  .hero-card.has-mascot .hero-copy {
+    width: 100%;
+    max-width: calc(100% - 120px);
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.62;
+  }
+
+  .mascot {
+    width: 132px;
+    height: 118px;
+    right: 0;
+    bottom: 4px;
+    top: auto;
+  }
+}

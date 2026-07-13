@@ -114,7 +114,9 @@ export function BuildRecordBox({
     <View className='record-box'>
       <View className='record-head'>
         <Text className='record-head-title'>{label}</Text>
-        <Text className='record-status'>{status}</Text>
+        <View className='record-status'>
+          <Text className='record-status-text'>{status}</Text>
+        </View>
       </View>
       {voice.simulatorUnsupported ? (
         <Text className='hint-text'>模拟器不支持语音，请用真机预览或直接在上方输入</Text>

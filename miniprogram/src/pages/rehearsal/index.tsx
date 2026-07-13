@@ -507,7 +507,7 @@ export default function RehearsalPage() {
       ) : null}
 
       {step === 'active' ? (
-        <>
+        <View className='rehearsal-active-layout'>
           <View className='rehearsal-header'>
             <Text className='section-label back-link' onClick={() => setStep('confirm')}>
               ← 返回场景
@@ -541,6 +541,7 @@ export default function RehearsalPage() {
                     />
                   )
                 })}
+                <View id='rehearsal-chat-anchor' className='scroll-anchor' />
               </View>
             </ScrollView>
           </View>
@@ -566,7 +567,7 @@ export default function RehearsalPage() {
               </View>
             </View>
           ) : null}
-        </>
+        </View>
       ) : null}
 
       {step === 'end' ? (

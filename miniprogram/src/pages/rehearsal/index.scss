@@ -100,23 +100,36 @@
 
 .rehearsal-header {
   margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.rehearsal-active-layout {
+  display: flex;
+  flex-direction: column;
+  height: calc(
+    100vh - #{$tab-bar-height} - #{$input-dock-height} - max(42px, env(safe-area-inset-top)) -
+      #{$page-padding-y-top} - #{$page-padding-y-bottom}
+  );
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .chat-feed {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: 0;
+  padding-bottom: 20px;
 }
 
 .rehearsal-scroll-wrap {
   position: relative;
   flex: 1;
-  min-height: 280px;
-  max-height: calc(100vh - 320px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-scroll-view {
   height: 100%;
-  min-height: 280px;
+  min-height: 0;
   box-sizing: border-box;
 }
 

@@ -1,9 +1,62 @@
 @import '../../../app.scss';
 
-.page-title {
+.intro-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.intro-paragraph {
   display: block;
-  font-size: 17px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(111, 159, 86, 0.18);
+  background: rgba(255, 255, 247, 0.72);
+  font-size: 15px;
+  line-height: 1.68;
+  color: #5c616d;
+  box-sizing: border-box;
+}
+
+.intro-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.intro-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6f9f56;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(111, 159, 86, 0.14);
+  box-shadow: 0 4px 12px rgba(73, 91, 45, 0.06);
+}
+
+.intro-highlight {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 247, 0.92);
+  border: 1px solid rgba(111, 159, 86, 0.12);
+  box-shadow: 0 8px 20px rgba(73, 91, 45, 0.06);
+}
+
+.intro-highlight-label {
+  display: block;
+  font-size: 12px;
   font-weight: 700;
-  margin-bottom: 8px;
+  color: #6f9f56;
+  margin-bottom: 6px;
+}
+
+.intro-highlight-copy {
+  display: block;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 650;
   color: #202633;
 }

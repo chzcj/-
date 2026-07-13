@@ -1,6 +1,6 @@
 import Taro from '@tarojs/taro'
 import { STORAGE_KEYS } from '@/config/env'
-import { apiRequest } from '@/services/api'
+import { apiRequest, getSessionToken } from '@/services/api'
 
 export type BuildEntryType = 'daily' | 'homework' | 'communication' | 'family'
 
@@ -47,6 +47,7 @@ export async function syncBuildProgressToServer(flags?: {
   introSeen?: boolean
   basicInfoDone?: boolean
 }): Promise<void> {
+  if (!getSessionToken()) return
   const state = loadBuildState()
   const completedEntries = BUILD_MODULES.filter((mod) => {
     const m = state.entryMap[mod.key]

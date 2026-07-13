@@ -24,7 +24,7 @@ function goTo(url: string, replace = true) {
 
 export function routeAfterAuth(user: AuthUser, replace = true) {
   if (!user.onboardingComplete) {
-    goTo('/packageOnboarding/pages/intro/index', replace)
+    goTo('/packageOnboarding/pages/hub/index', replace)
     return
   }
   goTo('/pages/daily/index', replace)
@@ -36,7 +36,7 @@ export function requireOnboardingComplete(user: AuthUser | null) {
     return false
   }
   if (!user.onboardingComplete) {
-    void Taro.reLaunch({ url: '/packageOnboarding/pages/intro/index' })
+    void Taro.reLaunch({ url: '/packageOnboarding/pages/hub/index' })
     return false
   }
   return true
