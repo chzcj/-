@@ -34,6 +34,7 @@ const REQUIRED_IN_CODE = [
   'parentFacingStyle',
   'parentFacingCopy',
   'dailyDialogueOrchestration',
+  'secondMeCollaboratorIdentity',
   'multiEntrySynthesis',
   'deepDiagnosis',
   'entryFollowUp',

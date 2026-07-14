@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { agentPrompts, type AgentPromptKey } from '@/lib/server/agent-prompts';
+import { type AgentPromptKey } from '@/lib/server/agent-prompts';
+import { resolveAgentSystem } from '@/lib/server/prompts/modeling-identity';
 import {
   fastApiKey, fastModel, fastBase, fastTemp,
   parentApiKey, parentModel, parentBase, parentTemp,
@@ -98,7 +99,7 @@ export async function callAgentJson<T>(
 ): Promise<T | undefined> {
   if (!isFastAIEnabled()) return undefined;
   return callOpenAICompatibleJson<T>({
-    system: agentPrompts[agent],
+    system: resolveAgentSystem(agent),
     user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
     maxTokens: options?.maxTokens
   });
@@ -108,7 +109,7 @@ export async function callAgentTextStream(agent: AgentPromptKey, task: string, p
   if (!isFastAIEnabled()) return undefined;
   return callOpenAICompatibleTextStream(
     {
-      system: agentPrompts[agent],
+      system: resolveAgentSystem(agent),
       user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`
     },
     onDelta
@@ -171,7 +172,7 @@ export async function callParentTextStream(
 export async function callParentAgentJson<T>(agent: AgentPromptKey, task: string, payload: unknown): Promise<T | undefined> {
   if (!isParentAIEnabled() && !isFastAIEnabled()) return undefined;
   return callOpenAICompatibleJson<T>({
-    system: agentPrompts[agent],
+    system: resolveAgentSystem(agent),
     user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
     lane: 'parent',
   });
@@ -186,7 +187,7 @@ export async function callParentAgentTextStream(
   if (!isParentAIEnabled() && !isFastAIEnabled()) return undefined;
   return callOpenAICompatibleTextStream(
     {
-      system: agentPrompts[agent],
+      system: resolveAgentSystem(agent),
       user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
       lane: 'parent',
     },

@@ -1,4 +1,5 @@
 import { agentPrompts } from '@/lib/server/agent-prompts'
+import { modelingIdentitySystemPrefix } from '@/lib/server/prompts/modeling-identity'
 
 /** 四模块采集 JSON 任务：parentFacingStyle（文风铁律，已精简）+ 入口宪法 + 模块 SP。
  *  parentFacingStyle 作为稳定前缀放在最前，利于 DeepSeek prompt cache 跨请求复用。 */
@@ -13,9 +14,12 @@ export function buildFinalFollowUpSystem(): string {
   return buildEntryAnalyzeSystem('entryFinalFollowUp')
 }
 
-/** 四模块跨入口综合建模（后台） */
+/** 四模块跨入口综合建模（后台）：SecondMe 建模身份 + entryBuildStyle + synthesis */
 export function buildProfileSynthesisSystem(): string {
-  return [agentPrompts.entryBuildStyle, agentPrompts.profileBuildSynthesis].filter(Boolean).join('\n\n---\n\n')
+  const identity = modelingIdentitySystemPrefix()
+  return [identity, agentPrompts.entryBuildStyle, agentPrompts.profileBuildSynthesis]
+    .filter(Boolean)
+    .join('\n\n---\n\n')
 }
 
 /** 四模块 SecondMe 深度诊断（画像结果页家长可见） */

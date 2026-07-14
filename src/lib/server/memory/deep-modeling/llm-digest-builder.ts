@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { callFastJson } from '@/lib/server/ark-agents'
-import { promptRegistry } from '@/lib/server/prompts/registry.generated'
+import { resolveAgentSystem } from '@/lib/server/prompts/modeling-identity'
 import type { DeepModelDigest } from '@/types/deep-model-digest'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import {
@@ -70,7 +70,7 @@ export async function buildLlmDeepModelDigest(
   }
 
   const raw = await callFastJson<Record<string, unknown>>(
-    promptRegistry.deepModelDigestBuilder,
+    resolveAgentSystem('deepModelDigestBuilder'),
     payload,
     { maxTokens: 1400 }
   ).catch(() => undefined)

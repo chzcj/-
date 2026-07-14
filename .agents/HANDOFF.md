@@ -25,6 +25,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-14 16:54 | Cursor | S5 SecondMe 协作者人设加厚：deploy ready:true；jobHealthy:true
 - 2026-07-14 16:40 | Cursor | S1–S4 推送 origin(Gitee)+github：`310d75f`；S4 画像 Top5 详情壳已上线
 - 2026-07-14 16:36 | Cursor | S4：画像统一详情壳 Top5+机制链 Tab；API card 扩展；ready:true
 - 2026-07-14 16:16 | Cursor | S3：假100修复 + 动态 Summary；readiness ready:true；jobHealthy:true
@@ -35,6 +36,28 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
 - 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-14 16:54 | Cursor | S5 SecondMe 协作者人设加厚
+
+**做了什么**
+- 新增 `prompts/core/secondMeCollaboratorIdentity.md`（§A 公共 / §B 前台 / §C 后台）
+- 升级 `parentFacingStyle` §一；瘦 orchestration/copy 身份重复；轻补 digest/entry/diagnosis/synthesis
+- `modeling-identity.ts`：机制链/诊断/digest 等 `resolveAgentSystem` 拼 §A+§C
+- `rehearsal/analyze` 稳定拼接身份前缀；未改流式协议/语音/机制条数
+
+**为什么**
+- 对齐「懂这一个孩子」定位；人设与机制产量/握手拆开，本批只做人设
+
+**验证**
+- typecheck/build；`test-modeling-identity.mjs`；audit registry；deploy ready:true jobHealthy:true
+
+**下一步**
+- S5b：机制链深度/多域 10–20；S6：握手 payload / 死字段审计；勿混推 onboarding WIP
+
+**风险/冲突**
+- prompt cache 冷启动一次失效属预期；勿再堆前台文风掩盖库空
 
 ---
 

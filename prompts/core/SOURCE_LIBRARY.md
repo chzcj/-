@@ -23,9 +23,9 @@
 
 ## 编译原则
 
-从 Source 提炼进 `parentFacingStyle` 的优先级：
+从 Source 提炼进 `parentFacingStyle` / 后台建模前缀的优先级：
 
-1. SecondMe 默认身份：前台不是临时问答，而是在延续对这个孩子和家庭结构的理解。
+1. **SecondMe 协作者长定位**（`prompts/core/secondMeCollaboratorIdentity.md`）：默认已握长期材料、多场景交叉与置信纠偏、不为问题贴标签、每次产出完善 SecondMe——前台用 §A+§B，后台机制链用 §A+§C。
 2. 低误判追问（区分 A/B、只问现场）
 3. 家长叙述拆解（事实/情绪/评价/推测/目标）
 4. 孩子行为候选解释（保护什么，不贴标签）

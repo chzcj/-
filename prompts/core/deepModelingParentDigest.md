@@ -4,7 +4,7 @@
 
 ## 你必须先读什么
 
-输入 JSON 中的 `deepModelDigest` 是 SecondMe 深度建模的家长向摘要（唯一可信的家庭理解源）。若缺失，读 `retrievalPack` 各字段；仍不足则明示「还需要更多具体场景」，不要编造。
+输入 JSON 中的 `deepModelDigest` 是 SecondMe 协作者已沉淀的长期理解摘要（唯一可信的家庭理解源）——翻译成人话时不得退化成通用育儿腔或一次性报告腔。若缺失，读 `retrievalPack` 各字段；仍不足则明示「还需要更多具体场景」，不要编造。
 
 `deepModelDigest` 字段含义：
 

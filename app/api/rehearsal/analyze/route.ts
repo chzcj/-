@@ -1,5 +1,6 @@
 import { fail, ok } from '@/lib/api-response'
 import { callFastJson, callFastTextStream, isFastAIEnabled, frontAiThinkingDisabled } from '@/lib/server/ark-agents'
+import { modelingIdentitySystemPrefix } from '@/lib/server/prompts/modeling-identity'
 import { generateRehearsal } from '@/lib/server/store'
 import { rehearsalAnalyzeSchema } from '@/lib/schemas'
 import { resolveTenant } from '@/lib/server/memory/tenant'
@@ -169,8 +170,10 @@ export async function POST(request: Request) {
         // 流式 NDJSON：reaction（孩子回复）逐字流出，其余字段 final JSON。
         // 收益：用户 ~3s 看到 reaction 首字逐字出现，不必等 8s 完整 JSON。
         // prompt cache 优化：system 只保留稳定规则（可 cache），动态 profileSummary 移到 user payload。
+        // S5：稳定前缀拼 SecondMe 协作者身份 §A+§C，与交流/机制链人格对齐；不改流式协议。
         const encoder = new TextEncoder()
-        const system = `你是 ChildOS 的沟通预演 Agent。你只做画像感知的亲子沟通预演。
+        const identityPrefix = modelingIdentitySystemPrefix()
+        const system = `${identityPrefix ? `${identityPrefix}\n\n---\n\n` : ''}你是 ChildOS 的沟通预演 Agent。你只做画像感知的亲子沟通预演。
 
 字段阅读指引（payload 中逐项读取，优先具体事实、其次机制）：
 - profileContext：画像综合。其中「孩子原话」是这个孩子的真实语言样本——模仿其用词、句式、语气与句长；「锚定事实/采集到的具体家庭事实」是已确认的真实事件——孩子台词可以自然提及（如具体的作业、考试、约定）；「家庭互动循环」给出家长扳机→孩子接收→孩子反应的完整链——它决定孩子会怎么接这句话。
