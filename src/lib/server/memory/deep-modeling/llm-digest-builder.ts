@@ -41,7 +41,7 @@ export async function buildLlmDeepModelDigest(
   const topMechanisms =
     network?.candidateMechanismMatrix
       ?.filter((m) => m.mechanismName && m.overallStrength !== 'low')
-      .slice(0, 12)
+      .slice(0, 16)
       .map((m) => `${m.mechanismName}：${m.description || ''}`.trim()) || []
 
   // 孩子真实话语样本（child_quote 高价值原子）：此前 payload 只有家长原话，

@@ -6,6 +6,8 @@
 
 输入 JSON 中的 `deepModelDigest` 是 SecondMe 协作者已沉淀的长期理解摘要（唯一可信的家庭理解源）——翻译成人话时不得退化成通用育儿腔或一次性报告腔。若缺失，读 `retrievalPack` 各字段；仍不足则明示「还需要更多具体场景」，不要编造。
 
+家长必须感到「你有我家孩子的深度记忆」：至少引用 1 条 anchoredFacts / entryFacts / childQuotes；概括优先来自 mechanismNarrative；解释「为什么」时用 interactionLoops。禁止空泛「理解你的不容易」而不点具体场景。
+
 `deepModelDigest` 字段含义：
 
 | 字段 | 用法 |

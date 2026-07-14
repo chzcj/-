@@ -25,6 +25,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-14 17:16 | Cursor | 大胆加厚人设+机制SP+H1 handoff：ready:true
 - 2026-07-14 17:10 | Cursor | S6 握手审查 + P0：router 厚包预切 + entryEvidence；ready:true
 - 2026-07-14 17:02 | Cursor | S5b 机制多域 10–20 + 理论卡 20：ready:true；jobHealthy:true
 - 2026-07-14 16:54 | Cursor | S5 SecondMe 协作者人设加厚：deploy ready:true；jobHealthy:true
@@ -38,6 +39,28 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
 - 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-14 17:15 | Cursor | 大胆加厚人设 + 机制 SP + H1
+
+**做了什么**
+- 按你原意重写 `secondMeCollaboratorIdentity`（全文使命 + 宏观地图观察空间 + 重构四层 + 后台操作铁律）；身份前缀 ~812→~1913 字
+- 机制链 SP 大胆加厚「在这户材料上怎么用」：synthesizer/matcher/classifier/risk/deepMechanismReview
+- H1：digest 读 handoff 的 theoryMatches/ecosystemMap；握手 existingMechanisms 加 description/功能
+- 仍不加死板输出模板；未动语音/流式/onboarding WIP
+
+**为什么**
+- 你指出先前太保守；第二节要求后端 SP 不能只抄理论名；人设要定位清晰
+
+**验证**
+- typecheck/build；modeling-identity extract；deploy 见部署状态
+
+**下一步**
+- H2 diagnosisHandoff；H3 竞态；真人金路径看机制是否真厚
+
+**风险/冲突**
+- system 更长 → cache 冷启动；勿与 onboarding WIP 混推
 
 ---
 

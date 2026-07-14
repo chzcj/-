@@ -259,7 +259,7 @@ function normStructuralTensions(raw: unknown): StructuralTension[] {
       return { title, detail, confidence } as StructuralTension
     })
     .filter((x): x is StructuralTension => Boolean(x))
-    .slice(0, 3)
+    .slice(0, 5)
 }
 
 async function runLegacyMonolith(payload: Record<string, unknown>): Promise<MechanismSynthesizeOutput | undefined> {
@@ -303,16 +303,27 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
     entryPacks: packDigest,
     flatFacts,
     dailyUpdates: recentInputs,
-    existingMechanisms: existingNetwork?.candidateMechanismMatrix?.map((m) => ({
-      mechanismName: m.mechanismName,
-      ecosystemLayer: m.ecosystemLayer,
-      overallStrength: m.overallStrength,
-    })) || [],
-    existingHypotheses: hypotheses.map((h) => ({ hypothesis: h.hypothesis, status: h.status })),
-    familyInteractionCycles: cycles.map((c) => ({
+    // S6+大胆握手：把已有机制的描述/功能交给下游，避免只剩空壳名
+    existingMechanisms:
+      existingNetwork?.candidateMechanismMatrix?.slice(0, 20).map((m) => ({
+        mechanismName: m.mechanismName,
+        ecosystemLayer: m.ecosystemLayer,
+        overallStrength: m.overallStrength,
+        description: (m.description || '').slice(0, 180),
+        theoryCardId: m.theoryCardId,
+        possibleProtectiveFunction: m.possibleProtectiveFunction,
+      })) || [],
+    existingHypotheses: hypotheses.slice(0, 16).map((h) => ({
+      hypothesis: h.hypothesis,
+      status: h.status,
+      supportingEvidence: (h.supportingEvidence || []).slice(0, 2),
+    })),
+    familyInteractionCycles: cycles.slice(0, 12).map((c) => ({
       cycleName: c.cycleName,
       parentTriggerAction: c.parentTriggerAction,
+      childReception: c.childReception,
       childReaction: c.childReaction,
+      parentSecondInterpretation: c.parentSecondInterpretation,
     })),
     builtCoreJudgment: builtSnapshot?.coreJudgment || '',
     builtDeepMechanism: builtSnapshot?.deepMechanism || '',
@@ -320,6 +331,8 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
       ? {
           observations: existingPattern.observations,
           interactionImplications: existingPattern.interactionImplications,
+          correctionReceptivity: existingPattern.correctionReceptivity,
+          factProvisionAbility: existingPattern.factProvisionAbility,
         }
       : null,
   }

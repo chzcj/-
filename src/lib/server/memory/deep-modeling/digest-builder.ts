@@ -38,11 +38,38 @@ export async function buildDeepModelDigest(
   ])
 
   const topMechanism = network?.candidateMechanismMatrix?.find((m) => m.overallStrength !== 'low')
-  const mechanismNarrative =
+  const theoryRouteHint =
+    handoff?.theoryMatches?.length
+      ? handoff.theoryMatches
+          .slice(0, 8)
+          .map((t) => `${t.theoryName || t.theoryCardId}@${t.ecosystemLayer}:${(t.rationale || '').slice(0, 60)}`)
+          .filter(Boolean)
+          .join('；')
+      : ''
+  const layerCoverageHint =
+    handoff?.ecosystemMap?.length
+      ? (() => {
+          const layers = new Set<string>()
+          for (const f of handoff.ecosystemMap) {
+            for (const l of f.layers || []) layers.add(String(l))
+          }
+          return [...layers].join(',')
+        })()
+      : ''
+
+  const mechanismNarrativeBase =
     topMechanism?.description?.trim() ||
     built?.deepMechanism?.trim() ||
     built?.coreJudgment?.trim() ||
     ''
+  const mechanismNarrative = [
+    mechanismNarrativeBase,
+    theoryRouteHint ? `理论路由线索：${theoryRouteHint}` : '',
+    layerCoverageHint ? `生态层覆盖：${layerCoverageHint}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+    .trim()
 
   const interactionLoops = cycles.slice(0, 4).map((c) => {
     const parts = [
@@ -118,7 +145,7 @@ export async function buildDeepModelDigest(
         : []
 
   const deterministic: DeepModelDigest = {
-    mechanismNarrative: truncate(mechanismNarrative, 400),
+    mechanismNarrative: truncate(mechanismNarrative, 700),
     interactionLoops,
     anchoredFacts: uniqueFacts,
     parentVerbatimSnippets,
