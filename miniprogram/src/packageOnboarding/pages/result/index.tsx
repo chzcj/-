@@ -159,7 +159,9 @@ export default function OnboardingResult() {
         </Text>
         <Text
           className='pill'
-          onClick={() => void Taro.navigateTo({ url: '/pages/profile/deep/index' })}
+          onClick={() =>
+            void Taro.navigateTo({ url: '/pages/profile/card/index?id=growth&tab=chain' })
+          }
         >
           机制链解释
         </Text>
