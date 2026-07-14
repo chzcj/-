@@ -8,6 +8,7 @@ import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval
 import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import { getFrontendReadSliceLimits, isThickFamilyMemoryPack } from '@/lib/server/daily/frontend-read-pack'
 import { getChildBasicInfo } from '@/lib/server/memory/database-manager'
 import { createId } from '@/lib/storage/storageIds'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
@@ -95,8 +96,12 @@ export async function POST(request: Request) {
         void buildDeepModelDigest(tenant).catch(() => undefined)
       }
       const deepModelDigest = pickDeepModelDigestPack(digest)
-      const pastSimilarTalks = (packet?.recentRelatedEvents || []).slice(0, 3)
-      const memHypotheses = ctx.pendingHypotheses?.length ? ctx.pendingHypotheses : (packet?.pendingHypotheses || [])
+      const thick = isThickFamilyMemoryPack()
+      const limits = getFrontendReadSliceLimits()
+      const pastSimilarTalks = (packet?.recentRelatedEvents || []).slice(0, limits.recentEvents)
+      const memHypotheses = ctx.pendingHypotheses?.length
+        ? ctx.pendingHypotheses
+        : (packet?.pendingHypotheses || [])
 
       const transcriptLines = Array.isArray(rehearsalTranscript)
         ? (rehearsalTranscript as Array<{ role?: string; text?: string }>)
@@ -105,36 +110,52 @@ export async function POST(request: Request) {
             .map((t) => `${t.role === 'child' ? '孩子' : '家长'}：${String(t.text).slice(0, 200)}`)
         : []
 
-      const entryFactList = ((packet as { entryFacts?: string[] } | undefined)?.entryFacts || []).slice(0, 6)
+      const entryFactList = ((packet as { entryFacts?: string[] } | undefined)?.entryFacts || []).slice(
+        0,
+        limits.entryFacts
+      )
       const childBasicLine = [
         childBasic?.age ? `${childBasic.age}岁` : '',
         childBasic?.grade || '',
       ].filter(Boolean).join('，')
+      const narrativeCap = thick ? 900 : 500
+      const mechanismCap = thick ? 1200 : 420
       const profileSummary = [
         // 孩子年龄/年级：决定预演孩子的用词、句长与发展阶段口吻
         childBasicLine ? `孩子基础信息：${childBasicLine}` : '',
         ctx.primaryConditionalProfile
-          ? `画像：${ctx.primaryConditionalProfile.slice(0, 500)}`
-          : (packet?.relevantChildStructureModels?.length ? `画像：${packet.relevantChildStructureModels.join('；').slice(0, 500)}` : ''),
+          ? `画像：${ctx.primaryConditionalProfile.slice(0, narrativeCap)}`
+          : (packet?.relevantChildStructureModels?.length
+              ? `画像：${packet.relevantChildStructureModels.join('；').slice(0, narrativeCap)}`
+              : ''),
         // 拟真优先：孩子真实语言样本与具体家庭事实排在机制之前，让「孩子」先像真人再谈机制
         deepModelDigest.childQuotes.length
           ? `孩子原话（复用其用词与句式）：${deepModelDigest.childQuotes.join('；')}`
           : '',
         deepModelDigest.anchoredFacts.length
-          ? `锚定事实（台词可自然提及）：${deepModelDigest.anchoredFacts.slice(0, 6).join('；')}`
+          ? `锚定事实（台词可自然提及）：${deepModelDigest.anchoredFacts.slice(0, limits.entryFacts).join('；')}`
           : '',
         entryFactList.length ? `采集到的具体家庭事实：${entryFactList.join('；')}` : '',
+        deepModelDigest.structuralTensions.length
+          ? `结构张力：${deepModelDigest.structuralTensions.join('；')}`
+          : '',
         deepModelDigest.interactionLoops.length
           ? `家庭互动循环（家长扳机→孩子接收→孩子反应，决定孩子怎么接话）：${deepModelDigest.interactionLoops.join('；')}`
           : (ctx.familyInteractionCycles?.length
               ? `家庭循环：${ctx.familyInteractionCycles.slice(0, 4).map(c => c.patternName).join('；')}`
-              : (packet?.matchedMechanisms?.length ? `家庭机制：${packet.matchedMechanisms.slice(0, 4).join('；')}` : '')),
+              : (packet?.matchedMechanisms?.length
+                  ? `家庭模式：${packet.matchedMechanisms.slice(0, limits.matchedMechanisms).join('；')}`
+                  : '')),
         deepModelDigest.mechanismNarrative
-          ? `机制叙事：${deepModelDigest.mechanismNarrative.slice(0, 420)}`
+          ? `机制叙事：${deepModelDigest.mechanismNarrative.slice(0, mechanismCap)}`
           : '',
-        ctx.dominantProtectiveStrategies?.length ? `保护策略：${ctx.dominantProtectiveStrategies.slice(0, 4).join('；')}` : '',
+        ctx.dominantProtectiveStrategies?.length
+          ? `保护策略：${ctx.dominantProtectiveStrategies.slice(0, 4).join('；')}`
+          : '',
         ctx.evidenceSnippets?.length ? `证据片段：${ctx.evidenceSnippets.slice(0, 5).join('；')}` : '',
-        memHypotheses.length ? `待验证：${memHypotheses.slice(0, 3).join('；')}` : '',
+        memHypotheses.length
+          ? `待验证：${memHypotheses.slice(0, limits.pendingHypotheses).join('；')}`
+          : '',
         rc.sceneTitle ? `当前预演场景：${rc.sceneTitle}` : '',
         rc.sceneSummary ? `场景摘要：${rc.sceneSummary.slice(0, 200)}` : '',
         rc.parentGoal ? `家长这次真正想达成：${rc.parentGoal}` : '',

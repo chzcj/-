@@ -5,9 +5,16 @@ import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-st
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { loadDailyUiSnapshot } from '@/lib/server/profile/daily-refresh-agent'
-import { getLatestBuiltProfileSnapshot } from '@/lib/server/memory/database-manager'
+import {
+  getLatestBuiltProfileSnapshot,
+  getLatestEvidenceNetwork,
+} from '@/lib/server/memory/database-manager'
 import { enrichPortraitCardContent } from '@/lib/server/profile/portrait-card-enrich'
 import { buildPortraitCardDetail } from '@/lib/server/profile/portrait-card-detail'
+import {
+  pickDynamicChainCells,
+  pickTopMechanismCards,
+} from '@/lib/server/profile/parent-mechanism-view'
 import type { PortraitCardKey } from '@/types/portrait-card'
 
 const CARD_KEYS = ['growth', 'focus', 'behavior', 'interaction', 'strategies', 'hypotheses', 'tensions'] as const
@@ -42,19 +49,35 @@ export async function GET(
   const digestPack = pickDeepModelDigestPack(digest)
   const ui = await loadDailyUiSnapshot(tenant).catch(() => null)
   const built = await getLatestBuiltProfileSnapshot(tenant).catch(() => null)
+  const network = await getLatestEvidenceNetwork(tenant).catch(() => null)
 
   const extras = { coreJudgment: built?.coreJudgment, supportFocus: built?.supportFocus }
   const structuralTensions = digest?.structuralTensions || []
+
+  const topMechanisms = pickTopMechanismCards(network?.candidateMechanismMatrix, 5)
+  const chainCells = pickDynamicChainCells({
+    matrix: network?.candidateMechanismMatrix,
+    deepMechanismText: built?.deepMechanism || '',
+  })
+
+  const shared = {
+    topMechanisms,
+    chainCells,
+    defaultTab: 'top5' as const,
+  }
 
   if (key === 'tensions') {
     return ok({
       card: key,
       title: CARD_TITLES[key],
-      summary: structuralTensions[0] ? `${structuralTensions[0].title}：${structuralTensions[0].detail}` : '',
+      summary: structuralTensions[0]
+        ? `${structuralTensions[0].title}：${structuralTensions[0].detail}`
+        : '',
       sections: [],
       anchoredFacts: [],
       structuralTensions,
       refreshedAt: ui?.refreshedAt || digest?.updatedAt || null,
+      ...shared,
     })
   }
 
@@ -71,5 +94,6 @@ export async function GET(
     anchoredFacts: detail.anchoredFacts,
     mechanismNarrative: digestPack.mechanismNarrative,
     refreshedAt: ui?.refreshedAt || digest?.updatedAt || null,
+    ...shared,
   })
 }

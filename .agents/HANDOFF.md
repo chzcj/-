@@ -25,11 +25,98 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-14 16:36 | Cursor | S4：画像统一详情壳 Top5+机制链 Tab；API card 扩展；ready:true
+- 2026-07-14 16:16 | Cursor | S3：假100修复 + 动态 Summary；readiness ready:true；jobHealthy:true
+- 2026-07-14 16:04 | Cursor | S2：每10有效轮+每日打开正交触发 deep_mechanism + 交流 tip；readiness ready:true；jobHealthy:true
+- 2026-07-14 15:52 | Cursor | S1 厚包注入一批：daily/hidden/how-to-speak/rehearsal；readiness ready:true；jobHealthy:true
 - 2026-07-13 21:14 | Cursor | 底层架构图 docs/architecture/agent-memory-workflow.md；推送 Gitee + GitHub
 - 2026-07-13 21:02 | Cursor | PRODUCT/DESIGN 记忆中心架构文档（功能×Agent×组件对照）
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
 - 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-14 16:36 | Cursor | S4 画像详情 Tab + Top5
+
+**做了什么**
+- BFF：`parent-mechanism-view` + `GET /api/profile/card` 返回 `topMechanisms`/`chainCells`
+- 小程序统一详情壳：Tab Top5（默认）| 机制链 | 本卡；主1+次4；空格隐藏；家长面洗理论名
+- hub「完整画像/机制链」进详情壳；deep 页重定向
+- deploy ready:true；未改 HiFiMainShell / ASR / stream；SP 人设仍下一批
+
+**验证**
+- typecheck/build；parent-mechanism-view 契约 7 pass；deploy ready
+
+**下一步**
+- 小程序 `build:weapp`；Web 详情对齐；SP SecondMe 长定位人设加厚（S5）
+
+**风险/冲突**
+- 勿混推未提交 onboarding intro/guide；机制少时 Top5 仅 1–2 张属预期
+
+---
+
+## 2026-07-14 16:20 | Cursor | BFF S3 假100 + 动态 Summary
+
+**做了什么**
+- `BUILD_COMPLETENESS_V2`：信息不足模块不计满格；hub/built 服务端纠偏；rewrite 禁抬假100
+- `ONBOARDING_ENTRY_SUMMARY_S3`：Summary 增 familyMap/sections/sufficient；entryBuildStyle + 模块 SP
+- 小程序/Web Summary UI 展示动态段；不卡「先继续」流程
+- 未改流式/语音/thinking
+
+**验证**
+- typecheck / build / completeness 契约 9 pass；deploy 见部署状态
+
+**下一步**
+- S4：画像详情 Tab + Top5；小程序需 `build:weapp`
+
+**风险/冲突**
+- 旧账号已写入的假100需打开 hub/重新 generating 才会被纠偏
+- `BUILD_COMPLETENESS_V2=0` / `ONBOARDING_ENTRY_SUMMARY_S3=0` 可回退
+
+---
+
+## 2026-07-14 16:10 | Cursor | BFF S2 机制加厚触发 + 交流 tip
+
+**做了什么**
+- 正交幂等键：`daily_open` / `turn:{milestone}` / 原日桶；F4 不互跳过
+- 有效轮计数（daily L1 + 预演）每 10 轮入队 `deep_mechanism_review`
+- `GET/POST /api/daily/mechanism-tip`；小程序/Web 交流页 tip「对你家的理解又加深了一点」
+- 双路径：`DEEP_MECHANISM_S2=0` 回退；未改流式/语音/thinking
+
+**验证**
+- typecheck / build / S2 契约 8 pass；deploy 见部署状态
+
+**下一步**
+- S3：假 100% + 动态 Summary；小程序需 `build:weapp` 才见 tip UI
+
+**风险/冲突**
+- 同日可能跑多次 deep_mechanism（成本↑）；信息不足仍 no-op 且不弹 tip
+- 勿改 ASR；本地未提交 onboarding UI 勿混推
+
+---
+
+## 2026-07-14 15:52 | Cursor | BFF S1 厚包注入（一批）
+
+**做了什么**
+- 默认厚包 `FAMILY_MEMORY_THICK_PACK`（`0/off` 回退薄包）：事实≤40、机制人话卡≤20、digest 含 structuralTensions
+- hidden section 补传 deepModelDigest；how-to-speak / rehearsal 走同一厚包
+- router `formatMatchedMechanismCards`；契约文档 + `test-frontend-read-pack.mjs` 更新
+- 部署 yujian.yihe.site，未改流式协议 / 语音 / thinking
+
+**为什么**
+- 前台 AI 长期饿死记忆（薄 slice + hidden 无 digest + how-to-speak 零记忆）
+
+**验证**
+- typecheck / build / 契约测试 29 pass；deploy readiness ready:true
+
+**下一步**
+- S2：每 10 有效轮 + 每日打开触发 deep_mechanism；交流页 tip
+- S3：假 100% 修复 + 动态 Summary；S4 画像 UI；S5 机制库加厚 SP
+
+**风险/冲突**
+- 厚包会增大 LLM user payload；回退设 `FAMILY_MEMORY_THICK_PACK=0` 后需 redeploy
+- 勿改 ASR/流式 marker；本地尚有未提交小程序 onboarding UI，勿与本批混推
 
 ---
 

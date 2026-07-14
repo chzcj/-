@@ -19,12 +19,16 @@ import { requestEntrySummary } from '@/lib/profile/entryAnalyze'
 import { getLatestEntryRecord, getLatestStageSummary, getCombinedEntryText, markEntryCompleted } from '@/lib/storage/entryStorage'
 import { pushBuildStateToServer } from '@/lib/profile/profileSync'
 import type { StructuralTension } from '@/types/deep-model-digest'
+import { isInsufficientSummaryText } from '@/lib/build/completeness'
 
 type SummaryData = {
   mainJudgment: string
   facts: string[]
   pendingHypotheses: string[]
   note: string
+  familyMap?: string
+  sections?: Array<{ title: string; body: string }>
+  sufficient?: boolean
 }
 
 export function EntrySummaryPage({ entryType }: { entryType: BuildEntryType }) {
@@ -48,6 +52,9 @@ export function EntrySummaryPage({ entryType }: { entryType: BuildEntryType }) {
         facts: cached.facts || [],
         pendingHypotheses: cached.pendingHypotheses || [],
         note: cached.note || '',
+        familyMap: (cached as { familyMap?: string }).familyMap,
+        sections: (cached as { sections?: Array<{ title: string; body: string }> }).sections,
+        sufficient: (cached as { sufficient?: boolean }).sufficient,
       })
       setAiLoading(false)
       return
@@ -75,6 +82,9 @@ export function EntrySummaryPage({ entryType }: { entryType: BuildEntryType }) {
       facts: result.data.facts || [],
       pendingHypotheses: result.data.pendingHypotheses || [],
       note: result.data.note || '',
+      familyMap: result.data.familyMap,
+      sections: result.data.sections,
+      sufficient: result.data.sufficient,
     }
     persistEntryStageSummary(entryType, data)
     setSummary(data)
@@ -175,6 +185,23 @@ export function EntrySummaryPage({ entryType }: { entryType: BuildEntryType }) {
         </section>
       ) : (
         <>
+          {summary.sufficient === false ||
+          isInsufficientSummaryText(summary.mainJudgment, summary.facts) ? (
+            <section className="section">
+              <div className="soft-card" style={{ borderColor: 'rgba(180,120,40,0.35)' }}>
+                <h3>当前信息还不够完整</h3>
+                <p>可以返回补充具体场景；也可以先继续，但画像完整度不会因此假显示 100%。</p>
+              </div>
+            </section>
+          ) : null}
+          {summary.familyMap ? (
+            <section className="section">
+              <div className="soft-card">
+                <h3>家庭地图</h3>
+                <p>{summary.familyMap}</p>
+              </div>
+            </section>
+          ) : null}
           <section className="section">
             <AuthorityInsightCard title="系统整理" body={summary.mainJudgment}>
               {summary.facts.length > 0 ? (
@@ -196,6 +223,16 @@ export function EntrySummaryPage({ entryType }: { entryType: BuildEntryType }) {
               {summary.note ? <p className="summary-note">{summary.note}</p> : null}
             </AuthorityInsightCard>
           </section>
+          {summary.sections?.length
+            ? summary.sections.map((sec) => (
+                <section key={sec.title} className="section">
+                  <div className="soft-card">
+                    <h3>{sec.title}</h3>
+                    <p>{sec.body}</p>
+                  </div>
+                </section>
+              ))
+            : null}
           {structuralTensions.length > 0 ? (
             <section className="section">
               <StructuralTensionCard tensions={structuralTensions} compact />

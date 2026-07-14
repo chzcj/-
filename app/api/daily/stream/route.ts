@@ -144,6 +144,10 @@ export async function POST(request: Request) {
               }
             })
             void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
+            // S2：有效交流轮计数；每 10 轮独立入队 deep_mechanism（与日桶正交）
+            void import('@/lib/server/memory/deep-mechanism/note-effective-turn')
+              .then(({ noteEffectiveFamilyTurn }) => noteEffectiveFamilyTurn(tenant, 'daily', traceId))
+              .catch(() => {})
           }
 
           // episode 选择性触发（向量抽取贵，不每轮）：仅反证等高价值日常轮主动 ingest，

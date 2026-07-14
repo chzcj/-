@@ -237,6 +237,8 @@ export type RemoteBuildState = {
     facts: string[]
     pendingHypotheses: string[]
     note?: string
+    familyMap?: string
+    sufficient?: boolean
   }>
   updatedAt: string
 }

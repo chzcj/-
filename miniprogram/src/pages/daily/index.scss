@@ -43,3 +43,27 @@
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 4px 16px rgba(31, 39, 51, 0.12);
 }
+
+.mechanism-tip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 16px 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(111, 159, 86, 0.12);
+}
+
+.mechanism-tip-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #4d7a3a;
+}
+
+.mechanism-tip-dismiss {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #6f9f56;
+}

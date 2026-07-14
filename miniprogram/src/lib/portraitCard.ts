@@ -156,8 +156,10 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
       progress: completeness,
       progressHint:
         completeness >= 100
-          ? '画像已基本完整，持续交流会继续精修细节。'
-          : `已收集 ${completeness}%，继续交流/记录补全剩余 ${100 - completeness}%。`,
+          ? '四个模块都有可验证材料后，画像会标为基本完整；继续交流仍会精修。'
+          : completeness >= 75
+            ? `已收集有效材料约 ${completeness}%；若某模块信息不足，不会假显示 100%。`
+            : `已收集 ${completeness}%，继续交流/补模块会提升完整度。`,
     },
     {
       title: '当前关注点',

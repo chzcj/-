@@ -29,6 +29,9 @@ export async function requestEntrySummary(
     facts?: string[]
     pendingHypotheses?: string[]
     note?: string
+    familyMap?: string
+    sections?: Array<{ title: string; body: string }>
+    sufficient?: boolean
   }>('/api/entry/analyze', {
     method: 'POST',
     data: { entryType, rawText, stage: 'summary', appendMode },

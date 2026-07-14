@@ -25,5 +25,5 @@
 
 只输出 JSON（childos.entry_stage_summary.v1）：
 ```json
-{"mainJudgment":"","facts":[],"pendingHypotheses":[],"note":""}
+{"mainJudgment":"","facts":[],"pendingHypotheses":[],"note":"","familyMap":"","sections":[{"title":"","body":""}],"sufficient":true}
 ```

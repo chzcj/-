@@ -10,8 +10,22 @@ import { runModelReview } from '@/lib/server/memory/model-review/reviewer'
 import { runDailyDeep, type DailyDeepPayload } from '@/lib/server/memory/daily-deep/builder'
 import { runProfileRewrite } from '@/lib/server/profile-rewrite'
 import { runDeepMechanismReview } from '@/lib/server/memory/deep-mechanism/reviewer'
+import {
+  isDeepMechanismS2Enabled,
+  markDeepMechanismJobCompleted,
+} from '@/lib/server/memory/deep-mechanism/turn-signal'
+import {
+  deepMechanismBucketKey,
+  deepMechanismDailyOpenKey,
+} from '@/lib/server/memory/deep-mechanism/s2-flags'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { MemoryWritePlan } from '@/types/database'
+
+export {
+  deepMechanismBucketKey,
+  deepMechanismDailyOpenKey,
+  deepMechanismTurnMilestoneKey,
+} from '@/lib/server/memory/deep-mechanism/s2-flags'
 
 /* ================================================================
    Job Queue — 可靠后台任务队列（交付文档 14.3）
@@ -108,13 +122,7 @@ export function profileRewriteBucketKey(tenant: TenantId): string {
   return `profile_rewrite:${tenant.familyId}:${tenant.childId}:${epochBucket}`
 }
 
-/** 深度机制复核每日桶：每租户每天至多 1 次 deep_mechanism_review（覆盖 evidence_networks 机制层 +
- *  写 parent_narrative_patterns）。四模块完成时由 build 路由用独立 idem key 立即触发（不等桶）。
- *  runDeepMechanismReview 在信息严重不足时 no-op（不空跑 LLM），故桶超发安全。 */
-export function deepMechanismBucketKey(tenant: TenantId): string {
-  const dayBucket = new Date().toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
-  return `deep_mechanism:${tenant.familyId}:${tenant.childId}:${dayBucket}`
-}
+/** 深度机制复核幂等键见 s2-flags.ts（日桶 / daily_open / turn milestone 正交）。 */
 
 // 两个 handler。executeWritePlan/ingestEpisodeStrict 内绝不吞异常，异常上抛驱动重试。
 async function runJob(jobType: JobType, payload: unknown): Promise<void> {
@@ -161,9 +169,14 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   } else if (jobType === 'deep_mechanism_review') {
     // 深度机制复核：读全量记忆 → 五大生态系统+16家庭理论 → 覆盖 evidence_networks 机制层 +
     // 写 pending_hypotheses + 写 parent_narrative_patterns（修复 dead write）。
-    // 触发：四模块完成立即（独立 idem key，不等桶）+ memory_write 链式每日桶 + 登录 forceCheck。
+    // 触发：四模块完成立即（build key）+ memory_write 日桶 + S2 daily_open / turn milestone。
     const p = payload as DigestUpdatePayload
-    await runDeepMechanismReview(p.tenant) // 信息不足时 no-op；不吞异常驱动重试
+    const wrote = await runDeepMechanismReview(p.tenant) // 信息不足时 no-op；不吞异常驱动重试
+    if (wrote) {
+      await markDeepMechanismJobCompleted(p.tenant).catch((err) =>
+        console.warn('[jobs] markDeepMechanismJobCompleted 失败:', err)
+      )
+    }
   }
 }
 
@@ -463,10 +476,15 @@ export async function forceLoginJobCheck(tenant: TenantId, maxReplay = 5): Promi
     [fam, maxReplay]
   ).catch(err => console.warn('[jobs] 登录补跑 failed 重投失败:', err))
 
-  // 强制排队 digest + model_review + deep_mechanism（桶幂等，已排则跳过）
+  // 强制排队 digest + model_review + deep_mechanism
+  // S2 开：daily_open 独立键，与 memory_write 日桶 / 10 轮里程碑不互跳过
+  // S2 关：回退旧日桶键（与 memory_write 同日去重）
   await enqueueJob('digest_update', { tenant }, digestUpdateBucketKey(tenant), null).catch(() => {})
   await enqueueJob('model_review', { tenant }, modelReviewBucketKey(tenant), null).catch(() => {})
-  await enqueueJob('deep_mechanism_review', { tenant }, deepMechanismBucketKey(tenant), null).catch(() => {})
+  const deepKey = isDeepMechanismS2Enabled()
+    ? deepMechanismDailyOpenKey(tenant)
+    : deepMechanismBucketKey(tenant)
+  await enqueueJob('deep_mechanism_review', { tenant }, deepKey, null).catch(() => {})
 }
 
 /**

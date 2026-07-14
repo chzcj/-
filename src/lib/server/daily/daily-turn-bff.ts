@@ -181,8 +181,10 @@ export async function runDailyTurnBff(args: {
     // hidden section 预取：与主调用并行（不阻塞前台，final 前完成即可）。
     // 用户点开"深度展开"时 hidden 文案已就绪，直接呈现，不再现场等 LLM。
     if (hiddenAfterPolicy.length) {
-      hiddenPromise = fillDailySectionCopy(hiddenAfterPolicy, output, userText)
-        .catch(() => ({ sections: hiddenAfterPolicy }))
+      // hidden 与可见 section 共用同一 digest，避免「深度展开」无家庭记忆饿死
+      hiddenPromise = fillDailySectionCopy(hiddenAfterPolicy, output, userText, {
+        deepModelDigest: digestPack,
+      }).catch(() => ({ sections: hiddenAfterPolicy }))
     }
 
     // 一次 LLM 调用：prose 流式 → prose_complete → section 紧接流式

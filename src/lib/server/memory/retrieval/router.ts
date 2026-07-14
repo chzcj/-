@@ -25,6 +25,7 @@ import {
   getParentNarrativePattern,
 } from '../../memory/database-manager'
 import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
+import { formatMatchedMechanismCards } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 
 /* ================================================================
    Retrieval Router — 检索路由
@@ -216,7 +217,7 @@ export async function buildDailyDialogueRetrievalPacket(
     contextMaturityLevel: effectiveLevel,
     currentInputClassification: 'insufficient',
     relevantChildStructureModels,
-    matchedMechanisms: network?.candidateMechanismMatrix?.filter(m => m.overallStrength !== 'low').map(m => m.mechanismName) || [],
+    matchedMechanisms: formatMatchedMechanismCards(network?.candidateMechanismMatrix),
     supportingEvidence: supportingEvidence.length > 0 ? supportingEvidence : builtEvidence.length > 0 ? builtEvidence : allEvents.slice(-5),
     recentRelatedEvents: recentEvents,
     pendingHypotheses: hypotheses.map(h => h.hypothesis),

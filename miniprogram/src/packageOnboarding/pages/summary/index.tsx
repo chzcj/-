@@ -28,10 +28,12 @@ import {
   setPendingProfileRegen,
   type StageSummaryData,
 } from '@/services/entryStorage'
+import { isInsufficientSummaryText } from '@/lib/buildCompleteness'
 
-function isInsufficientSummary(mainJudgment: string, facts: string[]) {
-  if (!facts.length) return true
-  return /信息不足|不足以还原|还不够|暂时无法|需要更多/.test(mainJudgment)
+function isInsufficientSummary(mainJudgment: string, facts: string[], sufficient?: boolean) {
+  if (sufficient === false) return true
+  if (sufficient === true) return false
+  return isInsufficientSummaryText(mainJudgment, facts)
 }
 
 export default function EntrySummaryPage() {
@@ -74,6 +76,10 @@ export default function EntrySummaryPage() {
         mainJudgment: res.data.mainJudgment || '',
         facts: res.data.facts || [],
         pendingHypotheses: res.data.pendingHypotheses || [],
+        note: res.data.note,
+        familyMap: res.data.familyMap,
+        sections: res.data.sections,
+        sufficient: res.data.sufficient,
       }
       saveStageSummary(entryType, data)
       setSummary(data)
@@ -103,7 +109,10 @@ export default function EntrySummaryPage() {
   const nextEntry = getNextBuildEntry(entryType)
   const isLast = nextEntry === 'final-follow-up'
   const insufficient = useMemo(
-    () => (summary ? isInsufficientSummary(summary.mainJudgment, summary.facts) : false),
+    () =>
+      summary
+        ? isInsufficientSummary(summary.mainJudgment, summary.facts, summary.sufficient)
+        : false,
     [summary]
   )
 
@@ -217,6 +226,13 @@ export default function EntrySummaryPage() {
 
       {summary ? (
         <>
+          {summary.familyMap ? (
+            <View className='soft-card' style={{ marginBottom: '12px' }}>
+              <Text className='soft-card-title'>家庭地图</Text>
+              <Text className='soft-card-body'>{summary.familyMap}</Text>
+            </View>
+          ) : null}
+
           <AuthorityInsightCard title='本模块整理' body={summary.mainJudgment}>
             {summary.facts.length ? (
               <View className='summary-facts'>
@@ -237,6 +253,15 @@ export default function EntrySummaryPage() {
               </View>
             ) : null}
           </AuthorityInsightCard>
+
+          {summary.sections?.length
+            ? summary.sections.map((sec) => (
+                <View key={sec.title} className='soft-card' style={{ marginTop: '12px' }}>
+                  <Text className='soft-card-title'>{sec.title}</Text>
+                  <Text className='soft-card-body'>{sec.body}</Text>
+                </View>
+              ))
+            : null}
 
           {structuralTensions.length ? (
             <StructuralTensionCard tensions={structuralTensions} compact />

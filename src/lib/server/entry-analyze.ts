@@ -2,6 +2,10 @@ import { callParentJson } from '@/lib/server/ark-agents'
 import { sanitizeForParent } from '@/lib/server/daily/profile-sanitize'
 import { resolveEntryFollowUpAgent, resolveEntrySummaryAgent } from '@/lib/server/entry-build-prompts'
 import { buildEntryAnalyzeSystem } from '@/lib/server/profile-build-prompts'
+import {
+  isInsufficientSummaryText,
+  isOnboardingSummaryS3Enabled,
+} from '@/lib/build/completeness'
 
 export type EntryFollowUpResult = {
   shouldAsk: boolean
@@ -10,11 +14,22 @@ export type EntryFollowUpResult = {
   voicePrompt: string
 }
 
+export type EntrySummarySection = {
+  title: string
+  body: string
+}
+
 export type EntrySummaryResult = {
   mainJudgment: string
   facts: string[]
   pendingHypotheses: string[]
   note: string
+  /** 宏观家庭地图一句（S3） */
+  familyMap?: string
+  /** 动态小节充分段落（S3，1–4 段） */
+  sections?: EntrySummarySection[]
+  /** 材料是否足以形成有效模块理解；false 时完成度不计满格 */
+  sufficient?: boolean
 }
 
 const TITLE_MAP: Record<string, string> = {
@@ -120,14 +135,43 @@ export function normalizeSummary(raw: unknown): EntrySummaryResult | undefined {
     ? asStringArray(record.pendingHypotheses)
     : asStringArray(record.hypotheses)
 
+  const familyMap = sanitizeForParent(
+    asString(record.familyMap) || asString(record.macroMap) || asString(record.familySketch)
+  )
+
+  const sectionsRaw = Array.isArray(record.sections) ? record.sections : []
+  const sections = sectionsRaw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const row = item as Record<string, unknown>
+      const title = sanitizeForParent(asString(row.title) || asString(row.label))
+      const body = sanitizeForParent(asString(row.body) || asString(row.text) || asString(row.content))
+      if (!title || !body) return null
+      return { title: title.slice(0, 16), body: body.slice(0, 280) }
+    })
+    .filter((s): s is EntrySummarySection => Boolean(s))
+    .slice(0, 4)
+
+  let sufficient: boolean | undefined
+  if (typeof record.sufficient === 'boolean') {
+    sufficient = record.sufficient
+  } else if (typeof record.inputSufficient === 'boolean') {
+    sufficient = record.inputSufficient
+  } else {
+    sufficient = !isInsufficientSummaryText(mainJudgment, facts)
+  }
+
   return {
     mainJudgment: sanitizeForParent(mainJudgment),
-    facts: facts.slice(0, 4).map((f) => sanitizeForParent(f)).filter(Boolean),
+    facts: facts.slice(0, 6).map((f) => sanitizeForParent(f)).filter(Boolean),
     pendingHypotheses: pendingHypotheses
       .slice(0, 3)
       .map((h) => sanitizeForParent(h))
       .filter(Boolean),
     note: sanitizeForParent(asString(record.note) || asString(record.nextObservation)),
+    familyMap: familyMap || undefined,
+    sections: sections.length ? sections : undefined,
+    sufficient,
   }
 }
 
@@ -176,13 +220,23 @@ export async function runEntrySummary(entryType: string, rawText: string, append
   const appendHint = appendMode
     ? '注意：这是一次增量补充后的阶段总结，请综合已有与新补充信息更新判断，不要忽视旧内容。'
     : ''
+  const s3 = isOnboardingSummaryS3Enabled()
+  const s3Hint = s3
+    ? `额外要求（动态最小充分）：
+- 先写 familyMap：一句宏观家庭地图（谁在什么场景怎么互动，≤40 字）。
+- sections：1–4 段，只写本材料能支撑的部分，勿凑固定模板；每段 title≤12 字、body 中等长度。
+- sufficient：材料是否足以形成有效模块理解（乱码/极短/无法还原现场 → false）。
+- 信息不足时：mainJudgment 明确说明不足，facts 可为空数组，sufficient=false；禁止编造具体场景。
+- 禁止理论卡名、诊断标签、「机制」二字。`
+    : ''
   let lastError: unknown
   const raw = await callParentJson<Record<string, unknown>>(buildEntryAnalyzeSystem(agent), {
-    task: `家长在「${topic}」入口完成了描述（含可能的追问补充）。${appendHint}请写阶段总结。只输出 JSON。`,
+    task: `家长在「${topic}」入口完成了描述（含可能的追问补充）。${appendHint}请写阶段总结。${s3Hint}只输出 JSON。`,
     entryType,
     topic,
     rawText: rawText.slice(0, 5000),
-  }, { maxTokens: 1400 }).catch((error) => {
+    summaryMode: s3 ? 'dynamic_minimum_sufficient' : 'legacy_four_field',
+  }, { maxTokens: s3 ? 1800 : 1400 }).catch((error) => {
     lastError = error
     return undefined
   })

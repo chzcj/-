@@ -58,6 +58,7 @@ export default function DailyPage() {
   const [queuedCount, setQueuedCount] = useState(0)
   const [sending, setSending] = useState(false)
   const [animatingSectionId, setAnimatingSectionId] = useState<string | null>(null)
+  const [mechanismTip, setMechanismTip] = useState('')
 
   const abortRef = useRef({ aborted: false })
   const streamTaskRef = useRef<Taro.RequestTask<unknown> | null>(null)
@@ -65,6 +66,24 @@ export default function DailyPage() {
   const queueRef = useRef<string[]>([])
   const turnsRef = useRef(turns)
   turnsRef.current = turns
+
+  const refreshMechanismTip = useCallback(() => {
+    void apiRequest<{ show?: boolean; message?: string }>('/api/daily/mechanism-tip', {
+      method: 'GET',
+    }).then((res) => {
+      if (res.ok && res.data.show && res.data.message) {
+        setMechanismTip(res.data.message)
+      }
+    })
+  }, [])
+
+  const dismissMechanismTipUi = useCallback(() => {
+    setMechanismTip('')
+    void apiRequest('/api/daily/mechanism-tip', {
+      method: 'POST',
+      data: { action: 'dismiss' },
+    })
+  }, [])
 
   useDidShow(async () => {
     const user = await fetchCurrentUser()
@@ -84,11 +103,17 @@ export default function DailyPage() {
       const remote = await hydrateDailyThreadFromServer()
       if (!cancelled && remote.length > 0) setTurns(remote)
       if (!cancelled) setThreadReady(true)
+      // daily-refresh 可能入队 deep_mechanism；稍后再查 tip
+      if (!cancelled) {
+        setTimeout(() => {
+          if (!cancelled) refreshMechanismTip()
+        }, 4000)
+      }
     })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshMechanismTip])
 
   useEffect(() => {
     if (!threadReady) return
@@ -291,6 +316,8 @@ export default function DailyPage() {
     })
 
     if (result.traceId) pollMemoryLabel(result.traceId)
+    // 有效轮可能触发第 10 轮加厚；轮询 tip（job 异步）
+    setTimeout(() => refreshMechanismTip(), 8000)
     pushAccountSyncToServer()
     } finally {
       setInputReady(true)
@@ -375,6 +402,12 @@ export default function DailyPage() {
       }
     >
       <View className='daily-scroll-wrap'>
+        {mechanismTip ? (
+          <View className='mechanism-tip' onClick={dismissMechanismTipUi}>
+            <Text className='mechanism-tip-text'>{mechanismTip}</Text>
+            <Text className='mechanism-tip-dismiss'>知道了</Text>
+          </View>
+        ) : null}
         <ScrollView
           id='daily-chat-scroll'
           className='chat-scroll-view'

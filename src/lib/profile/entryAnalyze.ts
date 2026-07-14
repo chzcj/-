@@ -8,6 +8,9 @@ export type EntrySummaryPayload = {
   facts: string[]
   pendingHypotheses: string[]
   note: string
+  familyMap?: string
+  sections?: Array<{ title: string; body: string }>
+  sufficient?: boolean
 }
 
 type ApiError = {

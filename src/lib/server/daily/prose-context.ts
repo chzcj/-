@@ -40,9 +40,11 @@ const PACK_FIELD_GUIDE: Record<string, string> = {
   entryFacts: '四模块采集的具体事实（可验证事实/孩子行为/触发点）— 必须引用其中至少一条具体场景，禁止泛泛建议',
   recentEvents: '近期对话或事件片段 — 用来体现「越来越认识这个孩子」',
   pendingHypotheses: '内部待验证方向 — 翻译成生活语言，禁止输出字段感',
-  matchedMechanisms: '内部匹配模式 — 翻译成「可能更像…」，禁止「机制」二字',
+  matchedMechanisms: '家庭互动人话卡（名+描述+依据）— 翻译成生活语言，禁止理论卡名与「机制」二字',
   familyPatterns: '家庭互动模式 — 用差异描述，不审判家长',
   parentUnderstanding: '家长侧理解信号（目标/焦虑/习惯/偏好）— 用来调整语气与切入点，禁止评判家长',
+  childQuotes: '孩子原话 — 可自然复用其用词，禁止编造',
+  parentVerbatimSnippets: '家长原话片段 — 接住家长怎么说的，禁止评判',
 }
 
 function packHasContent(ctx: OrchestrationOutput['retrievedContext']): boolean {

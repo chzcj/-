@@ -16,6 +16,7 @@ import {
   createSectionStreamTracker,
   type SectionStreamCallbacks,
 } from '@/lib/server/daily/section-stream'
+import type { DeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 
 type SectionCopyPatch = {
   id: string
@@ -75,11 +76,14 @@ function mergeSectionCopy(skeleton: DailySection, patch: SectionCopyPatch): Dail
 export async function fillDailySectionCopy(
   skeletons: DailySection[],
   output: OrchestrationOutput,
-  userText: string
+  userText: string,
+  options?: { deepModelDigest?: DeepModelDigestPack }
 ): Promise<{ sections: DailySection[]; taskTitle?: string }> {
   if (!skeletons.length) return { sections: skeletons }
 
-  const payload = buildDailyProsePayload(output, userText)
+  const payload = buildDailyProsePayload(output, userText, {
+    deepModelDigest: options?.deepModelDigest,
+  })
   const task =
     '根据 sectionSkeletons 为每个 section 生成家长可见正文。只输出 JSON：{ "sections": [{ "id", "paragraphs"?, "items"?, "quotes"?, "note"? }], "taskTitle"?: "..." }'
 
@@ -117,9 +121,12 @@ export async function streamSingleSectionCopy(
   skeleton: DailySection,
   output: OrchestrationOutput,
   userText: string,
-  onDelta?: (delta: string) => void
+  onDelta?: (delta: string) => void,
+  options?: { deepModelDigest?: DeepModelDigestPack }
 ): Promise<string> {
-  const payload = buildDailyProsePayload(output, userText)
+  const payload = buildDailyProsePayload(output, userText, {
+    deepModelDigest: options?.deepModelDigest,
+  })
   const { buildSingleSectionTask } = await import('@/lib/server/daily/section-buffer')
   const task = buildSingleSectionTask(skeleton)
 
@@ -139,11 +146,14 @@ export async function streamDailySectionCopy(
   skeletons: DailySection[],
   output: OrchestrationOutput,
   userText: string,
-  callbacks: SectionStreamCallbacks
+  callbacks: SectionStreamCallbacks,
+  options?: { deepModelDigest?: DeepModelDigestPack }
 ): Promise<{ sections: DailySection[]; taskTitle?: string }> {
   if (!skeletons.length) return { sections: skeletons }
 
-  const payload = buildDailyProsePayload(output, userText)
+  const payload = buildDailyProsePayload(output, userText, {
+    deepModelDigest: options?.deepModelDigest,
+  })
   const task = buildSectionStreamTask(skeletons)
   const tracker = createSectionStreamTracker(skeletons, callbacks)
 

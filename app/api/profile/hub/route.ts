@@ -16,6 +16,34 @@ import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-b
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { enrichPortraitCards } from '@/lib/server/profile/portrait-card-enrich'
 import { dedupeTextParts } from '@/types/portrait-card'
+import {
+  computeBuildCompleteness,
+  isBuildCompletenessV2Enabled,
+  type ModuleCompletenessInput,
+} from '@/lib/build/completeness'
+
+const BUILD_MODULE_KEYS = ['daily', 'homework', 'communication', 'family'] as const
+
+function completenessFromProgress(
+  progress: Awaited<ReturnType<typeof getBuildProgress>>,
+  fallback: number
+): number {
+  if (!isBuildCompletenessV2Enabled() || !progress) return fallback
+  const completed = new Set(progress.completedEntries || [])
+  const byType = new Map(
+    (progress.stageSummaries || []).map((s) => [s.entryType, s] as const)
+  )
+  const modules: ModuleCompletenessInput[] = BUILD_MODULE_KEYS.map((key) => {
+    const summary = byType.get(key)
+    return {
+      confirmed: completed.has(key),
+      mainJudgment: summary?.mainJudgment || '',
+      facts: summary?.facts || [],
+      sufficient: summary?.sufficient,
+    }
+  })
+  return computeBuildCompleteness(modules).completeness
+}
 
 function truncate(text: string, max = 160) {
   const t = text.trim()
@@ -106,7 +134,7 @@ export async function GET(request: Request) {
 
   return ok({
     coreJudgment,
-    completeness: built?.completeness ?? 0,
+    completeness: completenessFromProgress(progress, built?.completeness ?? 0),
     supportFocus,
     behaviorSummary: coreJudgment ? truncate(coreJudgment, 120) : topMechanisms[0] || '',
     interactionPattern: interactionText,

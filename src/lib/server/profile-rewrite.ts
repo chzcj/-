@@ -10,6 +10,7 @@ import {
   type BuiltProfileSnapshot,
 } from '@/lib/server/memory/database-manager'
 import { digestUpdateBucketKey, enqueueJob } from '@/lib/server/jobs/queue'
+import { isBuildCompletenessV2Enabled } from '@/lib/build/completeness'
 import { humanizeEntryRef } from '@/lib/entry-name-i18n'
 import type { TenantId } from '@/lib/server/memory/tenant'
 
@@ -100,8 +101,14 @@ export async function runProfileRewrite(tenant: TenantId): Promise<void> {
   )
 
   const now = new Date().toISOString()
+  const rewriteScore = Math.min(100, Math.max(0, result.completeness ?? prevBuilt?.completeness ?? 0))
+  const prevCompleteness = prevBuilt?.completeness || 0
+  // V2：禁止 Math.max 把假 100 抬上去；rewrite 单独路径最高 99
+  const completeness = isBuildCompletenessV2Enabled()
+    ? Math.min(99, rewriteScore, prevCompleteness || rewriteScore)
+    : Math.max(prevCompleteness, rewriteScore)
   const next: BuiltProfileSnapshot = {
-    completeness: Math.max(prevBuilt?.completeness || 0, Math.min(100, result.completeness || prevBuilt?.completeness || 0)),
+    completeness,
     coreJudgment: humanizeEntryRef(result.coreJudgment || prevBuilt?.coreJudgment || ''),
     deepMechanism: humanizeEntryRef(result.deepMechanism || prevBuilt?.deepMechanism || ''),
     supportFocus: humanizeEntryRef(result.supportFocus || prevBuilt?.supportFocus || ''),

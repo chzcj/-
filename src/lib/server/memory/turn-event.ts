@@ -43,4 +43,12 @@ export function recordFeatureTurn(args: FeatureTurnArgs): void {
   void saveTurnEvent(args.tenant, buildFeatureTurnEvent(args)).catch((err) =>
     console.error(`[turn-event] ${args.mode} 快照写入失败 traceId=${args.traceId}:`, err)
   )
+  // S2：预演（含冲突复盘）计入有效交流轮 → 每 10 轮加厚机制
+  if (args.mode === 'communication_rehearsal' && args.userMessage?.trim()) {
+    void import('@/lib/server/memory/deep-mechanism/note-effective-turn')
+      .then(({ noteEffectiveFamilyTurn }) =>
+        noteEffectiveFamilyTurn(args.tenant, 'rehearsal', args.traceId)
+      )
+      .catch(() => {})
+  }
 }

@@ -32,6 +32,8 @@ export async function POST(request: Request) {
               facts?: string[]
               pendingHypotheses?: string[]
               note?: string
+              familyMap?: string
+              sufficient?: boolean
             }) => ({
               entryType: String(s.entryType || ''),
               mainJudgment: String(s.mainJudgment || ''),
@@ -40,6 +42,8 @@ export async function POST(request: Request) {
                 ? s.pendingHypotheses.map(String).slice(0, 12)
                 : [],
               note: typeof s.note === 'string' ? s.note : undefined,
+              familyMap: typeof s.familyMap === 'string' ? s.familyMap : undefined,
+              sufficient: typeof s.sufficient === 'boolean' ? s.sufficient : undefined,
             }))
         : [],
       updatedAt: new Date().toISOString(),

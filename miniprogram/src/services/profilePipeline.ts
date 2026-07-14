@@ -6,6 +6,7 @@ import {
   type BuildEntryType,
   type BuildState,
 } from '@/services/buildState'
+import { computeBuildCompletenessV2 } from '@/lib/buildCompleteness'
 
 export type BuiltSnapshotInput = {
   completeness: number
@@ -55,10 +56,29 @@ export function completedEntryCount(state: BuildState): number {
   return BUILD_MODULES.filter((mod) => Boolean(state.entryMap[mod.key]?.moduleComplete)).length
 }
 
+/** 质量有效模块数（信息不足的确认模块不计入） */
+export function qualityValidEntryCount(state: BuildState): number {
+  return computeCompletenessFromState(state).qualityValidCount
+}
+
+export function computeCompletenessFromState(state: BuildState) {
+  return computeBuildCompletenessV2(
+    BUILD_MODULES.map((mod) => {
+      const m = state.entryMap[mod.key]
+      return {
+      confirmed: Boolean(m?.moduleComplete),
+      mainJudgment: m?.stageSummary || '',
+      facts: m?.aiFacts || [],
+      sufficient: m?.summarySufficient,
+    }
+    })
+  )
+}
+
 export function buildSnapshotFromResults(
   syn: Record<string, unknown>,
   diag: Record<string, unknown>,
-  completedEntries: number
+  state: BuildState
 ): BuiltSnapshotInput {
   const evidencePaths: BuiltSnapshotInput['evidence'] = []
   const seenEvidence = new Set<string>()
@@ -114,8 +134,10 @@ export function buildSnapshotFromResults(
   const protectionList =
   ((diag.childSelfProtection as { protectingWhat?: string[] })?.protectingWhat) || []
 
+  const { completeness } = computeCompletenessFromState(state)
+
   return {
-    completeness: Math.min(completedEntries * 25, 100),
+    completeness,
     coreJudgment: profileText,
     deepMechanism: mechanismText,
     supportFocus:
@@ -136,7 +158,8 @@ export async function runProfileGeneratingPipeline(
   const build = loadBuildState()
   const entryMap = buildEntryMapFromState(build)
   const completed = completedEntryCount(build)
-  const maturityLevel = completed >= 4 ? 'L2' : completed >= 2 ? 'L1' : 'L0'
+  const qualityValid = qualityValidEntryCount(build)
+  const maturityLevel = qualityValid >= 4 ? 'L2' : qualityValid >= 2 ? 'L1' : completed >= 1 ? 'L0' : 'L0'
 
   onStep(1, '跨模块综合建模…')
   const synRes = await apiRequest<{ synthesis?: Record<string, unknown> }>('/api/synthesis', {
@@ -172,7 +195,7 @@ export async function runProfileGeneratingPipeline(
   const diag = diagRes.data.diagnosis || {}
 
   onStep(3, '保存孩子画像…')
-  const snapshot = buildSnapshotFromResults(syn, diag, completed)
+  const snapshot = buildSnapshotFromResults(syn, diag, build)
 
   let persisted = false
   for (let attempt = 0; attempt < 3; attempt++) {

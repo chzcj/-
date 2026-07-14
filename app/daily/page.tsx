@@ -68,6 +68,7 @@ function DailyDialogueContent() {
   // inputReady：家长能否立即发送下一条。sections+actions 都到 → 立即 true（不必等 hidden/final）。
   const [inputReady, setInputReady] = useState(true)
   const [queuedCount, setQueuedCount] = useState(0)
+  const [mechanismTip, setMechanismTip] = useState('')
   const startedRef = useRef(false)
   const threadEndRef = useRef<HTMLDivElement>(null)
   const queueRef = useRef<string[]>([])
@@ -270,6 +271,16 @@ function DailyDialogueContent() {
           })
           .catch(() => {/* 静默 */})
       }, 2000)
+      window.setTimeout(() => {
+        fetch('/api/daily/mechanism-tip')
+          .then((r) => r.json())
+          .then((json: { ok?: boolean; data?: { show?: boolean; message?: string } }) => {
+            if (json?.ok && json.data?.show && json.data.message) {
+              setMechanismTip(json.data.message)
+            }
+          })
+          .catch(() => {/* 静默 */})
+      }, 8000)
     } catch (err) {
       proseBuffer.flushNow()
       sectionBuffer.flushNow()
@@ -344,6 +355,17 @@ function DailyDialogueContent() {
       } catch {
         /* 保持「还在了解」占位 */
       }
+      window.setTimeout(() => {
+        if (cancelled) return
+        fetch('/api/daily/mechanism-tip')
+          .then((r) => r.json())
+          .then((json: { ok?: boolean; data?: { show?: boolean; message?: string } }) => {
+            if (!cancelled && json?.ok && json.data?.show && json.data.message) {
+              setMechanismTip(json.data.message)
+            }
+          })
+          .catch(() => {})
+      }, 4000)
     })()
     return () => {
       cancelled = true
@@ -425,6 +447,38 @@ function DailyDialogueContent() {
           />
         }
       >
+        {mechanismTip ? (
+          <button
+            type="button"
+            onClick={() => {
+              setMechanismTip('')
+              void fetch('/api/daily/mechanism-tip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'dismiss' }),
+              }).catch(() => {})
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              width: '100%',
+              margin: '0 0 10px',
+              padding: '10px 14px',
+              border: 'none',
+              borderRadius: 12,
+              background: 'rgba(111, 159, 86, 0.12)',
+              color: '#4d7a3a',
+              fontSize: 13,
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            <span>{mechanismTip}</span>
+            <span style={{ flexShrink: 0, fontSize: 12, color: '#6f9f56' }}>知道了</span>
+          </button>
+        ) : null}
         {turns.length === 0 && !anyStreaming ? (
         <article className="hero-card">
           <h2 className="hero-title">直接讲孩子今天发生了什么</h2>

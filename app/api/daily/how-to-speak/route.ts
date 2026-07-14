@@ -3,6 +3,14 @@ import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { callFastJson } from '@/lib/server/ark-agents'
 import { getTurnEventByTraceId } from '@/lib/server/memory/database-manager'
 import { resolveTenant } from '@/lib/server/memory/tenant'
+import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
+import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
+import {
+  deepModelDigestHasContent,
+  pickDeepModelDigestPack,
+} from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import { pickFrontendReadPack } from '@/lib/server/daily/frontend-read-pack'
+import type { RetrievedContext } from '@/types/database'
 import type { DailySection } from '@/types/daily-message'
 
 type TurnPack = {
@@ -78,6 +86,73 @@ function normalizeResult(
   }
 }
 
+function flattenParentUnderstanding(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean)
+  if (!raw || typeof raw !== 'object') return []
+  return Object.values(raw as Record<string, unknown>)
+    .flatMap((v) => (Array.isArray(v) ? v : [v]))
+    .map(String)
+    .filter(Boolean)
+}
+
+function packetToRetrievedContext(
+  packet: Awaited<ReturnType<typeof buildDailyDialogueRetrievalPacket>>
+): RetrievedContext {
+  return {
+    relevantChildStructureModel: packet.relevantChildStructureModels || [],
+    relevantEntryEvidencePacks: packet.supportingEvidence || [],
+    relevantPastEvents: packet.recentRelatedEvents || [],
+    relevantPendingHypotheses: packet.pendingHypotheses || [],
+    relevantFamilyInteractionPatterns: packet.familyInteractionPatterns || [],
+    matchedMechanisms: packet.matchedMechanisms || [],
+    recentDiagnosis: [],
+    parentNarrativePattern: flattenParentUnderstanding(packet.parentNarrativePattern),
+    childQuotes: packet.childQuotes || [],
+    parentVerbatimSnippets: packet.parentVerbatimSnippets || [],
+    entryFacts: packet.entryFacts || [],
+  }
+}
+
+function emptyRetrievedContext(): RetrievedContext {
+  return {
+    relevantChildStructureModel: [],
+    relevantEntryEvidencePacks: [],
+    relevantPastEvents: [],
+    relevantPendingHypotheses: [],
+    relevantFamilyInteractionPatterns: [],
+    matchedMechanisms: [],
+    recentDiagnosis: [],
+    parentNarrativePattern: [],
+    childQuotes: [],
+    parentVerbatimSnippets: [],
+    entryFacts: [],
+  }
+}
+
+function buildFamilyMemoryBlock(
+  pack: ReturnType<typeof pickFrontendReadPack>,
+  digest: ReturnType<typeof pickDeepModelDigestPack>
+): string {
+  const lines: string[] = []
+  if (digest.mechanismNarrative) lines.push(`机制叙事：${digest.mechanismNarrative.slice(0, 800)}`)
+  if (digest.structuralTensions.length) {
+    lines.push(`结构张力：${digest.structuralTensions.slice(0, 6).join('；')}`)
+  }
+  if (digest.interactionLoops.length) {
+    lines.push(`互动循环：${digest.interactionLoops.slice(0, 8).join('；')}`)
+  }
+  if (digest.anchoredFacts.length) {
+    lines.push(`锚定事实：${digest.anchoredFacts.slice(0, 12).join('；')}`)
+  }
+  if (pack.entryFacts.length) lines.push(`采集事实：${pack.entryFacts.slice(0, 16).join('；')}`)
+  if (pack.matchedMechanisms.length) {
+    lines.push(`家庭模式卡：${pack.matchedMechanisms.slice(0, 10).join('；')}`)
+  }
+  if (pack.childQuotes.length) lines.push(`孩子原话：${pack.childQuotes.slice(0, 8).join('；')}`)
+  if (pack.familyPatterns.length) lines.push(`家庭互动：${pack.familyPatterns.slice(0, 6).join('；')}`)
+  return lines.join('\n')
+}
+
 export async function POST(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
 
@@ -117,10 +192,35 @@ export async function POST(request: Request) {
     return fail('BAD_REQUEST', '缺少交流上下文，请从交流页进入。', undefined, 400)
   }
 
+  // 家庭记忆：与 daily/rehearsal 同厚包契约；失败不阻塞「怎么开口」
+  let familyMemory = ''
+  try {
+    const [packet, digest] = await Promise.all([
+      buildDailyDialogueRetrievalPacket(parentText, tenant, { fast: true }).catch(() => null),
+      loadDeepModelDigest(tenant).catch(() => null),
+    ])
+    const digestPack = pickDeepModelDigestPack(digest)
+    const readPack = packet
+      ? pickFrontendReadPack(packetToRetrievedContext(packet))
+      : pickFrontendReadPack(emptyRetrievedContext())
+    if (
+      deepModelDigestHasContent(digestPack) ||
+      readPack.entryFacts.length ||
+      readPack.matchedMechanisms.length
+    ) {
+      familyMemory = buildFamilyMemoryBlock(readPack, digestPack).slice(0, 3500)
+    }
+  } catch (err) {
+    console.warn('[daily/how-to-speak] family memory load skipped', err)
+  }
+
   const contextBlock = [
     `家长刚才说：${parentText.slice(0, 600)}`,
     aiReply ? `AI 已回复摘要：${aiReply.slice(0, 600)}` : '',
     sectionSummary ? `结构化解读：\n${sectionSummary}` : '',
+    familyMemory
+      ? `这个家庭的记忆（说法必须自然引用至少一条具体事实，禁止泛泛育儿）：\n${familyMemory}`
+      : '',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -131,8 +231,9 @@ export async function POST(request: Request) {
 
 规则：
 - 每条说法 20-55 字，口语化、可当场说出口，不要写成给 AI 的分析。
-- reason 解释为什么这句更稳（≤60 字），结合孩子可能的防御点。
-- 不要泛泛「多鼓励」「控制情绪」；要针对本次情境。
+- reason 解释为什么这句更稳（≤60 字），结合孩子可能的防御点；若有家庭记忆，至少一条 opening 的 reason 要点到具体家庭事实。
+- 不要泛泛「多鼓励」「控制情绪」；要针对本次情境与这个孩子。
+- 禁止输出理论卡名、诊断标签、「机制」二字。
 - sections 可选 0-2 条，提炼本次交流里最关键的一两个提醒（title ≤12 字，body ≤120 字）。
 - intro 一句开场（≤40 字）。
 
@@ -143,7 +244,7 @@ export async function POST(request: Request) {
   "sections": [{ "title": string, "body": string }]
 }`,
       { context: contextBlock },
-      { maxTokens: 512 }
+      { maxTokens: 768 }
     )
 
     return ok(normalizeResult(raw, parentText, aiReply))

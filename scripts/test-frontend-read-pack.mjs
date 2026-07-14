@@ -1,4 +1,4 @@
-// 契约测试：FrontendReadSchema / pickFrontendReadPack 门控
+// 契约测试：FrontendReadSchema / pickFrontendReadPack 门控（厚包默认 + 薄包回退）
 // 运行：npx tsx scripts/test-frontend-read-pack.mjs
 import {
   FRONTEND_READ_PACK_KEYS,
@@ -6,8 +6,14 @@ import {
   pickFrontendReadPack,
   isFrontendReadPackShape,
   assertNoBackendOnlyKeys,
+  isThickFamilyMemoryPack,
+  getFrontendReadSliceLimits,
 } from '../src/lib/server/daily/frontend-read-pack.ts'
 import { buildDailyProsePayload } from '../src/lib/server/daily/prose-context.ts'
+import {
+  pickDeepModelDigestPack,
+  formatMatchedMechanismCards,
+} from '../src/lib/server/memory/deep-modeling/pick-deep-model-digest.ts'
 
 let pass = 0
 let fail = 0
@@ -46,16 +52,32 @@ assert(pack.parentVerbatimSnippets[0] === '昨晚我又催他写作业', 'parent
 assert(pack.familyPatterns[0] === '催作业→发脾气', 'familyPatterns 映射正确')
 assert(!('recentDiagnosis' in pack), 'pack 不含 recentDiagnosis')
 
-// 3. slice 上限
-console.log('\n3. slice 上限')
+// 3. slice 上限（默认厚包）
+console.log('\n3. slice 上限（当前环境）')
+assert(isThickFamilyMemoryPack() === true, '默认厚包开启（未设 FAMILY_MEMORY_THICK_PACK=0）')
+const limits = getFrontendReadSliceLimits()
+assert(limits.entryFacts === 40, `厚包 entryFacts=40 (got ${limits.entryFacts})`)
+assert(limits.matchedMechanisms === 20, `厚包 matchedMechanisms=20 (got ${limits.matchedMechanisms})`)
 const bigCtx = {
   ...mockCtx,
-  entryFacts: Array.from({ length: 10 }, (_, i) => `fact${i}`),
-  matchedMechanisms: Array.from({ length: 5 }, (_, i) => `m${i}`),
+  entryFacts: Array.from({ length: 50 }, (_, i) => `fact${i}`),
+  matchedMechanisms: Array.from({ length: 30 }, (_, i) => `m${i}`),
 }
 const sliced = pickFrontendReadPack(bigCtx)
-assert(sliced.entryFacts.length === 6, `entryFacts slice 6 (got ${sliced.entryFacts.length})`)
-assert(sliced.matchedMechanisms.length === 3, `matchedMechanisms slice 3 (got ${sliced.matchedMechanisms.length})`)
+assert(sliced.entryFacts.length === 40, `entryFacts slice 40 (got ${sliced.entryFacts.length})`)
+assert(sliced.matchedMechanisms.length === 20, `matchedMechanisms slice 20 (got ${sliced.matchedMechanisms.length})`)
+
+// 3b. 薄包回退
+console.log('\n3b. 薄包回退 FAMILY_MEMORY_THICK_PACK=0')
+process.env.FAMILY_MEMORY_THICK_PACK = '0'
+assert(isThickFamilyMemoryPack() === false, '薄包关闭厚包')
+const thinLimits = getFrontendReadSliceLimits()
+assert(thinLimits.entryFacts === 6, `薄包 entryFacts=6 (got ${thinLimits.entryFacts})`)
+assert(thinLimits.matchedMechanisms === 3, `薄包 matchedMechanisms=3 (got ${thinLimits.matchedMechanisms})`)
+const thinSliced = pickFrontendReadPack(bigCtx)
+assert(thinSliced.entryFacts.length === 6, `薄包 entryFacts slice 6 (got ${thinSliced.entryFacts.length})`)
+assert(thinSliced.matchedMechanisms.length === 3, `薄包 matchedMechanisms slice 3 (got ${thinSliced.matchedMechanisms.length})`)
+delete process.env.FAMILY_MEMORY_THICK_PACK
 
 // 4. buildDailyProsePayload 使用 pickFrontendReadPack
 console.log('\n4. buildDailyProsePayload retrievalPack 门控')
@@ -93,6 +115,45 @@ const proseSrc = readFileSync(join(root, 'src/lib/server/daily/prose-context.ts'
 assert(proseSrc.includes('pickFrontendReadPack'), 'prose-context 导入 pickFrontendReadPack')
 assert(!/retrievalPack\s*=\s*\{[^}]*relevantChildStructureModel/.test(proseSrc),
   'prose-context 不再内联 RetrievedContext 字段名')
+
+// 6. digest pack + 机制人话卡
+console.log('\n6. digest / mechanism cards')
+const digestPack = pickDeepModelDigestPack({
+  mechanismNarrative: '催作业时孩子会先顶嘴再沉默',
+  interactionLoops: ['催→顶→沉默'],
+  anchoredFacts: ['错题本只抄答案'],
+  parentVerbatimSnippets: [],
+  childQuotes: ['我知道了'],
+  parentInteractionStyle: '',
+  preferredPacing: '',
+  openHypotheses: [],
+  cultivationFocus: '',
+  structuralTensions: [{ title: '催与躲', detail: '一催就关房门' }],
+})
+assert(digestPack.structuralTensions[0]?.includes('催与躲'), 'digest 含结构张力人话')
+assert(Array.isArray(digestPack.structuralTensions), 'structuralTensions 为 string[]')
+
+const cards = formatMatchedMechanismCards([
+  {
+    mechanismId: 'm1',
+    mechanismName: '催作业后关房门',
+    description: '催促升高时孩子用关门切断接触',
+    overallStrength: 'high',
+    supportingEvidence: ['昨晚关了门'],
+    possibleProtectiveFunction: '避开评价',
+  },
+  {
+    mechanismId: 'm2',
+    mechanismName: '低强度可忽略',
+    description: 'x',
+    overallStrength: 'low',
+    supportingEvidence: [],
+    possibleProtectiveFunction: '',
+  },
+])
+assert(cards.length === 1, '过滤 low 强度机制')
+assert(cards[0].includes('催作业后关房门'), '人话卡含机制名')
+assert(cards[0].includes('依据'), '厚包人话卡含依据')
 
 console.log(`\n=== 结果: ${pass} 通过, ${fail} 失败 ===`)
 process.exit(fail === 0 ? 0 : 1)

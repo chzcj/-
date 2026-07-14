@@ -10,6 +10,7 @@ import { canAccessProfileGenerating } from '@/lib/profile/buildGateState'
 import { getStorage } from '@/lib/storage/localStorageService'
 import { DEFAULT_FAMILY_ID, DEFAULT_CHILD_ID } from '@/lib/storage/storageSeed'
 import { humanizeEntryRef, humanizeJoinedEntries, humanizeMechanismLabel } from '@/lib/entry-name-i18n'
+import { computeBuildCompleteness } from '@/lib/build/completeness'
 
 export default function GeneratingPage() {
   const router = useRouter()
@@ -84,7 +85,19 @@ export default function GeneratingPage() {
           .map(f => f.userAnswer)
           .join('\n')
 
-        const completedEntries = Object.entries(entryMap).filter(([, v]) => v.rawTexts.length > 0).length
+        const completedList = buildSession?.completedEntries || []
+        const completedSet = new Set(
+          completedList.map((e: string) => LEGACY_MERGE[e] || e)
+        )
+        const qualityModules = (['daily', 'homework', 'communication', 'family'] as const).map((key) => {
+          const e = entryMap[key]
+          return {
+            confirmed: completedSet.has(key) || Boolean(e?.stageSummary),
+            mainJudgment: e?.stageSummary || '',
+            facts: e?.aiFacts || [],
+          }
+        })
+        const { completeness, qualityValidCount } = computeBuildCompleteness(qualityModules)
 
         const synthesisRes = await fetch('/api/synthesis', {
           method: 'POST',
@@ -93,7 +106,7 @@ export default function GeneratingPage() {
           body: JSON.stringify({
             entryMap,
             crossCuttingSupplement,
-            maturityLevel: completedEntries >= 4 ? 'L2' : completedEntries >= 2 ? 'L1' : 'L0',
+            maturityLevel: qualityValidCount >= 4 ? 'L2' : qualityValidCount >= 2 ? 'L1' : 'L0',
             familyId: buildSession?.familyId || DEFAULT_FAMILY_ID,
             childId: buildSession?.childId || DEFAULT_CHILD_ID,
           }),
@@ -189,7 +202,7 @@ export default function GeneratingPage() {
         const protectionList = diag.childSelfProtection?.protectingWhat || []
 
         const snapshotInput = {
-          completeness: Math.min(completedEntries * 25, 100),
+          completeness,
           coreJudgment: profileText,
           deepMechanism: mechanismText,
           supportFocus: protectionList.length > 0

@@ -12,6 +12,10 @@ export type BuildModuleState = {
   aiHypotheses: string[]
   /** 用户点击「继续下一模块」后为 true，对齐 Web markEntryCompleted */
   moduleComplete?: boolean
+  /** S3：材料是否足以形成有效模块理解 */
+  summarySufficient?: boolean
+  familyMap?: string
+  summarySections?: Array<{ title: string; body: string }>
 }
 
 export type BuildState = {
@@ -62,6 +66,8 @@ export async function syncBuildProgressToServer(flags?: {
       mainJudgment: m.stageSummary,
       facts: m.aiFacts || [],
       pendingHypotheses: m.aiHypotheses || [],
+      familyMap: m.familyMap,
+      sufficient: m.summarySufficient,
     }
   }).filter(Boolean)
 

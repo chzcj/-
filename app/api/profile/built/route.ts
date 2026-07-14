@@ -1,11 +1,39 @@
 import { ok, fail, failFromError } from '@/lib/api-response'
 import { getCurrentUser } from '@/lib/server/auth'
 import { resolveTenant } from '@/lib/server/memory/tenant'
-import { saveBuiltProfileSnapshot, getLatestBuiltProfileSnapshot, type BuiltProfileSnapshot } from '@/lib/server/memory/database-manager'
+import { saveBuiltProfileSnapshot, getLatestBuiltProfileSnapshot, getBuildProgress, type BuiltProfileSnapshot } from '@/lib/server/memory/database-manager'
 import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
+import {
+  computeBuildCompleteness,
+  isBuildCompletenessV2Enabled,
+  type ModuleCompletenessInput,
+} from '@/lib/build/completeness'
+
+const BUILD_MODULE_KEYS = ['daily', 'homework', 'communication', 'family'] as const
+
+async function clampCompleteness(tenant: Awaited<ReturnType<typeof resolveTenant>>, clientValue: number) {
+  if (!isBuildCompletenessV2Enabled()) return Math.min(100, Math.max(0, clientValue))
+  const progress = await getBuildProgress(tenant).catch(() => null)
+  if (!progress) {
+    // 无进度时：禁止客户端直接写 100（防假满格）
+    return Math.min(clientValue, 99)
+  }
+  const completed = new Set(progress.completedEntries || [])
+  const byType = new Map((progress.stageSummaries || []).map((s) => [s.entryType, s] as const))
+  const modules: ModuleCompletenessInput[] = BUILD_MODULE_KEYS.map((key) => {
+    const summary = byType.get(key)
+    return {
+      confirmed: completed.has(key),
+      mainJudgment: summary?.mainJudgment || '',
+      facts: summary?.facts || [],
+      sufficient: summary?.sufficient,
+    }
+  })
+  return computeBuildCompleteness(modules).completeness
+}
 
 /* ================================================================
    首次建模孩子画像快照的 DB 持久化（让画像跨设备/重装不丢）。
@@ -40,8 +68,10 @@ export async function POST(request: Request) {
     }
     const tenant = await resolveTenant()
     const user = await getCurrentUser()
+    const clientCompleteness = typeof s.completeness === 'number' ? s.completeness : 0
+    const completeness = await clampCompleteness(tenant, clientCompleteness)
     const snapshot: BuiltProfileSnapshot = {
-      completeness: typeof s.completeness === 'number' ? s.completeness : 0,
+      completeness,
       coreJudgment: humanizeBuiltJudgment(String(s.coreJudgment), {
         deepMechanism: typeof s.deepMechanism === 'string' ? s.deepMechanism : '',
         supportFocus: typeof s.supportFocus === 'string' ? s.supportFocus : undefined,

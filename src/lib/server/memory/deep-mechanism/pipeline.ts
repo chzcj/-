@@ -273,7 +273,7 @@ async function runLegacyMonolith(payload: Record<string, unknown>): Promise<Mech
   )
 }
 
-export async function runDeepMechanismReview(tenant: TenantId): Promise<void> {
+export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean> {
   const maturity = getCurrentMaturityState(tenant)
 
   const [
@@ -296,7 +296,7 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<void> {
 
   const flatFacts = flattenFactsFromPacks(packs)
   const totalFacts = flatFacts.length + inputHistory.length
-  if (totalFacts < 3) return
+  if (totalFacts < 3) return false
 
   const packDigest = buildRichPackDigest(packs)
   const recentInputs = inputHistory.slice(-30).map((h) => h.text).filter(Boolean)
@@ -384,7 +384,7 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<void> {
     ai = await runLegacyMonolith(sharedContext)
   }
 
-  if (!ai?.candidateMechanismMatrix?.length) return
+  if (!ai?.candidateMechanismMatrix?.length) return false
 
   const riskRaw = await callAgentJson<{ structuralTensions?: StructuralTension[] }>(
     'structuralRiskExtractor',
@@ -487,4 +487,5 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<void> {
   await buildDeepModelDigest(tenant, structuralTensions).catch((err) => {
     console.error('[deep-mechanism] digest 构建失败:', err)
   })
+  return true
 }

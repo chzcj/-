@@ -19,6 +19,10 @@ export type StageSummaryData = {
   mainJudgment: string
   facts: string[]
   pendingHypotheses: string[]
+  note?: string
+  familyMap?: string
+  sections?: Array<{ title: string; body: string }>
+  sufficient?: boolean
 }
 
 const GATE_KEY = 'yujian_entry_gate'
@@ -120,6 +124,9 @@ export function getLatestStageSummary(entryType: BuildEntryType): StageSummaryDa
     mainJudgment: m.stageSummary,
     facts: m.aiFacts || [],
     pendingHypotheses: m.aiHypotheses || [],
+    familyMap: m.familyMap,
+    sections: m.summarySections,
+    sufficient: m.summarySufficient,
   }
 }
 
@@ -129,6 +136,9 @@ export function saveStageSummary(entryType: BuildEntryType, data: StageSummaryDa
   m.stageSummary = data.mainJudgment
   m.aiFacts = data.facts
   m.aiHypotheses = data.pendingHypotheses
+  m.familyMap = data.familyMap
+  m.summarySections = data.sections
+  m.summarySufficient = data.sufficient
   saveBuildState(state)
 }
 
