@@ -25,6 +25,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-14 18:00 | Cursor | 仅回退小程序画像 UI（pre-S4 Top5 详情壳）；Web/BFF 未回退
 - 2026-07-14 17:40 | Cursor | S6 收尾 H5/H7/H9/H10 + 死字段：ready:true；jobHealthy:true
 - 2026-07-14 17:23 | Cursor | H2–H4 握手补齐 + 小程序 onboarding 新路径：ready:true；jobHealthy:true
 - 2026-07-14 17:16 | Cursor | 大胆加厚人设+机制SP+H1 handoff：ready:true
@@ -41,6 +42,27 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
 - 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-14 18:00 | Cursor | 仅回退小程序画像 UI（pre-S4）
+
+**做了什么**
+- `miniprogram/src/pages/profile/**` 回退到 `310d75f^`（去掉 Top5/机制链统一详情壳）
+- `deep` 恢复为独立机制链展示页；result「机制链解释」改回 `/pages/profile/deep`
+- 清掉本轮 debug 埋点（app/debugIngest/check-mp-chunks）
+
+**为什么**
+- 用户要求仅回退画像页及二级页文案/结构，不要新详情壳
+
+**验证**
+- `npm run build:weapp`；清缓存后看画像 Tab / card / deep
+
+**下一步**
+- 用户本地清缓存编译验收
+
+**风险/冲突**
+- BFF card API 仍可能返回 Top5 字段，旧 UI 不用；勿再把 Top5 壳混进 MP 画像
 
 ---
 

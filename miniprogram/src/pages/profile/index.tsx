@@ -280,7 +280,7 @@ export default function ProfilePage() {
 
   const openFullProfile = () => {
     if (!hasLocalProfile) return
-    void Taro.navigateTo({ url: '/pages/profile/card/index?id=growth' })
+    Taro.navigateTo({ url: '/packageOnboarding/pages/result/index' })
   }
 
   return (
@@ -372,7 +372,7 @@ export default function ProfilePage() {
             className={`pill${hasLocalProfile ? '' : ' disabled'}`}
             onClick={() => {
               if (!hasLocalProfile) return
-              void Taro.navigateTo({ url: '/pages/profile/card/index?id=growth&tab=chain' })
+              void Taro.navigateTo({ url: '/pages/profile/deep/index' })
             }}
           >
             机制链解释
