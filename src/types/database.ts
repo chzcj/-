@@ -285,6 +285,8 @@ export interface CrossEntryEvidenceNetwork {
   inputCoverage: Record<EntryName, EntryCoverage>
   crossEntryEvidenceMap: CrossEntryEvidence[]
   candidateMechanismMatrix: CandidateMechanism[]
+  /** synthesis 草稿 vs deep_mechanism 复核后；用于竞态可观测与读侧优先级 */
+  mechanismLayerSource?: 'synthesis' | 'deep_mechanism'
   createdAt: string
   updatedAt: string
 }

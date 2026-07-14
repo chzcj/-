@@ -72,10 +72,11 @@ export async function syncBuildProgressToServer(flags?: {
   }).filter(Boolean)
 
   const { isBasicInfoComplete } = await import('@/services/childStorage')
+  const { hasIntroSeen } = await import('@/services/onboardingFlags')
   await apiRequest('/api/profile/build-state', {
     method: 'POST',
     data: {
-      introSeen: flags?.introSeen ?? true,
+      introSeen: flags?.introSeen ?? hasIntroSeen(),
       basicInfoDone: flags?.basicInfoDone ?? isBasicInfoComplete(),
       completedEntries,
       stageSummaries,
@@ -86,6 +87,7 @@ export async function syncBuildProgressToServer(flags?: {
 export async function hydrateBuildStateFromServer(): Promise<BuildState> {
   const res = await apiRequest<{
     state?: {
+      introSeen?: boolean
       completedEntries?: string[]
       stageSummaries?: Array<{
         entryType: string
@@ -99,6 +101,11 @@ export async function hydrateBuildStateFromServer(): Promise<BuildState> {
   const local = loadBuildState()
   const remote = res.ok ? res.data.state : null
   if (!remote) return local
+
+  if (remote.introSeen || (remote.completedEntries || []).length > 0) {
+    const { markIntroSeen } = await import('@/services/onboardingFlags')
+    markIntroSeen()
+  }
 
   const next: BuildState = { ...local, entryMap: { ...local.entryMap } }
   for (const summary of remote.stageSummaries || []) {

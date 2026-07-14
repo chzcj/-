@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { View, Text } from '@tarojs/components'
 import { fetchCurrentUser } from '@/services/auth'
 import { ChatIcon, ProfileIcon, RehearsalIcon, TasksIcon } from '@/components/hifi/icons/TabIcons'
+import { onboardingIncompleteHref } from '@/utils/navigation'
 import './index.scss'
 
 export type TabKey = 'chat' | 'tasks' | 'rehearsal' | 'profile'
@@ -29,7 +30,7 @@ const CustomTabBar = forwardRef<CustomTabBarHandle>((_, ref) => {
     if (index === selected) return
     const user = await fetchCurrentUser()
     if (user && !user.onboardingComplete) {
-      void Taro.reLaunch({ url: '/packageOnboarding/pages/hub/index' })
+      void Taro.reLaunch({ url: onboardingIncompleteHref() })
       return
     }
     setSelected(index)

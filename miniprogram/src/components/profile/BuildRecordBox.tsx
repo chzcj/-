@@ -1,3 +1,4 @@
+import Taro from '@tarojs/taro'
 import { View, Text, Textarea } from '@tarojs/components'
 import { useRef, useEffect, useState } from 'react'
 import { useTencentAsrInput } from '@/hooks/useTencentAsrInput'
@@ -127,6 +128,29 @@ export function BuildRecordBox({
         disabled={disabled}
         placeholder={placeholder}
         maxlength={MAX_LENGTH}
+        adjustPosition={false}
+        holdKeyboard
+        showConfirmBar={false}
+        disableDefaultPadding
+        cursorSpacing={120}
+        onFocus={() => {
+          // 鸿蒙/Android：禁用原生顶页后，轻推滚动区，避免输入框落在键盘下（.page 内滚动）
+          requestAnimationFrame(() => {
+            Taro.createSelectorQuery()
+              .select('.hifi-build-root .record-box')
+              .boundingClientRect((rect) => {
+                const box = Array.isArray(rect) ? rect[0] : rect
+                if (!box || typeof box.top !== 'number') return
+                const windowHeight = Taro.getSystemInfoSync().windowHeight
+                if (box.top < windowHeight * 0.55) return
+                void Taro.pageScrollTo({
+                  scrollTop: Math.max(0, box.top - 96),
+                  duration: 200,
+                }).catch(() => undefined)
+              })
+              .exec()
+          })
+        }}
         onInput={(e) => onChange(e.detail.value)}
       />
       <View className='record-meta'>

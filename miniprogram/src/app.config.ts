@@ -18,6 +18,7 @@ export default defineAppConfig({
       root: 'packageOnboarding',
       pages: [
         'pages/intro/index',
+        'pages/guide/index',
         'pages/basic/index',
         'pages/hub/index',
         'pages/capture/index',

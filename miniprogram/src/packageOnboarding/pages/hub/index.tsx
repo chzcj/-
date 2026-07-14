@@ -71,8 +71,8 @@ export default function OnboardingHub() {
       <View className='hub-hero-wrap'>
         <HiFiBuildHero
           kicker='开始使用育见'
-          title='四个模块，建立孩子画像'
-          copy='每类大约 3～5 分钟，尽量讲 30 秒以上的真实过程。按顺序完成：日常 → 作业 → 沟通 → 家庭。'
+          title={'填写四个模块\n让AI了解孩子'}
+          copy='建议使用语音输入'
           mascot
         />
       </View>

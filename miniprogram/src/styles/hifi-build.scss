@@ -216,7 +216,11 @@
 .hifi-build-root .record-box {
   border-radius: $radius-row;
   padding: 16px;
+  padding-bottom: 24px;
   margin-bottom: 14px;
+  /* 键盘顶起缓冲（对齐预演 custom-scenario-input） */
+  min-height: 120px;
+  box-sizing: border-box;
 }
 
 .hifi-build-root .record-head {

@@ -1,8 +1,6 @@
 import { View, Text, Button } from '@tarojs/components'
 import Taro, { useLoad } from '@tarojs/taro'
 import { useState } from 'react'
-import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
-import { HiFiMascot } from '@/components/hifi/HiFiMascot'
 import { SHARE_PATHS } from '@/lib/shareMessages'
 import { openPrivacyContract } from '@/lib/wechatPrivacy'
 import { usePublicPageShare } from '@/hooks/useSharePage'
@@ -13,9 +11,8 @@ import { routeAfterAuth } from '@/utils/navigation'
 import './index.scss'
 
 /**
- * 开始页（审核合规）：
- * - 仅「开始」进入体验，不强制微信登录
- * - 隐私协议默认不勾选，用户自主同意
+ * 开始页：对齐 design-reference/pages startup-gate 封面
+ * 静止开屏 · 底部隐私勾选 ·「开始」进入 onboarding
  */
 export default function LoginPage() {
   usePublicPageShare({
@@ -46,51 +43,59 @@ export default function LoginPage() {
   }
 
   return (
-    <HiFiMainShell>
-      <View className='hero-card login-hero has-mascot'>
-        <Text className='hero-title'>育见</Text>
-        <Text className='hero-copy'>帮家长看见孩子，而不是只看见问题</Text>
-        <HiFiMascot />
+    <View className='login-splash-root'>
+      <View className='login-splash-bg' aria-hidden>
+        <View className='login-splash-ring login-splash-ring--large' />
+        <View className='login-splash-ring login-splash-ring--small' />
       </View>
-      <View className='hifi-card login-card'>
-        <View
-          className='login-privacy-row'
-          onClick={() => {
-            setPrivacyAgreed((v) => !v)
-            setError('')
-          }}
-        >
-          <View
-            className={`login-privacy-box${privacyAgreed ? ' is-checked' : ''}`}
-            aria-role='checkbox'
-            aria-checked={privacyAgreed}
-          >
-            {privacyAgreed ? <Text className='login-privacy-tick'>✓</Text> : null}
-          </View>
-          <Text className='login-privacy'>
-            我已阅读并同意
-            <Text
-              className='login-privacy__link'
-              onClick={(e) => {
-                e.stopPropagation?.()
-                openPrivacyContract()
-              }}
-            >
-              《用户隐私保护指引》
-            </Text>
-          </Text>
+
+      <View className='app-safe-top' />
+      <View className='login-splash-body'>
+        <View className='login-splash-center'>
+          <Text className='login-splash-title'>你好！</Text>
+          <Text className='login-splash-subtitle'>欢迎来到育见</Text>
         </View>
 
-        {error ? <Text className='login-error'>{error}</Text> : null}
+        <View className='login-splash-footer'>
+          <View
+            className='login-privacy-row'
+            onClick={() => {
+              setPrivacyAgreed((v) => !v)
+              setError('')
+            }}
+          >
+            <View
+              className={`login-privacy-box${privacyAgreed ? ' is-checked' : ''}`}
+              aria-role='checkbox'
+              aria-checked={privacyAgreed}
+            >
+              {privacyAgreed ? <Text className='login-privacy-tick'>✓</Text> : null}
+            </View>
+            <Text className='login-privacy'>
+              我已阅读并同意
+              <Text
+                className='login-privacy__link'
+                onClick={(e) => {
+                  e.stopPropagation?.()
+                  openPrivacyContract()
+                }}
+              >
+                《用户隐私保护指引》
+              </Text>
+            </Text>
+          </View>
 
-        <Button
-          className={`btn-primary login-btn${privacyAgreed ? '' : ' is-disabled'}`}
-          disabled={!privacyAgreed}
-          onClick={handleStart}
-        >
-          开始
-        </Button>
+          {error ? <Text className='login-error'>{error}</Text> : null}
+
+          <Button
+            className={`login-splash-btn${privacyAgreed ? '' : ' is-disabled'}`}
+            disabled={!privacyAgreed}
+            onClick={handleStart}
+          >
+            开始
+          </Button>
+        </View>
       </View>
-    </HiFiMainShell>
+    </View>
   )
 }

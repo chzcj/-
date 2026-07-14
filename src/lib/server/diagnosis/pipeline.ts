@@ -107,8 +107,19 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
   const mechanismSummaries = synOutput?.candidateMechanismMatrix?.map(m => ({
     name: m.mechanismName,
     strength: m.overallStrength,
-    evidence: (m.supportingEvidence || []).slice(0, 2),
+    description: (m.description || '').slice(0, 160),
+    evidence: (m.supportingEvidence || []).slice(0, 4),
     scope: m.applicableScope,
+    protectiveFunction: m.possibleProtectiveFunction,
+    chain: m.familyInteractionChain
+      ? [
+          m.familyInteractionChain.parentTriggerAction,
+          m.familyInteractionChain.childReception,
+          m.familyInteractionChain.childReaction,
+        ]
+          .filter(Boolean)
+          .join('→')
+      : undefined,
   })) || []
 
   const crossEntryEvidence = (synOutput?.crossEntryEvidenceMap || []).map(e => ({
@@ -116,28 +127,45 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
     behaviors: e.surfaceBehaviors,
     sharedFunction: e.possibleSharedFunction,
     strength: e.evidenceStrength,
+    triggers: e.triggerPoints,
+    parentActions: e.parentActions,
+    childReactions: e.childReactions,
   }))
 
   const interactionPatterns = synOutput?.childStructureModelDraft?.likelyFamilyInteractionPatterns || []
   const protectiveStrategies = synOutput?.childStructureModelDraft?.dominantProtectiveStrategies || []
 
-  const taskPrompt = `你是一个深层诊断 Agent。你已经有了综合建模的结果，现在需要生成最终诊断。
+  const handoffBlock = handoff
+    ? {
+        recommendedDiagnosisStrength: handoff.recommendedDiagnosisStrength,
+        mainMechanismToExplain: handoff.mainMechanismToExplain,
+        keyEvidencePath: handoff.keyEvidencePath || [],
+        parentMisreadingsToCorrect: handoff.parentMisreadingsToCorrect || [],
+        childPerspectiveToTranslate: handoff.childPerspectiveToTranslate || [],
+        doNotOverstate: handoff.doNotOverstate || [],
+        mustKeepBoundary: handoff.mustKeepBoundary || [],
+        stillNeedToVerify: handoff.stillNeedToVerify || [],
+      }
+    : null
+
+  const taskPrompt = `你是一个深层诊断 Agent。你已经有了综合建模的结果与诊断交接包，现在需要生成最终诊断。
 
 输入材料：
-- 候选机制：${JSON.stringify(mechanismSummaries)}
+- 诊断交接包（必读，勿忽略边界与待验证）：${JSON.stringify(handoffBlock)}
+- 候选机制（含描述/证据/功能）：${JSON.stringify(mechanismSummaries)}
 - 跨入口证据：${JSON.stringify(crossEntryEvidence)}
 - 互动循环：${JSON.stringify(interactionPatterns)}
 - 保护策略：${JSON.stringify(protectiveStrategies)}
 - 家长表面判断："${input.parentSurfaceJudgment}"
 - 表面问题："${input.surfaceProblem}"
-- 可验证事实：${JSON.stringify(facts.slice(0, 10))}
+- 可验证事实：${JSON.stringify(facts.slice(0, 16))}
 
 你的核心任务：
-1. 生成parentMisjudgmentCorrection：不是简单说"您错了"，而是用具体证据解释家长原有判断为什么太表面。必须有证据链，不能套模板。
-2. 生成secondMeConditionalProfile：条件化画像——"当X条件时，孩子更容易Y；这可能是因为A而不是B；在C情况下情况可能不同"。
+1. 生成parentMisjudgmentCorrection：不是简单说"您错了"，而是用具体证据解释家长原有判断为什么太表面。优先用交接包 parentMisreadingsToCorrect + keyEvidencePath。
+2. 生成secondMeConditionalProfile：条件化画像——"当X条件时，孩子更容易Y；这可能是因为A而不是B；在C情况下情况可能不同"。主线应对齐 mainMechanismToExplain。
 3. 生成primaryMechanismChain：家长动作→孩子接收→孩子保护策略→家长二次解读→强化动作→短期功能→长期代价。
 4. 生成familyInteractionLoops：至少3个具体的家庭互动循环。
-5. 生成counterEvidenceNotes：哪些情况可能不适用，边界在哪。
+5. 生成counterEvidenceNotes / needsFurtherVerification：必须吸收交接包 doNotOverstate、mustKeepBoundary、stillNeedToVerify——信息不够时明确边界，不要装成定论。
 
 绝对禁止：
 - 把"不自觉""没内驱力"写成孩子事实
@@ -146,6 +174,7 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
 - 说"您把创伤投射给孩子"或任何创伤分析
 - 说出"替代丈夫""父亲角色缺失"等后台术语
 - 简化为"主要是您控制太多"或"主要是孩子自制力差"
+- 忽略交接包里的 mustKeepBoundary / stillNeedToVerify
 
 输出完整 JSON，所有字段必填。`;
 
@@ -154,15 +183,16 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
     {
       task: taskPrompt,
       taskType,
+      diagnosisHandoffPackage: handoffBlock,
       mechanismSummaries,
       crossEntryEvidence,
       interactionPatterns,
       protectiveStrategies,
-      facts: facts.slice(0, 8),
+      facts: facts.slice(0, 16),
       surfaceProblem: input.surfaceProblem,
       parentSurfaceJudgment: input.parentSurfaceJudgment,
     },
-    { maxTokens: Number(process.env.FAST_AI_DIAGNOSIS_MAX_TOKENS || 2800) }
+    { maxTokens: Number(process.env.FAST_AI_DIAGNOSIS_MAX_TOKENS || 3200) }
   ).catch(() => undefined as AiDiagnosisOutput | undefined)
 
   const ai = aiResult

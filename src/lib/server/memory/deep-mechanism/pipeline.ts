@@ -427,14 +427,15 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
   for (const p of packs) coverage[p.entryName] = 'sufficient'
 
   const network: CrossEntryEvidenceNetwork = {
-    networkId: createId('net'),
+    networkId: existingNetwork?.networkId || createId('net'),
     familyId: tenant.familyId,
     childId: tenant.childId,
     maturityLevel: maturity.level,
     inputCoverage: coverage,
     crossEntryEvidenceMap: existingNetwork?.crossEntryEvidenceMap || [],
     candidateMechanismMatrix: ai.candidateMechanismMatrix.map((m) => normMechanism(m)),
-    createdAt: now,
+    mechanismLayerSource: 'deep_mechanism',
+    createdAt: existingNetwork?.createdAt || now,
     updatedAt: now,
   }
   await saveEvidenceNetwork(network, tenant)
@@ -484,9 +485,14 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
   }
 
   if (builtSnapshot) {
-    const topMechanism = network.candidateMechanismMatrix[0]
-    const newDeepMechanism = topMechanism
-      ? `${topMechanism.mechanismName}：${topMechanism.description}`.slice(0, 200)
+    const tops = network.candidateMechanismMatrix
+      .filter((m) => m.overallStrength !== 'low')
+      .slice(0, 3)
+    const newDeepMechanism = tops.length
+      ? tops
+          .map((m, i) => `${i === 0 ? '主' : '次'}${i + 1} ${m.mechanismName}：${(m.description || '').slice(0, 80)}`)
+          .join('｜')
+          .slice(0, 600)
       : builtSnapshot.deepMechanism
     if (newDeepMechanism && newDeepMechanism !== builtSnapshot.deepMechanism) {
       await saveBuiltProfileSnapshot(

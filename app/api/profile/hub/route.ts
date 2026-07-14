@@ -16,6 +16,7 @@ import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-b
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { enrichPortraitCards } from '@/lib/server/profile/portrait-card-enrich'
 import { dedupeTextParts } from '@/types/portrait-card'
+import { sanitizeForParent } from '@/lib/server/daily/profile-sanitize'
 import {
   computeBuildCompleteness,
   isBuildCompletenessV2Enabled,
@@ -100,9 +101,9 @@ export async function GET(request: Request) {
 
   const topMechanisms =
     network?.candidateMechanismMatrix
-      ?.filter((m) => m.mechanismName)
-      .slice(0, 2)
-      .map((m) => truncate(m.description || m.mechanismName, 100)) || []
+      ?.filter((m) => m.mechanismName && m.overallStrength !== 'low')
+      .slice(0, 5)
+      .map((m) => truncate(sanitizeForParent(m.description || m.mechanismName), 100)) || []
 
   const topCycle = cycles[0]
   const interactionText = topCycle

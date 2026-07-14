@@ -175,6 +175,7 @@ export function buildMemoryWritePlan(options: {
             ...mechanism,
             overallStrength: normalizeStrength(mechanism.overallStrength)
           })),
+          mechanismLayerSource: 'synthesis' as const,
           createdAt: now,
           updatedAt: now
         }]

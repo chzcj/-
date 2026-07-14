@@ -38,10 +38,10 @@
 
 | ID | 问题 | 冲突面 |
 |----|------|--------|
-| H1 | `deep_mechanism_handoffs.ecosystemMap` / `theoryMatches` **写了没人读**（digest 只用 structuralTensions） | 动 digest-builder / handoff 消费者 |
-| H2 | `diagnosisHandoffPackage` 约 3/8 字段进诊断；诊断 AI 几乎看不到 handoff | 动 diagnosis/pipeline |
-| H3 | synthesis 写 network → job 再跑 deep_mechanism **整表覆盖**矩阵；检索可能读到「综合稿」 | 竞态；需 status/版本或读锁 |
-| H4 | `builtSnapshot.deepMechanism` = 矩阵[0]×200 字，多域 10–20 被压成一行 | 画像 fallback |
+| H1 | handoff ecosystem/theory 写了没人读 | **已修**：digest 读入 |
+| H2 | diagnosisHandoff ~3/8 字段 | **已修**：诊断 prompt/payload 吃满交接包 |
+| H3 | synthesis→deep_mechanism 覆盖竞态 | **已修**：`mechanismLayerSource` 标记 |
+| H4 | builtSnapshot.deepMechanism 只留第1条 | **已修**：主1+次2，最长600字 |
 | H5 | digest-builder / llm-digest / pickDeepModelDigest **三套 slice 表不一致** | 动 digest 双路径 |
 | H6 | `mechanismType` prompt 写理论名，代码用 strength 覆盖成 core/stage/local | schema 语义冲突 |
 | H7 | `correctionReceptivity` prompt=`open|…` vs TS=`high|medium|low` | 枚举冲突 |

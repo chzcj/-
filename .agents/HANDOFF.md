@@ -25,6 +25,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-14 17:23 | Cursor | H2–H4 握手补齐 + 小程序 onboarding 新路径：ready:true；jobHealthy:true
 - 2026-07-14 17:16 | Cursor | 大胆加厚人设+机制SP+H1 handoff：ready:true
 - 2026-07-14 17:10 | Cursor | S6 握手审查 + P0：router 厚包预切 + entryEvidence；ready:true
 - 2026-07-14 17:02 | Cursor | S5b 机制多域 10–20 + 理论卡 20：ready:true；jobHealthy:true
@@ -39,6 +40,30 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
 - 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-14 17:23 | Cursor | H2–H4 + 小程序 onboarding 收尾
+
+**做了什么**
+- H2：diagnosis 吃满 `diagnosisHandoffPackage`（8 字段）+ 机制摘要加厚（description/chain/triggers）
+- H3：`mechanismLayerSource`（synthesis | deep_mechanism）；deep 写网保留 networkId/createdAt
+- H4：`builtSnapshot.deepMechanism` 主1+次2，最长 600 字；hub Top5≠low
+- 小程序：login 启动门 + intro→guide（OnboardingInfoShell）+ hub/键盘修；`onboardingIncompleteHref` 按 `hasIntroSeen`/已开模块路由；hydrate 同步 server `introSeen`
+- 收录 `docs/product/bff-optimization-backlog.md`；未提交根目录头像 jpg / 中文架构重复稿
+
+**为什么**
+- S6 审计 H2–H4 是握手饿死诊断/画像的硬缺口；onboarding WIP 原先回流直跳 hub，新 intro/guide 半残
+
+**验证**
+- typecheck/build；miniprogram `build:weapp` 通过；deploy ready:true；jobHealthy:true
+
+**下一步**
+- 真机预览冷启动：login→intro→guide→hub；带 token 未看 intro 应进 intro；已开模块应进 hub
+- 金路径看 diagnosis 是否真吃到交接包；mechanismLayerSource 是否避免误读综合稿
+
+**风险/冲突**
+- 勿动语音 ASR；Web basic 仍在 intro 后、小程序 basic 仍延后到 result（既有差异）
 
 ---
 

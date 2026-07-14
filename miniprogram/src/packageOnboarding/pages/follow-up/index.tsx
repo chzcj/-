@@ -129,7 +129,8 @@ export default function EntryFollowUpPage() {
         saveEntryGate(entryType, payload)
         applyFollowUp(payload)
         setRound(nextRound)
-        setText('')
+        // 下一轮同页继续：延迟清空，避免鸿蒙上受控 Textarea value 与原生层聚焦竞争
+        Taro.nextTick(() => setText(''))
         setLoading(false)
         Taro.hideLoading()
         Taro.showToast({ title: '已记录，可继续补充', icon: 'none' })

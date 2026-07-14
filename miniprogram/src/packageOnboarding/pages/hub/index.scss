@@ -4,6 +4,9 @@
   .hero-card.has-mascot {
     min-height: 188px;
     padding-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .hero-title,
@@ -18,14 +21,17 @@
     max-width: calc(100% - 120px);
     font-size: 22px;
     line-height: 1.36;
+    white-space: pre-line;
   }
 
   .hero-card.has-mascot .hero-copy {
     width: 100%;
     max-width: calc(100% - 120px);
+    min-height: 44px;
     margin-top: 10px;
+    display: block;
     font-size: 14px;
-    line-height: 1.62;
+    line-height: 44px;
   }
 
   .mascot {
