@@ -11,6 +11,7 @@ import {
   getChildBasicInfo,
 } from '@/lib/server/memory/database-manager'
 import { loadHighValueAtoms } from '@/lib/server/db'
+import { getDeepModelDigestSlices } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
@@ -77,27 +78,28 @@ export async function buildLlmDeepModelDigest(
 
   if (!raw) return undefined
 
+  const slice = getDeepModelDigestSlices()
   const mechanismNarrative = asString(raw.mechanismNarrative) || base.mechanismNarrative
   if (charLen(mechanismNarrative) < 120) return undefined
 
   return {
     mechanismNarrative,
     interactionLoops: asStringArray(raw.interactionLoops).length
-      ? asStringArray(raw.interactionLoops).slice(0, 4)
+      ? asStringArray(raw.interactionLoops).slice(0, slice.interactionLoops)
       : base.interactionLoops,
     anchoredFacts: asStringArray(raw.anchoredFacts).length
-      ? asStringArray(raw.anchoredFacts).slice(0, 8)
+      ? asStringArray(raw.anchoredFacts).slice(0, slice.anchoredFacts)
       : base.anchoredFacts,
     parentVerbatimSnippets: asStringArray(raw.parentVerbatimSnippets).length
-      ? asStringArray(raw.parentVerbatimSnippets).slice(0, 5)
+      ? asStringArray(raw.parentVerbatimSnippets).slice(0, slice.parentVerbatimSnippets)
       : base.parentVerbatimSnippets,
     childQuotes: asStringArray(raw.childQuotes).length
-      ? asStringArray(raw.childQuotes).slice(0, 4)
+      ? asStringArray(raw.childQuotes).slice(0, slice.childQuotes)
       : base.childQuotes,
     parentInteractionStyle: asString(raw.parentInteractionStyle) || base.parentInteractionStyle,
     preferredPacing: asString(raw.preferredPacing) || base.preferredPacing,
     openHypotheses: asStringArray(raw.openHypotheses).length
-      ? asStringArray(raw.openHypotheses).slice(0, 5)
+      ? asStringArray(raw.openHypotheses).slice(0, slice.openHypotheses)
       : base.openHypotheses,
     cultivationFocus: asString(raw.cultivationFocus) || base.cultivationFocus,
     structuralTensions: base.structuralTensions,

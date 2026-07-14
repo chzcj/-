@@ -36,6 +36,13 @@ const SLICE_THICK = {
   structuralTensions: 8,
 } as const
 
+export type DeepModelDigestSlices = typeof SLICE_THIN | typeof SLICE_THICK
+
+/** digest 构建 / LLM 后处理 / 前台 pick 共用的 thick-thin 切片上限。 */
+export function getDeepModelDigestSlices(): DeepModelDigestSlices {
+  return isThickFamilyMemoryPack() ? SLICE_THICK : SLICE_THIN
+}
+
 function tensionLine(t: StructuralTension): string {
   const title = (t.title || '').trim()
   const detail = (t.detail || '').trim()
@@ -45,7 +52,7 @@ function tensionLine(t: StructuralTension): string {
 
 export function pickDeepModelDigestPack(digest: DeepModelDigest | null | undefined): DeepModelDigestPack {
   const d = digest ?? EMPTY_DEEP_MODEL_DIGEST
-  const slice = isThickFamilyMemoryPack() ? SLICE_THICK : SLICE_THIN
+  const slice = getDeepModelDigestSlices()
   const tensions = (d.structuralTensions || [])
     .map(tensionLine)
     .filter(Boolean)

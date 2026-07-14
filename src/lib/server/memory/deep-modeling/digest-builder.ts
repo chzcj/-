@@ -12,6 +12,7 @@ import type { TenantId } from '@/lib/server/memory/tenant'
 import type { DeepModelDigest, StructuralTension } from '@/types/deep-model-digest'
 import { saveDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
 import { buildLlmDeepModelDigest } from '@/lib/server/memory/deep-modeling/llm-digest-builder'
+import { getDeepModelDigestSlices } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { loadDeepMechanismHandoff } from '@/lib/server/memory/deep-mechanism/handoff-store'
 import { loadHighValueAtoms } from '@/lib/server/db'
 
@@ -71,7 +72,9 @@ export async function buildDeepModelDigest(
     .join('\n')
     .trim()
 
-  const interactionLoops = cycles.slice(0, 4).map((c) => {
+  const slice = getDeepModelDigestSlices()
+
+  const interactionLoops = cycles.slice(0, slice.interactionLoops).map((c) => {
     const parts = [
       c.parentTriggerAction,
       c.childReception,
@@ -82,7 +85,8 @@ export async function buildDeepModelDigest(
   }).filter(Boolean)
 
   const anchoredFacts: string[] = []
-  for (const m of network?.candidateMechanismMatrix?.slice(0, 12) || []) {
+  const matrixCap = Math.max(slice.anchoredFacts, 12)
+  for (const m of network?.candidateMechanismMatrix?.slice(0, matrixCap) || []) {
     for (const f of m.supportingEvidence || []) {
       if (f?.trim()) anchoredFacts.push(truncate(f, 120))
     }
@@ -90,12 +94,12 @@ export async function buildDeepModelDigest(
   for (const ev of built?.evidence?.slice(0, 4) || []) {
     if (ev.evidenceText?.trim()) anchoredFacts.push(truncate(ev.evidenceText, 120))
   }
-  const uniqueFacts = [...new Set(anchoredFacts)].slice(0, 12)
+  const uniqueFacts = [...new Set(anchoredFacts)].slice(0, slice.anchoredFacts)
 
   const parentVerbatimSnippets = history
     .map((h) => h.text?.trim())
     .filter((t): t is string => Boolean(t && t.length >= 8))
-    .slice(0, 5)
+    .slice(0, slice.parentVerbatimSnippets)
     .map((t) => truncate(t, 100))
 
   // 孩子原话主来源：episode 抽取管线标记的 child_quote 高价值原子（真实话语，已生产验证）。
@@ -103,12 +107,12 @@ export async function buildDeepModelDigest(
   // 曾导致 childQuotes 长期为空，预演的「孩子」无语言样本可模仿。
   const childQuotes: string[] = highValueAtoms
     .filter((a) => a.sourceType === 'child_quote' && a.content?.trim())
-    .slice(0, 4)
+    .slice(0, slice.childQuotes)
     .map((a) => truncate(a.content, 80))
-  if (childQuotes.length < 4) {
+  if (childQuotes.length < slice.childQuotes) {
     for (const m of network?.candidateMechanismMatrix || []) {
       for (const b of m.explainedBehaviors || []) {
-        if (childQuotes.length >= 4) break
+        if (childQuotes.length >= slice.childQuotes) break
         if ((b?.includes('「') || b?.includes('"')) && !childQuotes.includes(truncate(b, 80))) {
           childQuotes.push(truncate(b, 80))
         }
@@ -128,7 +132,7 @@ export async function buildDeepModelDigest(
 
   const openHypotheses = hypotheses
     .filter((h) => h.status === 'pending' || h.status === 'supported')
-    .slice(0, 5)
+    .slice(0, slice.openHypotheses)
     .map((h) => truncate(h.hypothesis, 100))
 
   const cultivationFocus =
@@ -149,7 +153,7 @@ export async function buildDeepModelDigest(
     interactionLoops,
     anchoredFacts: uniqueFacts,
     parentVerbatimSnippets,
-    childQuotes: [...new Set(childQuotes)].slice(0, 4),
+    childQuotes: [...new Set(childQuotes)].slice(0, slice.childQuotes),
     parentInteractionStyle,
     preferredPacing,
     openHypotheses,

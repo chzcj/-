@@ -62,7 +62,12 @@ function normWeight(v: unknown): HypothesisWeight {
 }
 
 function normReceptivity(v: unknown): 'high' | 'medium' | 'low' {
-  return v === 'high' || v === 'medium' || v === 'low' ? v : 'medium'
+  if (v === 'high' || v === 'medium' || v === 'low') return v
+  // Prompt 侧可用 open|resistant|mixed|unknown，入库统一为 high|medium|low
+  if (v === 'open') return 'high'
+  if (v === 'resistant') return 'low'
+  if (v === 'mixed' || v === 'unknown') return 'medium'
+  return 'medium'
 }
 
 function strengthToType(s: EvidenceStrength): MechanismType {
@@ -393,7 +398,7 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
   )
 
   if (!ai?.candidateMechanismMatrix?.length) {
-    ai = await runLegacyMonolith(sharedContext)
+    ai = await runLegacyMonolith({ ...sharedContext, ecosystemMap, theoryMatches })
   }
 
   if (!ai?.candidateMechanismMatrix?.length) return false

@@ -117,8 +117,8 @@
   "parentNarrativePattern": {
     "observations": ["中性观察：家长在作业场景中容易连续确认原因", "家长高度关注成绩稳定"],
     "interactionImplications": ["家长追问意图被孩子接收为被不信任", "家长想确认原因 vs 孩子感到被追问"],
-    "correctionReceptivity": "家长是否愿意调整做法的信号（open|resistant|mixed|unknown）",
-    "factProvisionAbility": "家长提供具体事实的能力（high|medium|low）"
+    "correctionReceptivity": "家长是否愿意调整做法的信号（可写 open|resistant|mixed|unknown 或 high|medium|low；入库映射为 high|medium|low）",
+    "factProvisionAbility": "家长提供具体事实的能力（可写 open|resistant|mixed|unknown 或 high|medium|low；入库映射为 high|medium|low）"
   },
   "summary": "本次深度机制复核的一句话总结（后台用，不输出给家长）"
 }

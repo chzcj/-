@@ -2,7 +2,7 @@
 
 > 2026-07-14 · 对照 `docs/contracts/*` · S1–S5b 之后  
 > 范围：机制链 / 综合 / 诊断 / digest / 日常检索 → 前台厚包  
-> **未动**：语音/ASR、流式 NDJSON、小程序 onboarding WIP
+> **未动**：语音/ASR、流式 NDJSON
 
 ---
 
@@ -14,7 +14,7 @@
 |------|------|
 | S5 人设 | 已加厚 |
 | S5b 机制产量 | SP/理论卡已抬到 10–20 |
-| **S6 握手** | **仍有稀释与死字段**；本批已修 2 个 P0 |
+| **S6 握手** | P0 + H1–H5/H7/H9/H10 已修；H6/H8 等 schema 大改 deferred |
 
 只抬产量不修握手 → 库里有料，前台仍可能「吃不到」。
 
@@ -34,63 +34,51 @@
 
 ---
 
-## P0 / P1（仍待，勿与 WIP 混推）
+## H1–H10 状态
 
-| ID | 问题 | 冲突面 |
-|----|------|--------|
+| ID | 问题 | 状态 |
+|----|------|------|
 | H1 | handoff ecosystem/theory 写了没人读 | **已修**：digest 读入 |
 | H2 | diagnosisHandoff ~3/8 字段 | **已修**：诊断 prompt/payload 吃满交接包 |
-| H3 | synthesis→deep_mechanism 覆盖竞态 | **已修**：`mechanismLayerSource` 标记 |
+| H3 | synthesis→deep_mechanism 覆盖竞态 | **已修**：`mechanismLayerSource` 标记；router 日志消费 |
 | H4 | builtSnapshot.deepMechanism 只留第1条 | **已修**：主1+次2，最长600字 |
-| H5 | digest-builder / llm-digest / pickDeepModelDigest **三套 slice 表不一致** | 动 digest 双路径 |
-| H6 | `mechanismType` prompt 写理论名，代码用 strength 覆盖成 core/stage/local | schema 语义冲突 |
-| H7 | `correctionReceptivity` prompt=`open|…` vs TS=`high|medium|low` | 枚举冲突 |
-| H8 | parent narrative `labelTendency` 等写死 `occasional` | 假字段 |
-| H9 | hub TopMechanisms 仍 slice(0,2)（家长 Top5 页是另一路径，属展示策略） | 产品策略，非 bug |
-| H10 | synthesizer fail → legacy monolith **丢掉** ecosystemMap+theoryMatches | 双路径不一致 |
+| H5 | digest-builder / llm-digest / pick 三套 slice 不一致 | **已修**：`getDeepModelDigestSlices()` 统一 |
+| H6 | `mechanismType` prompt 写理论名，代码用 strength 覆盖 | **deferred**：需 schema 拆分 |
+| H7 | `correctionReceptivity` prompt vs TS 枚举冲突 | **已修**：open/resistant→high/low 映射 |
+| H8 | parent narrative `labelTendency` 等写死 occasional | **deferred**：假字段，无读方 |
+| H9 | hub / refresh TopMechanisms 薄切 | **已修**：hub + daily-refresh 均为 ≠low Top5 |
+| H10 | synthesizer fail → legacy 丢掉 ecosystemMap+theoryMatches | **已修**：legacy 同传 |
 
 ---
 
-## 死字段速查
+## 死字段速查（2026-07-14 收尾后）
 
-| 字段 | 写 | 读 |
-|------|----|----|
-| handoff.ecosystemMap / theoryMatches | deep-mechanism | 无（审计脚本除外） |
-| matrix.theoryCardId / ecosystemLayer | DB | 运行时几乎无消费 |
-| diagnosisHandoff.keyEvidencePath 等 | synthesis | 诊断不用 |
-| possibleCounterEvidence | 恒 `[]` | — |
-| SynthesisInput.existingNetwork | 声明 | 未用 |
-| parentNarrativeStrings() | — | 无调用方 |
-
----
-
-## 不稳定点
-
-1. **JSON 截断**：classifier/synthesizer maxTokens 已抬，仍可能超长失败 → 静默 fallback。
-2. **竞态**：synthesis → enqueue deep_mechanism → 矩阵被覆盖；交流若夹在中间读旧网。
-3. **分数刻度**：synthesis scores 1–4 vs deep-mechanism 0.3–0.9。
-4. **early return**：facts&lt;3 不跑机制；digest LLM 叙事&lt;120 丢弃加深。
+| 字段 | 状态 |
+|------|------|
+| handoff.ecosystemMap / theoryMatches | **已修**：digest 读 |
+| diagnosisHandoff 全字段 | **已修**：诊断吃满 |
+| SynthesisInput.existingNetwork | **已修**：摘要入 synthesis prompt |
+| parentNarrativeStrings() | **已删**（死代码） |
+| matrix.theoryCardId / ecosystemLayer | 仍偏后台；前台卡未展示 → deferred |
+| possibleCounterEvidence | 恒 `[]` → deferred |
+| H8 labelTendency 等 | 写死 occasional → deferred |
 
 ---
 
-## 代码冲突面（与本地 WIP）
+## 不稳定点（仍观察）
 
-| 区域 | 冲突风险 |
-|------|----------|
-| `miniprogram/.../onboarding`、`login`、`HiFiMainShell` | **正交**——勿与本 BFF 握手改动混 commit |
-| `router.ts` / `orchestration` / `frontend-read-pack` | **高冲突**——S6 主战场 |
-| `deep-mechanism/pipeline.ts` | 与 S5b 同文件；再改需串行 |
-| 语音 ASR 文件 | **红线禁止** |
-
-结论：**不会与小程序 onboarding WIP 文件冲突**；会与其他 Agent 同时改 memory/retrieval 冲突——改前 `sync:gitee` + 读 HANDOFF。
+1. **JSON 截断**：classifier/synthesizer maxTokens 已抬，仍可能超长失败 → 静默 fallback（现已带 theory 上下文）。
+2. **分数刻度**：synthesis scores 1–4 vs deep-mechanism 0.3–0.9 → deferred。
+3. **early return**：facts&lt;3 不跑机制；digest LLM 叙事&lt;120 丢弃加深。
 
 ---
 
-## 本批改动文件
+## 本批（S6 收尾）改动文件
 
-- `src/types/database.ts` — `entryEvidencePackSummaries`
-- `src/lib/server/memory/retrieval/router.ts` — 厚包预切 + 证据包摘要 + flatten 补 receptivity
-- `src/lib/server/orchestration/pipeline.ts` — entryEvidence 映射
-- `app/api/daily/how-to-speak/route.ts` — 同上
-
-未改：机制条数 UI Top5、握手 H1–H10 大修、onboarding WIP。
+- `src/lib/server/memory/deep-mechanism/pipeline.ts` — H10 + H7
+- `src/lib/server/memory/deep-modeling/pick-deep-model-digest.ts` — export slices
+- `src/lib/server/memory/deep-modeling/digest-builder.ts` / `llm-digest-builder.ts` — H5
+- `src/lib/server/synthesis/pipeline.ts` — existingNetwork
+- `src/lib/server/memory/retrieval/router.ts` — 删死函数 + 读 mechanismLayerSource
+- `src/lib/server/profile/daily-refresh-agent.ts` — H9 Top5
+- `prompts/background/deepMechanismReview.md` / `mechanismSynthesizer.md` — H7 文案

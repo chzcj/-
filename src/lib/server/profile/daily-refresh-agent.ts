@@ -107,8 +107,8 @@ async function gatherRefreshContext(tenant: TenantId): Promise<RefreshContext> {
 
   const topMechanisms =
     network?.candidateMechanismMatrix
-      ?.filter((m) => m.mechanismName)
-      .slice(0, 2)
+      ?.filter((m) => m.mechanismName && m.overallStrength !== 'low')
+      .slice(0, 5)
       .map((m) => truncate(m.description || m.mechanismName, 60)) || []
 
   const topCycle = cycles[0]

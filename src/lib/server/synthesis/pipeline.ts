@@ -100,6 +100,33 @@ function normalizeStrength(value: unknown): EvidenceStrength {
   return 'medium'
 }
 
+function summarizeExistingNetwork(existing: unknown): Array<{
+  name: string
+  strength: string
+  description: string
+  source?: string
+}> {
+  if (!existing || typeof existing !== 'object') return []
+  const net = existing as {
+    mechanismLayerSource?: string
+    candidateMechanismMatrix?: Array<{
+      mechanismName?: string
+      overallStrength?: string
+      description?: string
+    }>
+  }
+  const matrix = Array.isArray(net.candidateMechanismMatrix) ? net.candidateMechanismMatrix : []
+  return matrix
+    .filter((m) => m?.mechanismName?.trim())
+    .slice(0, 8)
+    .map((m) => ({
+      name: String(m.mechanismName || '').trim(),
+      strength: String(m.overallStrength || 'medium'),
+      description: String(m.description || '').trim().slice(0, 120),
+      ...(net.mechanismLayerSource ? { source: net.mechanismLayerSource } : {}),
+    }))
+}
+
 export async function runSynthesisPipeline(input: SynthesisInput): Promise<SynthesisOutput> {
   const now = new Date().toISOString()
   const packs = input.entryPacks
@@ -117,6 +144,8 @@ export async function runSynthesisPipeline(input: SynthesisInput): Promise<Synth
   if (completedCount === 0) {
     return buildEmptyOutput(inputCoverage)
   }
+
+  const existingNetworkSummary = summarizeExistingNetwork(input.existingNetwork)
 
   /* 构建给 AI 的每个入口总结 — 只传结构化摘要，不传原始文本 */
    const entrySummaries = packs.map(p => ({
@@ -143,7 +172,11 @@ export async function runSynthesisPipeline(input: SynthesisInput): Promise<Synth
 - 不能停在中间变量
 - crossEntryEvidenceMap **4–8 条**即可，每条必须有具体证据
 - candidateMechanismMatrix **6–8 条**即可（后续 deep_mechanism 扩多域），每条 2 条 supportingEvidence
-- 输出完整 JSON，不要省略字段${input.crossCuttingSupplement ? `
+- 若有既有证据网摘要：可吸收已验证机制，避免无证据推翻；材料不足时勿硬抬置信度
+- 输出完整 JSON，不要省略字段${existingNetworkSummary.length ? `
+
+既有证据网机制摘要（供交叉参考，勿原样照抄空壳）：
+${JSON.stringify(existingNetworkSummary)}` : ''}${input.crossCuttingSupplement ? `
 
 家长四模块收尾补充（重点纳入，仍作假设检验）：
 ${input.crossCuttingSupplement.slice(0, 800)}` : ''}`;
@@ -156,6 +189,7 @@ ${input.crossCuttingSupplement.slice(0, 800)}` : ''}`;
       completedCount,
       maturityLevel: input.maturityLevel,
       moduleKeys: ['daily', 'homework', 'communication', 'family'],
+      ...(existingNetworkSummary.length ? { existingNetworkSummary } : {}),
     },
     { maxTokens: Number(process.env.FAST_AI_SYNTHESIS_MAX_TOKENS || 3500) }
   ).catch(() => undefined as AiSynthesisOutput | undefined)

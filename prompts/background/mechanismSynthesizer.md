@@ -47,8 +47,8 @@
   "parentNarrativePattern": {
     "observations": [],
     "interactionImplications": [],
-    "correctionReceptivity": "unknown",
-    "factProvisionAbility": "medium"
+    "correctionReceptivity": "open|resistant|mixed|unknown|high|medium|low（入库映射 high|medium|low）",
+    "factProvisionAbility": "open|resistant|mixed|unknown|high|medium|low（入库映射 high|medium|low）"
   },
   "summary": "一句话后台总结：本户高价值维度与主机制方向"
 }

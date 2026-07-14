@@ -74,11 +74,6 @@ function buildParentUnderstanding(
   }
 }
 
-function parentNarrativeStrings(pattern: ParentNarrativePattern | null): string[] {
-  if (!pattern) return []
-  return [...(pattern.observations || []), ...(pattern.interactionImplications || [])].slice(0, 6)
-}
-
 export function flattenParentUnderstanding(packet: Record<string, unknown>): string[] {
   const lines: string[] = []
   for (const key of [
@@ -233,6 +228,12 @@ export async function buildDailyDialogueRetrievalPacket(
   }
   if (relevantChildStructureModels.length === 0 && matchingProfile) {
     relevantChildStructureModels.push(matchingProfile)
+  }
+
+  if (network?.mechanismLayerSource) {
+    console.info(
+      `[retrieval] mechanismLayerSource=${network.mechanismLayerSource} matrix=${network.candidateMechanismMatrix?.length || 0}`
+    )
   }
 
   const builtEvidence = (builtSnapshot?.evidence || [])

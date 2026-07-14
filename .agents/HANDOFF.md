@@ -25,6 +25,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-14 17:40 | Cursor | S6 收尾 H5/H7/H9/H10 + 死字段：ready:true；jobHealthy:true
 - 2026-07-14 17:23 | Cursor | H2–H4 握手补齐 + 小程序 onboarding 新路径：ready:true；jobHealthy:true
 - 2026-07-14 17:16 | Cursor | 大胆加厚人设+机制SP+H1 handoff：ready:true
 - 2026-07-14 17:10 | Cursor | S6 握手审查 + P0：router 厚包预切 + entryEvidence；ready:true
@@ -40,6 +41,30 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
 - 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-14 17:40 | Cursor | S6 收尾 H5/H7/H9/H10 + 发布
+
+**做了什么**
+- H10：legacy deepMechanismReview 同传 ecosystemMap/theoryMatches
+- H7：receptivity open/resistant→high/low 映射 + prompt 对齐
+- H5：`getDeepModelDigestSlices()` 统一 digest-builder / llm / pick
+- existingNetwork 入 synthesis；删 parentNarrativeStrings；daily-refresh Top5；router 读 mechanismLayerSource
+- 更新 s6-handshake-audit / bff-optimization-backlog 状态（一/四/五待真人金路径）
+
+**为什么**
+- 收尾可安全修的握手项后发布；产品考评不阻塞代码发版
+
+**验证**
+- typecheck/build；deploy 见部署状态
+
+**下一步**
+- 真人金路径：首版画像 / Top5·机制链 / 日常记忆感
+- deferred：H6 mechanismType schema、H8 假字段、counterEvidence、分数刻度
+
+**风险/冲突**
+- 勿动语音 ASR；system/prompt 变更后冷缓存
 
 ---
 
