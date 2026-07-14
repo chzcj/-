@@ -100,7 +100,9 @@ function packetToRetrievedContext(
 ): RetrievedContext {
   return {
     relevantChildStructureModel: packet.relevantChildStructureModels || [],
-    relevantEntryEvidencePacks: packet.supportingEvidence || [],
+    relevantEntryEvidencePacks: packet.entryEvidencePackSummaries?.length
+      ? packet.entryEvidencePackSummaries
+      : packet.supportingEvidence || [],
     relevantPastEvents: packet.recentRelatedEvents || [],
     relevantPendingHypotheses: packet.pendingHypotheses || [],
     relevantFamilyInteractionPatterns: packet.familyInteractionPatterns || [],

@@ -26,6 +26,7 @@ import {
 } from '../../memory/database-manager'
 import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
 import { formatMatchedMechanismCards } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import { getFrontendReadSliceLimits } from '@/lib/server/daily/frontend-read-pack'
 
 /* ================================================================
    Retrieval Router — 检索路由
@@ -80,11 +81,25 @@ function parentNarrativeStrings(pattern: ParentNarrativePattern | null): string[
 
 export function flattenParentUnderstanding(packet: Record<string, unknown>): string[] {
   const lines: string[] = []
-  for (const key of ['observations', 'interactionImplications', 'typicalParentGoals', 'typicalParentActions'] as const) {
+  for (const key of [
+    'observations',
+    'interactionImplications',
+    'typicalParentGoals',
+    'typicalParentActions',
+  ] as const) {
     const val = packet[key]
     if (Array.isArray(val)) lines.push(...val.filter((x): x is string => typeof x === 'string'))
   }
-  return lines.slice(0, 8)
+  const receptivity = packet.correctionReceptivity
+  if (typeof receptivity === 'string' && receptivity.trim()) {
+    lines.push(`家长纠偏开放度：${receptivity.trim()}`)
+  }
+  const factAbility = packet.factProvisionAbility
+  if (typeof factAbility === 'string' && factAbility.trim()) {
+    lines.push(`家长提供具体事实能力：${factAbility.trim()}`)
+  }
+  const limit = getFrontendReadSliceLimits().parentUnderstanding
+  return lines.slice(0, limit)
 }
 
 export async function buildDailyDialogueRetrievalPacket(
@@ -148,23 +163,25 @@ export async function buildDailyDialogueRetrievalPacket(
     }
   }
 
+  const slice = getFrontendReadSliceLimits()
+
   const profileTexts = profiles.map(p => p.childTendency)
-  // childQuotes/parentQuotes 已从 entry packs 移除（dead extraction，永远空）。
-  // 保留 retrieval packet 字段为空数组以兼容 diagnosis/synthesis 读取链（不破坏下游）。
+  // childQuotes：优先从 entry packs 行为里抽短原话/引号句；厚包上限对齐 frontend-read-pack。
   const childQuotes = [
     ...new Set(
       packs.flatMap((p) =>
         (p.decomposedInput.childBehaviors || []).filter((b) => /[「"'']/.test(b) || b.length <= 40)
       )
     ),
-  ].slice(0, 4)
+  ].slice(0, slice.childQuotes)
   const parentVerbatimSnippets = inputHistory
     .map((h) => h.text?.trim())
     .filter((t): t is string => Boolean(t && t.length >= 12))
-    .slice(-4)
+    .slice(-slice.parentVerbatimSnippets)
   // 具体事实直喂：四模块采集的 verifiableFacts/childBehaviors/triggerPoints 合并去重，
   // 让前端 AI 直接读到"错题本只抄答案"这类具体场景，而不是只拿 episode 摘要。
   // 2026-07 增补：维度字段（方法-效果/夫妻分歧/陪伴节律/兴趣/科目状态）格式化后一并直喂。
+  // S6：预切上限对齐厚/薄包，避免 router 先砍到 10 再喂 pickFrontendReadPack(40)。
   const entryFacts = [
     ...new Set(
       packs.flatMap(p => [
@@ -180,14 +197,25 @@ export async function buildDailyDialogueRetrievalPacket(
         ...(p.decomposedInput.subjectStates || []).map((s) => `学科状态·${s.subject}：${s.state}`),
       ]).filter(Boolean)
     ),
-  ].slice(0, 10)
+  ].slice(0, slice.entryFacts)
   const familyInteractionPatterns = cycles
     .map((c) => {
       const parts = [c.cycleName, c.parentTriggerAction, c.childReaction].filter(Boolean)
       return parts.join('：').trim()
     })
     .filter(Boolean)
-    .slice(0, 4)
+    .slice(0, slice.familyPatterns)
+
+  /** 四模块证据包摘要 → 契约 entryEvidence（勿与 episode supportingEvidence 混用） */
+  const entryEvidencePackSummaries = packs
+    .map((p) => {
+      const name = p.entryName || 'module'
+      const summary = (p.rawInputSummary || '').trim()
+      if (!summary) return ''
+      return `[${name}] ${summary.slice(0, 160)}`
+    })
+    .filter(Boolean)
+    .slice(0, slice.entryEvidence)
 
   const matchingProfile = model?.primaryConditionalProfile?.childTendency || null
   const relevantChildStructureModels = [...profileTexts]
@@ -225,6 +253,7 @@ export async function buildDailyDialogueRetrievalPacket(
     childQuotes,
     parentVerbatimSnippets,
     entryFacts,
+    entryEvidencePackSummaries,
     familyInteractionPatterns,
     parentNarrativePattern: buildParentUnderstanding(parentPattern, packs),
     recommendedHandling: {

@@ -718,6 +718,8 @@ export interface DailyDialogueRetrievalPacket {
   parentVerbatimSnippets?: string[]
   /** 四模块采集的具体事实直喂（verifiableFacts/childBehaviors/triggerPoints 合并去重，前端 AI 直读） */
   entryFacts: string[]
+  /** 四模块证据包摘要（供 entryEvidence；勿与 episode supportingEvidence 混用） */
+  entryEvidencePackSummaries?: string[]
   familyInteractionPatterns: string[]
   parentNarrativePattern: Record<string, unknown>
   recommendedHandling: {

@@ -25,6 +25,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-14 17:10 | Cursor | S6 握手审查 + P0：router 厚包预切 + entryEvidence；ready:true
 - 2026-07-14 17:02 | Cursor | S5b 机制多域 10–20 + 理论卡 20：ready:true；jobHealthy:true
 - 2026-07-14 16:54 | Cursor | S5 SecondMe 协作者人设加厚：deploy ready:true；jobHealthy:true
 - 2026-07-14 16:40 | Cursor | S1–S4 推送 origin(Gitee)+github：`310d75f`；S4 画像 Top5 详情壳已上线
@@ -37,6 +38,27 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
 - 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-14 17:08 | Cursor | S6 握手契约审查 + P0 修复
+
+**做了什么**
+- 全链路只读审查：握手稀释、死字段、竞态、schema 枚举冲突 → [`docs/product/s6-handshake-audit.md`](docs/product/s6-handshake-audit.md)
+- P0 修：router 预切对齐厚包；`entryEvidence` 改走四模块证据包摘要
+- 未动 onboarding WIP / 语音 / 流式；H1–H10 大修留后续
+
+**为什么**
+- S5b 抬产量后，握手仍可能饿死前台；先修最干净的两条管子
+
+**验证**
+- typecheck/build；test-frontend-read-pack 29 pass；deploy 见部署状态
+
+**下一步**
+- H1 handoff 读路径；H2 diagnosisHandoff；H3 synthesis↔mechanism 竞态；勿混推 onboarding
+
+**风险/冲突**
+- 与小程序 onboarding WIP **无文件冲突**；与并行改 router/pipeline 的 Agent **高冲突**
 
 ---
 

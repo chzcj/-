@@ -272,7 +272,10 @@ export async function runOrchestrationPipeline(input: OrchestrationInput): Promi
     inputType,
     retrievedContext: {
       relevantChildStructureModel: retrievalPacket.relevantChildStructureModels,
-      relevantEntryEvidencePacks: retrievalPacket.supportingEvidence,
+      relevantEntryEvidencePacks:
+        retrievalPacket.entryEvidencePackSummaries?.length
+          ? retrievalPacket.entryEvidencePackSummaries
+          : retrievalPacket.supportingEvidence,
       relevantPastEvents: retrievalPacket.recentRelatedEvents,
       relevantPendingHypotheses: retrievalPacket.pendingHypotheses,
       relevantFamilyInteractionPatterns: retrievalPacket.familyInteractionPatterns,
