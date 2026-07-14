@@ -4,15 +4,13 @@ import { useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { usePublicPageShare } from '@/hooks/useSharePage'
 import { humanizeEntryRef, humanizeMechanismLabel } from '@/lib/entry-name-i18n'
-import { SHARE_PATHS } from '@/lib/shareMessages'
-import { apiRequest } from '@/services/api'
 import {
-  getLatestProfile,
-  hasProfile,
-  hydrateProfileFromRemote,
-  type LocalEvidenceItem,
-  type LocalProfileSnapshot,
-} from '@/services/profileStorage'
+  fetchChipPanelsFromHub,
+  readCachedChipPanels,
+  type ChipEvidenceItem,
+} from '@/lib/profileChipPanels'
+import { SHARE_PATHS } from '@/lib/shareMessages'
+import { getLatestProfile, hasProfile } from '@/services/profileStorage'
 import './index.scss'
 
 export default function ProfileEvidencePage() {
@@ -21,35 +19,39 @@ export default function ProfileEvidencePage() {
     path: SHARE_PATHS.profileEvidence,
   })
   const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<LocalProfileSnapshot | null>(getLatestProfile())
+  const [items, setItems] = useState<ChipEvidenceItem[]>(() => {
+    const cached = readCachedChipPanels()?.evidenceItems
+    if (cached?.length) return cached
+    return getLatestProfile()?.evidence || []
+  })
 
   useDidShow(() => {
     void (async () => {
-      const local = getLatestProfile()
-      if (local) setProfile(local)
+      const cached = readCachedChipPanels()?.evidenceItems
+      if (cached?.length) setItems(cached)
 
-      const built = await apiRequest<{ snapshot?: LocalProfileSnapshot }>('/api/profile/built', {
-        method: 'GET',
-      })
-      if (built.ok && built.data.snapshot?.coreJudgment) {
-        hydrateProfileFromRemote(built.data.snapshot)
-        setProfile(getLatestProfile())
+      const { panels } = await fetchChipPanelsFromHub()
+      if (panels?.evidenceItems?.length) {
+        setItems(panels.evidenceItems)
+      } else if (!items.length) {
+        setItems(getLatestProfile()?.evidence || [])
       }
       setLoading(false)
     })()
   })
 
-  if (loading && !profile) {
+  if (loading && !items.length) {
     return (
       <HiFiMainShell showInput={false}>
         <View className='loading-wrap'>
           <View className='loader' />
+          <Text className='muted'>正在整理判断依据…</Text>
         </View>
       </HiFiMainShell>
     )
   }
 
-  if (!hasProfile() || !profile) {
+  if (!hasProfile() && !items.length) {
     return (
       <HiFiMainShell showInput={false}>
         <Text className='pill' onClick={() => Taro.navigateBack()}>
@@ -69,8 +71,6 @@ export default function ProfileEvidencePage() {
     )
   }
 
-  const items: LocalEvidenceItem[] = profile.evidence || []
-
   return (
     <HiFiMainShell showInput={false}>
       <Text className='pill' onClick={() => Taro.navigateBack()}>
@@ -81,14 +81,14 @@ export default function ProfileEvidencePage() {
         <Text className='section-label'>判断依据</Text>
         <Text className='hero-title'>画像从哪来</Text>
         <Text className='hero-copy'>
-          下面这些信息是系统生成画像时的判断依据。每条证据都标注了来源模块和与机制链的关联。
+          下面这些是系统整理画像时主要依据的事——尽量用你能认出来的场景来说。
         </Text>
       </View>
 
       <View className='section'>
         {items.length > 0 ? (
           items.map((e, i) => (
-            <View key={e.id || `${e.sourceLabel}-${i}`} className='hifi-card profile-block'>
+            <View key={`${e.sourceLabel}-${i}`} className='hifi-card profile-block'>
               <Text className='section-label'>{humanizeMechanismLabel(e.sourceLabel)}</Text>
               <Text className='soft-card-body'>{humanizeEntryRef(e.evidenceText)}</Text>
               {e.explanation ? (
@@ -99,17 +99,10 @@ export default function ProfileEvidencePage() {
         ) : (
           <View className='hifi-card profile-block'>
             <Text className='section-label'>暂无证据记录</Text>
-            <Text className='hint-text'>当前没有足够证据记录，请先完成模块建模。</Text>
+            <Text className='hint-text'>多聊几次具体晚上或作业场景后，这里会出现依据。</Text>
           </View>
         )}
       </View>
-
-      <Text
-        className='pill primary'
-        onClick={() => void Taro.navigateTo({ url: '/pages/profile/verify/index' })}
-      >
-        看待验证观察点 →
-      </Text>
     </HiFiMainShell>
   )
 }

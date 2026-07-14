@@ -151,6 +151,45 @@ function extractOutput(api, json, stream) {
     case '/api/profile/built:post':
     case '/api/profile/built:get':
       return d
+    case '/api/account/daily-refresh': {
+      const snap = d.snapshot || d
+      return {
+        source: snap.source,
+        panelsReady: snap.panelsReady,
+        refreshedAt: snap.refreshedAt,
+        portraitCardKeys: snap.portraitCards ? Object.keys(snap.portraitCards) : [],
+        chipPanelFields: snap.chipPanels
+          ? {
+              mechanismLen: (snap.chipPanels.mechanismChainParent || '').length,
+              evidenceCount: snap.chipPanels.evidenceItems?.length ?? 0,
+              observationCount: snap.chipPanels.observationPoints?.length ?? 0,
+              briefCoreLen: snap.chipPanels.fullPortraitBrief?.core?.length ?? 0,
+            }
+          : null,
+      }
+    }
+    case '/api/profile/hub':
+      return {
+        completeness: d.completeness,
+        panelsReady: d.panelsReady,
+        refreshedAt: d.refreshedAt,
+        portraitCardKeys: d.portraitCards ? Object.keys(d.portraitCards) : [],
+        chipPanelFields: d.chipPanels
+          ? {
+              mechanismLen: (d.chipPanels.mechanismChainParent || '').length,
+              evidenceCount: d.chipPanels.evidenceItems?.length ?? 0,
+              observationCount: d.chipPanels.observationPoints?.length ?? 0,
+              briefCoreLen: d.chipPanels.fullPortraitBrief?.core?.length ?? 0,
+            }
+          : null,
+      }
+    case '/api/profile/card':
+      return {
+        summaryLen: (d.summary || '').length,
+        leadLen: (d.lead || '').length,
+        sectionCount: d.sections?.length ?? 0,
+        factCount: d.anchoredFacts?.length ?? 0,
+      }
     case '/api/profile/readiness':
       return d
     default:
@@ -536,28 +575,84 @@ async function runWeeklyReview() {
   }
 }
 
-/** /family-profile 页加载时调用的只读接口（任务 Tab 纯 localStorage，无服务端语料） */
+function toBuiltSnapshotFromSeed(seed) {
+  const p = seed.profileSnapshot || seed
+  const evidenceRaw = p.evidence || []
+  const verifyRaw = p.verificationPoints || []
+  const completeness =
+    typeof p.completeness === 'number'
+      ? p.completeness
+      : typeof p.completeness === 'object' && p.completeness
+        ? Math.round(
+            (Object.values(p.completeness).reduce((a, b) => a + Number(b || 0), 0) /
+              Math.max(1, Object.keys(p.completeness).length)) *
+              100,
+          )
+        : 65
+  return {
+    coreJudgment: p.coreJudgment || '',
+    deepMechanism:
+      (p.familyCycles || []).join('\n') ||
+      '家长常见动作：加码检查与任务；孩子接收成：写完也不会结束；孩子保护策略：拖延敷衍。',
+    supportFocus: (p.nextBestQuestions || [])[0] || '先看清「做完一项后家里会不会再加任务」。',
+    completeness,
+    evidence: evidenceRaw.map((t) =>
+      typeof t === 'string'
+        ? { sourceLabel: '建模记录', evidenceText: t, strength: 'medium' }
+        : t,
+    ),
+    verificationPoints: verifyRaw.map((t) =>
+      typeof t === 'string'
+        ? { title: t.slice(0, 36), description: t }
+        : t,
+    ),
+  }
+}
+
+async function seedBuiltFromXiaoyinV1() {
+  const data = loadJson('08_profile_snapshot_seed.json')
+  const v1 = data.snapshots?.find((s) => s.caseId === 'profile_v1') || data.snapshots?.[0]
+  if (!v1) return { ok: false, skipped: true }
+  const snapshot = toBuiltSnapshotFromSeed(v1)
+  return timedCall('profile', 'seed_built_v1', '/api/profile/built:post', () =>
+    request('/api/profile/built', { snapshot }),
+  )
+}
+
+/** 画像 Tab：种子 built → daily-refresh → hub chipPanels → 卡片详情 */
 async function runProfileTab() {
+  await seedBuiltFromXiaoyinV1()
+
+  await timedCall(
+    'profile',
+    'daily_refresh',
+    '/api/account/daily-refresh',
+    () => request('/api/account/daily-refresh', {}, { method: 'POST' }),
+    { route: '/pages/profile/index useDidShow' },
+  )
+
+  await timedCall(
+    'profile',
+    'profile_hub_chip_panels',
+    '/api/profile/hub',
+    () => request('/api/profile/hub', undefined, { method: 'GET' }),
+    { route: '/pages/profile/index' },
+  )
+
+  await timedCall(
+    'profile',
+    'profile_card_focus',
+    '/api/profile/card',
+    () => request('/api/profile/card/focus', undefined, { method: 'GET' }),
+    { route: '/pages/profile/card?id=focus' },
+  )
+
   await timedCall(
     'profile',
     'family_profile_built_get',
     '/api/profile/built:get',
     () => request('/api/profile/built', undefined, { method: 'GET' }),
-    { route: '/family-profile' },
-  )
-  await timedCall(
-    'profile',
-    'family_profile_snapshot_get',
-    '/api/profile/snapshot:get',
-    () => request('/api/profile/snapshot', undefined, { method: 'GET' }),
-    { route: '/family-profile' },
-  )
-  await timedCall(
-    'profile',
-    'family_profile_weekly_get',
-    '/api/profile/weekly-review:get',
-    () => request('/api/profile/weekly-review', undefined, { method: 'GET' }),
-    { route: '/family-profile' },
+    { route: '/packageOnboarding/pages/result' },
   )
 }
 

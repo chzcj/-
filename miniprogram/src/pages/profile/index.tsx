@@ -15,6 +15,7 @@ import {
   type StructuralTension,
 } from '@/lib/portraitCard'
 import { readProfileTabCache, writeProfileTabCache } from '@/lib/profileTabCache'
+import { writeCachedChipPanels, type ProfileChipPanels } from '@/lib/profileChipPanels'
 import { apiRequest } from '@/services/api'
 import { logout, fetchCurrentUser } from '@/services/auth'
 import { forceAccountSyncToServer } from '@/services/accountSync'
@@ -24,7 +25,7 @@ import {
   hydrateProfileFromRemote,
   type LocalProfileSnapshot,
 } from '@/services/profileStorage'
-import { goToRehearsalTab, requireOnboardingComplete } from '@/utils/navigation'
+import { requireOnboardingComplete } from '@/utils/navigation'
 import './index.scss'
 
 type HubPayload = {
@@ -41,6 +42,9 @@ type HubPayload = {
   refreshedAt?: string | null
   pendingHypothesesList?: string[]
   structuralTensions?: StructuralTension[]
+  chipPanels?: ProfileChipPanels | null
+  panelsReady?: boolean
+  highlights?: string[]
 }
 
 type SnapshotPayload = {
@@ -79,12 +83,11 @@ export default function ProfilePage() {
   }>({})
   const [structuralTensions, setStructuralTensions] = useState<StructuralTension[]>([])
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
+  const [highlights, setHighlights] = useState<string[]>([])
   const [backgroundRefreshing, setBackgroundRefreshing] = useState(false)
   const [updateNotice, setUpdateNotice] = useState('')
   const [modal, setModal] = useState<EditModalKind>(null)
   const [isWechatUser, setIsWechatUser] = useState(true)
-
-  const bootedRef = useRef(false)
 
   const syncLocalProfile = useCallback(() => {
     const local = getLatestProfile()
@@ -116,6 +119,8 @@ export default function ProfilePage() {
       if (data.refreshedAt !== undefined) setRefreshedAt(data.refreshedAt)
       if (data.pendingHypothesesList) setPendingList(data.pendingHypothesesList)
       if (Array.isArray(data.structuralTensions)) setStructuralTensions(data.structuralTensions)
+      if (data.chipPanels) writeCachedChipPanels(data.chipPanels)
+      if (Array.isArray(data.highlights)) setHighlights(data.highlights.filter(Boolean))
       if (data.coreJudgment) {
         setCoreJudgment(data.coreJudgment)
         setCompleteness(typeof data.completeness === 'number' ? data.completeness : 0)
@@ -190,6 +195,27 @@ export default function ProfilePage() {
     [applyHubData, refreshing, syncLocalProfile]
   )
 
+  const bootedRef = useRef(false)
+  const lastRefreshAtRef = useRef(0)
+
+  const runDisplayRefresh = useCallback(async (prevAt: string | null) => {
+    setBackgroundRefreshing(true)
+    try {
+      await apiRequest('/api/account/daily-refresh', { method: 'POST' })
+    } catch {
+      /* 后台刷新失败不阻塞 */
+    }
+    await refreshProfile(false, true)
+    setBackgroundRefreshing(false)
+    const nextAt =
+      (readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null)?.data
+        ?.refreshedAt || null
+    if (nextAt && prevAt && nextAt !== prevAt) {
+      setUpdateNotice('画像已根据最新交流更新')
+      setTimeout(() => setUpdateNotice(''), 4000)
+    }
+  }, [refreshProfile])
+
   useDidShow(() => {
     void (async () => {
       const user = await fetchCurrentUser()
@@ -198,53 +224,42 @@ export default function ProfilePage() {
 
       syncLocalProfile()
 
-      if (!bootedRef.current) {
-        bootedRef.current = true
-        const cached = readProfileTabCache()
-        if (cached) {
-          const built = cached.built as { ok?: boolean; data?: { snapshot?: LocalProfileSnapshot } } | null
-          if (built?.ok && built.data?.snapshot?.coreJudgment) {
-            hydrateProfileFromRemote(built.data.snapshot)
-            syncLocalProfile()
-          }
-          const snap = cached.snapshot as { ok?: boolean; data?: SnapshotPayload } | null
-          if (snap?.ok) {
-            if (snap.data?.currentFocus) setCurrentFocus(snap.data.currentFocus)
-            if (snap.data?.recentChanges?.[0]?.title) setRecentTitle(snap.data.recentChanges[0].title)
-          }
-          const wk = cached.weekly as { ok?: boolean; data?: WeeklyPayload } | null
-          if (wk?.ok && wk.data?.weeklySummary) setWeeklySummary(wk.data.weeklySummary)
-          const hub = cached.hub as { ok?: boolean; data?: HubPayload } | null
-          if (hub?.ok) applyHubData(hub.data)
-          setHubLoading(false)
-        } else {
-          setHubLoading(true)
-          await refreshProfile(true)
-          setHubLoading(false)
+      const cached = readProfileTabCache()
+      if (cached) {
+        const built = cached.built as { ok?: boolean; data?: { snapshot?: LocalProfileSnapshot } } | null
+        if (built?.ok && built.data?.snapshot?.coreJudgment) {
+          hydrateProfileFromRemote(built.data.snapshot)
+          syncLocalProfile()
         }
-
-        const prevAt =
-          (readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null)?.data
-            ?.refreshedAt || null
-        setBackgroundRefreshing(true)
-        try {
-          await apiRequest('/api/account/daily-refresh', { method: 'POST' })
-        } catch {
-          /* 后台刷新失败不阻塞 */
+        const snap = cached.snapshot as { ok?: boolean; data?: SnapshotPayload } | null
+        if (snap?.ok) {
+          if (snap.data?.currentFocus) setCurrentFocus(snap.data.currentFocus)
+          if (snap.data?.recentChanges?.[0]?.title) setRecentTitle(snap.data.recentChanges[0].title)
         }
-        await refreshProfile(false, true)
-        setBackgroundRefreshing(false)
-        const nextAt =
-          (readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null)?.data
-            ?.refreshedAt || null
-        if (nextAt && prevAt && nextAt !== prevAt) {
-          setUpdateNotice('画像已根据最新交流更新')
-          setTimeout(() => setUpdateNotice(''), 4000)
-        }
-        return
+        const wk = cached.weekly as { ok?: boolean; data?: WeeklyPayload } | null
+        if (wk?.ok && wk.data?.weeklySummary) setWeeklySummary(wk.data.weeklySummary)
+        const hub = cached.hub as { ok?: boolean; data?: HubPayload } | null
+        if (hub?.ok) applyHubData(hub.data)
+        setHubLoading(false)
+      } else if (!bootedRef.current) {
+        setHubLoading(true)
+        await refreshProfile(true)
+        setHubLoading(false)
+      } else {
+        await refreshProfile(false)
       }
 
-      await refreshProfile(false)
+      bootedRef.current = true
+
+      const now = Date.now()
+      // 极短防抖：连点/快速切 Tab 不双刷；语义仍是每次进 Tab 整理
+      if (now - lastRefreshAtRef.current < 1500) return
+      lastRefreshAtRef.current = now
+
+      const prevAt =
+        (readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null)?.data
+          ?.refreshedAt || refreshedAt
+      await runDisplayRefresh(prevAt)
     })()
   })
 
@@ -272,15 +287,12 @@ export default function ProfilePage() {
       currentFocus,
     ]
   )
-  const trendItems = [recentTitle, weeklySummary ? truncateText(weeklySummary, 48) : ''].filter(Boolean)
+  const highlightItems = highlights.length
+    ? highlights
+    : [recentTitle, weeklySummary ? truncateText(weeklySummary, 48) : ''].filter(Boolean)
 
   const openCard = (slug: string) => {
     Taro.navigateTo({ url: `/pages/profile/card/index?id=${encodeURIComponent(slug)}` })
-  }
-
-  const openFullProfile = () => {
-    if (!hasLocalProfile) return
-    Taro.navigateTo({ url: '/packageOnboarding/pages/result/index' })
   }
 
   return (
@@ -331,16 +343,16 @@ export default function ProfilePage() {
       </View>
 
       <View className='profile-section'>
-        <Text className='section-label'>孩子最近变化</Text>
+        <Text className='section-label'>孩子近期的闪光点</Text>
         <View className='hifi-card profile-block'>
-          {trendItems.length ? (
-            trendItems.map((item) => (
+          {highlightItems.length ? (
+            highlightItems.map((item) => (
               <Text key={item} className='trend-item'>
                 · {item}
               </Text>
             ))
           ) : (
-            <Text className='muted'>继续交流后，最近变化会在这里更新。</Text>
+            <Text className='muted'>继续交流后，这里会出现孩子的进步与优势。</Text>
           )}
         </View>
       </View>
@@ -358,48 +370,6 @@ export default function ProfilePage() {
           </View>
         </View>
       ) : null}
-
-      <View className='profile-section'>
-        <Text className='section-label'>相关操作</Text>
-        <View className='end-actions'>
-          <Text
-            className={`pill${hasLocalProfile ? '' : ' disabled'}`}
-            onClick={openFullProfile}
-          >
-            查看完整画像
-          </Text>
-          <Text
-            className={`pill${hasLocalProfile ? '' : ' disabled'}`}
-            onClick={() => {
-              if (!hasLocalProfile) return
-              void Taro.navigateTo({ url: '/pages/profile/deep/index' })
-            }}
-          >
-            机制链解释
-          </Text>
-          <Text
-            className={`pill${hasLocalProfile ? '' : ' disabled'}`}
-            onClick={() => {
-              if (!hasLocalProfile) return
-              void Taro.navigateTo({ url: '/pages/profile/evidence/index' })
-            }}
-          >
-            判断依据
-          </Text>
-          <Text
-            className={`pill${hasLocalProfile ? '' : ' disabled'}`}
-            onClick={() => {
-              if (!hasLocalProfile) return
-              void Taro.navigateTo({ url: '/pages/profile/verify/index' })
-            }}
-          >
-            待验证点
-          </Text>
-          <Text className='pill primary' onClick={goToRehearsalTab}>
-            沟通预演
-          </Text>
-        </View>
-      </View>
 
       <View className='profile-section'>
         <Text className='section-label'>画像维护</Text>

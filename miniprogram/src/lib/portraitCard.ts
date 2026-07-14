@@ -42,7 +42,17 @@ export function truncateSummary(text: string, max = SUMMARY_MAX): string {
   const value = text.trim()
   if (!value) return ''
   if (value.length <= max) return value
-  return `${value.slice(0, max).replace(/[，,。：:；;]$/, '')}…`
+  // 优先在句读处截断，避免半截吞字
+  const slice = value.slice(0, max)
+  const breakAt = Math.max(
+    slice.lastIndexOf('。'),
+    slice.lastIndexOf('；'),
+    slice.lastIndexOf('，'),
+    slice.lastIndexOf('、'),
+    slice.lastIndexOf(' ')
+  )
+  const cut = breakAt >= Math.floor(max * 0.55) ? slice.slice(0, breakAt + 1) : slice
+  return `${cut.replace(/[，,。：:；;]$/, '')}…`
 }
 
 export function truncateText(text: string, max = 160): string {
@@ -162,13 +172,13 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
             : `已收集 ${completeness}%，继续交流/补模块会提升完整度。`,
     },
     {
-      title: '当前关注点',
+      title: '值得长期关注',
       slug: 'focus',
       body: cardSummary(portraitCards.focus, focusText || truncateText(coreJudgment || '暂无', 80)),
       progress: hasCardContent(portraitCards.focus, focusText) ? 55 : 8,
       progressHint: hasCardContent(portraitCards.focus, focusText)
         ? '已基于已记录交流生成，继续使用会越来越准。'
-        : '完成更多交流后，关注点会在这里更新。',
+        : '完成更多交流后，这里会更新。',
     },
     {
       title: '行为模式总结',
@@ -198,7 +208,7 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
         : '完成画像建模 + 多轮交流后，这里会展示你们家的互动模式。',
     },
     {
-      title: '有效策略',
+      title: '试试这些好方法',
       slug: 'strategies',
       body: cardSummary(
         portraitCards.strategies,
@@ -207,8 +217,8 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
       ),
       progress: hasCardContent(portraitCards.strategies, hubCards.effectiveStrategies || '') ? 55 : 8,
       progressHint: hasCardContent(portraitCards.strategies, hubCards.effectiveStrategies || '')
-        ? '已积累验证过的策略，继续反馈任务结果会扩充。'
-        : '试过任务后回来反馈，验证有效的策略会出现在这里。',
+        ? '这些是结合你家情况整理的可试做法。'
+        : '试过任务后回来反馈，验证有效的做法会出现在这里。',
     },
     {
       title: '家庭运转张力',
@@ -222,16 +232,16 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
         : '深度建模完成后，可能消耗孩子的家庭运转方式会出现在这里。',
     },
     {
-      title: '待验证假设',
+      title: '孩子写作业的关注点',
       slug: 'hypotheses',
       body: cardSummary(
         portraitCards.hypotheses,
-        hubCards.pendingHypotheses || (hubCards.hasRealData ? '' : '仍在观察中的判断会列在这里。')
+        hubCards.pendingHypotheses || (hubCards.hasRealData ? '' : '作业与学习相关的关注点会列在这里。')
       ),
       progress: hasCardContent(portraitCards.hypotheses, hubCards.pendingHypotheses || '') ? 40 : 8,
       progressHint: hasCardContent(portraitCards.hypotheses, hubCards.pendingHypotheses || '')
-        ? '这些判断仍在观察中，后续交流会帮助确认或修正。'
-        : '持续交流后，系统会提出待验证的判断供你留意。',
+        ? '围绕作业与学习场景整理，后续交流会修正。'
+        : '持续交流后，会补充作业相关的关注点。',
     },
   ].filter((card) => card.body.trim().length > 0)
 }

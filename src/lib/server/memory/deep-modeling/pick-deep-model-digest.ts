@@ -50,9 +50,12 @@ function tensionLine(t: StructuralTension): string {
   return title || detail
 }
 
-export function pickDeepModelDigestPack(digest: DeepModelDigest | null | undefined): DeepModelDigestPack {
+export function pickDeepModelDigestPack(
+  digest: DeepModelDigest | null | undefined,
+  options?: { forceThick?: boolean }
+): DeepModelDigestPack {
   const d = digest ?? EMPTY_DEEP_MODEL_DIGEST
-  const slice = getDeepModelDigestSlices()
+  const slice = options?.forceThick ? SLICE_THICK : getDeepModelDigestSlices()
   const tensions = (d.structuralTensions || [])
     .map(tensionLine)
     .filter(Boolean)

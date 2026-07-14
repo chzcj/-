@@ -25,6 +25,9 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-14 20:40 | Cursor | 画像厚喂料+六维SP+删五chip+闪光点+任务10–20字；ready:true
+- 2026-07-14 19:45 | Cursor | 画像展示层双 Agent（摘要+chipPanels）+ 每次进 Tab refresh；ready:true
+- 2026-07-14 18:14 | Cursor | tonightTaskGenerator：20–30字、家长可执行小任务、不必祈使句；ready:true
 - 2026-07-14 18:00 | Cursor | 仅回退小程序画像 UI（pre-S4 Top5 详情壳）；Web/BFF 未回退
 - 2026-07-14 17:40 | Cursor | S6 收尾 H5/H7/H9/H10 + 死字段：ready:true；jobHealthy:true
 - 2026-07-14 17:23 | Cursor | H2–H4 握手补齐 + 小程序 onboarding 新路径：ready:true；jobHealthy:true
@@ -42,6 +45,51 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 2026-07-13 21:00 | Cursor | 体验优先 onboarding + README 产品/设计说明重写；推送 Gitee + GitHub
 - 2026-07-13 20:42 | Cursor | 交流/预演按住说话：底部浅绿实时字幕通栏（VoiceHoldLiveBanner）
 - 小程序 `build:weapp` 后真机预览验收
+
+---
+
+## 2026-07-14 20:40 | Cursor | 画像厚喂料 + 六维展示 + 删五 chip
+
+**做了什么**
+- refresh 厚喂料：digest forceThick；机制/循环/假设/原话大幅加量；跳过 chip Agent B
+- 加厚 dailyPortraitRefresh（六维、改名卡职责、highlights、禁理论名/机制链话术）
+- 删画像 Tab 五 chip；闪光点区块；任务标题 10–20 字+防吞字
+- card/hub 标题：值得长期关注 / 试试这些好方法 / 孩子写作业的关注点
+
+**验证**
+- typecheck/build；deploy ready:true
+
+**下一步**
+- `cd miniprogram && npm run build:weapp`；进画像等整理后看六维成长画像与新标题
+- 未 commit（需用户说）
+
+**风险**
+- 厚包 + 大 SP 使 refresh 更慢；L3 旧文仍在
+- deep/evidence/verify 路由仍在但无入口
+
+---
+
+## 2026-07-14 19:45 | Cursor | 画像展示层双 Agent（人话摘要 + chip 面板）
+
+**做了什么**
+- 加厚 `dailyPortraitRefresh` + 新 `profileChipPanels`；refresh 串联写 `daily_ui_snapshot`（portraitCards + chipPanels）
+- enrich/card：preferLlm，不再用 digest 学术盖写
+- hub 下发 `chipPanels` / `panelsReady`
+- 小程序：每次进画像 Tab 自动 daily-refresh（1.5s 防抖，L3 旧文）；deep/evidence/verify/result 读展示层；无 rehearsalCue；Web 不同步
+
+**为什么**
+- 用户要求展示尽量 Agent 人话，chip 有内容，与现有纯文字详情壳配套
+
+**验证**
+- typecheck/build；deploy ready:true；jobHealthy:true
+
+**下一步**
+- 小程序 `cd miniprogram && npm run build:weapp` 后进画像 Tab 等整理完成，点五 chip + 卡片详情验人话
+- 未 commit/push（需用户说一声）
+
+**风险/冲突**
+- 双 LLM 同请求可能较慢（各最多 ~45s）；L3 旧 panels 缓解空闪
+- 结构层 deepMechanism 压缩写回未改；deep 页优先 Agent 文
 
 ---
 
@@ -1834,3 +1882,30 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **风险/冲突**
 - 勿把 `.env.local`、SSH 密码、SecretKey 写入 Git / HANDOFF 正文
 
+
+## 2026-07-14 20:50 | Cursor | 画像展示 Agent 厚喂料 + 五 chip 下线 + 闪光点/任务文案
+
+**做了什么**
+- Step0 厚喂料：`gatherRefreshContext` 加厚（机制 20 / 循环 10 / 假设 12 / 原话 30、截 200）；digest `forceThick:true`；payload 增 `builtDeepMechanism / builtEvidence / builtVerificationPoints / requireFactAnchor`；maxTokens 4096
+- Step1 Agent A SP（`prompts/front/dailyPortraitRefresh.md`）：六维综合（底色/压力应对/内在需求/关系模式/成长方向/优势）+ 六卡改名职责（growth→动态成长画像首句判断句；focus→值得长期关注；behavior→行为模式总结；interaction→家庭互动模式；strategies→试试这些好方法；hypotheses→孩子写作业的关注点，作业为入口覆盖学习多场景）+ `highlights` 必出 2–5 条「孩子近期的闪光点」+ 文风硬规则（不评判家长/功能先于标签/培优不是治病/浅显不啰嗦/禁机制链理论学名）+ `feedNote` 提示已厚喂料
+- Step2 删五 chip：`profile/index.tsx` 移除「相关操作」块（机制链解释/判断依据/待验证点/查看完整画像/沟通预演 全删）；`runDailyPortraitRefresh` 不再调 `profileChipPanels`（Agent B），`chipPanels` 仅留旧值兜底，`panelsReady=false`；deep/evidence/verify 交叉 pill 收口为「返回」+「补充画像」
+- Step3 闪光点 UI + 任务文案：`profile/index.tsx` 增 `highlights` 状态 + 「孩子近期的闪光点」section；`hub/route.ts` 下发 `highlights`；`portraitCard.ts` + `card/index.tsx CARD_TITLES` 改名；`tonightTaskGenerator.md` + `tonight-task-agent.ts` 改 10–20 字完整句、禁「今晚试一下」套话；`tasks/index.tsx displayTaskTitle` 防吞字（20 字内截断）+ `taskSubtitle` 缩短（场景 16 字截断）
+- Step4：typecheck pass / build pass / deploy 成功；readiness `ready:true`、jobHealthy true
+
+**为什么**
+- 用户要求：写入画像 Agent 喂数据「不要保守，一定要多」；画像卡综合多维人话、不剩写作业；五 chip 真删；任务 10–20 字可执行、防前端吞字；副标题缩短
+
+**验证**
+- 第一轮：`npm run typecheck` 0 error；`npm run build` exit 0
+- 第二/三轮：deploy exit 0；PM2 yujian / yujian-jobs online；`/api/readiness` `ready:true`、`jobHealthy:true`；`/api/tasks` 鉴权返回真实任务
+- 旧 `chipPanels` 入口（deep/evidence/verify）已无「机制链/判断依据/待验证」pill，仅保留兜底跳转
+
+**下一步**
+- 小程序需 `cd miniprogram && npm run build:weapp` 重新编译，开发者工具预览验证画像 Tab 与任务页文案
+- 旧 `profileChipPanels.ts` / `prompts/front/profileChipPanels.md` 暂留作 dead-code，下一轮可清理
+- LLM 输出文案需真机回归（六卡标题、闪光点、任务标题是否人话、无吞字）
+
+**风险/冲突**
+- `miniprogram/src/lib/profileChipPanels.ts` 仍被 deep/evidence/verify/result import 兜底，删五 chip 后该模块仅做 L3 缓存读取，不会再被新写入填充
+- `.env.local` / SSH / AUTH_TOKEN 未入 Git
+- 部署只更新 Web/BFF（yujian.yihe.site），不含小程序

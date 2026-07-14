@@ -3,6 +3,11 @@ import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
+import {
+  fetchChipPanelsFromHub,
+  readCachedChipPanels,
+  type FullPortraitBrief,
+} from '@/lib/profileChipPanels'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { apiRequest } from '@/services/api'
 import { goToDailyTab } from '@/utils/navigation'
@@ -17,6 +22,9 @@ export default function OnboardingResult() {
   const [loading, setLoading] = useState(true)
   const [entering, setEntering] = useState(false)
   const [snapshot, setSnapshot] = useState<ProfileSnapshot | null>(null)
+  const [brief, setBrief] = useState<FullPortraitBrief | null>(
+    () => readCachedChipPanels()?.fullPortraitBrief || null
+  )
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const [loadError, setLoadError] = useState('')
 
@@ -36,20 +44,23 @@ export default function OnboardingResult() {
       hydrateProfileFromRemote(built.data.snapshot)
       setSnapshot(built.data.snapshot)
       setOnboardingComplete(Boolean(built.data.onboardingComplete))
-      setLoading(false)
-      return
+    } else {
+      const hub = await apiRequest<{ completeness?: number }>('/api/profile/hub', { method: 'GET' })
+      if (hub.ok && typeof hub.data.completeness === 'number') {
+        setSnapshot({ coreJudgment: '', completeness: hub.data.completeness })
+      }
+      if (!built.ok) {
+        setLoadError(built.error.message || '画像加载失败')
+      } else if (!built.data.snapshot?.coreJudgment) {
+        setLoadError('还没有孩子画像，请先完成四个模块建模')
+      }
     }
 
-    const hub = await apiRequest<{ completeness?: number }>('/api/profile/hub', { method: 'GET' })
-    if (hub.ok && typeof hub.data.completeness === 'number') {
-      setSnapshot({ coreJudgment: '', completeness: hub.data.completeness })
+    const { panels } = await fetchChipPanelsFromHub()
+    if (panels?.fullPortraitBrief?.core) {
+      setBrief(panels.fullPortraitBrief)
     }
 
-    if (!built.ok) {
-      setLoadError(built.error.message || '画像加载失败')
-    } else if (!built.data.snapshot?.coreJudgment) {
-      setLoadError('还没有孩子画像，请先完成四个模块建模')
-    }
     setLoading(false)
   }
 
@@ -71,6 +82,10 @@ export default function OnboardingResult() {
 
   const goHub = () => void mpGoReplace('/packageOnboarding/pages/hub/index')
 
+  const coreText = brief?.core?.trim() || snapshot?.coreJudgment || ''
+  const focusText = brief?.focus?.trim() || snapshot?.supportFocus || ''
+  const completeness = snapshot?.completeness
+
   if (loading) {
     return (
       <HiFiBuildShell topTitle='画像已就绪' stepLabel='完成' progress={100}>
@@ -82,7 +97,7 @@ export default function OnboardingResult() {
     )
   }
 
-  if (loadError || !snapshot?.coreJudgment) {
+  if (loadError || !coreText) {
     return (
       <HiFiBuildShell
         topTitle='孩子画像'
@@ -100,8 +115,6 @@ export default function OnboardingResult() {
       </HiFiBuildShell>
     )
   }
-
-  const completeness = snapshot.completeness
 
   return (
     <HiFiBuildShell
@@ -129,41 +142,25 @@ export default function OnboardingResult() {
         <View className='soft-card' style={{ marginBottom: '12px' }}>
           <Text className='section-label'>画像完整度</Text>
           <Text className='soft-card-body'>{completeness}%</Text>
+          {brief?.completenessHint ? (
+            <Text className='hint-text' style={{ marginTop: '8px' }}>
+              {brief.completenessHint}
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
       <View className='summary-card'>
         <Text className='section-label'>核心理解</Text>
-        <Text className='summary-lead'>{snapshot.coreJudgment}</Text>
+        <Text className='summary-lead'>{coreText}</Text>
       </View>
 
-      {snapshot.supportFocus ? (
+      {focusText ? (
         <View className='summary-card' style={{ marginTop: '12px' }}>
           <Text className='section-label'>当前支持重点</Text>
-          <Text className='soft-card-body'>{snapshot.supportFocus}</Text>
+          <Text className='soft-card-body'>{focusText}</Text>
         </View>
       ) : null}
-
-      <View className='end-actions' style={{ marginTop: '16px' }}>
-        <Text
-          className='pill'
-          onClick={() => void Taro.navigateTo({ url: '/pages/profile/evidence/index' })}
-        >
-          判断依据
-        </Text>
-        <Text
-          className='pill'
-          onClick={() => void Taro.navigateTo({ url: '/pages/profile/verify/index' })}
-        >
-          待验证观察点
-        </Text>
-        <Text
-          className='pill'
-          onClick={() => void Taro.navigateTo({ url: '/pages/profile/deep/index' })}
-        >
-          机制链解释
-        </Text>
-      </View>
     </HiFiBuildShell>
   )
 }

@@ -45,7 +45,15 @@ export function truncateSummary(text: string, max = SUMMARY_MAX): string {
   const value = text.trim()
   if (!value) return ''
   if (value.length <= max) return value
-  return `${value.slice(0, max).replace(/[，,。：:；;]$/, '')}…`
+  const slice = value.slice(0, max)
+  const breakAt = Math.max(
+    slice.lastIndexOf('。'),
+    slice.lastIndexOf('；'),
+    slice.lastIndexOf('，'),
+    slice.lastIndexOf('、')
+  )
+  const cut = breakAt >= Math.floor(max * 0.55) ? slice.slice(0, breakAt + 1) : slice
+  return `${cut.replace(/[，,。：:；;]$/, '')}…`
 }
 
 export function isThinPortraitText(text: string): boolean {

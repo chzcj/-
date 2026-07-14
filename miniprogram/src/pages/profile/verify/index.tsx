@@ -3,15 +3,13 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { usePublicPageShare } from '@/hooks/useSharePage'
-import { apiRequest } from '@/services/api'
-import { SHARE_PATHS } from '@/lib/shareMessages'
 import {
-  getLatestProfile,
-  hasProfile,
-  hydrateProfileFromRemote,
-  type LocalProfileSnapshot,
-  type LocalVerificationPoint,
-} from '@/services/profileStorage'
+  fetchChipPanelsFromHub,
+  readCachedChipPanels,
+  type ChipObservationPoint,
+} from '@/lib/profileChipPanels'
+import { SHARE_PATHS } from '@/lib/shareMessages'
+import { getLatestProfile, hasProfile } from '@/services/profileStorage'
 import { goToRehearsalTab } from '@/utils/navigation'
 import './index.scss'
 
@@ -21,36 +19,39 @@ export default function ProfileVerifyPage() {
     path: SHARE_PATHS.profileVerify,
   })
   const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<LocalProfileSnapshot | null>(getLatestProfile())
+  const [points, setPoints] = useState<ChipObservationPoint[]>(() => {
+    const cached = readCachedChipPanels()?.observationPoints
+    if (cached?.length) return cached
+    return getLatestProfile()?.verificationPoints || []
+  })
 
   useDidShow(() => {
     void (async () => {
-      const local = getLatestProfile()
-      if (local) setProfile(local)
+      const cached = readCachedChipPanels()?.observationPoints
+      if (cached?.length) setPoints(cached)
 
-      const built = await apiRequest<{ snapshot?: LocalProfileSnapshot }>('/api/profile/built', {
-        method: 'GET',
-      })
-      if (built.ok && built.data.snapshot?.coreJudgment) {
-        hydrateProfileFromRemote(built.data.snapshot)
-        setProfile(getLatestProfile())
+      const { panels } = await fetchChipPanelsFromHub()
+      if (panels?.observationPoints?.length) {
+        setPoints(panels.observationPoints)
+      } else if (!points.length) {
+        setPoints(getLatestProfile()?.verificationPoints || [])
       }
       setLoading(false)
     })()
   })
 
-  if (loading && !profile) {
+  if (loading && !points.length) {
     return (
       <HiFiMainShell showInput={false}>
         <View className='loading-wrap'>
           <View className='loader' />
-          <Text className='muted'>正在加载…</Text>
+          <Text className='muted'>正在整理观察点…</Text>
         </View>
       </HiFiMainShell>
     )
   }
 
-  if (!hasProfile() || !profile) {
+  if (!hasProfile() && !points.length) {
     return (
       <HiFiMainShell showInput={false}>
         <Text className='pill' onClick={() => Taro.navigateBack()}>
@@ -62,8 +63,6 @@ export default function ProfileVerifyPage() {
       </HiFiMainShell>
     )
   }
-
-  const points: LocalVerificationPoint[] = profile.verificationPoints || []
 
   return (
     <HiFiMainShell showInput={false}>
@@ -80,7 +79,7 @@ export default function ProfileVerifyPage() {
       <View className='section'>
         {points.length > 0 ? (
           points.map((v, i) => (
-            <View key={v.id || `${v.title}-${i}`} className='hifi-card profile-block authority-insight-card'>
+            <View key={`${v.title}-${i}`} className='hifi-card profile-block authority-insight-card'>
               <Text className='authority-badge'>育见解读</Text>
               <Text className='section-label'>{v.title}</Text>
               <Text className='soft-card-body'>{v.description}</Text>

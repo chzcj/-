@@ -42,41 +42,41 @@ function defaultSectionsForKey(
   const byKey: Record<PortraitCardKey, PortraitCardSection[]> = {
     growth: [
       {
-        heading: '机制理解',
-        items: dedupeTextParts([narrative, core].filter(Boolean)),
+        heading: '目前怎么看',
+        items: dedupeTextParts([core, narrative].filter(Boolean)).slice(0, 2),
       },
       {
-        heading: '已观察到的场景',
+        heading: '你说过的事',
         items: facts.slice(0, 2),
       },
     ],
     focus: [
       {
-        heading: '当前成长重点',
+        heading: '眼下可以盯住的一点',
         items: dedupeTextParts([support, cultivation].filter(Boolean)),
       },
     ],
     behavior: [
       {
-        heading: '行为模式',
+        heading: '常见反应',
         items: dedupeTextParts(facts),
       },
     ],
     interaction: [
       {
-        heading: '家庭互动循环',
+        heading: '家里怎么绕进去的',
         items: dedupeTextParts(pack.interactionLoops),
       },
     ],
     strategies: [
       {
-        heading: '可试一步',
+        heading: '可以先试的一小步',
         items: dedupeTextParts([cultivation, support].filter(Boolean)),
       },
     ],
     hypotheses: [
       {
-        heading: '待验证判断',
+        heading: '还不能完全确定',
         items: dedupeTextParts(pack.openHypotheses),
       },
     ],
@@ -114,27 +114,45 @@ function defaultSummaryForKey(
   return truncateSummary(defaultLeadForKey(key, pack, extras))
 }
 
-/** 补全单卡缺失字段，不重复拼接同一句。 */
+type EnrichExtras = {
+  coreJudgment?: string
+  supportFocus?: string
+  /** LLM 已出人话时只补空，不用 digest 盖写 */
+  preferLlm?: boolean
+}
+
+/** 补全单卡缺失字段；preferLlm 时尊重 Agent 原文。 */
 export function enrichPortraitCardContent(
   key: PortraitCardKey,
   raw: PortraitCardContent | string | undefined,
   pack: DeepModelDigestPack,
-  extras?: { coreJudgment?: string; supportFocus?: string }
+  extras?: EnrichExtras
 ): PortraitCardContent {
   const normalized = normalizePortraitCard(raw)
+  const preferLlm = Boolean(extras?.preferLlm)
   const leadFallback = defaultLeadForKey(key, pack, extras)
   const summaryFallback = defaultSummaryForKey(key, pack, extras)
   const sectionFallback = defaultSectionsForKey(key, pack, extras)
 
-  const lead = normalized?.lead && !isThinPortraitText(normalized.lead)
-    ? normalized.lead
-    : leadFallback
+  const hasLlmLead = Boolean(normalized?.lead && !isThinPortraitText(normalized.lead))
+  const hasLlmSummary = Boolean(normalized?.summary && !isThinPortraitText(normalized.summary))
+  const hasLlmSections = Boolean(normalized?.sections?.length)
 
-  const summary = normalized?.summary && !isThinPortraitText(normalized.summary)
-    ? normalized.summary
+  if (preferLlm && (hasLlmLead || hasLlmSummary || hasLlmSections)) {
+    return {
+      summary:
+        (hasLlmSummary ? normalized!.summary : truncateSummary(normalized?.lead || summaryFallback)) ||
+        '还在了解',
+      lead: hasLlmLead ? normalized!.lead : normalized?.lead || undefined,
+      sections: hasLlmSections ? normalized!.sections : undefined,
+    }
+  }
+
+  const lead = hasLlmLead ? normalized!.lead! : leadFallback
+  const summary = hasLlmSummary
+    ? normalized!.summary!
     : truncateSummary(lead || summaryFallback)
-
-  const sections = normalized?.sections?.length ? normalized.sections : sectionFallback
+  const sections = hasLlmSections ? normalized!.sections! : sectionFallback
 
   return {
     summary: summary || '继续交流后，这里会出现更完整的深度分析。',
@@ -146,7 +164,7 @@ export function enrichPortraitCardContent(
 export function enrichPortraitCards(
   cards: DailyPortraitCards | undefined,
   pack: DeepModelDigestPack,
-  extras?: { coreJudgment?: string; supportFocus?: string }
+  extras?: EnrichExtras
 ): DailyPortraitCards {
   const out: DailyPortraitCards = {}
   for (const key of CARD_KEYS) {

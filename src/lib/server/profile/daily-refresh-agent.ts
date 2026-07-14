@@ -14,7 +14,11 @@ import type { TenantId } from '@/lib/server/memory/tenant'
 import type { DailyThinkingChip } from '@/types/daily-message'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { isPlaceholderProfileText } from '@/lib/server/daily/profile-sanitize'
-import { pickDeepModelDigestPack, type DeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import {
+  formatMatchedMechanismCards,
+  pickDeepModelDigestPack,
+  type DeepModelDigestPack,
+} from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { enrichPortraitCards } from '@/lib/server/profile/portrait-card-enrich'
 import type { DailyPortraitCards } from '@/types/portrait-card'
 import { truncateSummary } from '@/types/portrait-card'
@@ -24,11 +28,49 @@ const ITEM_ID = 'latest'
 
 export type { DailyPortraitCards }
 
+export type ChipEvidenceItem = {
+  sourceLabel: string
+  evidenceText: string
+  explanation?: string
+  strength?: 'weak' | 'medium' | 'strong'
+}
+
+export type ChipObservationPoint = {
+  title: string
+  description: string
+}
+
+export type FullPortraitBrief = {
+  core: string
+  focus: string
+  completenessHint: string
+}
+
+export type ProfileChipPanels = {
+  mechanismChainParent: string
+  evidenceItems: ChipEvidenceItem[]
+  observationPoints: ChipObservationPoint[]
+  fullPortraitBrief: FullPortraitBrief
+}
+
 export type DailyUiSnapshot = {
   thinkingChips: DailyThinkingChip[]
   portraitCards: DailyPortraitCards
+  /** 孩子近期的闪光点（展示层） */
+  highlights?: string[]
+  chipPanels?: ProfileChipPanels
+  panelsReady: boolean
   refreshedAt: string
   source: 'llm' | 'fallback'
+}
+
+function displaySystem(taskPrompt: string): string {
+  return [
+    promptRegistry.parentFacingStyle,
+    promptRegistry.secondMeCollaboratorIdentity,
+    promptRegistry.deepModelingParentDigest,
+    taskPrompt,
+  ].join('\n\n---\n\n')
 }
 
 export async function loadDailyUiSnapshot(tenant: TenantId): Promise<DailyUiSnapshot | null> {
@@ -46,15 +88,25 @@ function truncate(text: string, max = 36): string {
   return t.length <= max ? t : `${t.slice(0, max).replace(/[，,。：:；;]$/, '')}…`
 }
 
-/** 无 LLM 兜底：直接从结构化字段拼真实人话，禁止模板假文案。 */
+function normalizeHighlights(raw: unknown, prev?: string[]): string[] {
+  const fromLlm = Array.isArray(raw)
+    ? raw
+        .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+        .map((x) => x.trim().slice(0, 48))
+        .slice(0, 5)
+    : []
+  if (fromLlm.length) return fromLlm
+  return (prev || []).slice(0, 5)
+}
+
+/** 无 LLM 兜底：真实字段拼人话，禁止假模板。 */
 function buildFallbackSnapshot(ctx: RefreshContext, digestPack: DeepModelDigestPack): DailyUiSnapshot {
   const built = ctx.built
   const core = isPlaceholderProfileText(built?.coreJudgment) ? '' : (built?.coreJudgment?.trim() || '')
   const support = isPlaceholderProfileText(built?.supportFocus) ? '' : (built?.supportFocus?.trim() || '')
   const topMechanism = ctx.topMechanisms[0] || ''
-  const cycleText = ctx.topCycle || ''
+  const cycleText = ctx.familyCycles[0] || ''
   const hypText = ctx.activeHypotheses[0] || ''
-  const recentText = ctx.recentInputs[0] || ''
 
   const chips: DailyThinkingChip[] = [
     { label: '当前理解', text: core ? truncate(core, 32) : '还在了解' },
@@ -78,93 +130,163 @@ function buildFallbackSnapshot(ctx: RefreshContext, digestPack: DeepModelDigestP
     hypotheses: mk(hypText || digestPack.openHypotheses[0] || ''),
   }
 
+  const highlights = digestPack.anchoredFacts
+    .filter((f) => /会|能|主动|进步|愿意|好|亮|坚持/.test(f))
+    .slice(0, 3)
+
   return {
     thinkingChips: chips,
     portraitCards,
+    highlights: highlights.length ? highlights : undefined,
+    chipPanels: undefined,
+    panelsReady: false,
     refreshedAt: new Date().toISOString(),
     source: 'fallback',
-    // 保留最近一条家长原话供调试（不展示）
-    recentInput: recentText ? truncate(recentText, 24) : undefined,
-  } as DailyUiSnapshot
+  }
 }
 
 type RefreshContext = {
   built: Awaited<ReturnType<typeof getLatestBuiltProfileSnapshot>>
   topMechanisms: string[]
-  topCycle: string
+  familyCycles: string[]
   activeHypotheses: string[]
   recentInputs: string[]
+  builtEvidence: Array<{ sourceLabel: string; evidenceText: string; explanation?: string }>
+  builtVerification: Array<{ title: string; description: string }>
+  builtDeepMechanism: string
 }
 
+/** 厚喂料：禁止保守切片——多给机制/循环/假设/原话。 */
 async function gatherRefreshContext(tenant: TenantId): Promise<RefreshContext> {
   const [built, network, cycles, hypotheses, history] = await Promise.all([
     getLatestBuiltProfileSnapshot(tenant).catch(() => null),
     getLatestEvidenceNetwork(tenant).catch(() => null),
     getFamilyInteractionCycles(tenant).catch(() => []),
     getPendingHypotheses(tenant).catch(() => []),
-    getMergedParentInputHistory(tenant, 5).catch(() => []),
+    getMergedParentInputHistory(tenant, 30).catch(() => []),
   ])
 
+  const matrix = network?.candidateMechanismMatrix || []
+  const fromCards = formatMatchedMechanismCards(matrix).slice(0, 20)
   const topMechanisms =
-    network?.candidateMechanismMatrix
-      ?.filter((m) => m.mechanismName && m.overallStrength !== 'low')
-      .slice(0, 5)
-      .map((m) => truncate(m.description || m.mechanismName, 60)) || []
+    fromCards.length > 0
+      ? fromCards
+      : matrix
+          .filter((m) => m.mechanismName)
+          .slice(0, 20)
+          .map((m) => truncate(`${m.mechanismName}：${m.description || ''}`, 180))
 
-  const topCycle = cycles[0]
-    ? truncate(`${cycles[0].cycleName}：${cycles[0].childReaction || cycles[0].childReception || ''}`, 60)
-    : ''
+  const familyCycles = cycles.slice(0, 10).map((c) =>
+    truncate(
+      `${c.cycleName}：家长侧 ${c.parentTriggerAction || ''} → 孩子 ${c.childReaction || ''}`,
+      160
+    )
+  )
 
   const activeHypotheses = hypotheses
-    .filter((h) => h.status === 'pending' || h.status === 'supported')
-    .slice(0, 2)
-    .map((h) => truncate(h.hypothesis, 60))
+    .filter((h) => h.status === 'pending' || h.status === 'supported' || h.status === 'weakened')
+    .slice(0, 12)
+    .map((h) => truncate(h.hypothesis, 120))
 
-  const recentInputs = history.map((h) => h.text).filter(Boolean)
+  const recentInputs = history
+    .map((h) => h.text)
+    .filter(Boolean)
+    .map((t) => truncate(t, 200))
+    .slice(0, 30)
 
-  return { built, topMechanisms, topCycle, activeHypotheses, recentInputs }
+  const builtEvidence = (built?.evidence || [])
+    .filter((e) => e.evidenceText?.trim())
+    .slice(0, 12)
+    .map((e) => ({
+      sourceLabel: e.sourceLabel || '依据',
+      evidenceText: truncate(e.evidenceText, 200),
+      explanation: e.explanation ? truncate(e.explanation, 120) : undefined,
+    }))
+
+  const builtVerification = (built?.verificationPoints || [])
+    .filter((v) => v.title?.trim())
+    .slice(0, 8)
+    .map((v) => ({
+      title: truncate(v.title, 40),
+      description: truncate(v.description || '', 160),
+    }))
+
+  return {
+    built,
+    topMechanisms,
+    familyCycles,
+    activeHypotheses,
+    recentInputs,
+    builtEvidence,
+    builtVerification,
+    builtDeepMechanism: (built?.deepMechanism || '').trim().slice(0, 800),
+  }
 }
 
 /**
- * 登录时把后台记忆库结构化信息转成家长可读的 Thinking 四宫格 + 画像 Tab 卡片摘要。
- * LLM 优先；失败则用真实字段兜底（不写假模板）。结果落 daily_ui_snapshot 层供 hub 读取。
+ * 进画像 Tab / 登录刷新：厚喂料 + Agent A 写 portraitCards/highlights。
+ * 五个 chip 已下线：不再强跑 profileChipPanels。
  */
 export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUiSnapshot> {
+  const prev = await loadDailyUiSnapshot(tenant).catch(() => null)
   const ctx = await gatherRefreshContext(tenant)
   const digest = await buildDeepModelDigest(tenant).catch(() => null)
-  const digestPack = pickDeepModelDigestPack(digest)
+  const digestPack = pickDeepModelDigestPack(digest, { forceThick: true })
 
   const payload = {
     coreJudgment: isPlaceholderProfileText(ctx.built?.coreJudgment) ? '' : (ctx.built?.coreJudgment || ''),
     supportFocus: isPlaceholderProfileText(ctx.built?.supportFocus) ? '' : (ctx.built?.supportFocus || ''),
     completeness: ctx.built?.completeness ?? 0,
+    builtDeepMechanism: ctx.builtDeepMechanism,
+    builtEvidence: ctx.builtEvidence,
+    builtVerificationPoints: ctx.builtVerification,
     topMechanisms: ctx.topMechanisms,
-    familyInteractionCycle: ctx.topCycle,
+    familyInteractionCycles: ctx.familyCycles,
+    familyInteractionCycle: ctx.familyCycles[0] || '',
     pendingHypotheses: ctx.activeHypotheses,
     recentParentInputs: ctx.recentInputs,
     deepModelDigest: digestPack,
+    feedNote: '材料已尽量给全（厚包）。请综合六维写画像，禁止只盯最近一条作业场景。',
     requireFactAnchor: true,
   }
 
-  const llmResult = await callFastJson<{
+  const llmCards = await callFastJson<{
     thinkingChips: DailyThinkingChip[]
     portraitCards: DailyPortraitCards
-  }>(promptRegistry.dailyPortraitRefresh, payload, { maxTokens: 512 }).catch(() => undefined)
+    highlights?: string[]
+  }>(displaySystem(promptRegistry.dailyPortraitRefresh), payload, { maxTokens: 4096 }).catch(() => undefined)
 
   const snapshot: DailyUiSnapshot =
-    llmResult && Array.isArray(llmResult.thinkingChips) && llmResult.thinkingChips.length > 0
+    llmCards && Array.isArray(llmCards.thinkingChips) && llmCards.thinkingChips.length > 0
       ? {
-          thinkingChips: llmResult.thinkingChips.slice(0, 4),
-          portraitCards: llmResult.portraitCards || {},
+          thinkingChips: llmCards.thinkingChips.slice(0, 4),
+          portraitCards: llmCards.portraitCards || {},
+          highlights: normalizeHighlights(llmCards.highlights, prev?.highlights),
+          chipPanels: prev?.chipPanels,
+          panelsReady: false,
           refreshedAt: new Date().toISOString(),
           source: 'llm',
         }
-      : buildFallbackSnapshot(ctx, digestPack)
+      : (() => {
+          const fb = buildFallbackSnapshot(ctx, digestPack)
+          return {
+            ...fb,
+            highlights: normalizeHighlights(undefined, prev?.highlights).length
+              ? normalizeHighlights(undefined, prev?.highlights)
+              : fb.highlights,
+            chipPanels: prev?.chipPanels,
+          }
+        })()
 
   snapshot.portraitCards = enrichPortraitCards(snapshot.portraitCards, digestPack, {
     coreJudgment: isPlaceholderProfileText(ctx.built?.coreJudgment) ? undefined : ctx.built?.coreJudgment,
     supportFocus: isPlaceholderProfileText(ctx.built?.supportFocus) ? undefined : ctx.built?.supportFocus,
+    preferLlm: snapshot.source === 'llm',
   })
+
+  if (!snapshot.highlights?.length && prev?.highlights?.length) {
+    snapshot.highlights = prev.highlights
+  }
 
   await upsertMemoryLayerItems(
     LAYER,

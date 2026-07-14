@@ -7,6 +7,7 @@ import { enqueueJob } from '@/lib/server/jobs/queue'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import { createId } from '@/lib/storage/storageIds'
+import { refineTonightTaskInBackground } from '@/lib/server/tasks/tonight-task-agent'
 
 const MAX_STORED = 50
 const MAX_LIST = 7
@@ -20,7 +21,14 @@ export async function listRecentUserTasks(tenant: TenantId): Promise<UserTask[]>
 
 export async function createUserTask(
   tenant: TenantId,
-  args: { title: string; source?: string; sourceTraceId?: string; observation?: string }
+  args: {
+    title: string
+    source?: string
+    sourceTraceId?: string
+    observation?: string
+    /** 本轮 AI 回复节选，供今晚任务 Agent 异步润色标题 */
+    replyExcerpt?: string
+  }
 ): Promise<UserTask> {
   const title = args.title.trim()
   if (!title) throw new Error('EMPTY_TITLE')
@@ -58,6 +66,17 @@ export async function createUserTask(
   // 任务保存时同步深拆（低频）：六维拆解 + 新假设，链式 memory_write + model_review。
   const taskTraceId = args.sourceTraceId || createId('trace')
   void enqueueJob('daily_deep', { text: title, tenant, traceId: taskTraceId }, `daily_deep_${episodeId}`, taskTraceId)
+
+  // 轻度异步：专用 Agent 润色今晚任务标题（不挡保存响应）
+  void refineTonightTaskInBackground({
+    tenant,
+    taskId: task.taskId,
+    seedTitle: title,
+    observation: args.observation,
+    replyExcerpt: args.replyExcerpt,
+  }).catch((err) => {
+    console.warn('[tonight-task] refine failed:', err instanceof Error ? err.message : err)
+  })
 
   return task
 }

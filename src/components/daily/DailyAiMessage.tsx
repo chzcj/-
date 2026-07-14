@@ -197,7 +197,10 @@ export function DailyAiMessage({
             sections,
             action.payload?.taskTitle as string | undefined
           )
-          void saveTask(title, '来自交流', traceId)
+          void saveTask(title, '来自交流', traceId, {
+            observation: (action.payload?.seedText as string | undefined)?.slice(0, 80),
+            replyExcerpt: text.slice(0, 600),
+          })
           setTaskSaved(true)
           break
         }

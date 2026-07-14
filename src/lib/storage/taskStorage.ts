@@ -79,13 +79,26 @@ export function getTasks(): TaskItem[] {
   return loadLocalTasks()
 }
 
-export async function saveTask(title: string, source = '交流', sourceTraceId?: string) {
+export async function saveTask(
+  title: string,
+  source = '交流',
+  sourceTraceId?: string,
+  extras?: { observation?: string; replyExcerpt?: string }
+) {
   if (typeof window === 'undefined' || !title.trim()) return
+  const observation = extras?.observation?.trim()
+  const replyExcerpt = extras?.replyExcerpt?.trim()
   try {
     const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: title.trim(), source, sourceTraceId }),
+      body: JSON.stringify({
+        title: title.trim(),
+        source,
+        sourceTraceId,
+        ...(observation ? { observation } : {}),
+        ...(replyExcerpt ? { replyExcerpt } : {}),
+      }),
     })
     const json = (await res.json()) as { ok?: boolean; data?: { task?: { taskId: string } } }
     if (json.ok) {

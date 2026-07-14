@@ -10,11 +10,11 @@ import './index.scss'
 
 const CARD_TITLES: Record<string, string> = {
   growth: '动态成长画像',
-  focus: '当前关注点',
+  focus: '值得长期关注',
   behavior: '行为模式总结',
   interaction: '家庭互动模式',
-  strategies: '有效策略',
-  hypotheses: '待验证假设',
+  strategies: '试试这些好方法',
+  hypotheses: '孩子写作业的关注点',
   tensions: '家庭运转张力',
 }
 

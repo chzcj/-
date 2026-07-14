@@ -130,7 +130,11 @@ export async function GET(request: Request) {
   }
   const digestPack = pickDeepModelDigestPack(digest)
   const portraitCards = uiSnapshot?.portraitCards
-    ? enrichPortraitCards(uiSnapshot.portraitCards, digestPack, { coreJudgment, supportFocus })
+    ? enrichPortraitCards(uiSnapshot.portraitCards, digestPack, {
+        coreJudgment,
+        supportFocus,
+        preferLlm: uiSnapshot.source === 'llm',
+      })
     : undefined
 
   return ok({
@@ -144,9 +148,11 @@ export async function GET(request: Request) {
     pendingHypothesesList: activeHyps,
     structuralTensions: digest?.structuralTensions || [],
     hasRealData: Boolean(coreJudgment || interactionText || activeHyps.length),
-    // 来自 daily-refresh Agent 的人话展示层（登录时刷新，落 daily_ui_snapshot）
     thinkingChips: uiSnapshot?.thinkingChips,
     portraitCards,
+    highlights: uiSnapshot?.highlights || [],
+    chipPanels: uiSnapshot?.chipPanels || null,
+    panelsReady: Boolean(uiSnapshot?.panelsReady && uiSnapshot?.chipPanels),
     refreshedAt: uiSnapshot?.refreshedAt || null,
   })
 }

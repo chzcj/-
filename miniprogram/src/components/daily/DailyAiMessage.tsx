@@ -132,6 +132,7 @@ export function DailyAiMessage({
                       const scene = taskSceneSubtitle(action, '来自交流')
                       void saveTask(title, '来自交流', traceId, {
                         observation: scene,
+                        replyExcerpt: text.slice(0, 600),
                       }).then((ok) => {
                         if (ok) setTaskSaved(true)
                       })

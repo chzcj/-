@@ -22,11 +22,11 @@ export type ProfileCardKey = (typeof CARD_KEYS)[number]
 
 const CARD_TITLES: Record<ProfileCardKey, string> = {
   growth: '动态成长画像',
-  focus: '当前关注点',
+  focus: '值得长期关注',
   behavior: '行为模式总结',
   interaction: '家庭互动模式',
-  strategies: '有效策略',
-  hypotheses: '待验证假设',
+  strategies: '试试这些好方法',
+  hypotheses: '孩子写作业的关注点',
   tensions: '家庭运转张力',
 }
 
@@ -51,7 +51,11 @@ export async function GET(
   const built = await getLatestBuiltProfileSnapshot(tenant).catch(() => null)
   const network = await getLatestEvidenceNetwork(tenant).catch(() => null)
 
-  const extras = { coreJudgment: built?.coreJudgment, supportFocus: built?.supportFocus }
+  const extras = {
+    coreJudgment: built?.coreJudgment,
+    supportFocus: built?.supportFocus,
+    preferLlm: Boolean(ui?.portraitCards?.[key as PortraitCardKey] && ui.source === 'llm'),
+  }
   const structuralTensions = digest?.structuralTensions || []
 
   const topMechanisms = pickTopMechanismCards(network?.candidateMechanismMatrix, 5)
@@ -83,7 +87,15 @@ export async function GET(
 
   const rawCard = ui?.portraitCards?.[key as PortraitCardKey]
   const enriched = enrichPortraitCardContent(key as PortraitCardKey, rawCard, digestPack, extras)
-  const detail = buildPortraitCardDetail(key as PortraitCardKey, enriched, digestPack)
+  // preferLlm 时不再用 digest 事实盖写；仅空卡时附少量锚定事实
+  const detail = extras.preferLlm
+    ? {
+        summary: enriched.summary,
+        lead: enriched.lead,
+        sections: enriched.sections || [],
+        anchoredFacts: [] as string[],
+      }
+    : buildPortraitCardDetail(key as PortraitCardKey, enriched, digestPack)
 
   return ok({
     card: key,

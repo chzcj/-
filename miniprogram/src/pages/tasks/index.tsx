@@ -24,14 +24,27 @@ function taskStatus(task: TaskItem) {
 }
 
 function taskSubtitle(task: TaskItem): string {
-  const source = task.source || '来自交流'
+  const source = (task.source || '来自交流').replace(/^来自交流$/, '交流')
   const scene = (task.observation || '').replace(/^来自交流\s*·\s*/, '').trim()
-  if (scene && scene !== source) {
-    const short = scene.slice(0, 28)
-    return `${source} · ${short}${scene.length > 28 ? '…' : ''}`
+  if (scene && scene !== source && scene !== '来自交流') {
+    const short = scene.slice(0, 16)
+    return `${source} · ${short}${scene.length > 16 ? '…' : ''}`
   }
-  if (task.observation?.includes('·')) return task.observation.slice(0, 40)
   return source
+}
+
+function displayTaskTitle(title: string): string {
+  const t = title
+    .trim()
+    .replace(/^今晚可以试一次[：:]?/, '')
+    .replace(/^今晚试一下[：:]?/, '')
+    .replace(/^今晚先试一次小步骤$/, '到点只说一句开始然后等')
+    .trim()
+  if (t.length <= 20) return t
+  const slice = t.slice(0, 20)
+  const breakAt = Math.max(slice.lastIndexOf('，'), slice.lastIndexOf('。'), slice.lastIndexOf(' '))
+  const cut = breakAt >= 10 ? slice.slice(0, breakAt) : slice
+  return `${cut}…`
 }
 
 
@@ -120,7 +133,7 @@ export default function TasksPage() {
                 className={`task-card hifi-card${open ? ' selected open' : ''}`}
                 onClick={() => toggleTask(task.id)}
               >
-                <Text className='task-title'>{task.title}</Text>
+                <Text className='task-title'>{displayTaskTitle(task.title)}</Text>
                 <Text className='task-subtitle muted'>{taskSubtitle(task)}</Text>
                 <View className='task-meta'>
                   <Text className='task-source'>{task.source || '来自交流'}</Text>

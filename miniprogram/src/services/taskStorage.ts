@@ -100,12 +100,13 @@ export async function saveTask(
   title: string,
   source = '交流',
   sourceTraceId?: string,
-  extras?: { observation?: string }
+  extras?: { observation?: string; replyExcerpt?: string }
 ): Promise<boolean> {
   if (!title.trim()) return false
-  const normalizedTitle = normalizeTaskTitle(title, '今晚先试一次小步骤')
+  const normalizedTitle = normalizeTaskTitle(title, '到点只说一句开始然后等')
   if (!normalizedTitle.trim()) return false
   const observation = extras?.observation?.trim() || undefined
+  const replyExcerpt = extras?.replyExcerpt?.trim() || undefined
   try {
     const res = await apiRequest<{ task?: ServerTask }>('/api/tasks', {
       method: 'POST',
@@ -114,6 +115,7 @@ export async function saveTask(
         source,
         ...(sourceTraceId ? { sourceTraceId } : {}),
         ...(observation ? { observation } : {}),
+        ...(replyExcerpt ? { replyExcerpt } : {}),
       },
     })
     if (res.ok) {
