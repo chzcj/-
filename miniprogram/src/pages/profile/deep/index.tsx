@@ -4,11 +4,9 @@ import { useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { usePublicPageShare } from '@/hooks/useSharePage'
 import { humanizeEntryRef } from '@/lib/entry-name-i18n'
-import {
-  fetchChipPanelsFromHub,
-  readCachedChipPanels,
-} from '@/lib/profileChipPanels'
+import { portraitCardLead, type DailyPortraitCards } from '@/lib/portraitCard'
 import { SHARE_PATHS } from '@/lib/shareMessages'
+import { apiRequest } from '@/services/api'
 import { getLatestProfile, hasProfile } from '@/services/profileStorage'
 import './index.scss'
 
@@ -18,25 +16,23 @@ export default function ProfileDeepPage() {
     path: SHARE_PATHS.profileDeep,
   })
   const [loading, setLoading] = useState(true)
-  const [mechanismText, setMechanismText] = useState(() => {
-    const cached = readCachedChipPanels()?.mechanismChainParent || ''
-    if (cached.trim()) return cached
-    return getLatestProfile()?.deepMechanism || ''
-  })
-  const [panelsReady, setPanelsReady] = useState(false)
+  const [mechanismText, setMechanismText] = useState(
+    () => getLatestProfile()?.deepMechanism || ''
+  )
 
   useDidShow(() => {
     void (async () => {
-      const cached = readCachedChipPanels()?.mechanismChainParent
-      if (cached?.trim()) setMechanismText(cached)
+      const localDeep = getLatestProfile()?.deepMechanism || ''
+      if (localDeep) setMechanismText(localDeep)
 
-      const { panels, panelsReady: ready } = await fetchChipPanelsFromHub()
-      setPanelsReady(ready)
-      const next = panels?.mechanismChainParent?.trim()
-      if (next) {
-        setMechanismText(next)
-      } else if (!mechanismText.trim()) {
-        setMechanismText(getLatestProfile()?.deepMechanism || '')
+      const hub = await apiRequest<{ portraitCards?: DailyPortraitCards }>(
+        '/api/profile/hub',
+        { method: 'GET' }
+      )
+      if (hub.ok) {
+        const lead = portraitCardLead(hub.data.portraitCards?.growth)
+        if (lead) setMechanismText(lead)
+        else if (!localDeep) setMechanismText(getLatestProfile()?.deepMechanism || '')
       }
       setLoading(false)
     })()
@@ -87,7 +83,6 @@ export default function ProfileDeepPage() {
         <Text className='hero-copy'>
           下面用家长能听懂的话说清：家里常见动作如何触发孩子反应，又怎样绕回下一轮。
         </Text>
-        {!panelsReady ? <Text className='muted'>若刚进画像，内容可能还在整理中…</Text> : null}
       </View>
 
       <View className='hifi-card profile-block'>

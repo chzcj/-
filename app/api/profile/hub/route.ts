@@ -151,8 +151,6 @@ export async function GET(request: Request) {
     thinkingChips: uiSnapshot?.thinkingChips,
     portraitCards,
     highlights: uiSnapshot?.highlights || [],
-    chipPanels: uiSnapshot?.chipPanels || null,
-    panelsReady: Boolean(uiSnapshot?.panelsReady && uiSnapshot?.chipPanels),
     refreshedAt: uiSnapshot?.refreshedAt || null,
   })
 }

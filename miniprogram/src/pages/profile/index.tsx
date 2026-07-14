@@ -15,7 +15,6 @@ import {
   type StructuralTension,
 } from '@/lib/portraitCard'
 import { readProfileTabCache, writeProfileTabCache } from '@/lib/profileTabCache'
-import { writeCachedChipPanels, type ProfileChipPanels } from '@/lib/profileChipPanels'
 import { apiRequest } from '@/services/api'
 import { logout, fetchCurrentUser } from '@/services/auth'
 import { forceAccountSyncToServer } from '@/services/accountSync'
@@ -42,8 +41,6 @@ type HubPayload = {
   refreshedAt?: string | null
   pendingHypothesesList?: string[]
   structuralTensions?: StructuralTension[]
-  chipPanels?: ProfileChipPanels | null
-  panelsReady?: boolean
   highlights?: string[]
 }
 
@@ -119,7 +116,6 @@ export default function ProfilePage() {
       if (data.refreshedAt !== undefined) setRefreshedAt(data.refreshedAt)
       if (data.pendingHypothesesList) setPendingList(data.pendingHypothesesList)
       if (Array.isArray(data.structuralTensions)) setStructuralTensions(data.structuralTensions)
-      if (data.chipPanels) writeCachedChipPanels(data.chipPanels)
       if (Array.isArray(data.highlights)) setHighlights(data.highlights.filter(Boolean))
       if (data.coreJudgment) {
         setCoreJudgment(data.coreJudgment)

@@ -3,15 +3,29 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { usePublicPageShare } from '@/hooks/useSharePage'
-import {
-  fetchChipPanelsFromHub,
-  readCachedChipPanels,
-  type ChipObservationPoint,
-} from '@/lib/profileChipPanels'
+import { portraitCardSections, type DailyPortraitCards } from '@/lib/portraitCard'
 import { SHARE_PATHS } from '@/lib/shareMessages'
+import { apiRequest } from '@/services/api'
 import { getLatestProfile, hasProfile } from '@/services/profileStorage'
 import { goToRehearsalTab } from '@/utils/navigation'
 import './index.scss'
+
+type ObservationPoint = {
+  title: string
+  description: string
+}
+
+/** 从 portraitCards.hypotheses.sections 展开成观察点；每条 item 一条。 */
+function pointsFromCards(cards: DailyPortraitCards | undefined): ObservationPoint[] {
+  const sections = portraitCardSections(cards?.hypotheses)
+  const out: ObservationPoint[] = []
+  for (const s of sections) {
+    for (const item of s.items) {
+      out.push({ title: s.heading, description: item })
+    }
+  }
+  return out
+}
 
 export default function ProfileVerifyPage() {
   usePublicPageShare({
@@ -19,22 +33,25 @@ export default function ProfileVerifyPage() {
     path: SHARE_PATHS.profileVerify,
   })
   const [loading, setLoading] = useState(true)
-  const [points, setPoints] = useState<ChipObservationPoint[]>(() => {
-    const cached = readCachedChipPanels()?.observationPoints
-    if (cached?.length) return cached
-    return getLatestProfile()?.verificationPoints || []
+  const [points, setPoints] = useState<ObservationPoint[]>(() => {
+    const local = getLatestProfile()?.verificationPoints || []
+    return local.map((v) => ({ title: v.title, description: v.description || '' }))
   })
 
   useDidShow(() => {
     void (async () => {
-      const cached = readCachedChipPanels()?.observationPoints
-      if (cached?.length) setPoints(cached)
-
-      const { panels } = await fetchChipPanelsFromHub()
-      if (panels?.observationPoints?.length) {
-        setPoints(panels.observationPoints)
-      } else if (!points.length) {
-        setPoints(getLatestProfile()?.verificationPoints || [])
+      const hub = await apiRequest<{ portraitCards?: DailyPortraitCards }>(
+        '/api/profile/hub',
+        { method: 'GET' }
+      )
+      if (hub.ok) {
+        const fromCards = pointsFromCards(hub.data.portraitCards)
+        if (fromCards.length) {
+          setPoints(fromCards)
+        } else if (!points.length) {
+          const local = getLatestProfile()?.verificationPoints || []
+          setPoints(local.map((v) => ({ title: v.title, description: v.description || '' })))
+        }
       }
       setLoading(false)
     })()

@@ -91,6 +91,19 @@ export function portraitCardSummary(card: PortraitCardContent | string | undefin
   return normalizePortraitCard(card)?.summary || ''
 }
 
+export function portraitCardLead(card: PortraitCardContent | string | undefined): string {
+  const normalized = normalizePortraitCard(card)
+  return normalized?.lead || normalized?.summary || ''
+}
+
+/** 取卡的 sections（heading + items），无则空数组；用于子页展开详情。 */
+export function portraitCardSections(
+  card: PortraitCardContent | string | undefined
+): PortraitCardSection[] {
+  const normalized = normalizePortraitCard(card)
+  return normalized?.sections || []
+}
+
 export function cardSummary(
   card: PortraitCardContent | string | undefined,
   fallback: string

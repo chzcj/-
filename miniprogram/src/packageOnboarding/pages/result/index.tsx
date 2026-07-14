@@ -3,11 +3,7 @@ import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
-import {
-  fetchChipPanelsFromHub,
-  readCachedChipPanels,
-  type FullPortraitBrief,
-} from '@/lib/profileChipPanels'
+import { portraitCardSummary, type DailyPortraitCards } from '@/lib/portraitCard'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { apiRequest } from '@/services/api'
 import { goToDailyTab } from '@/utils/navigation'
@@ -22,9 +18,7 @@ export default function OnboardingResult() {
   const [loading, setLoading] = useState(true)
   const [entering, setEntering] = useState(false)
   const [snapshot, setSnapshot] = useState<ProfileSnapshot | null>(null)
-  const [brief, setBrief] = useState<FullPortraitBrief | null>(
-    () => readCachedChipPanels()?.fullPortraitBrief || null
-  )
+  const [portraitCards, setPortraitCards] = useState<DailyPortraitCards>({})
   const [onboardingComplete, setOnboardingComplete] = useState(false)
   const [loadError, setLoadError] = useState('')
 
@@ -56,9 +50,12 @@ export default function OnboardingResult() {
       }
     }
 
-    const { panels } = await fetchChipPanelsFromHub()
-    if (panels?.fullPortraitBrief?.core) {
-      setBrief(panels.fullPortraitBrief)
+    const hubCards = await apiRequest<{ portraitCards?: DailyPortraitCards }>(
+      '/api/profile/hub',
+      { method: 'GET' }
+    )
+    if (hubCards.ok && hubCards.data.portraitCards) {
+      setPortraitCards(hubCards.data.portraitCards)
     }
 
     setLoading(false)
@@ -82,8 +79,10 @@ export default function OnboardingResult() {
 
   const goHub = () => void mpGoReplace('/packageOnboarding/pages/hub/index')
 
-  const coreText = brief?.core?.trim() || snapshot?.coreJudgment || ''
-  const focusText = brief?.focus?.trim() || snapshot?.supportFocus || ''
+  const coreText =
+    portraitCardSummary(portraitCards.growth) || snapshot?.coreJudgment || ''
+  const focusText =
+    portraitCardSummary(portraitCards.focus) || snapshot?.supportFocus || ''
   const completeness = snapshot?.completeness
 
   if (loading) {
@@ -142,11 +141,6 @@ export default function OnboardingResult() {
         <View className='soft-card' style={{ marginBottom: '12px' }}>
           <Text className='section-label'>画像完整度</Text>
           <Text className='soft-card-body'>{completeness}%</Text>
-          {brief?.completenessHint ? (
-            <Text className='hint-text' style={{ marginTop: '8px' }}>
-              {brief.completenessHint}
-            </Text>
-          ) : null}
         </View>
       ) : null}
 
@@ -164,3 +158,4 @@ export default function OnboardingResult() {
     </HiFiBuildShell>
   )
 }
+

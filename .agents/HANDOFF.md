@@ -1909,3 +1909,40 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - `miniprogram/src/lib/profileChipPanels.ts` 仍被 deep/evidence/verify/result import 兜底，删五 chip 后该模块仅做 L3 缓存读取，不会再被新写入填充
 - `.env.local` / SSH / AUTH_TOKEN 未入 Git
 - 部署只更新 Web/BFF（yujian.yihe.site），不含小程序
+
+## 2026-07-14 20:55 | Cursor | 清理 profileChipPanels dead-code + 子页改读 portraitCards + 修真机老样子
+
+**做了什么**
+- 删 `prompts/front/profileChipPanels.md`（prompt 46→45）+ `miniprogram/src/lib/profileChipPanels.ts`
+- 后端 `daily-refresh-agent.ts`：删 `ChipEvidenceItem / ChipObservationPoint / FullPortraitBrief / ProfileChipPanels` 类型 + `DailyUiSnapshot.chipPanels / panelsReady` 字段 + fallback/refresh 里的 chipPanels 兜底
+- BFF `app/api/profile/hub/route.ts`：不再下发 `chipPanels / panelsReady`
+- 前端 `profile/index.tsx`：删 import + HubPayload 字段 + applyHubData 的 writeCachedChipPanels
+- 子页改读 portraitCards（人话化优先）+ built 兜底：
+  - `deep`：portraitCards.growth.lead → built.deepMechanism
+  - `evidence`：portraitCards.behavior.sections 展开 → built.evidence
+  - `verify`：portraitCards.hypotheses.sections 展开 → built.verificationPoints
+  - `result`：portraitCards.growth.summary + portraitCards.focus.summary → snapshot.coreJudgment/supportFocus
+- `portraitCard.ts` 新增 `portraitCardLead / portraitCardSections` helper
+- `test-xiaoyin-corpus.mjs` 清掉 chipPanelFields/panelsReady 引用，改用 highlightsCount
+- **修真机老样子**：前一个模型改了源码但没重新 build:weapp（dist 18:02 vs src 20:30）。本轮 `npm run build:weapp` 已重新生成 dist（20:53），无 chipPanels 残留
+- typecheck (web+mp) pass / web build pass / build:weapp pass（已知 CSS order warning）/ deploy 成功，readiness `ready:true`、jobHealthy true
+
+**为什么**
+- 昨轮契约核查发现 profileChipPanels 链路 dead-code：UI 入口已删但数据字段/prompt/前端模块/子页 fetch 仍在，造成「字段流转但永不被新填充」的契约空洞
+- 子页改读 portraitCards 让 Agent A 人话化文案贯穿 Tab + 子页，不再依赖已下线的 Agent B
+
+**验证**
+- 第一轮：web typecheck 0 error；mp typecheck 0 error；web build exit 0；build:weapp exit 0
+- 第二轮：deploy exit 0；PM2 yujian/yujian-jobs online；`/api/readiness` `ready:true`、`jobHealthy:true`
+- 第三轮：dist 已更新到 20:53；grep dist 无 profileChipPanels/chipPanels 残留；契约一致（hub 不再下发 chipPanels ↔ 前端不再消费）
+
+**下一步**
+- 真机需用微信开发者工具重新加载 dist 目录预览验证：画像 Tab、deep/evidence/verify/result 子页
+- Agent A 输出 thinkingChips 无 32 字截断（P2）、highlights 无 ≥2 条下限（P3）— 仍待优化，本轮未动
+- payload 冗余字段（familyInteractionCycle 单数/feedNote/requireFactAnchor）（P4）— 仍待清理
+
+**风险/冲突**
+- 子页 deep/evidence/verify 现在每次都调 `/api/profile/hub`（之前是 fetchChipPanelsFromHub，也是调 hub，频率不变）
+- portraitCards.growth.lead 是 Tab 摘要级文案，deep 页展示可能比之前短；如需更长机制链，后续可考虑让 Agent A 单独出 deepLead 字段
+- evidence/verify sections 展开规则：每个 item 一条，title=section.heading，description=item；若 LLM sections 空则回退 built
+- `.env.local`/SSH/AUTH_TOKEN 未入 Git

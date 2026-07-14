@@ -28,38 +28,11 @@ const ITEM_ID = 'latest'
 
 export type { DailyPortraitCards }
 
-export type ChipEvidenceItem = {
-  sourceLabel: string
-  evidenceText: string
-  explanation?: string
-  strength?: 'weak' | 'medium' | 'strong'
-}
-
-export type ChipObservationPoint = {
-  title: string
-  description: string
-}
-
-export type FullPortraitBrief = {
-  core: string
-  focus: string
-  completenessHint: string
-}
-
-export type ProfileChipPanels = {
-  mechanismChainParent: string
-  evidenceItems: ChipEvidenceItem[]
-  observationPoints: ChipObservationPoint[]
-  fullPortraitBrief: FullPortraitBrief
-}
-
 export type DailyUiSnapshot = {
   thinkingChips: DailyThinkingChip[]
   portraitCards: DailyPortraitCards
   /** 孩子近期的闪光点（展示层） */
   highlights?: string[]
-  chipPanels?: ProfileChipPanels
-  panelsReady: boolean
   refreshedAt: string
   source: 'llm' | 'fallback'
 }
@@ -138,8 +111,6 @@ function buildFallbackSnapshot(ctx: RefreshContext, digestPack: DeepModelDigestP
     thinkingChips: chips,
     portraitCards,
     highlights: highlights.length ? highlights : undefined,
-    chipPanels: undefined,
-    panelsReady: false,
     refreshedAt: new Date().toISOString(),
     source: 'fallback',
   }
@@ -225,7 +196,6 @@ async function gatherRefreshContext(tenant: TenantId): Promise<RefreshContext> {
 
 /**
  * 进画像 Tab / 登录刷新：厚喂料 + Agent A 写 portraitCards/highlights。
- * 五个 chip 已下线：不再强跑 profileChipPanels。
  */
 export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUiSnapshot> {
   const prev = await loadDailyUiSnapshot(tenant).catch(() => null)
@@ -262,8 +232,6 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
           thinkingChips: llmCards.thinkingChips.slice(0, 4),
           portraitCards: llmCards.portraitCards || {},
           highlights: normalizeHighlights(llmCards.highlights, prev?.highlights),
-          chipPanels: prev?.chipPanels,
-          panelsReady: false,
           refreshedAt: new Date().toISOString(),
           source: 'llm',
         }
@@ -274,7 +242,6 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
             highlights: normalizeHighlights(undefined, prev?.highlights).length
               ? normalizeHighlights(undefined, prev?.highlights)
               : fb.highlights,
-            chipPanels: prev?.chipPanels,
           }
         })()
 

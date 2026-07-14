@@ -155,33 +155,17 @@ function extractOutput(api, json, stream) {
       const snap = d.snapshot || d
       return {
         source: snap.source,
-        panelsReady: snap.panelsReady,
         refreshedAt: snap.refreshedAt,
         portraitCardKeys: snap.portraitCards ? Object.keys(snap.portraitCards) : [],
-        chipPanelFields: snap.chipPanels
-          ? {
-              mechanismLen: (snap.chipPanels.mechanismChainParent || '').length,
-              evidenceCount: snap.chipPanels.evidenceItems?.length ?? 0,
-              observationCount: snap.chipPanels.observationPoints?.length ?? 0,
-              briefCoreLen: snap.chipPanels.fullPortraitBrief?.core?.length ?? 0,
-            }
-          : null,
+        highlightsCount: snap.highlights?.length ?? 0,
       }
     }
     case '/api/profile/hub':
       return {
         completeness: d.completeness,
-        panelsReady: d.panelsReady,
         refreshedAt: d.refreshedAt,
         portraitCardKeys: d.portraitCards ? Object.keys(d.portraitCards) : [],
-        chipPanelFields: d.chipPanels
-          ? {
-              mechanismLen: (d.chipPanels.mechanismChainParent || '').length,
-              evidenceCount: d.chipPanels.evidenceItems?.length ?? 0,
-              observationCount: d.chipPanels.observationPoints?.length ?? 0,
-              briefCoreLen: d.chipPanels.fullPortraitBrief?.core?.length ?? 0,
-            }
-          : null,
+        highlightsCount: d.highlights?.length ?? 0,
       }
     case '/api/profile/card':
       return {
@@ -619,7 +603,7 @@ async function seedBuiltFromXiaoyinV1() {
   )
 }
 
-/** 画像 Tab：种子 built → daily-refresh → hub chipPanels → 卡片详情 */
+/** 画像 Tab：种子 built → daily-refresh → hub portraitCards → 卡片详情 */
 async function runProfileTab() {
   await seedBuiltFromXiaoyinV1()
 

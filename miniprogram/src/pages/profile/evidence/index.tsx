@@ -4,14 +4,29 @@ import { useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { usePublicPageShare } from '@/hooks/useSharePage'
 import { humanizeEntryRef, humanizeMechanismLabel } from '@/lib/entry-name-i18n'
-import {
-  fetchChipPanelsFromHub,
-  readCachedChipPanels,
-  type ChipEvidenceItem,
-} from '@/lib/profileChipPanels'
+import { portraitCardSections, type DailyPortraitCards } from '@/lib/portraitCard'
 import { SHARE_PATHS } from '@/lib/shareMessages'
+import { apiRequest } from '@/services/api'
 import { getLatestProfile, hasProfile } from '@/services/profileStorage'
 import './index.scss'
+
+type EvidenceItem = {
+  sourceLabel: string
+  evidenceText: string
+  explanation?: string
+}
+
+/** 从 portraitCards.behavior.sections 展开成证据条目；每条 item 一条。 */
+function evidenceFromCards(cards: DailyPortraitCards | undefined): EvidenceItem[] {
+  const sections = portraitCardSections(cards?.behavior)
+  const out: EvidenceItem[] = []
+  for (const s of sections) {
+    for (const item of s.items) {
+      out.push({ sourceLabel: s.heading, evidenceText: item })
+    }
+  }
+  return out
+}
 
 export default function ProfileEvidencePage() {
   usePublicPageShare({
@@ -19,22 +34,35 @@ export default function ProfileEvidencePage() {
     path: SHARE_PATHS.profileEvidence,
   })
   const [loading, setLoading] = useState(true)
-  const [items, setItems] = useState<ChipEvidenceItem[]>(() => {
-    const cached = readCachedChipPanels()?.evidenceItems
-    if (cached?.length) return cached
-    return getLatestProfile()?.evidence || []
+  const [items, setItems] = useState<EvidenceItem[]>(() => {
+    const local = getLatestProfile()?.evidence || []
+    return local.map((e) => ({
+      sourceLabel: e.sourceLabel || '依据',
+      evidenceText: e.evidenceText,
+      explanation: e.explanation,
+    }))
   })
 
   useDidShow(() => {
     void (async () => {
-      const cached = readCachedChipPanels()?.evidenceItems
-      if (cached?.length) setItems(cached)
-
-      const { panels } = await fetchChipPanelsFromHub()
-      if (panels?.evidenceItems?.length) {
-        setItems(panels.evidenceItems)
-      } else if (!items.length) {
-        setItems(getLatestProfile()?.evidence || [])
+      const hub = await apiRequest<{ portraitCards?: DailyPortraitCards }>(
+        '/api/profile/hub',
+        { method: 'GET' }
+      )
+      if (hub.ok) {
+        const fromCards = evidenceFromCards(hub.data.portraitCards)
+        if (fromCards.length) {
+          setItems(fromCards)
+        } else if (!items.length) {
+          const local = getLatestProfile()?.evidence || []
+          setItems(
+            local.map((e) => ({
+              sourceLabel: e.sourceLabel || '依据',
+              evidenceText: e.evidenceText,
+              explanation: e.explanation,
+            }))
+          )
+        }
       }
       setLoading(false)
     })()
