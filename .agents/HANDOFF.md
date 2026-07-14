@@ -25,6 +25,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-14 16:40 | Cursor | S1–S4 推送 origin(Gitee)+github：`310d75f`；S4 画像 Top5 详情壳已上线
 - 2026-07-14 16:36 | Cursor | S4：画像统一详情壳 Top5+机制链 Tab；API card 扩展；ready:true
 - 2026-07-14 16:16 | Cursor | S3：假100修复 + 动态 Summary；readiness ready:true；jobHealthy:true
 - 2026-07-14 16:04 | Cursor | S2：每10有效轮+每日打开正交触发 deep_mechanism + 交流 tip；readiness ready:true；jobHealthy:true
