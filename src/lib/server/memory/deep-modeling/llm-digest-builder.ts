@@ -40,8 +40,8 @@ export async function buildLlmDeepModelDigest(
 
   const topMechanisms =
     network?.candidateMechanismMatrix
-      ?.filter((m) => m.mechanismName)
-      .slice(0, 3)
+      ?.filter((m) => m.mechanismName && m.overallStrength !== 'low')
+      .slice(0, 12)
       .map((m) => `${m.mechanismName}：${m.description || ''}`.trim()) || []
 
   // 孩子真实话语样本（child_quote 高价值原子）：此前 payload 只有家长原话，
@@ -72,7 +72,7 @@ export async function buildLlmDeepModelDigest(
   const raw = await callFastJson<Record<string, unknown>>(
     resolveAgentSystem('deepModelDigestBuilder'),
     payload,
-    { maxTokens: 1400 }
+    { maxTokens: 2500 }
   ).catch(() => undefined)
 
   if (!raw) return undefined

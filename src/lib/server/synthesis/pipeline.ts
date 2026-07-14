@@ -141,8 +141,8 @@ export async function runSynthesisPipeline(input: SynthesisInput): Promise<Synth
 规则：
 - 不能把家长评价写成孩子事实
 - 不能停在中间变量
-- crossEntryEvidenceMap **3–4 条**即可，每条必须有具体证据
-- candidateMechanismMatrix **3–4 条**即可，每条 2 条 supportingEvidence
+- crossEntryEvidenceMap **4–8 条**即可，每条必须有具体证据
+- candidateMechanismMatrix **6–8 条**即可（后续 deep_mechanism 扩多域），每条 2 条 supportingEvidence
 - 输出完整 JSON，不要省略字段${input.crossCuttingSupplement ? `
 
 家长四模块收尾补充（重点纳入，仍作假设检验）：
@@ -378,7 +378,7 @@ function buildFallbackCrossEntry(packs: EntryEvidencePack[], completedCount: num
 function buildFallbackMechanisms(packs: EntryEvidencePack[], completedCount: number, defaultScores: MechanismScore): CandidateMechanism[] {
   const allMechanisms = packs.flatMap(p => p.candidateMechanisms)
   if (allMechanisms.length === 0) return []
-  return allMechanisms.slice(0, 5).map(m => ({
+  return allMechanisms.slice(0, 8).map(m => ({
     mechanismName: m.mechanismName,
     mechanismType: (completedCount >= 5 && m.evidenceStrength === 'high' ? 'core_candidate' : 'stage_candidate') as 'core_candidate' | 'stage_candidate' | 'pending_hypothesis',
     description: m.description,

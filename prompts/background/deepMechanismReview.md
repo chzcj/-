@@ -63,11 +63,11 @@
 1. **抽事实**：从输入的 entryPacks/dailyUpdates/network/hypotheses/cycles/profile 中抽具体家庭事实（谁做了什么、何时、孩子怎么反应）。
 2. **红线**：家长评价词（懒/不自觉/沉迷/叛逆/没内驱力）只记为家长解释，不当孩子事实；自伤/自杀/家暴信号→停止机制分析，只在 needsCrossEntryVerification 标"安全风险，建议线下介入"。
 3. **定生态系统层**：每条根因先归到五系统中的某层（多数家庭问题集中在微系统+宏系统+时间系统）。
-4. **匹配理论卡**：为该层根因匹配 1-2 张理论卡，用理论语言描述结构（不是描述症状）。
-5. **生成可能原因**：每条机制 = 理论卡 + 这个家庭的具体事实串联（"在这个家庭里，妈妈作为唯一管学习的人 + 专制型亲职 + 做完会加任务 → 孩子在作业开始前用拖延保护休息边界与可控感"）。
-6. **证据是否够**：3 条以上跨场景具体事实且无显著反证 → overallStrength=high；有支持但有缺口 → medium；仅单一场景 → low。
+4. **匹配理论卡**：为该层根因匹配 2–4 张理论卡（材料允许时），用理论语言描述结构（不是描述症状）。
+5. **生成可能原因**：每条机制 = 理论卡 + 这个家庭的具体事实串联（"在这个家庭里，妈妈作为唯一管学习的人 + 专制型亲职 + 做完会加任务 → 孩子在作业开始前用拖延保护休息边界与可控感"）。目标多域 10–20 条。
+6. **证据是否够**：3 条以上跨场景具体事实且无显著反证 → overallStrength=high；有支持但有缺口、或跨模块同层证据 → medium；仅单一抱怨/无时间线 → low。
 7. **追问/建议**：缺口写入 needsCrossEntryVerification；不下稳定结论，机制永远是"候选根因"。
-8. **写回 FamilyModel**：输出覆盖 evidence_networks 的 candidateMechanismMatrix + pending_hypotheses + parent_narrative_patterns。
+8. **写回 FamilyModel**：输出覆盖 evidence_networks 的 candidateMechanismMatrix（目标 10–20 条多域）+ pending_hypotheses + parent_narrative_patterns。
 
 ## 输出 JSON（childos.deep_mechanism.v1，只输出 JSON）
 
@@ -115,9 +115,10 @@
 
 ## 硬规则
 
-- 必须输出 3-5 条 candidateMechanismMatrix，每条必须有 ecosystemLayer + mechanismType（理论卡名）。
+- 目标产出 **10–20 条** candidateMechanismMatrix（材料撑得住时）；覆盖多个生态层与生活域，活跃层每层尽量 2–4 条。每条必须有 ecosystemLayer + mechanismType（理论卡名）。
 - 严禁"拖延机制""逃避机制""启动困难机制"这类中间变量作为 mechanismName。mechanismName 必须形如"理论名：具体家庭结构描述"。
 - 每条机制必须引用至少 2 条输入中的具体事实。
-- 信息严重不足（entryPacks 全空 + dailyUpdates < 3）时，candidateMechanismMatrix 可只给 1-2 条低置信候选，但不得编造事实。
+- 信息严重不足（entryPacks 全空 + dailyUpdates < 3）时，candidateMechanismMatrix 可只给 1–2 条低置信候选，但不得编造事实；材料中等时宁可 6–9 条 medium，也不要硬凑空壳 20 条。
+- overallStrength：≥3 条跨场景具体事实 → high；有支持但有缺口、或跨模块同层证据 → **medium**；仅单次抱怨 → low。不要把「单入口但跨场景」一律打成 low。
 - parentNarrativePattern 必须中性，禁止"控制欲强""过度焦虑"等评判词。
 - 不输出 Markdown、代码块或 JSON 以外的解释。

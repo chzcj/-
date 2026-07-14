@@ -55,7 +55,7 @@ export async function buildDeepModelDigest(
   }).filter(Boolean)
 
   const anchoredFacts: string[] = []
-  for (const m of network?.candidateMechanismMatrix?.slice(0, 3) || []) {
+  for (const m of network?.candidateMechanismMatrix?.slice(0, 12) || []) {
     for (const f of m.supportingEvidence || []) {
       if (f?.trim()) anchoredFacts.push(truncate(f, 120))
     }
@@ -63,7 +63,7 @@ export async function buildDeepModelDigest(
   for (const ev of built?.evidence?.slice(0, 4) || []) {
     if (ev.evidenceText?.trim()) anchoredFacts.push(truncate(ev.evidenceText, 120))
   }
-  const uniqueFacts = [...new Set(anchoredFacts)].slice(0, 8)
+  const uniqueFacts = [...new Set(anchoredFacts)].slice(0, 12)
 
   const parentVerbatimSnippets = history
     .map((h) => h.text?.trim())

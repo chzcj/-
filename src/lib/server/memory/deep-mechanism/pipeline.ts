@@ -265,11 +265,10 @@ function normStructuralTensions(raw: unknown): StructuralTension[] {
 async function runLegacyMonolith(payload: Record<string, unknown>): Promise<MechanismSynthesizeOutput | undefined> {
   return callAgentJson<MechanismSynthesizeOutput>(
     'deepMechanismReview',
-    '用五大生态系统+20家庭理论框架，产出回归家庭结构根因的深度机制（覆盖旧机制层）。',
+    '用五大生态系统+20家庭理论框架，产出回归家庭结构根因的深度机制（覆盖旧机制层；目标多域10–20条）。',
     payload,
-    // 输出含 3-5 条机制矩阵+假设+叙事模式，默认 2048 会截断 JSON（历史 failed job 的
-    // "Unexpected end of JSON input" 即此因，机制层因此建不成），放宽到 4096。
-    { maxTokens: 4096 }
+    // 多域 10–20 条机制矩阵 + 假设，4096 易截断；放宽到 8192。
+    { maxTokens: 8192 }
   )
 }
 
@@ -357,7 +356,7 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
     'theoryMatcher',
     '基于生态系统分类匹配理论卡。',
     { ecosystemMap, theoryCards: THEORY_CARDS },
-    { maxTokens: 4096 }
+    { maxTokens: 6144 }
   )
   if (matchRaw?.theoryMatches?.length) {
     theoryMatches = matchRaw.theoryMatches
@@ -374,10 +373,10 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
 
   let ai = await callAgentJson<MechanismSynthesizeOutput>(
     'mechanismSynthesizer',
-    '综合理论匹配与全量证据，产出深度机制矩阵。',
+    '综合理论匹配与全量证据，产出多域深度机制矩阵（目标10–20条）。',
     { ...sharedContext, ecosystemMap, theoryMatches },
-    // 机制矩阵输出体量大，默认 2048 会截断 JSON
-    { maxTokens: 4096 }
+    // 多域矩阵体量大，4096 易截断
+    { maxTokens: 8192 }
   )
 
   if (!ai?.candidateMechanismMatrix?.length) {

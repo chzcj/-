@@ -28,8 +28,8 @@
 
 ## 输出规模（控制 token，务必精简）
 
-- `crossEntryEvidenceMap`：**3–4 条**高价值跨模块关联，每条有具体事实出处
-- `candidateMechanismMatrix`：**3–4 条**机制，每条 2 条 supportingEvidence
+- `crossEntryEvidenceMap`：**4–8 条**高价值跨模块关联，每条有具体事实出处
+- `candidateMechanismMatrix`：**6–8 条**机制草案（后续 deep_mechanism 会扩到多域 10–20），每条 2 条 supportingEvidence
 - `childStructureModelDraft.primaryConditionalProfile`：一段 120–200 字条件化主判断（内部稿，可稍密）
 - 禁止凑数、禁止空字段、禁止 markdown
 
