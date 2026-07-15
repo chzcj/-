@@ -22,6 +22,7 @@ const CARD_KEYS: PortraitCardKey[] = [
   'interaction',
   'strategies',
   'hypotheses',
+  'tensions',
 ]
 
 function pickFacts(pack: DeepModelDigestPack, max = 3): string[] {
@@ -76,8 +77,14 @@ function defaultSectionsForKey(
     ],
     hypotheses: [
       {
-        heading: '还不能完全确定',
+        heading: '写作业时常见卡点',
         items: dedupeTextParts(pack.openHypotheses),
+      },
+    ],
+    tensions: [
+      {
+        heading: '家里容易绕进去的地方',
+        items: dedupeTextParts(pack.structuralTensions).slice(0, 4),
       },
     ],
   }
@@ -101,6 +108,7 @@ function defaultLeadForKey(
     interaction: pack.interactionLoops[0] || '',
     strategies: support || pack.cultivationFocus.trim(),
     hypotheses: pack.openHypotheses[0] || '',
+    tensions: pack.structuralTensions[0] || pack.interactionLoops[0] || '',
   }
 
   return byKey[key]?.trim() || ''

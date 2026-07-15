@@ -1,6 +1,6 @@
 import { fail, ok } from '@/lib/api-response'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
-import { callFastJson } from '@/lib/server/ark-agents'
+import { callFastJson, frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import { getTurnEventByTraceId } from '@/lib/server/memory/database-manager'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
@@ -246,7 +246,7 @@ export async function POST(request: Request) {
   "sections": [{ "title": string, "body": string }]
 }`,
       { context: contextBlock },
-      { maxTokens: 768 }
+      { maxTokens: 768, disableThinking: frontAiThinkingDisabled() }
     )
 
     return ok(normalizeResult(raw, parentText, aiReply))

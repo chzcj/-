@@ -7,6 +7,7 @@ export type PortraitCardKey =
   | 'interaction'
   | 'strategies'
   | 'hypotheses'
+  | 'tensions'
 
 export type PortraitCardSection = {
   heading: string
@@ -236,25 +237,40 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
     {
       title: '家庭运转张力',
       slug: 'tensions',
-      body: structuralTensions[0]
-        ? truncateSummary(`${structuralTensions[0].title}：${structuralTensions[0].detail}`, 56)
-        : '',
-      progress: structuralTensions.length ? 50 : 8,
-      progressHint: structuralTensions.length
+      body: cardSummary(
+        portraitCards.tensions,
+        structuralTensions[0]
+          ? truncateSummary(`${structuralTensions[0].title}：${structuralTensions[0].detail}`, 56)
+          : ''
+      ),
+      progress: hasCardContent(
+        portraitCards.tensions,
+        structuralTensions[0] ? `${structuralTensions[0].title}：${structuralTensions[0].detail}` : ''
+      )
+        ? 50
+        : structuralTensions.length
+          ? 40
+          : 8,
+      progressHint: hasCardContent(
+        portraitCards.tensions,
+        structuralTensions[0] ? `${structuralTensions[0].title}：${structuralTensions[0].detail}` : ''
+      )
         ? '这些运转方式可能在消耗孩子精力，后续交流会继续修正。'
-        : '深度建模完成后，可能消耗孩子的家庭运转方式会出现在这里。',
+        : structuralTensions.length
+          ? '正在把分析整理成更好读的话…'
+          : '深度建模完成后，可能消耗孩子的家庭运转方式会出现在这里。',
     },
     {
-      title: '孩子写作业的关注点',
+      title: '孩子写作业的机制',
       slug: 'hypotheses',
       body: cardSummary(
         portraitCards.hypotheses,
-        hubCards.pendingHypotheses || (hubCards.hasRealData ? '' : '作业与学习相关的关注点会列在这里。')
+        hubCards.pendingHypotheses || (hubCards.hasRealData ? '' : '作业场景下的机制与可试做法会列在这里。')
       ),
       progress: hasCardContent(portraitCards.hypotheses, hubCards.pendingHypotheses || '') ? 40 : 8,
       progressHint: hasCardContent(portraitCards.hypotheses, hubCards.pendingHypotheses || '')
-        ? '围绕作业与学习场景整理，后续交流会修正。'
-        : '持续交流后，会补充作业相关的关注点。',
+        ? '围绕写作业场景整理机制与做法，后续交流会修正。'
+        : '持续交流后，会补充写作业相关的机制与可试做法。',
     },
   ].filter((card) => card.body.trim().length > 0)
 }

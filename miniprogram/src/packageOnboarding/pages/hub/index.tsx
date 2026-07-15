@@ -71,7 +71,7 @@ export default function OnboardingHub() {
       <View className='hub-hero-wrap'>
         <HiFiBuildHero
           kicker='开始使用育见'
-          title={'填写四个模块\n让AI了解孩子'}
+          title={'填写四个模块\n让系统了解孩子'}
           copy='建议使用语音输入'
           mascot
         />

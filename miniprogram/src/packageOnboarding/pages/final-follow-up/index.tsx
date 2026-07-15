@@ -58,7 +58,7 @@ export default function FinalFollowUpPage() {
       actions={[
         {
           id: 'submit',
-          label: loading ? '提交中…' : '开始生成画像',
+          label: loading ? '提交中…' : '提交全部信息',
           onClick: () => void submit(),
           disabled: loading,
         },

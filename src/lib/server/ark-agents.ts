@@ -198,13 +198,14 @@ export async function callParentAgentTextStream(
 export async function callFastJson<T>(
   system: string,
   payload: unknown,
-  options?: { maxTokens?: number }
+  options?: { maxTokens?: number; disableThinking?: boolean }
 ): Promise<T | undefined> {
   if (!isFastAIEnabled()) return undefined;
   return callOpenAICompatibleJson<T>({
     system,
     user: `只输出 JSON，不输出 Markdown 或解释。\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
     maxTokens: options?.maxTokens,
+    disableThinking: options?.disableThinking,
     lane: 'fast',
   });
 }

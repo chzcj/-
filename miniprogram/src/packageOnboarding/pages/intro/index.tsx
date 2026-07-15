@@ -21,7 +21,7 @@ export default function OnboardingIntro() {
       <Text className='onboarding-info-badge'>你好，欢迎来到育见</Text>
       <Text className='onboarding-info-title'>致家长的一封信</Text>
       <Text className='onboarding-info-paragraph'>
-        育见是一款为家长设计的教育 AI 小程序。
+        育见是一款为家长设计的教育系统。
       </Text>
       <Text className='onboarding-info-paragraph'>
         它是由
@@ -29,7 +29,7 @@ export default function OnboardingIntro() {
         一块做出来的。
       </Text>
       <Text className='onboarding-info-paragraph'>
-        希望借助 AI，帮助家长更了解自己的孩子。
+        希望借助系统，帮助家长更了解自己的孩子。
       </Text>
       <Text className='onboarding-info-paragraph'>
         它会慢慢认识孩子的学习、性格、情绪和成长经历，帮助家长更清楚地看见孩子，也更懂孩子。

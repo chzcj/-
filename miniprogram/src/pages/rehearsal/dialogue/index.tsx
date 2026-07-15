@@ -17,6 +17,54 @@ function formatMs(ms: number) {
 
 type Phase = 'idle' | 'recording' | 'uploading' | 'done'
 
+function uploadFailureMessage(error: unknown): string {
+  const errMsg =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'object' &&
+          error !== null &&
+          'errMsg' in error &&
+          typeof (error as { errMsg?: unknown }).errMsg === 'string'
+        ? (error as { errMsg: string }).errMsg
+        : ''
+  return errMsg ? `上传失败：${errMsg}` : '上传失败，请检查网络后重试。'
+}
+
+/** 上传前确认临时录音文件仍存在（区分录音层 vs uploadFile 层失败） */
+function verifyRecordingFile(filePath: string): Promise<{ ok: true; size: number } | { ok: false; message: string }> {
+  return new Promise((resolve) => {
+    try {
+      const fsm = Taro.getFileSystemManager()
+      fsm.getFileInfo({
+        filePath,
+        success: (res) => {
+          const size = typeof res.size === 'number' ? res.size : 0
+          if (size < 1) {
+            console.warn('[dialogue-upload] temp file empty', { filePath, size })
+            resolve({ ok: false, message: '录音文件无效，请重新录制。' })
+            return
+          }
+          console.info('[dialogue-upload] temp file ok', { filePath, size })
+          resolve({ ok: true, size })
+        },
+        fail: (err) => {
+          console.error('[dialogue-upload] getFileInfo failed', { filePath, err })
+          const errMsg = typeof err?.errMsg === 'string' ? err.errMsg : ''
+          resolve({
+            ok: false,
+            message: errMsg
+              ? `录音文件已失效（${errMsg}），请重新录制。`
+              : '录音文件已失效，请重新录制。',
+          })
+        },
+      })
+    } catch (e) {
+      console.error('[dialogue-upload] getFileInfo threw', e)
+      resolve({ ok: false, message: '录音文件校验失败，请重新录制。' })
+    }
+  })
+}
+
 export default function DialogueRecordPage() {
   useSafeShareAppMessage({ title: '育见 · 沟通预演' })
   const recorder = useTapFileRecorder()
@@ -68,6 +116,14 @@ export default function DialogueRecordPage() {
     setPhase('uploading')
     setError('')
     try {
+      const fileCheck = await verifyRecordingFile(filePath)
+      if (!fileCheck.ok) {
+        setError(fileCheck.message)
+        setPhase('idle')
+        recorder.reset()
+        return
+      }
+
       const token = getSessionToken()
       const upload = await Taro.uploadFile({
         url: `${API_BASE_URL}/api/rehearsal/dialogue-transcribe`,
@@ -108,7 +164,10 @@ export default function DialogueRecordPage() {
         url: `/pages/rehearsal/dialogue-result/index?id=${encodeURIComponent(analysisId)}`,
       })
     } catch (e) {
-      setError(e instanceof Error ? e.message : '上传失败，请检查网络后重试。')
+      // 微信上 uploadFile 的失败值通常是普通对象 { errMsg }，不是 Error；
+      // 保留原始失败原因，才能区分本地文件、域名校验和服务端响应问题。
+      console.error('[dialogue-upload] uploadFile failed', e)
+      setError(uploadFailureMessage(e))
       setPhase('idle')
     }
   }

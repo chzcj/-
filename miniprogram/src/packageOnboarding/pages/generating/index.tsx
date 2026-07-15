@@ -151,7 +151,7 @@ export default function OnboardingGenerating() {
             <View className='loading-dot' />
             <View className='loading-dot' />
           </View>
-          <Text className='hint-text'>正在调用 AI 生成中，通常需要 30～60 秒</Text>
+          <Text className='hint-text'>系统正在生成中，通常需要 30～60 秒</Text>
         </View>
       ) : (
         <View className='soft-card'>

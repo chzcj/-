@@ -3,7 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { usePublicPageShare } from '@/hooks/useSharePage'
-import { formatRefreshedAt, type PortraitCardSection, type StructuralTension } from '@/lib/portraitCard'
+import { formatRefreshedAt, type PortraitCardSection } from '@/lib/portraitCard'
 import { buildProfileCardSharePath } from '@/lib/shareMessages'
 import { apiRequest } from '@/services/api'
 import './index.scss'
@@ -14,7 +14,7 @@ const CARD_TITLES: Record<string, string> = {
   behavior: '行为模式总结',
   interaction: '家庭互动模式',
   strategies: '试试这些好方法',
-  hypotheses: '孩子写作业的关注点',
+  hypotheses: '孩子写作业的机制',
   tensions: '家庭运转张力',
 }
 
@@ -46,7 +46,6 @@ export default function ProfileCardPage() {
   const [lead, setLead] = useState('')
   const [sections, setSections] = useState<PortraitCardSection[]>([])
   const [facts, setFacts] = useState<string[]>([])
-  const [tensions, setTensions] = useState<StructuralTension[]>([])
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -63,7 +62,6 @@ export default function ProfileCardPage() {
         lead?: string
         sections?: ApiSection[]
         anchoredFacts?: string[]
-        structuralTensions?: StructuralTension[]
         refreshedAt?: string | null
       }>(`/api/profile/card/${encodeURIComponent(cardId)}`, { method: 'GET' })
       if (cancelled) return
@@ -73,7 +71,6 @@ export default function ProfileCardPage() {
         setLead(res.data.lead || '')
         setSections(normalizeSections(res.data.sections))
         setFacts(res.data.anchoredFacts || [])
-        setTensions(res.data.structuralTensions || [])
         setRefreshedAt(res.data.refreshedAt || null)
       } else {
         setLoadError(res.error.message || '加载失败')
@@ -86,7 +83,7 @@ export default function ProfileCardPage() {
     }
   }, [cardId])
 
-  const hasContent = summary || lead || sections.length > 0 || tensions.length > 0 || facts.length > 0
+  const hasContent = summary || lead || sections.length > 0 || facts.length > 0
   const displayLead = lead && lead !== summary ? lead : ''
 
   const goBack = () => {
@@ -119,13 +116,6 @@ export default function ProfileCardPage() {
           <View className='hifi-card'>
             <Text className='muted'>{loadError}</Text>
           </View>
-        ) : cardId === 'tensions' && tensions.length ? (
-          tensions.map((t) => (
-            <View key={t.title} className='hifi-card tension-card'>
-              <Text className='section-label'>{t.title}</Text>
-              <Text>{t.detail}</Text>
-            </View>
-          ))
         ) : hasContent ? (
           <View className='hifi-card portrait-detail-card'>
             {displayLead ? <Text className='lead'>{displayLead}</Text> : null}

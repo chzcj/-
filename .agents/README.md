@@ -17,6 +17,11 @@ node .agents/scripts/sync-gitee.mjs
 3. 列出远程最近提交、尚未拉取的提交
 4. 打印 `.agents/HANDOFF.md` 最新一条
 
+## 重要复盘（语音）
+
+- [2026-07-14 语音失效复盘](./postmortems/2026-07-14-voice-asr-outage.md)（实时 ASR + 亲子录音：根因、试错、用户纠正应对、传承清单）
+- 配套规则：`.cursor/rules/voice-debug-code-first.mdc`、`.cursor/rules/voice-input-locked.mdc`
+
 若远程有新提交：
 
 ```bash

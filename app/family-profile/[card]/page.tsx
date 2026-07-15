@@ -6,8 +6,6 @@ import { useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
 import { PortraitCardDetail } from '@/components/hifi/PortraitCardDetail'
-import { StructuralTensionCard } from '@/components/hifi/StructuralTensionCard'
-import type { StructuralTension } from '@/types/deep-model-digest'
 import type { PortraitCardSection } from '@/types/portrait-card'
 
 const TITLES: Record<string, string> = {
@@ -16,7 +14,7 @@ const TITLES: Record<string, string> = {
   behavior: '行为模式总结',
   interaction: '家庭互动模式',
   strategies: '有效策略',
-  hypotheses: '待验证假设',
+  hypotheses: '孩子写作业的机制',
   tensions: '家庭运转张力',
 }
 
@@ -28,7 +26,6 @@ export default function ProfileCardDetailPage() {
   const [lead, setLead] = useState('')
   const [sections, setSections] = useState<PortraitCardSection[]>([])
   const [facts, setFacts] = useState<string[]>([])
-  const [tensions, setTensions] = useState<StructuralTension[]>([])
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -44,7 +41,6 @@ export default function ProfileCardDetailPage() {
           setLead(json.data.lead || '')
           setSections(json.data.sections || [])
           setFacts(json.data.anchoredFacts || [])
-          setTensions(json.data.structuralTensions || [])
           setRefreshedAt(json.data.refreshedAt || null)
         }
       } finally {
@@ -55,7 +51,7 @@ export default function ProfileCardDetailPage() {
   }, [card])
 
   const title = TITLES[card] || '画像详情'
-  const hasContent = summary || lead || sections.length > 0 || tensions.length > 0
+  const hasContent = summary || lead || sections.length > 0
 
   return (
     <OnboardingGuard>
@@ -69,16 +65,12 @@ export default function ProfileCardDetailPage() {
           {loading ? (
             <p className="hint-text">正在加载…</p>
           ) : hasContent ? (
-            card === 'tensions' && tensions.length ? (
-              <StructuralTensionCard tensions={tensions} />
-            ) : (
-              <PortraitCardDetail
-                summary={summary}
-                lead={lead}
-                sections={sections}
-                anchoredFacts={facts}
-              />
-            )
+            <PortraitCardDetail
+              summary={summary}
+              lead={lead}
+              sections={sections}
+              anchoredFacts={facts}
+            />
           ) : (
             <p className="hint-text">继续交流后，这里会出现更完整的深度分析。</p>
           )}

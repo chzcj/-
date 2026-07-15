@@ -36,15 +36,82 @@ export function isDevToolsSimulator(): boolean {
   }
 }
 
-async function connectAsrSocket(url: string): Promise<Taro.SocketTask | null> {
+type SocketHandlers = {
+  onOpen: () => void
+  onMessage: (msg: { data: string | ArrayBuffer }) => void
+  onError: (res: unknown) => void
+  onClose: (res: unknown) => void
+}
+
+function attachSocketHandlers(task: Taro.SocketTask, handlers: SocketHandlers) {
+  task.onOpen(handlers.onOpen)
+  task.onMessage(handlers.onMessage)
+  task.onError(handlers.onError)
+  task.onClose(handlers.onClose)
+}
+
+/**
+ * 连接 ASR WebSocket —— 全链路只允许调用一次 connectSocket。
+ *
+ * 坑（本会话已踩）：若先 Taro.connectSocket（内部已 wx.connectSocket），因返回 Promise
+ * 未通过 isSocketTask，再调一次 native，会：
+ * 1) 同一签名 URL 被用两次（讯飞签名单次有效）→ Connection refused
+ * 2) 泄漏未挂监听的 SocketTask，iOS 上 socketTaskId 堆高后整段 WSS 全拒
+ *
+ * 因此：有 wx 时只走原生一次，并在同一调用栈挂上全部监听；禁止 Taro+native 双开。
+ */
+function connectAsrSocket(url: string, handlers: SocketHandlers): Taro.SocketTask | null {
   try {
-    const pending = Taro.connectSocket({ url })
-    const task =
-      pending && typeof (pending as Promise<Taro.SocketTask>).then === 'function'
-        ? await pending
-        : (pending as unknown as Taro.SocketTask)
-    return isSocketTask(task) ? task : null
-  } catch {
+    let urlMark = url
+    try {
+      const u = new URL(url)
+      urlMark = `${u.protocol}//${u.host}${u.pathname}`
+    } catch {
+      /* keep raw */
+    }
+    console.info('[asr-socket] connect start', urlMark)
+
+    const nativeWx = (
+      globalThis as {
+        wx?: {
+          connectSocket: (opts: {
+            url: string
+            complete?: () => void
+            success?: (res: { errMsg?: string; socketTaskId?: string | number }) => void
+            fail?: (err: unknown) => void
+          }) => Taro.SocketTask
+        }
+      }
+    ).wx
+
+    if (!nativeWx?.connectSocket) {
+      console.warn('[asr-socket] no wx.connectSocket')
+      return null
+    }
+
+    // 唯一一次 connectSocket；success 只表示「发起成功」，不代表 onOpen。
+    const task = nativeWx.connectSocket({
+      url,
+      complete: () => undefined,
+      success: (res) => {
+        console.info('[asr-socket] connectSocket success', res?.errMsg, 'taskId=', res?.socketTaskId)
+      },
+      fail: (err) => {
+        console.warn('[asr-socket] connectSocket fail', err)
+        handlers.onError(err)
+      },
+    }) as unknown as Taro.SocketTask
+
+    if (!isSocketTask(task)) {
+      console.warn('[asr-socket] connect returned non-task')
+      return null
+    }
+
+    console.info('[asr-socket] single connect, registering listeners sync')
+    attachSocketHandlers(task, handlers)
+    return task
+  } catch (e) {
+    console.warn('[asr-socket] connect throw', e)
     return null
   }
 }
@@ -81,6 +148,17 @@ export function useTencentAsrInput() {
   const simulatorUnsupported = isDevToolsSimulator()
   const liveTranscript = transcript + interimTranscript
   const asrUnavailable = serviceUnavailable
+
+  function trace(event: string, extra?: Record<string, unknown>) {
+    console.info('[asr-session]', event, {
+      gen: sessionGenRef.current,
+      opened: socketOpenedRef.current,
+      recordingStarted: recordingStartedRef.current,
+      active: recorderState.active,
+      claimId: claimRef.current?.id || null,
+      ...extra,
+    })
+  }
 
   useEffect(() => {
     return () => cleanup()
@@ -126,26 +204,32 @@ export function useTencentAsrInput() {
     socketOpenedRef.current = false
     if (!socket || typeof socket.close !== 'function') return
     try {
+      trace('socket close requested')
       socket.close({ success: () => undefined, fail: () => undefined })
-    } catch {
-      /* ignore */
+    } catch (err) {
+      trace('socket close throw', { errMsg: err instanceof Error ? err.message : '' })
     }
   }
 
   function stopRecorder() {
-    if (!recordingStartedRef.current) return
+    if (!recordingStartedRef.current) {
+      trace('recorder stop skipped: not started')
+      return
+    }
     recordingStartedRef.current = false
     // 预演页 navigateTo 后本 hook 仍存活；若亲子页已 claim，绝不能 stop 全局录音器
     const claim = claimRef.current
     if (claim && !claim.isMine()) {
+      trace('recorder stop skipped: lost claim', { ownerClaimId: claim.id })
       claimRef.current = null
       return
     }
     recorderState.active = false
     try {
+      trace('recorder stop requested')
       Taro.getRecorderManager().stop()
-    } catch {
-      /* ignore */
+    } catch (err) {
+      trace('recorder stop throw', { errMsg: err instanceof Error ? err.message : '' })
     }
     releaseRecorderClaim(claim)
     claimRef.current = null
@@ -185,7 +269,8 @@ export function useTencentAsrInput() {
     }
   }
 
-  function cleanup() {
+  function cleanup(reason = 'unspecified') {
+    trace('cleanup', { reason })
     sessionGenRef.current += 1
     clearFlushTimer()
     resolveFinalWait()
@@ -200,7 +285,7 @@ export function useTencentAsrInput() {
   }
 
   function reset() {
-    cleanup()
+    cleanup('reset')
     setTranscript('')
     setInterimTranscript('')
     transcriptRef.current = ''
@@ -219,7 +304,7 @@ export function useTencentAsrInput() {
 
     if (parsed.isError) {
       setError(parsed.errorMessage || '语音识别暂时不可用，可以先打字。')
-      cleanup()
+      cleanup('iflytek payload error')
       return
     }
 
@@ -260,13 +345,17 @@ export function useTencentAsrInput() {
         if (claimRef.current && !claimRef.current.isMine()) return
         recordingStartedRef.current = false
         recorderState.active = false
+        trace('recorder onStop')
         if (!endSentRef.current) setIsListening(false)
       },
       onError: (err) => {
         if (sessionGenRef.current !== gen) return
         if (claimRef.current && !claimRef.current.isMine()) return
         // 空闲幽灵 onError：未真正开录成功则忽略（Claude「爽了」不变量）
-        if (!recordingStartedRef.current) return
+        if (!recordingStartedRef.current) {
+          trace('recorder ghost onError ignored', { errMsg: err?.errMsg || '' })
+          return
+        }
         recordingStartedRef.current = false
         recorderState.active = false
         const raw = err?.errMsg || '未知错误'
@@ -274,7 +363,7 @@ export function useTencentAsrInput() {
           ? `录音失败，请检查麦克风权限。(${raw})`
           : `录音失败，可以先打字输入。(${raw})`
         setError(msg)
-        cleanup()
+        cleanup('recorder onError')
       },
     }
   }
@@ -292,11 +381,13 @@ export function useTencentAsrInput() {
       })
       recordingStartedRef.current = true
       recorderState.active = true
+      trace('recorder start success')
       setIsListening(true)
-    } catch {
+    } catch (err) {
       recordingStartedRef.current = false
+      trace('recorder start throw', { errMsg: err instanceof Error ? err.message : '' })
       setError('无法启动录音，可以先打字输入。')
-      cleanup()
+      cleanup('recorder start throw')
     }
   }
 
@@ -323,6 +414,7 @@ export function useTencentAsrInput() {
   }
 
   async function startListening() {
+    trace('startListening requested')
     setError('')
     setServiceUnavailable(false)
     setIsConnecting(true)
@@ -341,7 +433,7 @@ export function useTencentAsrInput() {
       return
     }
 
-    cleanup()
+    cleanup('new startListening')
     const gen = sessionGenRef.current
     setIsConnecting(true)
     transcriptRef.current = ''
@@ -351,8 +443,9 @@ export function useTencentAsrInput() {
     endSentRef.current = false
     frameBufferRef.current = []
 
+    const signerNonce = `${Date.now()}_${Math.random().toString(36).slice(2)}`
     const urlRes = await apiRequest<{ wsUrl: string; sessionId: string }>(
-      '/api/asr/iflytek/url',
+      `/api/asr/iflytek/url?nonce=${encodeURIComponent(signerNonce)}`,
       { method: 'GET', timeout: URL_TIMEOUT_MS }
     )
     if (sessionGenRef.current !== gen) return
@@ -366,24 +459,13 @@ export function useTencentAsrInput() {
         )
       )
       setIsConnecting(false)
+      trace('sign url failed', { code: urlRes.error.code })
       return
     }
 
     // BFF sessionId 仅用于签名 uuid，不是引擎 end 所需 sessionId
     sessionIdRef.current = ''
     startRecorder(gen)
-
-    const socket = await connectAsrSocket(urlRes.data.wsUrl)
-    if (sessionGenRef.current !== gen) return
-
-    if (!socket) {
-      setError('语音连接失败，请稍后重试，或点「文」改用文字。')
-      cleanup()
-      return
-    }
-
-    socketRef.current = socket
-    socketOpenedRef.current = false
 
     let handshakeDone = false
     const finishHandshake = (ok: boolean) => {
@@ -393,7 +475,7 @@ export function useTencentAsrInput() {
       if (!ok) {
         if (sessionGenRef.current === gen) {
           setError('语音连接超时，请再按住试一次，或点「文」改用文字。')
-          cleanup()
+          cleanup('handshake failed')
         }
         notifyOpenWaiters(false)
         return
@@ -407,40 +489,59 @@ export function useTencentAsrInput() {
 
     const handshakeTimer = setTimeout(() => finishHandshake(false), HANDSHAKE_TIMEOUT_MS)
 
-    socket.onOpen(() => {
-      if (sessionGenRef.current !== gen) {
-        finishHandshake(false)
-        try {
-          socket.close({ success: () => undefined, fail: () => undefined })
-        } catch {
-          /* ignore */
+    // 微信官方要求 connectSocket 调用后立即同步监听 onOpen；connectAsrSocket 内部用
+    // 同步 wx.connectSocket + 同一调用栈注册回调，避免 await 让 onOpen 丢失。
+    const socket = connectAsrSocket(urlRes.data.wsUrl, {
+      onOpen: () => {
+        console.info('[asr-socket] onOpen', gen, 'cur=', sessionGenRef.current)
+        if (sessionGenRef.current !== gen) {
+          trace('onOpen stale session', { connectGen: gen })
+          finishHandshake(false)
+          try {
+            socketRef.current?.close({ success: () => undefined, fail: () => undefined })
+          } catch {
+            /* ignore */
+          }
+          return
         }
-        return
-      }
-      finishHandshake(true)
+        trace('onOpen')
+        finishHandshake(true)
+      },
+      onMessage: (msg) => {
+        if (sessionGenRef.current !== gen) return
+        const raw = typeof msg.data === 'string' ? msg.data : ''
+        if (raw) handleIflytekPayload(raw, gen)
+      },
+      onError: (res) => {
+        console.warn('[asr-socket] onError', gen, res)
+        trace('socket onError', { raw: JSON.stringify(res) })
+        if (sessionGenRef.current !== gen) return
+        finishHandshake(false)
+      },
+      onClose: (res) => {
+        console.warn('[asr-socket] onClose', gen, 'opened=', socketOpenedRef.current, res)
+        trace('socket onClose', { raw: JSON.stringify(res) })
+        if (socketRef.current) socketRef.current = null
+        socketOpenedRef.current = false
+        if (sessionGenRef.current === gen) {
+          setIsConnecting(false)
+          setIsReady(false)
+          if (!endSentRef.current) setIsListening(false)
+        }
+        if (!handshakeDone) finishHandshake(false)
+      },
     })
 
-    socket.onMessage((msg) => {
-      if (sessionGenRef.current !== gen) return
-      const raw = typeof msg.data === 'string' ? msg.data : ''
-      if (raw) handleIflytekPayload(raw, gen)
-    })
+    if (sessionGenRef.current !== gen) return
 
-    socket.onError(() => {
-      if (sessionGenRef.current !== gen) return
-      finishHandshake(false)
-    })
+    if (!socket) {
+      setError('语音连接失败，请稍后重试，或点「文」改用文字。')
+      cleanup()
+      return
+    }
 
-    socket.onClose(() => {
-      if (socketRef.current === socket) socketRef.current = null
-      socketOpenedRef.current = false
-      if (sessionGenRef.current === gen) {
-        setIsConnecting(false)
-        setIsReady(false)
-        if (!endSentRef.current) setIsListening(false)
-      }
-      if (!handshakeDone) finishHandshake(false)
-    })
+    socketRef.current = socket
+    socketOpenedRef.current = false
   }
 
   type StopListeningOptions = {

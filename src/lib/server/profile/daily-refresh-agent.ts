@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { callFastJson } from '@/lib/server/ark-agents'
+import { callFastJson, frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import { promptRegistry } from '@/lib/server/prompts/registry.generated'
 import { loadMemoryLayerItemById, upsertMemoryLayerItems } from '@/lib/server/db'
 import {
@@ -94,6 +94,8 @@ function buildFallbackSnapshot(ctx: RefreshContext, digestPack: DeepModelDigestP
     return { summary: truncateSummary(lead), lead }
   }
 
+  const tensionText = digestPack.structuralTensions[0] || cycleText || ''
+
   const portraitCards: DailyPortraitCards = {
     growth: mk(core || digestPack.mechanismNarrative),
     focus: mk(support || digestPack.cultivationFocus),
@@ -101,6 +103,7 @@ function buildFallbackSnapshot(ctx: RefreshContext, digestPack: DeepModelDigestP
     interaction: mk(cycleText || digestPack.interactionLoops[0] || ''),
     strategies: mk(support || digestPack.cultivationFocus),
     hypotheses: mk(hypText || digestPack.openHypotheses[0] || ''),
+    tensions: mk(tensionText),
   }
 
   const highlights = digestPack.anchoredFacts
@@ -216,6 +219,7 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
     pendingHypotheses: ctx.activeHypotheses,
     recentParentInputs: ctx.recentInputs,
     deepModelDigest: digestPack,
+    structuralTensionsRaw: digestPack.structuralTensions,
     feedNote: '材料已尽量给全（厚包）。请综合六维写画像，禁止只盯最近一条作业场景。',
     requireFactAnchor: true,
   }
@@ -224,7 +228,10 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
     thinkingChips: DailyThinkingChip[]
     portraitCards: DailyPortraitCards
     highlights?: string[]
-  }>(displaySystem(promptRegistry.dailyPortraitRefresh), payload, { maxTokens: 4096 }).catch(() => undefined)
+  }>(displaySystem(promptRegistry.dailyPortraitRefresh), payload, {
+    maxTokens: 6144,
+    disableThinking: frontAiThinkingDisabled(),
+  }).catch(() => undefined)
 
   const snapshot: DailyUiSnapshot =
     llmCards && Array.isArray(llmCards.thinkingChips) && llmCards.thinkingChips.length > 0

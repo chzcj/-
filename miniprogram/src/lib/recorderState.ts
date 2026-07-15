@@ -32,6 +32,24 @@ let currentOwner: RecorderHandlers | null = null
 let currentClaimId = 0
 let nextClaimId = 0
 
+function recorderTrace(event: string, extra?: Record<string, unknown>) {
+  console.info('[recorder-state]', event, {
+    active: recorderState.active,
+    claimId: currentClaimId || null,
+    hasOwner: Boolean(currentOwner),
+    ...extra,
+  })
+}
+
+/** 仅用于诊断与安全接管：不能根据 active 猜测全局 RecorderManager 是否真的在录。 */
+export function getRecorderSnapshot() {
+  return {
+    active: recorderState.active,
+    claimId: currentClaimId || null,
+    hasOwner: Boolean(currentOwner),
+  }
+}
+
 function bindWxCallbacksOnce() {
   if (wxCallbacksBound) return
   wxCallbacksBound = true
@@ -40,9 +58,11 @@ function bindWxCallbacksOnce() {
     if (res.frameBuffer) currentOwner?.onFrame?.(res.frameBuffer)
   })
   recorder.onStop((res) => {
+    recorderTrace('wx onStop', { tempFilePath: res?.tempFilePath || '' })
     currentOwner?.onStop?.(res || {})
   })
   recorder.onError((err) => {
+    recorderTrace('wx onError', { errMsg: err?.errMsg || '' })
     currentOwner?.onError?.(err || {})
   })
 }
@@ -53,6 +73,7 @@ export function claimRecorder(handlers: RecorderHandlers): RecorderClaim {
   const id = ++nextClaimId
   currentClaimId = id
   currentOwner = handlers
+  recorderTrace('claim', { claimId: id })
   return {
     id,
     isMine: () => currentClaimId === id && currentOwner === handlers,
@@ -61,9 +82,15 @@ export function claimRecorder(handlers: RecorderHandlers): RecorderClaim {
 
 /** 页面卸载等场景释放所有权（仅当仍归自己时）。 */
 export function releaseRecorder(handlers: RecorderHandlers) {
-  if (currentOwner === handlers) currentOwner = null
+  if (currentOwner === handlers) {
+    recorderTrace('release owner')
+    currentOwner = null
+  }
 }
 
 export function releaseRecorderClaim(claim: RecorderClaim | null | undefined) {
-  if (claim?.isMine()) currentOwner = null
+  if (claim?.isMine()) {
+    recorderTrace('release claim', { claimId: claim.id })
+    currentOwner = null
+  }
 }

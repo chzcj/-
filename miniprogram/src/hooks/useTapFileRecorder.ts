@@ -4,6 +4,7 @@ import { ensureRecordPermission } from '@/lib/asrPermission'
 import {
   recorderState,
   claimRecorder,
+  getRecorderSnapshot,
   releaseRecorderClaim,
   type RecorderClaim,
   type RecorderHandlers,
@@ -39,6 +40,16 @@ export function useTapFileRecorder() {
   const recordingStartedRef = useRef(false)
   const sessionGenRef = useRef(0)
 
+  function trace(event: string, extra?: Record<string, unknown>) {
+    console.info('[tap-recorder]', event, {
+      gen: sessionGenRef.current,
+      isRecording: recordingStartedRef.current,
+      active: recorderState.active,
+      claimId: claimRef.current?.id || null,
+      ...extra,
+    })
+  }
+
   function clearTimer() {
     if (timerRef.current) {
       clearInterval(timerRef.current)
@@ -55,6 +66,7 @@ export function useTapFileRecorder() {
         recorderState.active = false
         clearTimer()
         const path = res.tempFilePath || ''
+        trace('onStop', { tempFilePath: path })
         setState((s) => ({
           ...s,
           isRecording: false,
@@ -69,6 +81,7 @@ export function useTapFileRecorder() {
         if (claimRef.current && !claimRef.current.isMine()) return
         const waitingTakeover =
           Boolean(resolveStopRef.current) && !recordingStartedRef.current
+        trace('onError', { errMsg: err?.errMsg || '', waitingTakeover })
         // 未真正开录成功时的幽灵 onError 忽略；接管等待中的 stop 回调要放行
         if (!recordingStartedRef.current && !waitingTakeover) return
         recordingStartedRef.current = false
@@ -93,8 +106,14 @@ export function useTapFileRecorder() {
     }
   }
 
-  function waitForRecorderIdle(): Promise<void> {
-    if (!recorderState.active) {
+  function waitForRecorderIdle(previous: ReturnType<typeof getRecorderSnapshot>): Promise<void> {
+    if (!previous.active) {
+      return Promise.resolve()
+    }
+    // active=true 但没有归属方，是历史残留状态；绝不可对空闲全局 recorder 调 stop。
+    if (!previous.hasOwner) {
+      trace('clear stale active without stop', previous)
+      recorderState.active = false
       return Promise.resolve()
     }
     return new Promise((resolve) => {
@@ -110,6 +129,7 @@ export function useTapFileRecorder() {
       }
       resolveStopRef.current = () => finish()
       try {
+        trace('takeover stop previous owner', previous)
         Taro.getRecorderManager().stop()
       } catch {
         finish()
@@ -136,11 +156,13 @@ export function useTapFileRecorder() {
     sessionGenRef.current += 1
     const gen = sessionGenRef.current
     const handlers = buildRecorderHandlers(gen)
+    const previous = getRecorderSnapshot()
+    trace('start requested', { previous })
     claimRef.current = claimRecorder(handlers)
 
     // 预演页实时 ASR 可能仍占着全局录音器（页面隐藏未卸载）
-    if (recorderState.active) {
-      await waitForRecorderIdle()
+    if (previous.active) {
+      await waitForRecorderIdle(previous)
       if (sessionGenRef.current !== gen) return false
       claimRef.current = claimRecorder(handlers)
     }
@@ -166,11 +188,13 @@ export function useTapFileRecorder() {
       })
       recordingStartedRef.current = true
       recorderState.active = true
+      trace('start success')
       return true
-    } catch {
+    } catch (err) {
       clearTimer()
       recordingStartedRef.current = false
       recorderState.active = false
+      trace('start throw', { errMsg: err instanceof Error ? err.message : '' })
       setState((s) => ({ ...s, isRecording: false, error: '无法开始录音' }))
       return false
     }
@@ -180,6 +204,7 @@ export function useTapFileRecorder() {
     return new Promise((resolve) => {
       const elapsed = Date.now() - startedAtRef.current
       if (!recordingStartedRef.current) {
+        trace('stop ignored: not recording')
         resolve({ filePath: '', elapsedMs: elapsed, tooShort: true })
         return
       }
@@ -191,8 +216,10 @@ export function useTapFileRecorder() {
         })
       }
       try {
+        trace('stop requested')
         Taro.getRecorderManager().stop()
-      } catch {
+      } catch (err) {
+        trace('stop throw', { errMsg: err instanceof Error ? err.message : '' })
         clearTimer()
         recordingStartedRef.current = false
         recorderState.active = false

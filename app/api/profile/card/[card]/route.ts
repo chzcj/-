@@ -26,7 +26,7 @@ const CARD_TITLES: Record<ProfileCardKey, string> = {
   behavior: '行为模式总结',
   interaction: '家庭互动模式',
   strategies: '试试这些好方法',
-  hypotheses: '孩子写作业的关注点',
+  hypotheses: '孩子写作业的机制',
   tensions: '家庭运转张力',
 }
 
@@ -56,7 +56,6 @@ export async function GET(
     supportFocus: built?.supportFocus,
     preferLlm: Boolean(ui?.portraitCards?.[key as PortraitCardKey] && ui.source === 'llm'),
   }
-  const structuralTensions = digest?.structuralTensions || []
 
   const topMechanisms = pickTopMechanismCards(network?.candidateMechanismMatrix, 5)
   const chainCells = pickDynamicChainCells({
@@ -68,21 +67,6 @@ export async function GET(
     topMechanisms,
     chainCells,
     defaultTab: 'top5' as const,
-  }
-
-  if (key === 'tensions') {
-    return ok({
-      card: key,
-      title: CARD_TITLES[key],
-      summary: structuralTensions[0]
-        ? `${structuralTensions[0].title}：${structuralTensions[0].detail}`
-        : '',
-      sections: [],
-      anchoredFacts: [],
-      structuralTensions,
-      refreshedAt: ui?.refreshedAt || digest?.updatedAt || null,
-      ...shared,
-    })
   }
 
   const rawCard = ui?.portraitCards?.[key as PortraitCardKey]

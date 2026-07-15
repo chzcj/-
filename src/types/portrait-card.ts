@@ -5,6 +5,7 @@ export type PortraitCardKey =
   | 'interaction'
   | 'strategies'
   | 'hypotheses'
+  | 'tensions'
 
 export type PortraitCardSection = {
   heading: string
