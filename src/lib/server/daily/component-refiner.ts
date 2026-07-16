@@ -7,7 +7,7 @@ import {
   selectDailyComponents,
   type DailyComponentId,
 } from '@/lib/daily/selectDailyComponents'
-import { callFastJson, isFastAIEnabled } from '@/lib/server/ark-agents'
+import { callFastJson, frontAiThinkingDisabled, isFastAIEnabled } from '@/lib/server/ark-agents'
 
 const MAX = 3
 
@@ -66,7 +66,8 @@ export async function refineDailyActiveComponents(args: {
         hasEvidence: Boolean(cards.evidenceBasis),
         hasDeepReading: Boolean(cards.understandingCard?.reading),
         hasDeepAnalysis: Boolean(cards.deepAnalysis?.points?.length),
-      }
+      },
+      { disableThinking: frontAiThinkingDisabled() }
     )
 
     const valid = (refined?.components || []).filter(

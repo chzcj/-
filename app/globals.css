@@ -3698,6 +3698,14 @@ select.edit-input {
   margin-top: 10px;
 }
 
+.deep-expand-preparing {
+  margin: 0;
+  padding: 12px 4px 4px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-secondary, #4a5a50);
+}
+
 .deep-expand-feedback {
   margin-top: 10px;
 }

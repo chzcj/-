@@ -58,15 +58,16 @@ export const REHEARSAL_SCENES: RehearsalScene[] = [
   },
 ]
 
+/** @deprecated 自定义场景已下线 */
 export const CUSTOM_SCENE: RehearsalScene = {
   id: 'custom',
-  title: '自定义场景',
-  subtitle: '把你想练的情况直接说出来。',
-  summary: '把你想练的情况直接说出来，我会先帮你整理成一个可预演的场景。',
-  placeholder: '描述一下你想练的场景。例如：今晚作业拖了很久，我想让他开始写，但一说就吵。',
+  title: '根据真实对话预演',
+  subtitle: '',
+  summary: REHEARSAL_SCENES[0]?.summary || '',
+  placeholder: '',
   seed: '',
 }
 
 export function getRehearsalScene(id: string) {
-  return REHEARSAL_SCENES.find((s) => s.id === id) || CUSTOM_SCENE
+  return REHEARSAL_SCENES.find((s) => s.id === id) || REHEARSAL_SCENES[0]
 }

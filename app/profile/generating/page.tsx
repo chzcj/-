@@ -248,7 +248,6 @@ export default function GeneratingPage() {
 
         setStep(3)
         await waitForTripleReady(() => cancelled)
-        await waitForDeepModelDigest(() => cancelled)
 
         if (!cancelled) {
           router.push('/profile/result?onboarding=1')
@@ -309,7 +308,7 @@ export default function GeneratingPage() {
             </div>
           </div>
           <p className="hint-text" style={{ marginTop: 12 }}>
-            正在调用 AI 生成中，通常需要 30～60 秒
+            首版画像生成后会先展示，深层机制会继续在后台交叉验证
           </p>
         </section>
       ) : (
@@ -329,25 +328,9 @@ function mapStrength(s: string | undefined): 'weak' | 'medium' | 'strong' {
   return 'medium'
 }
 
-async function waitForDeepModelDigest(isCancelled: () => boolean): Promise<void> {
-  const MAX_TRIES = 36
-  const INTERVAL = 2500
-  for (let i = 0; i < MAX_TRIES; i++) {
-    if (isCancelled()) return
-    try {
-      const r = await fetch('/api/profile/deep-model-status', { credentials: 'include' })
-      const json = await r.json()
-      if (json.ok && json.data?.mechanismReviewReady) return
-    } catch {
-      /* ignore */
-    }
-    if (isCancelled()) return
-    await new Promise<void>((resolve) => setTimeout(resolve, INTERVAL))
-  }
-}
-
 async function waitForTripleReady(isCancelled: () => boolean): Promise<void> {
-  const MAX_TRIES = 16
+  // synthesis + diagnosis 已保存首版完整画像；三件套慢时不再让用户等待后台深度 Job。
+  const MAX_TRIES = 6
   const INTERVAL = 2500
   for (let i = 0; i < MAX_TRIES; i++) {
     if (isCancelled()) return

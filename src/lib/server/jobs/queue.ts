@@ -471,8 +471,12 @@ export async function forceLoginJobCheck(tenant: TenantId, maxReplay = 5): Promi
   // 重投 failed（排除心跳行）
   await pool.query(
     `UPDATE job_queue SET status='pending', last_error=NULL, run_after=NOW(), updated_at=NOW()
-     WHERE status='failed' AND job_type <> '__heartbeat__' AND ${FILTER}
-     ORDER BY id DESC LIMIT $2`,
+     WHERE id IN (
+       SELECT id FROM job_queue
+       WHERE status='failed' AND job_type <> '__heartbeat__' AND ${FILTER}
+       ORDER BY id DESC
+       LIMIT $2
+     )`,
     [fam, maxReplay]
   ).catch(err => console.warn('[jobs] 登录补跑 failed 重投失败:', err))
 

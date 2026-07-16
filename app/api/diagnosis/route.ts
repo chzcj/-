@@ -20,6 +20,7 @@ function asStringArray(value: unknown): string[] {
 
 export async function POST(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
+  const startedAt = Date.now()
 
   try {
     const body = await request.json()
@@ -122,6 +123,9 @@ export async function POST(request: Request) {
 
     // 后台记忆写入入队（可靠重试）。输出 diagnosis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
     void enqueueJob('memory_write', { plan: writePlan, tenant }, null, createId('trace'))
+    console.info(
+      `[profile:diagnosis] durationMs=${Date.now() - startedAt} facts=${(incomingFacts.length > 0 ? incomingFacts : retrievalPacket.highStrengthEvidence).length} loopSteps=${output.familyInteractionLoop.loopSteps.length} verification=${output.needsFurtherVerification.length} thinking=enabled`
+    )
 
     return ok({ diagnosis: output })
   } catch (error) {

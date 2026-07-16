@@ -2,7 +2,6 @@
 
 .dialogue-result-page {
   min-height: 100vh;
-  padding: 0 16px 32px;
   box-sizing: border-box;
   background: $shell-gradient;
 }
@@ -11,53 +10,299 @@
   height: calc(100vh - 88px);
 }
 
-.dialogue-line {
-  padding: 10px 0;
+.dialogue-result-inner {
+  padding: $page-padding-y-top $page-padding-x $page-padding-y-bottom;
+  box-sizing: border-box;
+}
+
+.dialogue-result-flow {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+/* —— 状态面板：loading / error / insufficient —— */
+
+.dialogue-state-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-top: 28px;
+  padding: $spacing-xl $spacing-lg;
+  border-radius: $radius-card;
+  background: $card;
+  border: 1px solid rgba(111, 159, 86, 0.1);
+  box-shadow: $shadow-soft;
+  text-align: center;
+}
+
+.dialogue-state-panel--error {
+  border-color: rgba(192, 57, 43, 0.14);
+  background: rgba(255, 255, 247, 0.94);
+}
+
+.dialogue-state-panel--muted {
+  background: rgba(251, 247, 220, 0.72);
+  border-color: rgba(111, 159, 86, 0.16);
+}
+
+.dialogue-loader {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(111, 159, 86, 0.2);
+  border-top-color: $green-deep;
+  animation: dialogue-spin 0.8s linear infinite;
+}
+
+@keyframes dialogue-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dialogue-state-title {
+  display: block;
+  font-size: $text-title;
+  font-weight: $font-weight-display;
+  color: $ink;
+  line-height: 1.4;
+}
+
+.dialogue-state-text {
+  display: block;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+  color: $ink-soft;
+}
+
+.dialogue-state-panel .pill.block {
+  margin-top: $spacing-xs;
+  min-height: $btn-height-primary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* —— 概览一句（轻量导语，非卡片） —— */
+
+.dialogue-overview {
+  padding: 2px 2px $spacing-md;
   border-bottom: 1px solid $line;
 }
 
-.dialogue-line.highlight {
-  background: rgba(157, 204, 117, 0.12);
-  border-radius: 12px;
-  padding: 10px 12px;
-  margin: 6px 0;
-  border-bottom: none;
-}
-
-.dialogue-speaker {
+.dialogue-overview-kicker {
   display: block;
-  font-size: 12px;
+  margin-bottom: 6px;
+  font-size: $text-small;
   font-weight: 700;
   color: $green-deep;
-  margin-bottom: 4px;
+  letter-spacing: 0.02em;
 }
 
-.dialogue-text {
+.dialogue-overview-text {
   display: block;
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: $text-title;
+  font-weight: 600;
+  line-height: 1.5;
   color: $ink;
 }
 
-.dialogue-reason {
+/* —— 今晚可试（行动色带，区别于解读卡） —— */
+
+.dialogue-try-tonight {
+  padding: $spacing-md $spacing-md $spacing-md 18px;
+  border-radius: $radius-row;
+  background: linear-gradient(135deg, rgba(241, 248, 223, 0.95), rgba(251, 247, 220, 0.88));
+  border: 1px solid rgba(111, 159, 86, 0.18);
+  border-left: 4px solid $green;
+  box-shadow: $shadow-lift;
+}
+
+.dialogue-try-tonight-badge {
+  display: block;
+  margin-bottom: 6px;
+  font-size: $text-small;
+  font-weight: 700;
+  color: $green-deep;
+}
+
+.dialogue-try-tonight-body {
+  display: block;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+  color: $ink;
+  font-weight: 500;
+}
+
+/* —— 示范对话（脚本块） —— */
+
+.dialogue-section-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: $text-small;
+  font-weight: 700;
+  color: $green-deep;
+}
+
+.dialogue-sample-script {
+  padding: $spacing-md;
+  border-radius: $radius-control;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px dashed rgba(111, 159, 86, 0.22);
+}
+
+.dialogue-sample-text {
+  display: block;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+  color: $ink-soft;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* —— 原文时间线：家长/孩子气泡 —— */
+
+.dialogue-timeline {
+  margin-top: 4px;
+}
+
+.dialogue-timeline-head {
+  margin-bottom: 10px;
+}
+
+.dialogue-timeline-hint {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: $text-small;
+  line-height: $text-small-lh;
   color: $muted;
 }
 
-.sample-dialogue {
-  white-space: pre-wrap;
+.dialogue-timeline-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: $spacing-sm 0 $spacing-xs;
 }
+
+.dialogue-bubble-row {
+  width: 100%;
+  display: flex;
+}
+
+.dialogue-bubble-row.is-child {
+  justify-content: flex-start;
+}
+
+.dialogue-bubble-row.is-parent {
+  justify-content: flex-end;
+}
+
+.dialogue-bubble {
+  max-width: min(#{$bubble-parent-max-ratio}, 292px);
+  padding: 12px 14px;
+  border-radius: $radius-row;
+  box-sizing: border-box;
+  word-break: break-word;
+}
+
+.dialogue-bubble-row.is-child .dialogue-bubble {
+  border-top-left-radius: $radius-inner;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: $shadow-lift;
+}
+
+.dialogue-bubble-row.is-parent .dialogue-bubble {
+  border-top-right-radius: $radius-inner;
+  color: #fff;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+  box-shadow: $shadow-lift;
+}
+
+.dialogue-bubble-row.is-highlight .dialogue-bubble {
+  position: relative;
+}
+
+.dialogue-bubble-row.is-child.is-highlight .dialogue-bubble {
+  background: $butter-soft;
+  border-color: rgba(157, 204, 117, 0.42);
+  box-shadow: 0 0 0 2px rgba(157, 204, 117, 0.16), $shadow-lift;
+}
+
+.dialogue-bubble-row.is-parent.is-highlight .dialogue-bubble {
+  background: linear-gradient(135deg, #9dcc75, #6f9f56);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28), $shadow-lift;
+}
+
+.dialogue-bubble-speaker {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  opacity: 0.88;
+}
+
+.dialogue-bubble-row.is-child .dialogue-bubble-speaker {
+  color: $green-deep;
+}
+
+.dialogue-bubble-row.is-parent .dialogue-bubble-speaker {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.dialogue-bubble-text {
+  display: block;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+}
+
+.dialogue-bubble-row.is-child .dialogue-bubble-text {
+  color: $ink;
+}
+
+.dialogue-bubble-row.is-parent .dialogue-bubble-text {
+  color: #fff;
+}
+
+.dialogue-bubble-reason {
+  display: block;
+  margin-top: 8px;
+  padding-top: 8px;
+  font-size: $text-small;
+  line-height: $text-small-lh;
+  border-top: 1px solid rgba(111, 159, 86, 0.14);
+}
+
+.dialogue-bubble-row.is-child .dialogue-bubble-reason {
+  color: $green-deep;
+}
+
+.dialogue-bubble-row.is-parent .dialogue-bubble-reason {
+  color: rgba(255, 255, 255, 0.9);
+  border-top-color: rgba(255, 255, 255, 0.22);
+}
+
+/* —— 底部 CTA —— */
 
 .dialogue-result-actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin: 16px 0 40px;
+  margin: $spacing-md 0 40px;
 }
 
-.dialogue-error {
-  color: #c0392b;
-  font-size: 14px;
+.dialogue-result-actions .pill.block {
+  min-height: $btn-height-primary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 解读卡在本页的间距微调 */
+.dialogue-result-flow .authority-insight-card {
+  margin-bottom: 0;
 }

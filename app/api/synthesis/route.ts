@@ -11,6 +11,7 @@ import type { EntryEvidencePack } from '@/types/database'
 
 export async function POST(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
+  const startedAt = Date.now()
 
   try {
     const body = await request.json()
@@ -75,6 +76,9 @@ export async function POST(request: Request) {
 
     // 后台记忆写入入队（可靠重试）。输出 synthesis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
     void enqueueJob('memory_write', { plan: writePlan, tenant }, null, createId('trace'))
+    console.info(
+      `[profile:synthesis] durationMs=${Date.now() - startedAt} packs=${packs.length} crossEntry=${output.crossEntryEvidenceMap.length} mechanisms=${output.candidateMechanismMatrix.length} thinking=enabled`
+    )
 
     return ok({ synthesis: output })
   } catch (error) {

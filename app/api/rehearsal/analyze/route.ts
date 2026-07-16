@@ -230,7 +230,7 @@ export async function POST(request: Request) {
                   (delta) => tracker.feed(delta),
                   // 前台表达层关闭隐式思考：孩子怎么回应由注入的画像/原话/循环决定，
                   // 无需模型现场推理（实测省数秒首字）。FRONT_AI_THINKING=on 回滚。
-                  { maxTokens: 1400, disableThinking: frontAiThinkingDisabled() }
+                  { maxTokens: 2600, disableThinking: frontAiThinkingDisabled() }
                 )
 
                 const { reaction, restJson } = tracker.finalize()
@@ -302,7 +302,7 @@ export async function POST(request: Request) {
 要求：headline 一句话概括冲突核心；explanation 解释家长和孩子的真实互动机制；escalationSentence 指出最容易让冲突升级的一句话；childMayHear 说明孩子可能怎么听成这句话；suggestedReplacement 给一句更稳的替换说法。
 只输出 JSON，不输出 Markdown 或解释。`,
         { dialogue: parentText },
-        { maxTokens: 1000 }
+        { maxTokens: 1800, disableThinking: frontAiThinkingDisabled() }
       ).catch(() => undefined)
 
       if (result?.headline) {
@@ -326,7 +326,7 @@ export async function POST(request: Request) {
 要求：headline 一句话概括家长表达的关键问题；explanation 解释家长想表达的和孩子可能接收的差异；childMayHear 列出 2-3 条孩子可能的接收方式；stuckPoint 指出最容易卡住的地方；suggestedWording 给一句更有连接感的替换说法。
 只输出 JSON，不输出 Markdown 或解释。`,
         { parentText },
-        { maxTokens: 1000 }
+        { maxTokens: 1800, disableThinking: frontAiThinkingDisabled() }
       ).catch(() => undefined)
 
       if (result?.headline) {

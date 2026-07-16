@@ -147,15 +147,25 @@ export async function runSynthesisPipeline(input: SynthesisInput): Promise<Synth
 
   const existingNetworkSummary = summarizeExistingNetwork(input.existingNetwork)
 
-  /* 构建给 AI 的每个入口总结 — 只传结构化摘要，不传原始文本 */
+  /* 首次画像是深度建模入口：传足各模块的结构化证据，不能只保留前几条。 */
    const entrySummaries = packs.map(p => ({
      entryName: p.entryName,
-     stageSummary: p.handoffToSummaryAgent.mostLikelyLocalMechanisms?.[0] || p.rawInputSummary.slice(0, 100),
-     keyFacts: p.decomposedInput.verifiableFacts.slice(0, 4),
-     keyBehaviors: p.decomposedInput.childBehaviors.slice(0, 3),
-     keyTriggers: p.decomposedInput.triggerPoints.slice(0, 2),
-     keyParentActions: p.decomposedInput.parentActions.slice(0, 2),
-     keyGaps: p.decomposedInput.missingInformation.slice(0, 2),
+    stageSummary: p.handoffToSummaryAgent.mostLikelyLocalMechanisms?.join('；') || p.rawInputSummary,
+    rawInputSummary: p.rawInputSummary,
+    keyFacts: p.decomposedInput.verifiableFacts.slice(0, 16),
+    keyBehaviors: p.decomposedInput.childBehaviors.slice(0, 16),
+    keyTriggers: p.decomposedInput.triggerPoints.slice(0, 12),
+    keyParentActions: p.decomposedInput.parentActions.slice(0, 12),
+    parentEvaluations: p.decomposedInput.parentEvaluations.slice(0, 12),
+    parentGoals: p.decomposedInput.parentGoals.slice(0, 12),
+    keyGaps: p.decomposedInput.missingInformation.slice(0, 12),
+    triedMethods: p.decomposedInput.triedMethods || [],
+    parentDisagreements: p.decomposedInput.parentDisagreements || [],
+    companionshipTime: p.decomposedInput.companionshipTime || '',
+    childInterests: p.decomposedInput.childInterests || [],
+    subjectStates: p.decomposedInput.subjectStates || [],
+    handoffEvidence: p.handoffToSummaryAgent.mostImportantEvidence,
+    handoffWarnings: p.handoffToSummaryAgent.warnings,
    }))
 
   const taskPrompt = `四模块首次画像综合建模（daily / homework / communication / family）。请进行跨模块综合分析。
@@ -170,8 +180,8 @@ export async function runSynthesisPipeline(input: SynthesisInput): Promise<Synth
 规则：
 - 不能把家长评价写成孩子事实
 - 不能停在中间变量
-- crossEntryEvidenceMap **4–8 条**即可，每条必须有具体证据
-- candidateMechanismMatrix **6–8 条**即可（后续 deep_mechanism 扩多域），每条 2 条 supportingEvidence
+- crossEntryEvidenceMap：材料足够时 **8–12 条**，每条必须有具体证据、适用条件与证据强度
+- candidateMechanismMatrix：材料足够时 **10–15 条**，每条至少 2 条 supportingEvidence，必须写清可能的保护功能、缺失证据与可替代解释
 - 若有既有证据网摘要：可吸收已验证机制，避免无证据推翻；材料不足时勿硬抬置信度
 - 输出完整 JSON，不要省略字段${existingNetworkSummary.length ? `
 
@@ -191,7 +201,8 @@ ${input.crossCuttingSupplement.slice(0, 800)}` : ''}`;
       moduleKeys: ['daily', 'homework', 'communication', 'family'],
       ...(existingNetworkSummary.length ? { existingNetworkSummary } : {}),
     },
-    { maxTokens: Number(process.env.FAST_AI_SYNTHESIS_MAX_TOKENS || 3500) }
+    // 后台综合保留完整 thinking；提高输出上限以承载跨模块证据、反证与交接包。
+    { maxTokens: Number(process.env.FAST_AI_SYNTHESIS_MAX_TOKENS || 8192) }
   ).catch(() => undefined as AiSynthesisOutput | undefined)
 
   const aiOutput = aiResult

@@ -137,7 +137,8 @@ export async function streamSingleSectionCopy(
       ...payload,
       sectionSkeleton: { id: skeleton.id, label: skeleton.label, kind: skeleton.kind, hidden: skeleton.hidden },
     },
-    onDelta
+    onDelta,
+    { disableThinking: frontAiThinkingDisabled() }
   )
 }
 
@@ -162,7 +163,7 @@ export async function streamDailySectionCopy(
     sectionSkeletons: skeletons.map((s) => ({ id: s.id, label: s.label, kind: s.kind, hidden: s.hidden })),
   }, (delta) => {
     tracker.feed(delta)
-  }, { maxTokens: 2048 })
+  }, { maxTokens: 2048, disableThinking: frontAiThinkingDisabled() })
 
   return tracker.finalize()
 }

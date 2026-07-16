@@ -26,6 +26,10 @@ type AnalysisPayload = {
   errorMessage?: string
 }
 
+function isChildSpeaker(speaker: string) {
+  return speaker === '孩子'
+}
+
 export default function DialogueResultPage() {
   useSafeShareAppMessage({ title: '育见 · 对话分析' })
   const router = useRouter()
@@ -74,6 +78,10 @@ export default function DialogueResultPage() {
     void Taro.switchTab({ url: '/pages/rehearsal/index' })
   }
 
+  const goBackRehearsal = () => {
+    void Taro.switchTab({ url: '/pages/rehearsal/index' })
+  }
+
   const toggleSpeaker = (index: number) => {
     if (!data) return
     const next = data.segments.map((s, i) =>
@@ -88,82 +96,124 @@ export default function DialogueResultPage() {
       <DeepPageHeader
         title='对话分析'
         showClose
-        onBack={() => void Taro.switchTab({ url: '/pages/rehearsal/index' })}
-        onClose={() => void Taro.switchTab({ url: '/pages/rehearsal/index' })}
+        onBack={goBackRehearsal}
+        onClose={goBackRehearsal}
       />
 
-      <ScrollView scrollY className='dialogue-result-scroll'>
-        {loading ? <Text className='muted'>加载中…</Text> : null}
-        {error ? <Text className='dialogue-error'>{error}</Text> : null}
-
-        {data?.status === 'failed' ? (
-          <Text className='dialogue-error'>{data.errorMessage || '分析失败'}</Text>
-        ) : null}
-
-        {data?.status === 'insufficient' ? (
-          <View className='soft-card'>
-            <Text className='soft-card-body'>
-              {data.errorMessage || '这段录音里没有听到有效的亲子对话，下次真实交流时再录一段就好。'}
-            </Text>
-          </View>
-        ) : null}
-
-        {data && data.status === 'done' ? (
-          <>
-            {data.summary ? (
-              <View className='soft-card'>
-                <Text className='section-label'>本次概览</Text>
-                <Text className='soft-card-body'>{data.summary}</Text>
-              </View>
-            ) : null}
-
-            <AuthorityInsightCard title='育见解读' body={data.analysis} />
-
-            {data.tryTonight ? (
-              <View className='soft-card'>
-                <Text className='section-label'>今晚可以试</Text>
-                <Text className='soft-card-body'>{data.tryTonight}</Text>
-              </View>
-            ) : null}
-
-            {data.sampleDialogue ? (
-              <View className='soft-card'>
-                <Text className='section-label'>示范对话</Text>
-                <Text className='soft-card-body sample-dialogue'>{data.sampleDialogue}</Text>
-              </View>
-            ) : null}
-
-            <View className='soft-card'>
-              <Text className='section-label'>对话原文</Text>
-              <Text className='hint-text'>点某段可切换「家长 / 孩子」</Text>
-              {data.segments.map((seg, i) => (
-                <View
-                  key={`${i}-${seg.text.slice(0, 8)}`}
-                  className={seg.highlight ? 'dialogue-line highlight' : 'dialogue-line'}
-                  onClick={() => toggleSpeaker(i)}
-                >
-                  <Text className='dialogue-speaker'>{seg.speaker}</Text>
-                  <Text className='dialogue-text'>{seg.text}</Text>
-                  {seg.highlightReason ? (
-                    <Text className='dialogue-reason'>{seg.highlightReason}</Text>
-                  ) : null}
-                </View>
-              ))}
+      <ScrollView scrollY className='dialogue-result-scroll' enhanced showScrollbar={false}>
+        <View className='dialogue-result-inner'>
+          {loading ? (
+            <View className='dialogue-state-panel'>
+              <View className='dialogue-loader' />
+              <Text className='dialogue-state-title'>正在整理对话分析</Text>
+              <Text className='dialogue-state-text'>育见正在听你们刚才说了什么…</Text>
             </View>
+          ) : null}
 
-            <View className='dialogue-result-actions'>
-              <Text className='pill primary' onClick={goRehearsal}>
-                用这次对话去情景预演
-              </Text>
-              <Text
-                className='pill'
-                onClick={() => void Taro.switchTab({ url: '/pages/rehearsal/index' })}
-              >
+          {error ? (
+            <View className='dialogue-state-panel dialogue-state-panel--error'>
+              <Text className='dialogue-state-title'>暂时没能打开结果</Text>
+              <Text className='dialogue-state-text'>{error}</Text>
+              <Text className='pill block' onClick={goBackRehearsal}>
                 返回预演
               </Text>
             </View>
-          </>
-        ) : null}
+          ) : null}
+
+          {data?.status === 'failed' ? (
+            <View className='dialogue-state-panel dialogue-state-panel--error'>
+              <Text className='dialogue-state-title'>分析没有完成</Text>
+              <Text className='dialogue-state-text'>{data.errorMessage || '分析失败'}</Text>
+              <Text className='pill block' onClick={goBackRehearsal}>
+                返回预演
+              </Text>
+            </View>
+          ) : null}
+
+          {data?.status === 'insufficient' ? (
+            <View className='dialogue-state-panel dialogue-state-panel--muted'>
+              <Text className='dialogue-state-title'>这段录音还不够</Text>
+              <Text className='dialogue-state-text'>
+                {data.errorMessage ||
+                  '这段录音里没有听到有效的亲子对话，下次真实交流时再录一段就好。'}
+              </Text>
+              <Text className='pill block' onClick={goBackRehearsal}>
+                返回预演
+              </Text>
+            </View>
+          ) : null}
+
+          {data && data.status === 'done' ? (
+            <View className='dialogue-result-flow'>
+              {data.summary ? (
+                <View className='dialogue-overview'>
+                  <Text className='dialogue-overview-kicker'>本次概览</Text>
+                  <Text className='dialogue-overview-text'>{data.summary}</Text>
+                </View>
+              ) : null}
+
+              <AuthorityInsightCard title='育见解读' body={data.analysis} />
+
+              {data.tryTonight ? (
+                <View className='dialogue-try-tonight'>
+                  <Text className='dialogue-try-tonight-badge'>今晚可试</Text>
+                  <Text className='dialogue-try-tonight-body'>{data.tryTonight}</Text>
+                </View>
+              ) : null}
+
+              {data.sampleDialogue ? (
+                <View className='dialogue-sample'>
+                  <Text className='dialogue-section-title'>示范对话</Text>
+                  <View className='dialogue-sample-script'>
+                    <Text className='dialogue-sample-text'>{data.sampleDialogue}</Text>
+                  </View>
+                </View>
+              ) : null}
+
+              <View className='dialogue-timeline'>
+                <View className='dialogue-timeline-head'>
+                  <Text className='dialogue-section-title'>对话原文</Text>
+                  <Text className='dialogue-timeline-hint'>点某段可切换「家长 / 孩子」</Text>
+                </View>
+                <View className='dialogue-timeline-body'>
+                  {data.segments.map((seg, i) => {
+                    const child = isChildSpeaker(seg.speaker)
+                    return (
+                      <View
+                        key={`${i}-${seg.text.slice(0, 8)}`}
+                        className={[
+                          'dialogue-bubble-row',
+                          child ? 'is-child' : 'is-parent',
+                          seg.highlight ? 'is-highlight' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        onClick={() => toggleSpeaker(i)}
+                      >
+                        <View className='dialogue-bubble'>
+                          <Text className='dialogue-bubble-speaker'>{seg.speaker}</Text>
+                          <Text className='dialogue-bubble-text'>{seg.text}</Text>
+                          {seg.highlightReason ? (
+                            <Text className='dialogue-bubble-reason'>{seg.highlightReason}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    )
+                  })}
+                </View>
+              </View>
+
+              <View className='dialogue-result-actions'>
+                <Text className='pill primary block' onClick={goRehearsal}>
+                  用这次对话去情景预演
+                </Text>
+                <Text className='pill block' onClick={goBackRehearsal}>
+                  返回预演
+                </Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
     </View>
   )

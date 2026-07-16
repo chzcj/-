@@ -6,6 +6,15 @@ import { apiRequest } from '@/services/api'
 import { VoiceOverlay } from '@/components/voice/VoiceOverlay'
 import { DailySectionView } from './DailySectionView'
 
+function sectionHasBody(section: DailySection): boolean {
+  if (section.streamingText?.trim()) return true
+  if (section.paragraphs?.some((p) => p.trim())) return true
+  if (section.items?.some((p) => p.trim())) return true
+  if (section.quotes?.some((p) => p.trim())) return true
+  if (section.note?.trim()) return true
+  return false
+}
+
 type DailyDeepExpandCardProps = {
   sections: DailySection[]
   traceId?: string
@@ -18,6 +27,9 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
   const [partialOpen, setPartialOpen] = useState(false)
   const [toast, setToast] = useState('')
   const [collapsed, setCollapsed] = useState(false)
+
+  const readySections = sections.filter(sectionHasBody)
+  const preparing = readySections.length === 0
 
   useEffect(() => {
     if (!traceId) return
@@ -41,7 +53,7 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
   }, [toast])
 
   async function postFeedback(kind: 'accurate' | 'partial', note?: string) {
-    const sectionIds = sections.map((s) => s.id)
+    const sectionIds = readySections.map((s) => s.id)
     if (!traceId) {
       setToast('已记录在本机；回到交流再生成一轮后可继续保存。')
       return
@@ -61,8 +73,6 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
     )
   }
 
-  if (!sections.length) return null
-
   return (
     <View className='deep-expand-card'>
       <View className='deep-expand-card-header'>
@@ -80,49 +90,57 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
       {!collapsed ? (
         <View>
           <View className='deep-expand-body'>
-            {sections.map((section) => (
-              <DailySectionView key={section.id} section={section} />
-            ))}
+            {preparing ? (
+              <Text className='deep-expand-preparing'>整理中…</Text>
+            ) : (
+              readySections.map((section) => (
+                <DailySectionView key={section.id} section={section} />
+              ))
+            )}
           </View>
-          <View className='suggestion-strip deep-expand-feedback'>
-            <Text
-              className={`pill${feedback === 'accurate' ? ' primary' : ''}`}
-              onClick={() => {
-                if (submitting || feedback) return
-                setSubmitting(true)
-                setFeedback('accurate')
-                void postFeedback('accurate').finally(() => setSubmitting(false))
-              }}
-            >
-              这段像我家情况
-            </Text>
-            <Text
-              className={`pill${feedback === 'partial' ? ' primary' : ''}`}
-              onClick={() => {
-                if (submitting || feedback) return
-                setPartialOpen(true)
-              }}
-            >
-              哪里不太像
-            </Text>
-          </View>
-          <VoiceOverlay
-            open={partialOpen}
-            title='哪里不太像'
-            description='可以直接说修正内容，也可以打字。'
-            loading={submitting}
-            allowEmpty
-            emptyFinishLabel='先记不太像'
-            finishLabel='提交校正'
-            onCancel={() => setPartialOpen(false)}
-            onFinish={(note) => {
-              if (submitting) return
-              setSubmitting(true)
-              setPartialOpen(false)
-              setFeedback('partial')
-              void postFeedback('partial', note).finally(() => setSubmitting(false))
-            }}
-          />
+          {!preparing ? (
+            <>
+              <View className='suggestion-strip deep-expand-feedback'>
+                <Text
+                  className={`pill${feedback === 'accurate' ? ' primary' : ''}`}
+                  onClick={() => {
+                    if (submitting || feedback) return
+                    setSubmitting(true)
+                    setFeedback('accurate')
+                    void postFeedback('accurate').finally(() => setSubmitting(false))
+                  }}
+                >
+                  这段像我家情况
+                </Text>
+                <Text
+                  className={`pill${feedback === 'partial' ? ' primary' : ''}`}
+                  onClick={() => {
+                    if (submitting || feedback) return
+                    setPartialOpen(true)
+                  }}
+                >
+                  哪里不太像
+                </Text>
+              </View>
+              <VoiceOverlay
+                open={partialOpen}
+                title='哪里不太像'
+                description='可以直接说修正内容，也可以打字。'
+                loading={submitting}
+                allowEmpty
+                emptyFinishLabel='先记不太像'
+                finishLabel='提交校正'
+                onCancel={() => setPartialOpen(false)}
+                onFinish={(note) => {
+                  if (submitting) return
+                  setSubmitting(true)
+                  setPartialOpen(false)
+                  setFeedback('partial')
+                  void postFeedback('partial', note).finally(() => setSubmitting(false))
+                }}
+              />
+            </>
+          ) : null}
           {toast ? <Text className='deep-expand-toast'>{toast}</Text> : null}
         </View>
       ) : null}

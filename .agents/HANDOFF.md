@@ -25,6 +25,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 ## 部署状态
 
+- 2026-07-16 22:32 | Cursor | 前台精简·预演·深度展开整理中；ready:true
 - 2026-07-15 00:40 | Cursor | 回退直连讯飞+纠正connectSocket+代码优先排障规则；ready:true
 - 2026-07-15 00:30 | Cursor | 实时语音重新启用 nginx 代理；ready:true
 - 2026-07-15 00:15 | Cursor | 实时语音 connectSocket 同步注册重构；build:weapp 通过
@@ -52,6 +53,34 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 小程序 `build:weapp` 后真机预览验收
 
 ---
+
+## 2026-07-16 22:32 | Cursor | 前台精简·预演重构·深度展开整理中
+
+**做了什么**
+- 追问 `runEntryFollowUp`：`disableThinking`（不改 SP/UI）
+- 深度展开：空态「整理中…」；小程序中途 merge `sections` 事件
+- 画像 SP：`dailyPortraitRefresh` 七卡主题覆盖清单 + diagnosis 家长段「全面≠啰嗦」
+- 预演：删自定义场景 UI；`GET /api/rehearsal/scenes` 记忆 hydrate；analyze 加深+抬 maxTokens；日常 Action `kind:rehearsal` 完整 handoff
+- dialogue-result：Impeccable 信息架构/气泡时间线（不动 ASR）
+
+**为什么**
+- capture→追问慢；prose 短时秒点深度展开空白；画像要主题全面；预演要贴家庭记忆
+
+**验证**
+- `npm run typecheck` ✓ / `npm run build` ✓
+- `miniprogram` typecheck ✓ / `build:weapp` ✓（既有 css order warning）
+- deploy readiness `ready:true`；jobHealthy:true
+
+**下一步**
+- 真机：追问墙钟、深度展开整理中→内容、预演无自定义+场景 hydrate、日常「沟通预演」带上下文
+- 画像七卡需进 Tab 触发 daily-refresh 后看新文案
+
+**风险/冲突**
+- 语音 ASR 未动；追问客观题改版仍搁置；syn/diag 保持串联
+- 场景 hydrate 失败会静默回退静态文案
+
+**部署**
+- 2026-07-16 22:32：`npm run deploy` 成功，public readiness ready:true
 
 ## 2026-07-15 16:40 | Cursor | 小程序审核去 AI 文案
 
@@ -2197,3 +2226,47 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - portraitCards.growth.lead 是 Tab 摘要级文案，deep 页展示可能比之前短；如需更长机制链，后续可考虑让 Agent A 单独出 deepLead 字段
 - evidence/verify sections 展开规则：每个 item 一条，title=section.heading，description=item；若 LLM sections 空则回退 built
 - `.env.local`/SSH/AUTH_TOKEN 未入 Git
+
+## 2026-07-16 17:30 | Cursor | LLM 前台首字与深度画像解耦
+
+**做了什么**
+- 并行云探针确认：`thinking.type=disabled` 可透传；同一轻量流式请求关闭时首内容约 0.57s，不传时约 10.6s 且返回 `reasoning_content`。
+- `ark-agents.ts` 增 `thinkingDisabled / maxTokens / responseMs` 请求级日志；daily section retry/prefetch 与 rehearsal 非流式 fallback 统一关闭 thinking。
+- 四模块生成页不再等待 `deep_mechanism_review` 完成：仅短等画像三件套（最多约 15 秒），首版 synthesis + diagnosis 保存后进入结果；深层机制继续后台交叉验证。
+- synthesis 输入不再只取前几条事实：保留更多模块事实、动作、触发点、目标、照护分歧等；默认输出上限提升到 8192，SP 改为深度优先。
+- synthesis / diagnosis / deep_mechanism 均保持 thinking；deep_mechanism 新增按源事实指纹的分类/理论匹配检查点，后续步骤失败重试时不从首步重跑。
+
+**验证**
+- `npm run typecheck` ✓
+- `npm run build` ✓（已有 React Hook warning）
+- `miniprogram npm run typecheck` ✓ / `npm run build:weapp` ✓（已有 CSS order warning）
+- `test:contracts` 的 retrieval 静态断言失败：脚本仍要求 `router.ts` 直接出现 `overallStrength !== 'low'`，实际过滤已在 `formatMatchedMechanismCards` helper；与本次改动无关。
+
+**下一步**
+- 部署后查看 `[stream:timing]` 里的 `thinkingDisabled=true`，复测 daily/rehearsal 首字和四模块首版画像到结果页时间。
+
+**风险/冲突**
+- 后台深机制仍保持完整 thinking 与四步依赖，不能承诺其自身在一分钟内完成；一分钟目标只针对用户可见首版画像。
+- `.env.local`/SSH/AUTH_TOKEN 未入 Git。
+
+**部署**
+- 2026-07-16 17:33：`npm run deploy` 成功；`https://yujian.yihe.site/api/readiness` 返回 `ready:true`、`jobHealthy:true`。线上 smoke：daily 首字 1.93s、rehearsal 首字 1.47s；日志确认前台 `thinkingDisabled=true`。
+- 画像完整链实测 synthesis 45.1s + diagnosis 32.9s = 78.0s；不虚报「1 分钟内」，生成页改为说明首版先展示、后台继续复核。
+
+## 2026-07-16 17:43 | Cursor | model_review 轮换写回与前台 thinking 补齐
+
+**做了什么**
+- `model_review` 保持每日 8 条轮换（47 条约 6 天桶覆盖），修复第 2 批起用局部索引读取全局索引结果的错误；现在每批真实写回对应的 8 条假设。
+- 增加批次日志：active 总数、当天批次和范围，便于验证 47 条轮换。
+- 登录补跑 SQL 已确认使用 `UPDATE ... WHERE id IN (SELECT ... ORDER BY ... LIMIT ...)`，是合法 PostgreSQL 写法。
+- 补齐遗漏的前台 `thinking: disabled`：亲子整段转写分析、legacy section 单流和 UI 组件编排。
+
+**验证**
+- `npm run typecheck` ✓ / `npm run build` ✓（已有 Hook warning）
+- IDE lints：本轮文件 0 error。
+
+**风险/冲突**
+- 之前 4.6s 的旧日志没有 `thinkingDisabled` 字段，无法仅凭那条日志断言参数是否漏传；新部署后会用请求级日志按实际 path 验收。
+
+**部署**
+- 2026-07-16 17:44：`npm run deploy` 成功，public readiness `ready:true`；远端以 `EXPLAIN` 验证登录补跑 SQL 可被 PostgreSQL 正常解析。

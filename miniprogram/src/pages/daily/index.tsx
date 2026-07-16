@@ -268,6 +268,9 @@ export default function DailyPage() {
             sectionErrors: [...new Set([...(t.sectionErrors || []), id])],
           })),
         onSectionsComplete: () => patchAiTurn({ sectionsComplete: true }),
+        onSections: (sections: DailySection[]) => {
+          patchAiTurn({ sections })
+        },
         onActions: (actions: DailyAction[]) => {
           patchAiTurn({ actions })
         },

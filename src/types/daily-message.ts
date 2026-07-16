@@ -33,6 +33,7 @@ export type DailyAction = {
     sectionIds?: string[]
     route?: string
     seedText?: string
+    sceneId?: string
     stashDeep?: boolean
     taskTitle?: string
   }

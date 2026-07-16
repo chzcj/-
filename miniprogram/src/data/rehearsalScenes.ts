@@ -58,17 +58,18 @@ export const REHEARSAL_SCENES: RehearsalScene[] = [
   },
 ]
 
-export const CUSTOM_SCENE: RehearsalScene = {
-  id: 'custom',
-  title: '自定义场景',
-  subtitle: '把你想练的情况直接说出来。',
-  summary: '把你想练的情况直接说出来，我会先帮你整理成一个可预演的场景。',
-  placeholder: '描述一下你想练的场景。例如：今晚作业拖了很久，我想让他开始写，但一说就吵。',
-  seed: '',
+export function getRehearsalScene(id: string) {
+  return REHEARSAL_SCENES.find((s) => s.id === id) || REHEARSAL_SCENES[0]
 }
 
-export function getRehearsalScene(id: string) {
-  return REHEARSAL_SCENES.find((s) => s.id === id) || CUSTOM_SCENE
-}
+/** @deprecated 自定义场景已下线；保留 id 兼容旧 seed，映射到首个固定场景 */
+export const CUSTOM_SCENE = {
+  id: 'custom',
+  title: '根据真实对话预演',
+  subtitle: '',
+  summary: REHEARSAL_SCENES[0]?.summary || '',
+  placeholder: '',
+  seed: '',
+} as RehearsalScene
 
 export type SimulationStep = 'entry' | 'confirm' | 'active' | 'end'

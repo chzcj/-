@@ -226,29 +226,16 @@ export async function runProfileGeneratingPipeline(
   const { forceAccountSyncToServer } = await import('@/services/accountSync')
   await forceAccountSyncToServer()
 
-  onStep(4, '等待画像三件套就绪…')
+  onStep(4, '整理首版画像…')
   await waitForProfileReadiness()
-
-  onStep(4, '深度建模与机制复核…')
-  await waitForDeepModelDigest()
 
   return { ok: true }
 }
 
-export async function waitForDeepModelDigest(): Promise<void> {
-  const MAX_TRIES = 36
-  const INTERVAL = 2500
-  for (let i = 0; i < MAX_TRIES; i++) {
-    const res = await apiRequest<{ mechanismReviewReady?: boolean }>('/api/profile/deep-model-status', {
-      method: 'GET',
-    })
-    if (res.ok && res.data.mechanismReviewReady) return
-    await new Promise((r) => setTimeout(r, INTERVAL))
-  }
-}
-
 export async function waitForProfileReadiness(): Promise<void> {
-  const MAX_TRIES = 16
+  // 画像正文已由 synthesis + diagnosis 完整生成。三件套未就绪时仍可进入结果，
+  // 深度机制复核在后台继续，避免把 4 步长 Job 的墙钟时间加到新用户首屏等待上。
+  const MAX_TRIES = 6
   const INTERVAL = 2500
   for (let i = 0; i < MAX_TRIES; i++) {
     const res = await apiRequest<{ ready?: boolean }>('/api/profile/readiness', { method: 'GET' })

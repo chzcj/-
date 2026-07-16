@@ -158,7 +158,7 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
 - 保护策略：${JSON.stringify(protectiveStrategies)}
 - 家长表面判断："${input.parentSurfaceJudgment}"
 - 表面问题："${input.surfaceProblem}"
-- 可验证事实：${JSON.stringify(facts.slice(0, 16))}
+- 可验证事实：${JSON.stringify(facts.slice(0, 32))}
 
 你的核心任务：
 1. 生成parentMisjudgmentCorrection：不是简单说"您错了"，而是用具体证据解释家长原有判断为什么太表面。优先用交接包 parentMisreadingsToCorrect + keyEvidencePath。
@@ -192,7 +192,8 @@ export async function runDiagnosisPipeline(input: DiagnosisInput): Promise<Diagn
       surfaceProblem: input.surfaceProblem,
       parentSurfaceJudgment: input.parentSurfaceJudgment,
     },
-    { maxTokens: Number(process.env.FAST_AI_DIAGNOSIS_MAX_TOKENS || 3200) }
+    // 首版画像的结构诊断保留完整 thinking，并给足输出空间承载机制链、循环与反证边界。
+    { maxTokens: Number(process.env.FAST_AI_DIAGNOSIS_MAX_TOKENS || 8192) }
   ).catch(() => undefined as AiDiagnosisOutput | undefined)
 
   const ai = aiResult

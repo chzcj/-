@@ -67,6 +67,11 @@ export function composeDailyActions(
 
   const resolvedTaskTitle = deriveImperativeTaskTitle(sections, fullText, taskTitle)
   const seedScene = fullText.split(/[。！？\n]/).find((s) => s.trim().length > 4)?.trim()?.slice(0, 28)
+  const rehearsalSeed = fullText.trim().slice(0, 600)
+  const wantsRehearsal =
+    /吵|催|作业|顶嘴|发脾气|手机|开口|沟通|对峙|僵|拒绝|不想听|说重了/.test(fullText) ||
+    output.inputType === 'ask_advice' ||
+    output.routingDecision.frontResponseType === 'model_based_explanation'
 
   if (output.inputType === 'risk_followup') {
     actions.push({
@@ -92,6 +97,27 @@ export function composeDailyActions(
       kind: 'expand_sections',
       primary: true,
       payload: { sectionIds: hiddenIds },
+    })
+  }
+
+  if (wantsRehearsal && rehearsalSeed.length >= 8) {
+    const sceneId = /手机/.test(fullText)
+      ? 'phone'
+      : /老师|学校|告状/.test(fullText)
+        ? 'teacher_feedback'
+        : /吵|说重了|僵|修复/.test(fullText)
+          ? 'after_conflict'
+          : 'homework_start'
+    actions.push({
+      id: 'open_rehearsal',
+      label: '沟通预演',
+      kind: 'rehearsal',
+      primary: !hiddenIds.length,
+      payload: {
+        seedText: rehearsalSeed,
+        sceneId,
+        route: '/rehearsal',
+      },
     })
   }
 

@@ -95,14 +95,27 @@ export async function callAgentJson<T>(
   agent: AgentPromptKey,
   task: string,
   payload: unknown,
-  options?: { maxTokens?: number }
+  options?: { maxTokens?: number; timeoutMs?: number }
 ): Promise<T | undefined> {
   if (!isFastAIEnabled()) return undefined;
-  return callOpenAICompatibleJson<T>({
+  const request = {
     system: resolveAgentSystem(agent),
     user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
-    maxTokens: options?.maxTokens
-  });
+    maxTokens: options?.maxTokens,
+    timeoutMs: options?.timeoutMs,
+  }
+  try {
+    return await callOpenAICompatibleJson<T>(request);
+  } catch (error) {
+    if (!isJsonParseFailure(error)) throw error
+
+    // JSON Agent 的截断只重试一次，并仅放宽输出上限；system/user 不变，
+    // 因此不改变 Prompt、thinking 或缓存前缀，也避免整条异步 Job 从头重跑。
+    const currentMaxTokens = options?.maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 2048)
+    const retryMaxTokens = Math.min(Math.ceil(currentMaxTokens * 1.5), 16_384)
+    console.warn(`[agent-json] ${agent} JSON 截断，使用 max_tokens=${retryMaxTokens} 局部重试`)
+    return callOpenAICompatibleJson<T>({ ...request, maxTokens: retryMaxTokens });
+  }
 }
 
 export async function callAgentTextStream(agent: AgentPromptKey, task: string, payload: unknown, onDelta: (delta: string) => void): Promise<string | undefined> {
@@ -230,18 +243,21 @@ async function callOpenAICompatibleJson<T>({
   maxTokens,
   lane = 'fast',
   disableThinking,
+  timeoutMs,
 }: {
   system: string
   user: string
   maxTokens?: number
   lane?: ModelLane
   disableThinking?: boolean
+  timeoutMs?: number
 }): Promise<T | undefined> {
   const { apiKey, model, base, temp } = laneConfig(lane)
   if (!apiKey || !model) return undefined
+  const tRequestStart = Date.now()
   // 总超时：上游卡住时 abort，避免请求无限挂（caller 的 .catch 走降级）。
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FAST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs ?? FAST_TIMEOUT_MS);
   try {
     const response = await fetch(`${base}/chat/completions`, {
       method: 'POST',
@@ -272,6 +288,9 @@ async function callOpenAICompatibleJson<T>({
     const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: CacheUsage };
     const text = data.choices?.[0]?.message?.content || '';
     if (!text) throw new Error('FAST_AI_EMPTY_OUTPUT');
+    console.info(
+      `[json:timing] lane=${lane} model=${model} thinkingDisabled=${Boolean(disableThinking)} maxTokens=${maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 2048)} responseMs=${Date.now() - tRequestStart}`
+    )
     logCacheHit(`json:${lane}`, model, data.usage);
     return parseJson<T>(text);
   } finally {
@@ -355,7 +374,7 @@ async function callOpenAICompatibleTextStream(
         if (tFirstProviderChunk === null) {
           tFirstProviderChunk = Date.now();
           console.info(
-            `[stream:timing] lane=${lane} model=${model} providerFirstChunkMs=${tFirstProviderChunk - tFetchStart}`
+            `[stream:timing] lane=${lane} model=${model} thinkingDisabled=${Boolean(disableThinking)} maxTokens=${maxTokens ?? Number(process.env.FAST_AI_STREAM_MAX_TOKENS || 1024)} providerFirstChunkMs=${tFirstProviderChunk - tFetchStart}`
           );
         }
         fullText += delta;
@@ -417,10 +436,20 @@ function parseJson<T>(text: string): T | undefined {
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start >= 0 && end > start) {
-      return JSON.parse(cleaned.slice(start, end + 1)) as T;
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1)) as T;
+      } catch {
+        // 截断 JSON 必须收敛为稳定错误码，让调用方按需局部重试或降级，
+        // 不把底层 SyntaxError 泄漏到整条异步 Job 的重试链。
+        throw new Error('FAST_AI_JSON_PARSE_FAILED');
+      }
     }
     throw new Error('FAST_AI_JSON_PARSE_FAILED');
   }
+}
+
+function isJsonParseFailure(error: unknown): boolean {
+  return error instanceof Error && error.message === 'FAST_AI_JSON_PARSE_FAILED'
 }
 
 /* DeepSeek prompt cache 可观测：读取 usage.prompt_cache_hit_tokens / miss_tokens 并打日志。

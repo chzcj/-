@@ -28,6 +28,9 @@ export type DeepMechanismHandoff = {
   ecosystemMap: ClassifiedFact[]
   theoryMatches: TheoryMatchHandoff[]
   structuralTensions: StructuralTension[]
+  /** Same source facts may resume from a completed upstream stage after a retry. */
+  sourceFingerprint?: string
+  stage?: 'classified' | 'theory_matched' | 'completed'
   updatedAt: string
 }
 

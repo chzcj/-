@@ -86,6 +86,9 @@ export function buildRehearsalStreamTask(): string {
 - ---reaction--- 段只写孩子可能说出口的话，不写分析。
 - ---rest--- 段必须是合法 JSON（可跨多行），包含其余所有字段。
 - immediateReaction 字段与 ---reaction--- 段内容一致。
+- childLikelyHearing：写清「孩子会听成什么」（60–140字，具体、口语）。
+- possibleChildReaction.innerReaction：写清「家长可能怎么想 / 孩子心里可能在防什么」（60–140字）。
+- saferVersion：给一段可试说法（完整一句或两句），whyThisIsSafer 说明为何更稳。
 - usedProfileEvidence 至少列出 1 条本轮用到的画像/证据要点。
-- 禁止输出 markdown 标题、解释性前后缀。`
+- 禁止输出 markdown 标题、解释性前后缀。禁止空话与鸡汤。`
 }

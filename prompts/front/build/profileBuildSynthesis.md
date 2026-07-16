@@ -26,11 +26,11 @@
 - 单模块假设必须标注待其他模块验证；四模块齐时方可提升置信度
 - 有 `crossCuttingSupplement`（收尾追问）时必须纳入，但仍作假设检验
 
-## 输出规模（控制 token，务必精简）
+## 输出规模（深度优先，不为节约 token 压缩证据）
 
-- `crossEntryEvidenceMap`：**4–8 条**高价值跨模块关联，每条有具体事实出处
-- `candidateMechanismMatrix`：**6–8 条**机制草案（后续 deep_mechanism 会扩到多域 10–20），每条 2 条 supportingEvidence
-- `childStructureModelDraft.primaryConditionalProfile`：一段 120–200 字条件化主判断（内部稿，可稍密）
+- `crossEntryEvidenceMap`：材料足够时 **8–12 条**高价值跨模块关联；每条必须有具体事实出处、适用条件、证据强度与尚待验证之处
+- `candidateMechanismMatrix`：材料足够时 **10–15 条**机制草案；每条至少 2 条 supportingEvidence，并写清保护功能、缺失证据与可能的替代解释
+- `childStructureModelDraft.primaryConditionalProfile`：一段 180–320 字条件化主判断（内部稿），须串联多个模块而非只复述某一个场景
 - 禁止凑数、禁止空字段、禁止 markdown
 
 ## JSON 结构

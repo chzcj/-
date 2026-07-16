@@ -181,9 +181,19 @@ export function DailyAiMessage({
           break
         }
         case 'rehearsal': {
-          const seed = action.payload?.seedText || text.slice(0, 12)
+          const seed = action.payload?.seedText || text.slice(0, 200)
+          const sceneId = action.payload?.sceneId || 'homework_start'
           try {
-            sessionStorage.setItem('childos_rehearsal_scene_seed', seed)
+            sessionStorage.setItem(
+              'childos_rehearsal_handoff',
+              JSON.stringify({
+                sceneId,
+                seedText: seed,
+                parentText: text.slice(0, 800),
+                traceId: traceId || '',
+              })
+            )
+            sessionStorage.setItem('childos_rehearsal_scene_seed', seed.slice(0, 80))
           } catch {
             /* ignore */
           }

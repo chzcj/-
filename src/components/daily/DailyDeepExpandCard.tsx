@@ -5,6 +5,15 @@ import type { DailySection } from '@/types/daily-message'
 import { DailySectionList } from '@/components/daily/DailySectionView'
 import { VoiceOverlay } from '@/components/voice/VoiceOverlay'
 
+function sectionHasBody(section: DailySection): boolean {
+  if (section.streamingText?.trim()) return true
+  if (section.paragraphs?.some((p) => p.trim())) return true
+  if (section.items?.some((p) => p.trim())) return true
+  if (section.quotes?.some((p) => p.trim())) return true
+  if (section.note?.trim()) return true
+  return false
+}
+
 type DailyDeepExpandCardProps = {
   sections: DailySection[]
   prose?: string
@@ -18,6 +27,9 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
   const [partialOverlayOpen, setPartialOverlayOpen] = useState(false)
   const [toast, setToast] = useState('')
   const [collapsed, setCollapsed] = useState(false)
+
+  const readySections = sections.filter(sectionHasBody)
+  const preparing = readySections.length === 0
 
   useEffect(() => {
     if (!traceId) return
@@ -40,7 +52,7 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
   }, [toast])
 
   async function postFeedback(kind: 'accurate' | 'partial', note?: string) {
-    const sectionIds = sections.map((s) => s.id)
+    const sectionIds = readySections.map((s) => s.id)
     if (!traceId) {
       setToast('已记录在本机；回到交流再生成一轮后可同步到服务器。')
       return false
@@ -70,9 +82,7 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
     }
   }
 
-  if (!sections.length) return null
-
-  const revealed = new Set(sections.map((s) => s.id))
+  const revealed = new Set(readySections.map((s) => s.id))
 
   return (
     <div className="deep-expand-card">
@@ -93,40 +103,46 @@ export function DailyDeepExpandCard({ sections, traceId, onClose }: DailyDeepExp
       {!collapsed ? (
         <>
           <div className="deep-expand-body">
-            <DailySectionList
-              sections={sections}
-              revealedIds={revealed}
-              expandedIds={revealed}
-              animateNew={false}
-            />
+            {preparing ? (
+              <p className="deep-expand-preparing">整理中…</p>
+            ) : (
+              <DailySectionList
+                sections={readySections}
+                revealedIds={revealed}
+                expandedIds={revealed}
+                animateNew={false}
+              />
+            )}
           </div>
 
-          <div className="suggestion-strip deep-expand-feedback">
-            <button
-              type="button"
-              className={`pill${feedback === 'accurate' ? ' primary' : ''}`}
-              disabled={submitting || feedback !== null}
-              onClick={() => {
-                if (submitting || feedback) return
-                setSubmitting(true)
-                setFeedback('accurate')
-                void postFeedback('accurate').finally(() => setSubmitting(false))
-              }}
-            >
-              这段像我家情况
-            </button>
-            <button
-              type="button"
-              className={`pill${feedback === 'partial' ? ' primary' : ''}`}
-              disabled={submitting || feedback !== null}
-              onClick={() => {
-                if (submitting || feedback) return
-                setPartialOverlayOpen(true)
-              }}
-            >
-              哪里不太像
-            </button>
-          </div>
+          {!preparing ? (
+            <div className="suggestion-strip deep-expand-feedback">
+              <button
+                type="button"
+                className={`pill${feedback === 'accurate' ? ' primary' : ''}`}
+                disabled={submitting || feedback !== null}
+                onClick={() => {
+                  if (submitting || feedback) return
+                  setSubmitting(true)
+                  setFeedback('accurate')
+                  void postFeedback('accurate').finally(() => setSubmitting(false))
+                }}
+              >
+                这段像我家情况
+              </button>
+              <button
+                type="button"
+                className={`pill${feedback === 'partial' ? ' primary' : ''}`}
+                disabled={submitting || feedback !== null}
+                onClick={() => {
+                  if (submitting || feedback) return
+                  setPartialOverlayOpen(true)
+                }}
+              >
+                哪里不太像
+              </button>
+            </div>
+          ) : null}
           {toast ? <div className="toast deep-expand-toast">{toast}</div> : null}
         </>
       ) : null}

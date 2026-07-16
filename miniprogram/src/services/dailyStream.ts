@@ -60,6 +60,7 @@ export type DailyStreamCallbacks = {
   onStart?: (traceId: string) => void
 } & SectionStreamHandlers & {
   onActions?: (actions: DailyAction[]) => void
+  onSections?: (sections: DailySection[]) => void
 }
 
 /** NDJSON 粘包缓冲：ArrayBuffer → UTF-8 字符串（stream decode 防截断乱码） */
@@ -164,6 +165,7 @@ export function streamDailyMessage(
   const lineBuffer = new ChunkLineBuffer()
   let startFired = false
   let actionsFired = false
+  let lastSections: DailySection[] | undefined
   let task: Taro.RequestTask<unknown> | null = null
 
   const flushPending = () => {
@@ -208,6 +210,10 @@ export function streamDailyMessage(
       callbacks.onThinking(state.thinkingChips)
     }
     flushPending()
+    if (state.earlySections && state.earlySections !== lastSections && callbacks.onSections) {
+      lastSections = state.earlySections
+      callbacks.onSections(state.earlySections)
+    }
     if (state.earlyActions && callbacks.onActions) {
       callbacks.onActions(state.earlyActions)
       state.earlyActions = undefined

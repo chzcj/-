@@ -1,4 +1,4 @@
-import { callParentJson } from '@/lib/server/ark-agents'
+import { callParentJson, frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import { sanitizeForParent } from '@/lib/server/daily/profile-sanitize'
 import { resolveEntryFollowUpAgent, resolveEntrySummaryAgent } from '@/lib/server/entry-build-prompts'
 import { buildEntryAnalyzeSystem } from '@/lib/server/profile-build-prompts'
@@ -205,7 +205,11 @@ export async function runEntryFollowUp(entryType: string, rawText: string, appen
     entryType,
     topic,
     rawText: isFinal ? rawText.slice(0, 6000) : rawText.slice(0, 4000),
-  }, { maxTokens: isFinal ? 1200 : 900 }).catch((error) => {
+  }, {
+    maxTokens: isFinal ? 1200 : 900,
+    // 前台等待路径：追问题干深度来自 SP + 原文，关闭隐式思考缩短 capture→追问墙钟
+    disableThinking: frontAiThinkingDisabled(),
+  }).catch((error) => {
     lastError = error
     return undefined
   })

@@ -4,6 +4,7 @@ import type { OrchestrationOutput } from '@/types/database'
 import type { DailySection } from '@/types/daily-message'
 import { buildDailyProsePayload } from '@/lib/server/daily/prose-context'
 import { requireTextStream } from '@/lib/server/daily/llm-required'
+import { frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import { sectionCopySystem } from '@/lib/server/daily/parent-facing-copy'
 import { mergeSectionCopy, rawTextToPatch } from '@/lib/server/daily/section-stream'
 
@@ -85,7 +86,8 @@ export function startSectionBufferPrefetch(
         (delta) => {
           buffer.chunks.push(delta)
           buffer.fullText += delta
-        }
+        },
+        { disableThinking: frontAiThinkingDisabled() }
       )
       buffer.done = true
     } catch (err: unknown) {
@@ -180,7 +182,8 @@ export async function retrySectionCopy(
       (delta) => {
         buffer.chunks.push(delta)
         buffer.fullText += delta
-      }
+      },
+      { disableThinking: frontAiThinkingDisabled() }
     )
     buffer.done = true
   } catch (err) {

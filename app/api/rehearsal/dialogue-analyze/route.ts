@@ -5,6 +5,7 @@ import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-st
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { requireFastJson } from '@/lib/server/daily/llm-required'
+import { frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import { agentPrompts } from '@/lib/server/agent-prompts'
 import { loadDialogueAnalysis, upsertDialogueAnalysis } from '@/lib/server/db'
 import { newDialogueAnalysisId } from '@/lib/server/asr/file-recognize'
@@ -66,7 +67,8 @@ export async function POST(request: Request) {
         transcript,
         deepModelDigest: digestPack,
       },
-      { maxTokens: 1800 }
+      // 转写后的亲子对话分析也是家长等待的前台路径；深度来自已注入的 digest。
+      { maxTokens: 1800, disableThinking: frontAiThinkingDisabled() }
     )
 
     const segments = (result.segments || [])

@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { createHash } from 'node:crypto'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { callAgentJson } from '@/lib/server/ark-agents'
 import {
@@ -34,6 +35,7 @@ import type {
 import type { StructuralTension } from '@/types/deep-model-digest'
 import { THEORY_CARDS } from '@/lib/server/memory/deep-mechanism/theory-cards'
 import {
+  loadDeepMechanismHandoff,
   saveDeepMechanismHandoff,
   type ClassifiedFact,
   type TheoryMatchHandoff,
@@ -46,6 +48,11 @@ const ENTRY_NAMES: EntryName[] = [
   'emotional_stress',
   'relationship_environment',
 ]
+
+// 深度机制链一次 Job 可能顺序执行 4–5 个长 JSON 调用。不能让它们共用
+// 前台默认的 45 秒边界，否则任一步超时都会让队列从步骤 1 整链重跑。
+const DEEP_STEP_TIMEOUT_MS = 90_000
+const DEEP_JSON_PARSE_RETRIES = 1
 
 const arr = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim()) : []
@@ -267,13 +274,40 @@ function normStructuralTensions(raw: unknown): StructuralTension[] {
     .slice(0, 5)
 }
 
+function isJsonParseFailure(error: unknown): boolean {
+  return error instanceof Error && error.message === 'FAST_AI_JSON_PARSE_FAILED'
+}
+
+/** 只给深度机制链的长 JSON 调用放宽超时；截断时局部重试一次，避免整 Job 从头重跑。 */
+async function callDeepAgentJson<T>(
+  agent: Parameters<typeof callAgentJson>[0],
+  task: string,
+  payload: unknown,
+  maxTokens: number
+): Promise<T | undefined> {
+  for (let attempt = 0; attempt <= DEEP_JSON_PARSE_RETRIES; attempt += 1) {
+    try {
+      return await callAgentJson<T>(agent, task, payload, {
+        maxTokens,
+        timeoutMs: DEEP_STEP_TIMEOUT_MS,
+      })
+    } catch (error) {
+      if (!isJsonParseFailure(error) || attempt === DEEP_JSON_PARSE_RETRIES) throw error
+      console.warn(
+        `[deep-mechanism] ${agent} JSON 截断，第 ${attempt + 1} 次局部重试`,
+      )
+    }
+  }
+  return undefined
+}
+
 async function runLegacyMonolith(payload: Record<string, unknown>): Promise<MechanismSynthesizeOutput | undefined> {
-  return callAgentJson<MechanismSynthesizeOutput>(
+  return callDeepAgentJson<MechanismSynthesizeOutput>(
     'deepMechanismReview',
     '用五大生态系统+20家庭理论框架，产出回归家庭结构根因的深度机制（覆盖旧机制层；目标多域10–20条）。',
     payload,
     // 多域 10–20 条机制矩阵 + 假设，4096 易截断；放宽到 8192。
-    { maxTokens: 8192 }
+    8192,
   )
 }
 
@@ -301,6 +335,11 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
   const flatFacts = flattenFactsFromPacks(packs)
   const totalFacts = flatFacts.length + inputHistory.length
   if (totalFacts < 3) return false
+  const sourceFingerprint = createHash('sha256')
+    .update(JSON.stringify(flatFacts.map((fact) => [fact.factId, fact.text, fact.entryName])))
+    .digest('hex')
+  const checkpoint = await loadDeepMechanismHandoff(tenant)
+  const canResume = checkpoint?.sourceFingerprint === sourceFingerprint
 
   const packDigest = buildRichPackDigest(packs)
   const recentInputs = inputHistory.slice(-30).map((h) => h.text).filter(Boolean)
@@ -342,25 +381,36 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
       : null,
   }
 
-  let ecosystemMap: ClassifiedFact[] = []
-  const classifyRaw = await callAgentJson<{ classifiedFacts?: ClassifiedFact[] }>(
-    'ecosystemClassifier',
-    '对每条家庭事实做五大生态系统分类。',
-    { facts: flatFacts },
-    // 全量事实逐条分类输出很长，默认 2048 截断 JSON（"Unexpected end of JSON input" 主因）
-    { maxTokens: 4096 }
-  )
-  if (classifyRaw?.classifiedFacts?.length) {
-    ecosystemMap = classifyRaw.classifiedFacts
-      .filter((f) => str(f.text))
-      .map((f) => ({
-        factId: str(f.factId, `f${Math.random()}`),
-        text: str(f.text),
-        entryName: str(f.entryName),
-        layers: (Array.isArray(f.layers) ? f.layers : [])
-          .map((l) => normEcosystemLayer(l))
-          .filter((l): l is EcosystemLayer => Boolean(l)),
-      }))
+  let ecosystemMap: ClassifiedFact[] = canResume && checkpoint?.ecosystemMap.length
+    ? checkpoint.ecosystemMap
+    : []
+  let classifyRaw: { classifiedFacts?: ClassifiedFact[] } | undefined
+  if (!ecosystemMap.length) {
+    try {
+      classifyRaw = await callDeepAgentJson<{ classifiedFacts?: ClassifiedFact[] }>(
+        'ecosystemClassifier',
+        '对每条家庭事实做五大生态系统分类。',
+        { facts: flatFacts },
+        // 全量事实逐条分类输出很长，默认 2048 截断 JSON（"Unexpected end of JSON input" 主因）
+        4096,
+      )
+    } catch (error) {
+      console.warn('[deep-mechanism] 生态分类失败，回退 micro 层:', error)
+    }
+    if (classifyRaw?.classifiedFacts?.length) {
+      ecosystemMap = classifyRaw.classifiedFacts
+        .filter((f) => str(f.text))
+        .map((f) => ({
+          factId: str(f.factId, `f${Math.random()}`),
+          text: str(f.text),
+          entryName: str(f.entryName),
+          layers: (Array.isArray(f.layers) ? f.layers : [])
+            .map((l) => normEcosystemLayer(l))
+            .filter((l): l is EcosystemLayer => Boolean(l)),
+        }))
+    }
+  } else {
+    console.info('[deep-mechanism] 复用分类检查点')
   }
   if (!ecosystemMap.length) {
     ecosystemMap = flatFacts.map((f) => ({
@@ -368,34 +418,72 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
       layers: ['micro' as EcosystemLayer],
     }))
   }
-
-  let theoryMatches: TheoryMatchHandoff[] = []
-  const matchRaw = await callAgentJson<{ theoryMatches?: TheoryMatchHandoff[] }>(
-    'theoryMatcher',
-    '基于生态系统分类匹配理论卡。',
-    { ecosystemMap, theoryCards: THEORY_CARDS },
-    { maxTokens: 6144 }
+  await saveDeepMechanismHandoff(
+    {
+      ecosystemMap,
+      theoryMatches: canResume ? checkpoint?.theoryMatches || [] : [],
+      structuralTensions: [],
+      sourceFingerprint,
+      stage: 'classified',
+      updatedAt: new Date().toISOString(),
+    },
+    tenant
   )
-  if (matchRaw?.theoryMatches?.length) {
-    theoryMatches = matchRaw.theoryMatches
-      .filter((m) => str(m.theoryCardId))
-      .map((m) => ({
-        theoryCardId: str(m.theoryCardId),
-        theoryName: str(m.theoryName),
-        ecosystemLayer: normEcosystemLayer(m.ecosystemLayer) || 'micro',
-        confidence: normStrength(m.confidence) as 'low' | 'medium' | 'high',
-        matchedFactIds: arr(m.matchedFactIds),
-        rationale: str(m.rationale),
-      }))
+
+  let theoryMatches: TheoryMatchHandoff[] = canResume && checkpoint?.stage === 'theory_matched'
+    ? checkpoint.theoryMatches
+    : []
+  let matchRaw: { theoryMatches?: TheoryMatchHandoff[] } | undefined
+  if (!theoryMatches.length) {
+    try {
+      matchRaw = await callDeepAgentJson<{ theoryMatches?: TheoryMatchHandoff[] }>(
+        'theoryMatcher',
+        '基于生态系统分类匹配理论卡。',
+        { ecosystemMap, theoryCards: THEORY_CARDS },
+        6144,
+      )
+    } catch (error) {
+      console.warn('[deep-mechanism] 理论匹配失败，继续使用空匹配:', error)
+    }
+    if (matchRaw?.theoryMatches?.length) {
+      theoryMatches = matchRaw.theoryMatches
+        .filter((m) => str(m.theoryCardId))
+        .map((m) => ({
+          theoryCardId: str(m.theoryCardId),
+          theoryName: str(m.theoryName),
+          ecosystemLayer: normEcosystemLayer(m.ecosystemLayer) || 'micro',
+          confidence: normStrength(m.confidence) as 'low' | 'medium' | 'high',
+          matchedFactIds: arr(m.matchedFactIds),
+          rationale: str(m.rationale),
+        }))
+    }
+  } else {
+    console.info('[deep-mechanism] 复用理论匹配检查点')
   }
-
-  let ai = await callAgentJson<MechanismSynthesizeOutput>(
-    'mechanismSynthesizer',
-    '综合理论匹配与全量证据，产出多域深度机制矩阵（目标10–20条）。',
-    { ...sharedContext, ecosystemMap, theoryMatches },
-    // 多域矩阵体量大，4096 易截断
-    { maxTokens: 8192 }
+  await saveDeepMechanismHandoff(
+    {
+      ecosystemMap,
+      theoryMatches,
+      structuralTensions: [],
+      sourceFingerprint,
+      stage: 'theory_matched',
+      updatedAt: new Date().toISOString(),
+    },
+    tenant
   )
+
+  let ai: MechanismSynthesizeOutput | undefined
+  try {
+    ai = await callDeepAgentJson<MechanismSynthesizeOutput>(
+      'mechanismSynthesizer',
+      '综合理论匹配与全量证据，产出多域深度机制矩阵（目标10–20条）。',
+      { ...sharedContext, ecosystemMap, theoryMatches },
+      // 多域矩阵体量大，4096 易截断
+      8192,
+    )
+  } catch (error) {
+    console.warn('[deep-mechanism] 多域综合失败，尝试 legacy 回退:', error)
+  }
 
   if (!ai?.candidateMechanismMatrix?.length) {
     ai = await runLegacyMonolith({ ...sharedContext, ecosystemMap, theoryMatches })
@@ -403,22 +491,35 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
 
   if (!ai?.candidateMechanismMatrix?.length) return false
 
-  const riskRaw = await callAgentJson<{ structuralTensions?: StructuralTension[] }>(
-    'structuralRiskExtractor',
-    '提取家庭结构潜在不利因素（家长可读张力）。',
-    {
-      entryPacks: packDigest,
-      candidateMechanismMatrix: ai.candidateMechanismMatrix,
-      builtCoreJudgment: builtSnapshot?.coreJudgment || '',
-    },
-    { maxTokens: 3072 }
-  )
+  let riskRaw: { structuralTensions?: StructuralTension[] } | undefined
+  try {
+    riskRaw = await callDeepAgentJson<{ structuralTensions?: StructuralTension[] }>(
+      'structuralRiskExtractor',
+      '提取家庭结构潜在不利因素（家长可读张力）。',
+      {
+        entryPacks: packDigest,
+        candidateMechanismMatrix: ai.candidateMechanismMatrix,
+        builtCoreJudgment: builtSnapshot?.coreJudgment || '',
+      },
+      3072,
+    )
+  } catch (error) {
+    // 张力是展示增强项，不应阻止已完成的机制矩阵与假设写回。
+    console.warn('[deep-mechanism] 结构张力提取失败，继续落库主矩阵:', error)
+  }
   const structuralTensions = normStructuralTensions(riskRaw?.structuralTensions)
 
   const now = new Date().toISOString()
 
   await saveDeepMechanismHandoff(
-    { ecosystemMap, theoryMatches, structuralTensions, updatedAt: now },
+    {
+      ecosystemMap,
+      theoryMatches,
+      structuralTensions,
+      sourceFingerprint,
+      stage: 'completed',
+      updatedAt: now,
+    },
     tenant
   )
 

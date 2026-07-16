@@ -12,7 +12,6 @@ import {
 import type { RehearsalAnalyzeData } from '@/components/rehearsal/RehearsalOutput'
 import { parseRehearsalStreamEvent } from '@/types/rehearsal-stream'
 import {
-  CUSTOM_SCENE,
   REHEARSAL_SCENES,
   type RehearsalScene,
 } from '@/data/rehearsalScenes'
@@ -65,8 +64,8 @@ function mapAnalyzeToSecondMe(data: RehearsalAnalyzeData) {
 
 export default function RehearsalPage() {
   const [step, setStep] = useState<SimulationStep>('entry')
+  const [scenes, setScenes] = useState<RehearsalScene[]>(REHEARSAL_SCENES)
   const [selectedId, setSelectedId] = useState(REHEARSAL_SCENES[0].id)
-  const [customText, setCustomText] = useState('')
   const [summary, setSummary] = useState(REHEARSAL_SCENES[0].summary)
   const [sceneTitle, setSceneTitle] = useState(REHEARSAL_SCENES[0].title)
   const [statusText, setStatusText] = useState('当前状态：孩子有点烦，防御比较高')
@@ -82,27 +81,73 @@ export default function RehearsalPage() {
   const feedEndRef = useRef<HTMLDivElement>(null)
 
   const selectedScene: RehearsalScene =
-    selectedId === CUSTOM_SCENE.id
-      ? { ...CUSTOM_SCENE, summary: customText.trim() || CUSTOM_SCENE.summary }
-      : REHEARSAL_SCENES.find((s) => s.id === selectedId) || REHEARSAL_SCENES[0]
+    scenes.find((s) => s.id === selectedId) || scenes[0] || REHEARSAL_SCENES[0]
+
+  function matchSceneFromText(raw: string): RehearsalScene {
+    const t = raw || ''
+    if (/手机/.test(t)) return scenes.find((s) => s.id === 'phone') || REHEARSAL_SCENES[0]
+    if (/老师|学校|告状/.test(t)) return scenes.find((s) => s.id === 'teacher_feedback') || REHEARSAL_SCENES[0]
+    if (/吵|说重了|僵|修复/.test(t)) return scenes.find((s) => s.id === 'after_conflict') || REHEARSAL_SCENES[0]
+    return scenes.find((s) => s.id === 'homework_start') || REHEARSAL_SCENES[0]
+  }
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/rehearsal/scenes')
+        const json = (await res.json()) as { ok?: boolean; data?: { scenes?: RehearsalScene[] } }
+        if (!json.ok || !json.data?.scenes?.length) return
+        const merged = REHEARSAL_SCENES.map((base) => {
+          const patch = json.data!.scenes!.find((s) => s.id === base.id)
+          if (!patch) return base
+          return {
+            ...base,
+            subtitle: patch.subtitle || base.subtitle,
+            summary: patch.summary || base.summary,
+            openingHint: patch.openingHint || base.openingHint,
+          }
+        })
+        setScenes(merged)
+      } catch {
+        /* keep static */
+      }
+    })()
+  }, [])
 
   useEffect(() => {
     try {
+      const handoffRaw = sessionStorage.getItem('childos_rehearsal_handoff')
+      if (handoffRaw) {
+        sessionStorage.removeItem('childos_rehearsal_handoff')
+        const handoff = JSON.parse(handoffRaw) as {
+          sceneId?: string
+          seedText?: string
+          parentText?: string
+        }
+        const matched =
+          scenes.find((s) => s.id === handoff.sceneId) ||
+          matchSceneFromText(handoff.seedText || handoff.parentText || '')
+        setSelectedId(matched.id)
+        setSceneTitle(matched.title)
+        setSummary(handoff.seedText?.trim() || matched.summary)
+        setStep('confirm')
+        return
+      }
       const seed = sessionStorage.getItem('childos_rehearsal_scene_seed')
       if (!seed) return
       sessionStorage.removeItem('childos_rehearsal_scene_seed')
-      const matched = REHEARSAL_SCENES.find(
-        (s) => s.title.includes(seed) || s.seed === seed || seed.includes(s.title.slice(0, 2))
-      )
-      if (matched) {
-        setSelectedId(matched.id)
-        setSummary(matched.summary)
-        setSceneTitle(matched.title)
-      }
+      const matched =
+        scenes.find(
+          (s) => s.title.includes(seed) || s.seed === seed || seed.includes(s.title.slice(0, 2))
+        ) || matchSceneFromText(seed)
+      setSelectedId(matched.id)
+      setSummary(seed.length > 40 ? seed : matched.summary)
+      setSceneTitle(matched.title)
+      setStep('confirm')
     } catch {
       /* ignore */
     }
-  }, [])
+  }, [scenes])
 
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -110,21 +155,12 @@ export default function RehearsalPage() {
 
   function selectScenario(scene: RehearsalScene) {
     setSelectedId(scene.id)
-    if (scene.id === CUSTOM_SCENE.id) {
-      setSceneTitle(CUSTOM_SCENE.title)
-      setSummary(customText.trim() || CUSTOM_SCENE.summary)
-    } else {
-      setSceneTitle(scene.title)
-      setSummary(scene.summary)
-    }
+    setSceneTitle(scene.title)
+    setSummary(scene.summary)
   }
 
   function startSimulation() {
-    const nextSummary =
-      selectedId === CUSTOM_SCENE.id
-        ? customText.trim() || CUSTOM_SCENE.summary
-        : selectedScene.summary
-    setSummary(nextSummary)
+    setSummary(selectedScene.summary)
     setStep('confirm')
   }
 
@@ -323,10 +359,9 @@ export default function RehearsalPage() {
   }
 
   function restartSimulation() {
-    setCustomText('')
     setSelectedId(REHEARSAL_SCENES[0].id)
-    setSummary(REHEARSAL_SCENES[0].summary)
-    setSceneTitle(REHEARSAL_SCENES[0].title)
+    setSummary(scenes[0]?.summary || REHEARSAL_SCENES[0].summary)
+    setSceneTitle(scenes[0]?.title || REHEARSAL_SCENES[0].title)
     setFeed([])
     setRound(0)
     setRoundsSinceCheckpoint(0)
@@ -380,7 +415,7 @@ export default function RehearsalPage() {
         <div className={`simulation-layout${step === 'entry' ? '' : ' hidden'}`} id="simulationEntry">
           <section className="section">
             <div className="scenario-grid" id="scenarioGrid">
-              {REHEARSAL_SCENES.map((scene) => (
+              {scenes.map((scene) => (
                 <button
                   key={scene.id}
                   type="button"
@@ -391,32 +426,6 @@ export default function RehearsalPage() {
                   <span className="scenario-desc">{scene.subtitle}</span>
                 </button>
               ))}
-              <div
-                className={`scenario-card custom-scenario${selectedId === CUSTOM_SCENE.id ? ' active' : ''}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => selectScenario(CUSTOM_SCENE)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') selectScenario(CUSTOM_SCENE)
-                }}
-              >
-                <span className="scenario-title">{CUSTOM_SCENE.title}</span>
-                <span className="scenario-desc">{CUSTOM_SCENE.subtitle}</span>
-                <textarea
-                  className="custom-scene-input"
-                  id="simulationSceneInput"
-                  rows={3}
-                  placeholder={CUSTOM_SCENE.placeholder}
-                  value={customText}
-                  onChange={(e) => {
-                    setCustomText(e.target.value)
-                    if (selectedId === CUSTOM_SCENE.id) {
-                      setSummary(e.target.value.trim() || CUSTOM_SCENE.summary)
-                    }
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
             </div>
           </section>
 

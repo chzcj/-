@@ -1,4 +1,4 @@
-import { View, Text, Textarea, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
@@ -13,9 +13,10 @@ import {
   SimulationSystemHintBubble,
   SimulationThinkingBubble,
 } from '@/components/rehearsal/SimulationBubbles'
-import { REHEARSAL_SCENES, CUSTOM_SCENE, type SimulationStep } from '@/data/rehearsalScenes'
+import { REHEARSAL_SCENES, type RehearsalScene, type SimulationStep } from '@/data/rehearsalScenes'
 import { mapAnalyzeToSecondMe, type RehearsalAnalyzeData } from '@/lib/rehearsalStream'
 import { analyzeRehearsalTurn } from '@/services/rehearsalAnalyze'
+import { apiRequest } from '@/services/api'
 import { fetchCurrentUser } from '@/services/auth'
 import { getLatestProfile } from '@/services/profileStorage'
 import { saveTaskFromRehearsal } from '@/services/taskStorage'
@@ -25,6 +26,7 @@ import './index.scss'
 const CHECKPOINT_EVERY = 4
 const REHEARSAL_SCENE_SEED_KEY = 'childos_rehearsal_scene_seed'
 const REHEARSAL_DIALOGUE_CONTEXT_KEY = 'childos_rehearsal_dialogue_context'
+const REHEARSAL_HANDOFF_KEY = 'childos_rehearsal_handoff'
 
 type DialogueRehearsalContext = {
   sceneTitle?: string
@@ -32,6 +34,13 @@ type DialogueRehearsalContext = {
   openingHint?: string
   tryTonight?: string
   sampleDialogue?: string
+}
+
+type RehearsalHandoff = {
+  sceneId?: string
+  seedText?: string
+  parentText?: string
+  traceId?: string
 }
 
 type FeedItem =
@@ -53,6 +62,16 @@ function truncate(text: string, max = 72) {
   return `${value.slice(0, max).trim()}…`
 }
 
+function matchSceneFromText(text: string): RehearsalScene {
+  const t = text || ''
+  if (/手机/.test(t)) return REHEARSAL_SCENES.find((s) => s.id === 'phone') || REHEARSAL_SCENES[0]
+  if (/老师|学校|告状/.test(t))
+    return REHEARSAL_SCENES.find((s) => s.id === 'teacher_feedback') || REHEARSAL_SCENES[0]
+  if (/吵|说重了|僵|修复/.test(t))
+    return REHEARSAL_SCENES.find((s) => s.id === 'after_conflict') || REHEARSAL_SCENES[0]
+  return REHEARSAL_SCENES.find((s) => s.id === 'homework_start') || REHEARSAL_SCENES[0]
+}
+
 export default function RehearsalPage() {
   useTabBar('rehearsal')
   usePublicPageShare({
@@ -60,8 +79,8 @@ export default function RehearsalPage() {
     path: SHARE_PATHS.rehearsal,
   })
   const [step, setStep] = useState<SimulationStep>('entry')
+  const [scenes, setScenes] = useState<RehearsalScene[]>(REHEARSAL_SCENES)
   const [selectedId, setSelectedId] = useState(REHEARSAL_SCENES[0].id)
-  const [customText, setCustomText] = useState('')
   const [summary, setSummary] = useState(REHEARSAL_SCENES[0].summary)
   const [sceneTitle, setSceneTitle] = useState(REHEARSAL_SCENES[0].title)
   const [statusText, setStatusText] = useState('当前状态：孩子有点烦，防御比较高')
@@ -75,18 +94,31 @@ export default function RehearsalPage() {
   const [tonightSaved, setTonightSaved] = useState(false)
   const [rehearsalTraceId, setRehearsalTraceId] = useState<string | undefined>()
 
-  const selectedScene =
-    selectedId === CUSTOM_SCENE.id
-      ? { ...CUSTOM_SCENE, summary: customText.trim() || CUSTOM_SCENE.summary }
-      : REHEARSAL_SCENES.find((s) => s.id === selectedId) || REHEARSAL_SCENES[0]
+  const selectedScene = scenes.find((s) => s.id === selectedId) || scenes[0] || REHEARSAL_SCENES[0]
 
   const applySceneSeed = useCallback(() => {
     try {
       const dialogueCtx = Taro.getStorageSync(REHEARSAL_DIALOGUE_CONTEXT_KEY) as DialogueRehearsalContext | ''
       if (dialogueCtx && typeof dialogueCtx === 'object' && dialogueCtx.sceneSummary) {
-        setSelectedId(CUSTOM_SCENE.id)
-        setSceneTitle(dialogueCtx.sceneTitle || '根据真实对话预演')
+        Taro.removeStorageSync(REHEARSAL_DIALOGUE_CONTEXT_KEY)
+        const matched = matchSceneFromText(
+          `${dialogueCtx.sceneTitle || ''} ${dialogueCtx.sceneSummary || ''}`
+        )
+        setSelectedId(matched.id)
+        setSceneTitle(dialogueCtx.sceneTitle || matched.title)
         setSummary(dialogueCtx.sceneSummary)
+        setStep('confirm')
+        return
+      }
+      const handoff = Taro.getStorageSync(REHEARSAL_HANDOFF_KEY) as RehearsalHandoff | ''
+      if (handoff && typeof handoff === 'object' && (handoff.seedText || handoff.sceneId)) {
+        Taro.removeStorageSync(REHEARSAL_HANDOFF_KEY)
+        const matched =
+          scenes.find((s) => s.id === handoff.sceneId) ||
+          matchSceneFromText(handoff.seedText || handoff.parentText || '')
+        setSelectedId(matched.id)
+        setSceneTitle(matched.title)
+        setSummary(handoff.seedText?.trim() || matched.summary)
         setStep('confirm')
         return
       }
@@ -94,18 +126,35 @@ export default function RehearsalPage() {
       if (!seed) return
       Taro.removeStorageSync(REHEARSAL_SCENE_SEED_KEY)
       const seedText = String(seed)
-      const matched = REHEARSAL_SCENES.find(
-        (s) => s.title.includes(seedText) || s.seed === seedText || seedText.includes(s.title.slice(0, 2))
-      )
-      if (matched) {
-        setSelectedId(matched.id)
-        setSummary(matched.summary)
-        setSceneTitle(matched.title)
-        setStep('confirm')
-      }
+      const matched =
+        scenes.find(
+          (s) => s.title.includes(seedText) || s.seed === seedText || seedText.includes(s.title.slice(0, 2))
+        ) || matchSceneFromText(seedText)
+      setSelectedId(matched.id)
+      setSummary(seedText.length > 40 ? seedText : matched.summary)
+      setSceneTitle(matched.title)
+      setStep('confirm')
     } catch {
       /* ignore */
     }
+  }, [scenes])
+
+  useEffect(() => {
+    void (async () => {
+      const res = await apiRequest<{ scenes?: RehearsalScene[] }>('/api/rehearsal/scenes')
+      if (!res.ok || !res.data.scenes?.length) return
+      const merged = REHEARSAL_SCENES.map((base) => {
+        const patch = res.data.scenes!.find((s) => s.id === base.id)
+        if (!patch) return base
+        return {
+          ...base,
+          subtitle: patch.subtitle || base.subtitle,
+          summary: patch.summary || base.summary,
+          openingHint: patch.openingHint || base.openingHint,
+        }
+      })
+      setScenes(merged)
+    })()
   }, [])
 
   useDidShow(async () => {
@@ -115,13 +164,7 @@ export default function RehearsalPage() {
   })
 
   const selectScenario = (sceneId: string) => {
-    if (sceneId === CUSTOM_SCENE.id) {
-      setSelectedId(CUSTOM_SCENE.id)
-      setSceneTitle(CUSTOM_SCENE.title)
-      setSummary(customText.trim() || CUSTOM_SCENE.summary)
-      return
-    }
-    const scene = REHEARSAL_SCENES.find((s) => s.id === sceneId)
+    const scene = scenes.find((s) => s.id === sceneId)
     if (!scene) return
     setSelectedId(scene.id)
     setSceneTitle(scene.title)
@@ -129,9 +172,7 @@ export default function RehearsalPage() {
   }
 
   const startSimulation = () => {
-    const nextSummary =
-      selectedId === CUSTOM_SCENE.id ? customText.trim() || CUSTOM_SCENE.summary : selectedScene.summary
-    setSummary(nextSummary)
+    setSummary(selectedScene.summary)
     setStep('confirm')
   }
 
@@ -177,8 +218,6 @@ export default function RehearsalPage() {
       return next
     })
   }
-
-  const [entryScrollIntoView, setEntryScrollIntoView] = useState('')
 
   const runTurn = async (text: string) => {
     const value = text.trim()
@@ -324,10 +363,9 @@ export default function RehearsalPage() {
   }
 
   const restartSimulation = () => {
-    setCustomText('')
-    setSelectedId(REHEARSAL_SCENES[0].id)
-    setSummary(REHEARSAL_SCENES[0].summary)
-    setSceneTitle(REHEARSAL_SCENES[0].title)
+    setSelectedId(scenes[0]?.id || REHEARSAL_SCENES[0].id)
+    setSummary(scenes[0]?.summary || REHEARSAL_SCENES[0].summary)
+    setSceneTitle(scenes[0]?.title || REHEARSAL_SCENES[0].title)
     setFeed([])
     setRound(0)
     setRoundsSinceCheckpoint(0)
@@ -393,13 +431,12 @@ export default function RehearsalPage() {
           className='rehearsal-entry-scroll'
           scrollY
           scrollWithAnimation
-          scrollIntoView={entryScrollIntoView}
           enhanced
           showScrollbar={false}
         >
           <Text className='hero-title page-heading'>选个场景，练怎么开口</Text>
           <View className='scenario-grid'>
-            {REHEARSAL_SCENES.map((scene) => (
+            {scenes.map((scene) => (
               <View
                 key={scene.id}
                 className={`scenario-card${selectedId === scene.id ? ' active' : ''}`}
@@ -409,53 +446,6 @@ export default function RehearsalPage() {
                 <Text className='scenario-desc muted'>{scene.subtitle}</Text>
               </View>
             ))}
-            <View
-              id='custom-scenario-card'
-              className={`scenario-card custom-scenario${selectedId === CUSTOM_SCENE.id ? ' active' : ''}`}
-              onClick={() => selectScenario(CUSTOM_SCENE.id)}
-            >
-              <Text className='scenario-title'>{CUSTOM_SCENE.title}</Text>
-              <Text className='scenario-desc muted'>{CUSTOM_SCENE.subtitle}</Text>
-              <View
-                className='custom-scenario-input'
-                catchMove
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (selectedId !== CUSTOM_SCENE.id) selectScenario(CUSTOM_SCENE.id)
-                }}
-              >
-                {/* 自绘占位：原生 textarea 的 placeholder 在页面滚动时会重排换行（每行末字跳行）。
-                    用普通 Text 覆盖显示，原生 placeholder 置空，滚动不再抖动。 */}
-                {!customText ? (
-                  <Text className='rehearsal-textarea-placeholder'>{CUSTOM_SCENE.placeholder}</Text>
-                ) : null}
-                <Textarea
-                  className='rehearsal-textarea'
-                  value={customText}
-                  placeholder=''
-                  maxlength={500}
-                  autoHeight
-                  adjustPosition={false}
-                  holdKeyboard
-                  disableDefaultPadding
-                  cursorSpacing={120}
-                  showConfirmBar={false}
-                  onFocus={() => {
-                    if (selectedId !== CUSTOM_SCENE.id) selectScenario(CUSTOM_SCENE.id)
-                    setEntryScrollIntoView('')
-                    requestAnimationFrame(() => setEntryScrollIntoView('custom-scenario-card'))
-                    setTimeout(() => setEntryScrollIntoView('custom-scenario-card'), 200)
-                  }}
-                  onBlur={() => setEntryScrollIntoView('')}
-                  onInput={(e) => {
-                    setCustomText(e.detail.value)
-                    if (selectedId === CUSTOM_SCENE.id) {
-                      setSummary(e.detail.value.trim() || CUSTOM_SCENE.summary)
-                    }
-                  }}
-                />
-              </View>
-            </View>
           </View>
           <Text className='pill primary wide-pill' onClick={startSimulation}>
             开始预演

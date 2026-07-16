@@ -137,9 +137,16 @@ export function DailyAiMessage({
                         if (ok) setTaskSaved(true)
                       })
                     } else if (action.kind === 'rehearsal') {
-                      const seed = action.payload?.seedText || text.slice(0, 12)
+                      const seed = action.payload?.seedText || text.slice(0, 200)
+                      const sceneId = action.payload?.sceneId || 'homework_start'
                       try {
-                        Taro.setStorageSync('childos_rehearsal_scene_seed', seed)
+                        Taro.setStorageSync('childos_rehearsal_handoff', {
+                          sceneId,
+                          seedText: seed,
+                          parentText: text.slice(0, 800),
+                          traceId: traceId || '',
+                        })
+                        Taro.setStorageSync('childos_rehearsal_scene_seed', seed.slice(0, 80))
                       } catch {
                         /* ignore */
                       }
