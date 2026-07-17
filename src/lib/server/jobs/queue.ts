@@ -34,7 +34,7 @@ export {
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite' | 'deep_mechanism_review' | 'growth_trajectory_update'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite' | 'deep_mechanism_review' | 'growth_trajectory_update' | 'profile_build_run'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
 interface DigestUpdatePayload { tenant: TenantId }
@@ -181,6 +181,18 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   } else if (jobType === 'growth_trajectory_update') {
     const p = payload as { tenant: TenantId; sourceHash?: string }
     await runGrowthTrajectoryUpdate(p.tenant, p.sourceHash)
+  } else if (jobType === 'profile_build_run') {
+    const p = payload as {
+      tenant: TenantId
+      runId: string
+      inputVersion: string
+      fromStage?: 'synthesis' | 'diagnosis' | 'persist' | 'readiness'
+    }
+    const { executeProfileBuildRun } = await import('@/lib/server/profile/build-run')
+    await executeProfileBuildRun(p.tenant, p.runId, {
+      fromStage: p.fromStage,
+      inputVersion: p.inputVersion,
+    })
   }
 }
 

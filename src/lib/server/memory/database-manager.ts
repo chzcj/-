@@ -255,6 +255,107 @@ export async function getBuildProgress(tenant: TenantId): Promise<RemoteBuildSta
   return (await readLayer<RemoteBuildState>('build_progress', tenant)).slice(-1)[0] || null
 }
 
+export type ProfileBuildRunStage = 'synthesis' | 'diagnosis' | 'persist' | 'readiness'
+export type ProfileBuildRunStatus = 'pending' | 'running' | 'succeeded' | 'failed'
+
+export type ProfileBuildRun = {
+  runId: string
+  inputVersion: string
+  status: ProfileBuildRunStatus
+  phase: number
+  label: string
+  currentStage?: ProfileBuildRunStage
+  failedStage?: ProfileBuildRunStage
+  error?: string
+  startedAt: string
+  updatedAt: string
+  completedAt?: string
+  inputPurged?: boolean
+}
+
+export type ProfileBuildInputSnapshot = {
+  inputVersion: string
+  finalFollowUpText: string
+  entryMap: Record<
+    string,
+    {
+      rawTexts: string[]
+      followUps: string[]
+      stageSummary?: string
+      aiFacts?: string[]
+      aiHypotheses?: string[]
+      moduleComplete?: boolean
+      summarySufficient?: boolean
+    }
+  >
+  createdAt: string
+}
+
+type ProfileBuildStageCache = {
+  inputVersion: string
+  synthesis?: Record<string, unknown>
+  diagnosis?: Record<string, unknown>
+  updatedAt: string
+}
+
+export async function saveProfileBuildInputSnapshot(snapshot: ProfileBuildInputSnapshot, tenant: TenantId) {
+  await replaceLayer(
+    'profile_build_input_snapshot',
+    [
+      toItem(
+        'profile_build_input_snapshot',
+        snapshot,
+        tenant,
+        `${tenant.familyId}:${tenant.childId}:latest`
+      ),
+    ],
+    tenant
+  )
+}
+
+export async function getProfileBuildInputSnapshot(tenant: TenantId): Promise<ProfileBuildInputSnapshot | null> {
+  return (await readLayer<ProfileBuildInputSnapshot>('profile_build_input_snapshot', tenant)).slice(-1)[0] || null
+}
+
+export async function purgeProfileBuildInputSnapshot(tenant: TenantId) {
+  await replaceLayer('profile_build_input_snapshot', [], tenant)
+}
+
+export async function saveProfileBuildRun(run: ProfileBuildRun, tenant: TenantId) {
+  await replaceLayer(
+    'profile_build_run',
+    [toItem('profile_build_run', run, tenant, `${tenant.familyId}:${tenant.childId}:latest`)],
+    tenant
+  )
+}
+
+export async function getLatestProfileBuildRun(tenant: TenantId): Promise<ProfileBuildRun | null> {
+  return (await readLayer<ProfileBuildRun>('profile_build_run', tenant)).slice(-1)[0] || null
+}
+
+export async function saveProfileBuildStageCache(cache: ProfileBuildStageCache, tenant: TenantId) {
+  await replaceLayer(
+    'profile_build_stage_cache',
+    [
+      toItem(
+        'profile_build_stage_cache',
+        cache,
+        tenant,
+        `${tenant.familyId}:${tenant.childId}:latest`
+      ),
+    ],
+    tenant
+  )
+}
+
+export async function getProfileBuildStageCache(tenant: TenantId): Promise<ProfileBuildStageCache | null> {
+  return (await readLayer<ProfileBuildStageCache>('profile_build_stage_cache', tenant)).slice(-1)[0] || null
+}
+
+export async function clearProfileBuildStageCache(tenant: TenantId) {
+  await replaceLayer('profile_build_stage_cache', [], tenant)
+}
+
 export type AccountClientBackup = {
   version: 'account.client.v1'
   dailyThread: Array<{

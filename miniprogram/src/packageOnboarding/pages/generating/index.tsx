@@ -13,6 +13,7 @@ import {
 import {
   ensureProfileBuildInFlight,
   getProfileBuildRunState,
+  retryServerProfileBuildRun,
   subscribeProfileBuildRun,
 } from '@/services/profilePipeline'
 
@@ -98,7 +99,9 @@ export default function OnboardingGenerating() {
 
   const handleRetry = () => {
     cancelledRef.current = false
-    setRetryKey((k) => k + 1)
+    void retryServerProfileBuildRun(getProfileBuildRunState()?.failedStage).finally(() => {
+      setRetryKey((k) => k + 1)
+    })
   }
 
   if (!allowed && !error) {

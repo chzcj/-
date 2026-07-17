@@ -6,7 +6,7 @@ import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { loadChildBasicInfo, saveChildBasicInfo } from '@/services/childStorage'
 import { apiRequest } from '@/services/api'
-import { getProfileBuildRunState, subscribeProfileBuildRun, type ProfileBuildRunState } from '@/services/profilePipeline'
+import { fetchServerBuildRun, getProfileBuildRunState, subscribeProfileBuildRun, type ProfileBuildRunState } from '@/services/profilePipeline'
 import './index.scss'
 
 const GRADES = [
@@ -50,6 +50,22 @@ export default function OnboardingBasic() {
 
   useEffect(() => subscribeProfileBuildRun(setBuildRun), [])
 
+  useEffect(() => {
+    let cancelled = false
+    const tick = async () => {
+      const remote = await fetchServerBuildRun()
+      if (!cancelled && remote) setBuildRun(remote)
+    }
+    void tick()
+    const timer = setInterval(() => {
+      if (buildRun?.status === 'running' || buildRun?.status === 'pending') void tick()
+    }, 2500)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [buildRun?.status])
+
   const next = async () => {
     if (!childName.trim() || !grade.trim() || !province.trim() || !caregiverRelation.trim() || !companionTime.trim() || !helpGoal.trim()) {
       Taro.showToast({ title: '请把基础资料填写完整', icon: 'none' })
@@ -82,8 +98,9 @@ export default function OnboardingBasic() {
       return
     }
     const built = await apiRequest<{ snapshot?: { coreJudgment?: string } }>('/api/profile/built', { method: 'GET' })
+    const runReady = buildRun?.status === 'succeeded' || buildRun?.firstVisibleSnapshotReady
     await mpGoReplace(
-      built.ok && built.data.snapshot?.coreJudgment
+      (built.ok && built.data.snapshot?.coreJudgment) || runReady
         ? '/packageOnboarding/pages/result/index'
         : '/packageOnboarding/pages/generating/index'
     )

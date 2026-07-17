@@ -24,16 +24,32 @@ export type BuiltSnapshotInput = {
 }
 
 export type ProfileBuildRunState = {
+  runId?: string
   buildVersion: string
-  status: 'idle' | 'running' | 'succeeded' | 'failed'
+  status: 'idle' | 'pending' | 'running' | 'succeeded' | 'failed'
   phase: number
   label: string
   startedAt?: string
   updatedAt: string
   error?: string
+  failedStage?: string
+  firstVisibleSnapshotReady?: boolean
+}
+
+type ServerBuildRun = {
+  runId: string
+  inputVersion: string
+  status: 'pending' | 'running' | 'succeeded' | 'failed'
+  phase: number
+  label: string
+  error?: string
+  failedStage?: string
+  startedAt?: string
+  updatedAt?: string
 }
 
 const PROFILE_BUILD_RUN_KEY = 'yujian_profile_build_run'
+const POLL_INTERVAL_MS = 2000
 let activeProfileBuildPromise: Promise<{ ok: true } | { ok: false; message: string }> | null = null
 const profileBuildRunListeners = new Set<(state: ProfileBuildRunState) => void>()
 
@@ -48,6 +64,26 @@ function makeBuildVersion(state: BuildState): string {
   let hash = 0
   for (let i = 0; i < input.length; i++) hash = (hash * 31 + input.charCodeAt(i)) | 0
   return `${Math.abs(hash)}-${input.length}`
+}
+
+function mapServerRun(
+  run: ServerBuildRun | null | undefined,
+  fallbackVersion: string,
+  firstVisibleSnapshotReady?: boolean
+): ProfileBuildRunState | null {
+  if (!run) return null
+  return {
+    runId: run.runId,
+    buildVersion: run.inputVersion || fallbackVersion,
+    status: run.status,
+    phase: run.phase,
+    label: run.label,
+    startedAt: run.startedAt,
+    updatedAt: run.updatedAt || new Date().toISOString(),
+    error: run.error,
+    failedStage: run.failedStage,
+    firstVisibleSnapshotReady,
+  }
 }
 
 export function getProfileBuildRunState(): ProfileBuildRunState | null {
@@ -95,6 +131,8 @@ export function buildEntryMapFromState(state: BuildState) {
       stageSummary?: string
       aiFacts?: string[]
       aiHypotheses?: string[]
+      moduleComplete?: boolean
+      summarySufficient?: boolean
     }
   > = {}
   for (const mod of BUILD_MODULES) {
@@ -105,6 +143,8 @@ export function buildEntryMapFromState(state: BuildState) {
       stageSummary: m?.stageSummary,
       aiFacts: m?.aiFacts,
       aiHypotheses: m?.aiHypotheses,
+      moduleComplete: m?.moduleComplete,
+      summarySufficient: m?.summarySufficient,
     }
   }
   return entryMap
@@ -114,7 +154,6 @@ export function completedEntryCount(state: BuildState): number {
   return BUILD_MODULES.filter((mod) => Boolean(state.entryMap[mod.key]?.moduleComplete)).length
 }
 
-/** 质量有效模块数（信息不足的确认模块不计入） */
 export function qualityValidEntryCount(state: BuildState): number {
   return computeCompletenessFromState(state).qualityValidCount
 }
@@ -124,11 +163,11 @@ export function computeCompletenessFromState(state: BuildState) {
     BUILD_MODULES.map((mod) => {
       const m = state.entryMap[mod.key]
       return {
-      confirmed: Boolean(m?.moduleComplete),
-      mainJudgment: m?.stageSummary || '',
-      facts: m?.aiFacts || [],
-      sufficient: m?.summarySufficient,
-    }
+        confirmed: Boolean(m?.moduleComplete),
+        mainJudgment: m?.stageSummary || '',
+        facts: m?.aiFacts || [],
+        sufficient: m?.summarySufficient,
+      }
     })
   )
 }
@@ -190,8 +229,7 @@ export function buildSnapshotFromResults(
     : ''
 
   const protectionList =
-  ((diag.childSelfProtection as { protectingWhat?: string[] })?.protectingWhat) || []
-
+    ((diag.childSelfProtection as { protectingWhat?: string[] })?.protectingWhat) || []
   const { completeness } = computeCompletenessFromState(state)
 
   return {
@@ -210,6 +248,113 @@ export function buildSnapshotFromResults(
   }
 }
 
+async function hydrateBuiltSnapshotFromServer() {
+  const built = await apiRequest<{
+    snapshot?: BuiltSnapshotInput
+  }>('/api/profile/built', { method: 'GET' })
+  if (!built.ok || !built.data.snapshot?.coreJudgment) return
+  const snapshot = built.data.snapshot
+  const { hydrateProfileFromRemote } = await import('@/services/profileStorage')
+  hydrateProfileFromRemote({
+    coreJudgment: snapshot.coreJudgment,
+    completeness: snapshot.completeness,
+    supportFocus: snapshot.supportFocus,
+    deepMechanism: snapshot.deepMechanism,
+    evidence: snapshot.evidence,
+    verificationPoints: snapshot.verificationPoints,
+  })
+  const { forceAccountSyncToServer } = await import('@/services/accountSync')
+  await forceAccountSyncToServer()
+}
+
+export async function fetchServerBuildRun(): Promise<ProfileBuildRunState | null> {
+  const build = loadBuildState()
+  const fallbackVersion = makeBuildVersion(build)
+  const res = await apiRequest<{
+    run?: ServerBuildRun | null
+    firstVisibleSnapshotReady?: boolean
+  }>('/api/profile/build-run', { method: 'GET' })
+  if (!res.ok) return getProfileBuildRunState()
+  const mapped = mapServerRun(res.data.run, fallbackVersion, res.data.firstVisibleSnapshotReady)
+  if (mapped) saveProfileBuildRunState(mapped)
+  return mapped
+}
+
+export async function startServerProfileBuildRun(): Promise<
+  { ok: true } | { ok: false; message: string }
+> {
+  const build = loadBuildState()
+  const entryMap = buildEntryMapFromState(build)
+  const res = await apiRequest<{
+    run?: ServerBuildRun
+    firstVisibleSnapshotReady?: boolean
+  }>('/api/profile/build-run', {
+    method: 'POST',
+    data: {
+      entryMap,
+      finalFollowUpText: build.finalFollowUpText || '',
+    },
+  })
+  if (!res.ok) {
+    return { ok: false, message: res.error.message || '无法启动画像整理' }
+  }
+  const mapped = mapServerRun(res.data.run, makeBuildVersion(build), res.data.firstVisibleSnapshotReady)
+  if (mapped) saveProfileBuildRunState(mapped)
+  return { ok: true }
+}
+
+async function pollServerBuildRun(
+  onStep?: (step: number, label: string) => void
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const build = loadBuildState()
+  const fallbackVersion = makeBuildVersion(build)
+  const MAX_POLLS = 120
+
+  for (let i = 0; i < MAX_POLLS; i++) {
+    const res = await apiRequest<{
+      run?: ServerBuildRun | null
+      firstVisibleSnapshotReady?: boolean
+    }>('/api/profile/build-run', { method: 'GET' })
+    if (!res.ok) {
+      return { ok: false, message: res.error.message || '无法获取画像整理进度' }
+    }
+    const mapped = mapServerRun(res.data.run, fallbackVersion, res.data.firstVisibleSnapshotReady)
+    if (mapped) {
+      saveProfileBuildRunState(mapped)
+      onStep?.(mapped.phase, mapped.label)
+      if (mapped.status === 'succeeded') {
+        await hydrateBuiltSnapshotFromServer()
+        return { ok: true }
+      }
+      if (mapped.status === 'failed') {
+        return { ok: false, message: mapped.error || '画像整理未完成' }
+      }
+    }
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+  }
+  return { ok: false, message: '画像整理超时，请稍后重试' }
+}
+
+export async function retryServerProfileBuildRun(
+  fromStage?: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const res = await apiRequest<{ run?: ServerBuildRun; firstVisibleSnapshotReady?: boolean }>(
+    '/api/profile/build-run/retry',
+    {
+      method: 'POST',
+      data: fromStage ? { fromStage } : {},
+    }
+  )
+  if (!res.ok) {
+    return { ok: false, message: res.error.message || '重试失败' }
+  }
+  const build = loadBuildState()
+  const mapped = mapServerRun(res.data.run, makeBuildVersion(build), res.data.firstVisibleSnapshotReady)
+  if (mapped) saveProfileBuildRunState(mapped)
+  return { ok: true }
+}
+
+/** @deprecated 保留给极端离线兜底；正常流程走服务端 build run。 */
 export async function runProfileGeneratingPipeline(
   onStep: (step: number, label: string) => void
 ): Promise<{ ok: true } | { ok: false; message: string }> {
@@ -271,29 +416,15 @@ export async function runProfileGeneratingPipeline(
     return { ok: false, message: '画像已生成，但未能保存，请检查网络后重试' }
   }
 
-  const { hydrateProfileFromRemote } = await import('@/services/profileStorage')
-  hydrateProfileFromRemote({
-    coreJudgment: snapshot.coreJudgment,
-    completeness: snapshot.completeness,
-    supportFocus: snapshot.supportFocus,
-    deepMechanism: snapshot.deepMechanism,
-    evidence: snapshot.evidence,
-    verificationPoints: snapshot.verificationPoints,
-  })
-
-  const { forceAccountSyncToServer } = await import('@/services/accountSync')
-  await forceAccountSyncToServer()
-
+  await hydrateBuiltSnapshotFromServer()
   onStep(4, '整理首版画像…')
   await waitForProfileReadiness()
-
   return { ok: true }
 }
 
 /**
- * 不改 synthesis → diagnosis 本身，只为小程序跨页面预热加一个运行锁。
- * 最后补充页启动后，基础资料页和生成页都可订阅同一条 Promise；进程被微信回收时，
- * 生成页会按既有完整流程重跑，不使用不完整的中间结果拼接。
+ * 服务端 durable build run：最后补充提交后冻结输入并在后台执行 synthesis→diagnosis→persist。
+ * 基础资料页与生成页订阅同一条 run；微信回收后通过 GET 恢复进度。
  */
 export function ensureProfileBuildInFlight(
   onStep?: (step: number, label: string) => void
@@ -302,57 +433,49 @@ export function ensureProfileBuildInFlight(
 
   const buildVersion = makeBuildVersion(loadBuildState())
   const startedAt = new Date().toISOString()
-  const report = (phase: number, label: string) => {
-    const next: ProfileBuildRunState = {
-      buildVersion,
-      status: 'running',
-      phase,
-      label,
-      startedAt,
-      updatedAt: new Date().toISOString(),
-    }
-    saveProfileBuildRunState(next)
-    onStep?.(phase, label)
-  }
 
-  report(0, '正在整理四个模块的关键事实…')
-  activeProfileBuildPromise = runProfileGeneratingPipeline(report)
-    .then((result) => {
+  activeProfileBuildPromise = (async () => {
+    const existing = await fetchServerBuildRun()
+    if (!existing || existing.buildVersion !== buildVersion || existing.status === 'failed') {
+      const started = await startServerProfileBuildRun()
+      if (!started.ok) return started
+    } else if (existing.status === 'succeeded') {
+      await hydrateBuiltSnapshotFromServer()
       saveProfileBuildRunState({
+        ...existing,
         buildVersion,
-        status: result.ok ? 'succeeded' : 'failed',
-        phase: result.ok ? 4 : getProfileBuildRunState()?.phase || 0,
-        label: result.ok ? '画像已准备好' : '画像整理未完成',
-        startedAt,
+        status: 'succeeded',
+        phase: 4,
+        label: '画像已准备好',
+        startedAt: existing.startedAt || startedAt,
         updatedAt: new Date().toISOString(),
-        error: result.ok ? undefined : result.message,
       })
-      return result
+      return { ok: true as const }
+    }
+
+    const result = await pollServerBuildRun(onStep)
+    const latest = getProfileBuildRunState()
+    saveProfileBuildRunState({
+      runId: latest?.runId,
+      buildVersion,
+      status: result.ok ? 'succeeded' : 'failed',
+      phase: result.ok ? 4 : latest?.phase || 0,
+      label: result.ok ? '画像已准备好' : '画像整理未完成',
+      startedAt: latest?.startedAt || startedAt,
+      updatedAt: new Date().toISOString(),
+      error: result.ok ? undefined : result.message,
+      failedStage: latest?.failedStage,
+      firstVisibleSnapshotReady: latest?.firstVisibleSnapshotReady,
     })
-    .catch((error) => {
-      const message = error instanceof Error ? error.message : '画像整理未完成'
-      const result = { ok: false as const, message }
-      saveProfileBuildRunState({
-        buildVersion,
-        status: 'failed',
-        phase: getProfileBuildRunState()?.phase || 0,
-        label: '画像整理未完成',
-        startedAt,
-        updatedAt: new Date().toISOString(),
-        error: message,
-      })
-      return result
-    })
-    .finally(() => {
-      activeProfileBuildPromise = null
-    })
+    return result
+  })().finally(() => {
+    activeProfileBuildPromise = null
+  })
 
   return activeProfileBuildPromise
 }
 
 export async function waitForProfileReadiness(): Promise<void> {
-  // 画像正文已由 synthesis + diagnosis 完整生成。三件套未就绪时仍可进入结果，
-  // 深度机制复核在后台继续，避免把 4 步长 Job 的墙钟时间加到新用户首屏等待上。
   const MAX_TRIES = 6
   const INTERVAL = 2500
   for (let i = 0; i < MAX_TRIES; i++) {

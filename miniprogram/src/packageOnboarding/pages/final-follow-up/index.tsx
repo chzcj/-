@@ -8,7 +8,7 @@ import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { allModulesCompleted } from '@/services/entryStorage'
 import { loadBuildState, saveBuildState } from '@/services/buildState'
 import { apiRequest } from '@/services/api'
-import { ensureProfileBuildInFlight } from '@/services/profilePipeline'
+import { startServerProfileBuildRun } from '@/services/profilePipeline'
 
 export default function FinalFollowUpPage() {
   useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
@@ -46,8 +46,8 @@ export default function FinalFollowUpPage() {
       return
     }
 
-    // 首版 synthesis → diagnosis 沿用原流水线，先在基础资料页期间预热。
-    void ensureProfileBuildInFlight()
+    // 冻结四模块输入并在服务端启动 durable build run；基础资料页期间后台继续整理。
+    void startServerProfileBuildRun()
     await mpGoReplace('/packageOnboarding/pages/basic/index')
   }
 

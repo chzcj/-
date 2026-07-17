@@ -2341,3 +2341,24 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **下一步**
 - 真机先验当前已上线功能；若要做 durable build run，单独立项：表结构 + API + 小程序 generating/basic 改订阅，不与画像文案/UI 小修并行。
+
+## 2026-07-17 17:15 | Cursor | Durable profile build run（方案 C）
+
+**做了什么**
+- 服务端新增 `profile_build_run` job：final 提交后冻结四模块 `entryMap + finalFollowUpText` 到 `profile_build_input_snapshot`，按 stage 执行 synthesis → diagnosis → persist → readiness。
+- 新 API：`POST/GET /api/profile/build-run`、`POST /api/profile/build-run/retry`（按 failedStage 重试）；`(tenant, inputVersion)` 幂等，成功后 purge 原始输入快照。
+- 小程序：最后补充页 `startServerProfileBuildRun`；基础资料页轮询服务端进度；生成页订阅 run + stage 级重试；微信回收后 GET 恢复，不再依赖本地串行 pipeline。
+- synthesis→diagnosis Prompt/顺序/thinking **未改**；语音 ASR **未动**。
+
+**验证**
+- Web `npm run typecheck` ✓ / `npm run build` ✓
+- 小程序 `typecheck` ✓ / `build:weapp` ✓（既有 CSS order warning）
+- 2026-07-17 17:14：`npm run deploy` 成功，`ready:true`，`jobHealthy:true`
+
+**下一步**
+- 真机验收：最后补充提交 → 填基础资料期间后台跑完 → 生成页断点恢复；失败时「重试」只跑失败 stage。
+- 仍待做（P1）：任务 outbox 离线重放；Web generating 页仍走旧客户端 pipeline。
+
+**风险/冲突**
+- 新 run 与旧 `/api/synthesis`+`/api/diagnosis` 直连并存；正常建档只走 build-run job。
+- stage 中间结果缓存在 `profile_build_stage_cache`，成功后会清；失败重试可复用已完成的 synthesis。
