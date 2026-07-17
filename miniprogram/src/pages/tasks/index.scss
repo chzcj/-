@@ -54,6 +54,36 @@
   margin-bottom: 14px;
 }
 
+.task-sync-banner {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 244, 230, 0.92);
+  border: 1px solid rgba(230, 162, 76, 0.35);
+}
+
+.task-sync-banner--pending {
+  background: rgba(240, 248, 236, 0.92);
+  border-color: rgba(111, 159, 86, 0.28);
+}
+
+.task-sync-banner-title {
+  display: block;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #8a4b00;
+}
+
+.task-sync-banner--pending .task-sync-banner-title {
+  color: #4a6741;
+}
+
+.task-sync-banner-action {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
 .task-history {
   margin: 24px 0 12px;
 }

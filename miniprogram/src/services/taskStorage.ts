@@ -7,6 +7,8 @@ import {
   flushTaskOutbox,
   makeTaskClientId,
   patchLocalTaskIdByClientId,
+  retryFailedTaskOutbox,
+  type TaskOutboxFlushResult,
 } from '@/services/taskOutbox'
 
 export type TaskFeedback = {
@@ -211,4 +213,10 @@ export async function updateTaskFeedback(
       : t
   )
   saveLocalTasks(items)
+}
+
+export async function retryTaskOutboxSync(): Promise<TaskOutboxFlushResult> {
+  return retryFailedTaskOutbox((clientId, serverTaskId) => {
+    saveLocalTasks(patchLocalTaskIdByClientId(loadLocalTasks(), clientId, serverTaskId))
+  })
 }

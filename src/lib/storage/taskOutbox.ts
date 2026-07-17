@@ -28,6 +28,16 @@ type FeedbackOutboxEntry = {
 
 export type TaskOutboxEntry = CreateOutboxEntry | FeedbackOutboxEntry
 
+export type TaskOutboxSummary = {
+  total: number
+  pending: number
+  failed: number
+}
+
+export type TaskOutboxFlushResult = TaskOutboxSummary & {
+  synced: number
+}
+
 function loadOutbox(): TaskOutboxEntry[] {
   if (typeof window === 'undefined') return []
   try {
@@ -47,6 +57,25 @@ function saveOutbox(entries: TaskOutboxEntry[]) {
   } catch {
     /* ignore */
   }
+}
+
+export function getTaskOutboxSummary(): TaskOutboxSummary {
+  const outbox = loadOutbox()
+  const failed = outbox.filter((item) => item.attempts >= MAX_ATTEMPTS).length
+  const pending = outbox.filter((item) => item.attempts < MAX_ATTEMPTS).length
+  return { total: outbox.length, pending, failed }
+}
+
+export function resetFailedOutboxAttempts(): number {
+  const outbox = loadOutbox()
+  let reset = 0
+  const next = outbox.map((item) => {
+    if (item.attempts < MAX_ATTEMPTS) return item
+    reset += 1
+    return { ...item, attempts: 0 }
+  })
+  if (reset > 0) saveOutbox(next)
+  return reset
 }
 
 export function makeTaskClientId(): string {
@@ -69,11 +98,16 @@ export function enqueueTaskFeedback(entry: Omit<FeedbackOutboxEntry, 'kind' | 'a
 
 export async function flushTaskOutbox(
   remapLocalTaskId?: (clientId: string, serverTaskId: string) => void
-): Promise<void> {
-  if (typeof window === 'undefined') return
+): Promise<TaskOutboxFlushResult> {
+  if (typeof window === 'undefined') {
+    return { total: 0, pending: 0, failed: 0, synced: 0 }
+  }
   let outbox = loadOutbox()
-  if (outbox.length === 0) return
+  if (outbox.length === 0) {
+    return { total: 0, pending: 0, failed: 0, synced: 0 }
+  }
 
+  let synced = 0
   const remaining: TaskOutboxEntry[] = []
   for (const item of [...outbox].reverse()) {
     if (item.attempts >= MAX_ATTEMPTS) {
@@ -98,6 +132,7 @@ export async function flushTaskOutbox(
         const json = (await res.json()) as { ok?: boolean; data?: { task?: { taskId: string } } }
         if (json.ok && json.data?.task?.taskId) {
           remapLocalTaskId?.(item.clientId, json.data.task.taskId)
+          synced += 1
           continue
         }
       } catch {
@@ -118,7 +153,10 @@ export async function flushTaskOutbox(
         }),
       })
       const json = (await res.json()) as { ok?: boolean }
-      if (json.ok) continue
+      if (json.ok) {
+        synced += 1
+        continue
+      }
     } catch {
       /* retry later */
     }
@@ -126,6 +164,15 @@ export async function flushTaskOutbox(
   }
 
   saveOutbox(remaining)
+  const summary = getTaskOutboxSummary()
+  return { ...summary, synced }
+}
+
+export async function retryFailedTaskOutbox(
+  remapLocalTaskId?: (clientId: string, serverTaskId: string) => void
+): Promise<TaskOutboxFlushResult> {
+  resetFailedOutboxAttempts()
+  return flushTaskOutbox(remapLocalTaskId)
 }
 
 export function patchLocalTaskIdByClientId(

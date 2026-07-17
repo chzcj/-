@@ -2380,3 +2380,19 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **风险/冲突**
 - outbox 超 8 次失败仍留本地，需后续 UI 提示「同步失败」；语音 ASR 未动。
+
+## 2026-07-17 17:25 | Cursor | 任务 outbox 同步失败提示
+
+**做了什么**
+- outbox 增加 `getTaskOutboxSummary` / `retryFailedTaskOutbox`；超 8 次失败计为 `failed`。
+- 小程序与 Web 任务页：失败时展示橙色同步条 +「点这里重试」；有待同步条目时展示 pending 提示。
+- 反馈提交后刷新 outbox 状态；重试成功 toast（小程序）。
+
+**验证**
+- Web / 小程序 typecheck ✓；Web build、build:weapp ✓
+
+**下一步**
+- 真机：断网保存任务 → 联网进任务页 → 看重试条 → 点重试是否进服务端。
+
+**风险/冲突**
+- 画像 UI snapshot 统一 watermark 仍未做；语音 ASR 未动。

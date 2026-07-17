@@ -1,3 +1,5 @@
+import type { TaskOutboxFlushResult } from '@/lib/storage/taskOutbox'
+
 export type TaskFeedback = {
   completed?: string
   effect?: string
@@ -66,10 +68,7 @@ function mapServerTask(t: {
 
 export async function fetchTasksFromServer(): Promise<TaskItem[]> {
   if (typeof window === 'undefined') return []
-  const {
-    flushTaskOutbox,
-    patchLocalTaskIdByClientId,
-  } = await import('@/lib/storage/taskOutbox')
+  const { flushTaskOutbox, patchLocalTaskIdByClientId } = await import('@/lib/storage/taskOutbox')
   await flushTaskOutbox((clientId, serverTaskId) => {
     saveLocalTasks(patchLocalTaskIdByClientId(loadLocalTasks(), clientId, serverTaskId))
   })
@@ -188,4 +187,14 @@ export async function updateTaskFeedback(taskId: string, feedback: TaskFeedback,
       : t
   )
   saveLocalTasks(items)
+}
+
+export async function retryTaskOutboxSync(): Promise<TaskOutboxFlushResult> {
+  if (typeof window === 'undefined') {
+    return { total: 0, pending: 0, failed: 0, synced: 0 }
+  }
+  const { retryFailedTaskOutbox, patchLocalTaskIdByClientId } = await import('@/lib/storage/taskOutbox')
+  return retryFailedTaskOutbox((clientId, serverTaskId) => {
+    saveLocalTasks(patchLocalTaskIdByClientId(loadLocalTasks(), clientId, serverTaskId))
+  })
 }

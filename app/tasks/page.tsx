@@ -7,9 +7,11 @@ import { TaskFeedbackPanel, taskStatusVariant } from '@/components/tasks/TaskFee
 import {
   fetchTasksFromServer,
   updateTaskFeedback,
+  retryTaskOutboxSync,
   type TaskFeedback,
   type TaskItem,
 } from '@/lib/storage/taskStorage'
+import { getTaskOutboxSummary, type TaskOutboxSummary } from '@/lib/storage/taskOutbox'
 
 function taskStatus(task: TaskItem) {
   if (task.status) return task.status
@@ -23,7 +25,35 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [outbox, setOutbox] = useState<TaskOutboxSummary>({ total: 0, pending: 0, failed: 0 })
+  const [retryingOutbox, setRetryingOutbox] = useState(false)
   const taskListRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setOutbox(getTaskOutboxSummary())
+  }, [])
+
+  async function loadTasks() {
+    setLoading(true)
+    const items = await fetchTasksFromServer()
+    setTasks(items.filter((task) => task.status !== '已完成' && task.status !== '已过期').slice(0, 3))
+    setOutbox(getTaskOutboxSummary())
+    setLoading(false)
+  }
+
+  async function handleRetryOutbox() {
+    setRetryingOutbox(true)
+    try {
+      const result = await retryTaskOutboxSync()
+      await loadTasks()
+      if (result.failed > 0) {
+        window.alert('仍有内容未同步，请稍后再试')
+      }
+    } finally {
+      setRetryingOutbox(false)
+    }
+  }
 
   useEffect(() => {
     if (!selectedId || !taskListRef.current) return
@@ -34,12 +64,7 @@ export default function TasksPage() {
   }, [selectedId])
 
   useEffect(() => {
-    void (async () => {
-      setLoading(true)
-      const items = await fetchTasksFromServer()
-      setTasks(items)
-      setLoading(false)
-    })()
+    void loadTasks()
   }, [])
 
   function toggleTask(taskId: string) {
@@ -62,6 +87,7 @@ export default function TasksPage() {
     )
     try {
       await updateTaskFeedback(taskId, feedback, status)
+      setOutbox(getTaskOutboxSummary())
     } finally {
       setSavingId(null)
     }
@@ -75,6 +101,23 @@ export default function TasksPage() {
           <p className="hero-copy" style={{ marginTop: 0, marginBottom: 12 }}>
             最近几条来自交流和预演，试过后反馈一下，我会记进记忆。
           </p>
+          {outbox.failed > 0 ? (
+            <div className="task-sync-banner" role="status">
+              <p className="task-sync-banner-title">
+                有 {outbox.failed} 条任务或反馈还没同步到云端
+              </p>
+              <button
+                type="button"
+                className="secondary-button task-sync-banner-btn"
+                disabled={retryingOutbox}
+                onClick={() => void handleRetryOutbox()}
+              >
+                {retryingOutbox ? '正在重新同步…' : '点这里重试'}
+              </button>
+            </div>
+          ) : outbox.pending > 0 ? (
+            <p className="hint-text task-sync-pending">正在后台同步 {outbox.pending} 条待上传记录</p>
+          ) : null}
           <div id="taskList" ref={taskListRef}>
             {loading ? (
               <p className="hint-text">正在加载…</p>

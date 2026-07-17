@@ -1915,6 +1915,29 @@ a {
   padding: 16px 18px;
 }
 
+.task-sync-banner {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 244, 230, 0.92);
+  border: 1px solid rgba(230, 162, 76, 0.35);
+}
+
+.task-sync-banner-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #8a4b00;
+}
+
+.task-sync-banner-btn {
+  margin: 0;
+}
+
+.task-sync-pending {
+  margin-bottom: 12px;
+}
+
 .task-card-title {
   font-size: 16px;
   font-weight: 750;

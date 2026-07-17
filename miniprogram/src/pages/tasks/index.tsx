@@ -10,9 +10,11 @@ import { fetchCurrentUser } from '@/services/auth'
 import {
   fetchTasksFromServer,
   updateTaskFeedback,
+  retryTaskOutboxSync,
   type TaskFeedback,
   type TaskItem,
 } from '@/services/taskStorage'
+import { getTaskOutboxSummary, type TaskOutboxSummary } from '@/services/taskOutbox'
 import { requireOnboardingComplete } from '@/utils/navigation'
 import './index.scss'
 
@@ -60,13 +62,33 @@ export default function TasksPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [outbox, setOutbox] = useState<TaskOutboxSummary>(() => getTaskOutboxSummary())
+  const [retryingOutbox, setRetryingOutbox] = useState(false)
 
   const loadTasks = async () => {
     setLoading(true)
     const items = await fetchTasksFromServer()
     setTasks(items.current)
     setHistory(items.history)
+    setOutbox(getTaskOutboxSummary())
     setLoading(false)
+  }
+
+  const handleRetryOutbox = async () => {
+    setRetryingOutbox(true)
+    try {
+      const result = await retryTaskOutboxSync()
+      await loadTasks()
+      if (result.failed > 0) {
+        Taro.showToast({ title: '仍有内容未同步', icon: 'none' })
+      } else if (result.synced > 0) {
+        Taro.showToast({ title: '已同步到云端', icon: 'success' })
+      } else {
+        Taro.showToast({ title: '暂无可同步内容', icon: 'none' })
+      }
+    } finally {
+      setRetryingOutbox(false)
+    }
   }
 
   useDidShow(async () => {
@@ -95,6 +117,7 @@ export default function TasksPage() {
     )
     try {
       await updateTaskFeedback(taskId, feedback, status)
+      setOutbox(getTaskOutboxSummary())
     } finally {
       setSavingId(null)
     }
@@ -106,6 +129,21 @@ export default function TasksPage() {
       <Text className='hero-copy muted'>
         最近几条来自交流和预演，试过后反馈一下，我会记进记忆。
       </Text>
+
+      {outbox.failed > 0 ? (
+        <View className='task-sync-banner' onClick={() => void handleRetryOutbox()}>
+          <Text className='task-sync-banner-title'>
+            {retryingOutbox ? '正在重新同步…' : `有 ${outbox.failed} 条任务或反馈还没同步到云端`}
+          </Text>
+          <Text className='task-sync-banner-action muted'>
+            {retryingOutbox ? '请稍候' : '点这里重试'}
+          </Text>
+        </View>
+      ) : outbox.pending > 0 ? (
+        <View className='task-sync-banner task-sync-banner--pending'>
+          <Text className='task-sync-banner-title muted'>正在后台同步 {outbox.pending} 条待上传记录</Text>
+        </View>
+      ) : null}
 
       {loading ? (
         <View className='loading-wrap'>
