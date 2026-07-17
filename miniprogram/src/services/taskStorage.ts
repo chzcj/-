@@ -78,17 +78,20 @@ function mergeTasks(local: TaskItem[], server: TaskItem[]): TaskItem[] {
   )
 }
 
-export async function fetchTasksFromServer(): Promise<TaskItem[]> {
+export async function fetchTasksFromServer(): Promise<{ current: TaskItem[]; history: TaskItem[] }> {
   try {
     const local = loadLocalTasks()
-    const res = await apiRequest<{ tasks?: ServerTask[] }>('/api/tasks', { method: 'GET' })
-    if (!res.ok || !Array.isArray(res.data.tasks)) return local
-    const server = res.data.tasks.map(mapServerTask)
+    const res = await apiRequest<{ tasks?: ServerTask[]; history?: ServerTask[] }>('/api/tasks', { method: 'GET' })
+    if (!res.ok || !Array.isArray(res.data.tasks)) return { current: local, history: [] }
+    const server = [...res.data.tasks, ...(res.data.history || [])].map(mapServerTask)
     const merged = mergeTasks(local, server)
     saveLocalTasks(merged)
-    return merged
+    return {
+      current: merged.filter((task) => task.status !== '已完成' && task.status !== '已过期').slice(0, 3),
+      history: merged.filter((task) => task.status === '已完成' || task.status === '已过期'),
+    }
   } catch {
-    return loadLocalTasks()
+    return { current: loadLocalTasks(), history: [] }
   }
 }
 

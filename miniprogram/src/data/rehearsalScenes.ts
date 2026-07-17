@@ -45,17 +45,6 @@ export const REHEARSAL_SCENES: RehearsalScene[] = [
     openingHintTitle: '规则感先于内容',
     openingHint: '他可能先听到的是“你又要收走我的东西”，而不是“我们在谈一个公平的约定”。',
   },
-  {
-    id: 'teacher_feedback',
-    title: '老师反馈怎么问',
-    subtitle: '老师说他最近有情况，想问孩子，但怕他觉得被告状。',
-    summary: '老师说孩子最近有情况，你想问他，但担心他觉得自己被告状。',
-    placeholder: '例如：老师今天跟我说了件事，我想听听你的想法……',
-    seed: '老师反馈怎么问',
-    openingChild: '你是不是又去找老师告状了？',
-    openingHintTitle: '信任感是关键',
-    openingHint: '如果开场让他觉得“你在站老师那边”，他更可能先进入防御，而不是愿意讲学校发生的事。',
-  },
 ]
 
 export function getRehearsalScene(id: string) {

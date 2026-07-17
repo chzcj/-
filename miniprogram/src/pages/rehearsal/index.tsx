@@ -40,6 +40,7 @@ type RehearsalHandoff = {
   sceneId?: string
   seedText?: string
   parentText?: string
+  rehearsalGoal?: string
   traceId?: string
 }
 
@@ -65,9 +66,7 @@ function truncate(text: string, max = 72) {
 function matchSceneFromText(text: string): RehearsalScene {
   const t = text || ''
   if (/手机/.test(t)) return REHEARSAL_SCENES.find((s) => s.id === 'phone') || REHEARSAL_SCENES[0]
-  if (/老师|学校|告状/.test(t))
-    return REHEARSAL_SCENES.find((s) => s.id === 'teacher_feedback') || REHEARSAL_SCENES[0]
-  if (/吵|说重了|僵|修复/.test(t))
+  if (/吵|说重了|僵|修复|老师|学校|告状/.test(t))
     return REHEARSAL_SCENES.find((s) => s.id === 'after_conflict') || REHEARSAL_SCENES[0]
   return REHEARSAL_SCENES.find((s) => s.id === 'homework_start') || REHEARSAL_SCENES[0]
 }
@@ -118,7 +117,12 @@ export default function RehearsalPage() {
           matchSceneFromText(handoff.seedText || handoff.parentText || '')
         setSelectedId(matched.id)
         setSceneTitle(matched.title)
-        setSummary(handoff.seedText?.trim() || matched.summary)
+        setSummary(
+          [handoff.parentText, handoff.rehearsalGoal, handoff.seedText]
+            .filter((part): part is string => Boolean(part?.trim()))
+            .join('。')
+            .slice(0, 800) || matched.summary
+        )
         setStep('confirm')
         return
       }
@@ -485,10 +489,6 @@ export default function RehearsalPage() {
                 · {item}
               </Text>
             ))}
-          </View>
-          <View className='hifi-card'>
-            <Text className='section-label'>开始前提醒</Text>
-            <Text>你不用选标准答案。你每一轮都用自己的话输入，我来模拟孩子可能怎么接。</Text>
           </View>
           <Text className='pill primary wide-pill' onClick={enterRehearsal}>
             进入预演

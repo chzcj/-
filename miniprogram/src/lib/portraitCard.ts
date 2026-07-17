@@ -195,7 +195,7 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
         : '完成更多交流后，这里会更新。',
     },
     {
-      title: '行为模式总结',
+      title: '孩子行为模式',
       slug: 'behavior',
       body: cardSummary(
         portraitCards.behavior,
@@ -210,7 +210,7 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
         : '完成几次交流后，这里会出现孩子的行为模式总结。',
     },
     {
-      title: '家庭互动模式',
+      title: '亲子互动关系',
       slug: 'interaction',
       body: cardSummary(
         portraitCards.interaction,
@@ -235,7 +235,7 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
         : '试过任务后回来反馈，验证有效的做法会出现在这里。',
     },
     {
-      title: '家庭运转张力',
+      title: '孩子健康成长阻力',
       slug: 'tensions',
       body: cardSummary(
         portraitCards.tensions,

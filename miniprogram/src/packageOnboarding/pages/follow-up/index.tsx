@@ -164,7 +164,7 @@ export default function EntryFollowUpPage() {
 
   const canSubmit = hasSubmittableEntryText(text) && !loading && !aiLoading
   const roundLabel =
-    round > 1 ? `第 ${round} 轮补充` : getFollowUpCount(entryType) > 0 ? '继续补充' : '追问页'
+    round > 1 ? `第 ${round} 轮补充` : getFollowUpCount(entryType) > 0 ? '继续补充' : '补充细节'
 
   return (
     <HiFiBuildShell
@@ -199,7 +199,6 @@ export default function EntryFollowUpPage() {
       <HiFiBuildHero
         kicker={`${config.stepLabel} · ${roundLabel}`}
         title='补一段刚才没讲到的细节'
-        copy='也可以先跳过，直接看整理结果。'
         compact
         mascot={false}
       />
@@ -223,11 +222,7 @@ export default function EntryFollowUpPage() {
           </View>
         </View>
       ) : gate ? (
-        <FollowUpCard
-          purpose={gate.purpose || '请再补一个更具体的场景或原话。'}
-          directions={gate.directions}
-          voicePrompt={gate.voicePrompt}
-        />
+        <FollowUpCard voicePrompt={gate.voicePrompt || '请补一段具体发生的事，尽量说清当时谁说了什么、后来怎样结束。'} />
       ) : null}
 
       {!aiLoading ? (
@@ -237,7 +232,8 @@ export default function EntryFollowUpPage() {
           value={text}
           placeholder={FOLLOW_UP_PLACEHOLDER}
           disabled={loading}
-          metaLeft='写多少都可以'
+          metaLeft=''
+          showMeta={false}
           showCharHint={false}
           onChange={setText}
         />
@@ -255,10 +251,6 @@ export default function EntryFollowUpPage() {
             </Text>
           </View>
         </View>
-      ) : null}
-
-      {!aiLoading && !canSubmit ? (
-        <Text className='hint-text'>至少写 2 个字再提交；也可以点「暂不补充」直接整理。</Text>
       ) : null}
 
       {!aiLoading ? (

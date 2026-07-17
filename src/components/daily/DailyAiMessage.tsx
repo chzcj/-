@@ -189,7 +189,8 @@ export function DailyAiMessage({
               JSON.stringify({
                 sceneId,
                 seedText: seed,
-                parentText: text.slice(0, 800),
+                parentText: action.payload?.parentOriginalText || seed,
+                rehearsalGoal: action.payload?.rehearsalGoal || '',
                 traceId: traceId || '',
               })
             )
@@ -263,13 +264,19 @@ export function DailyAiMessage({
           showActionStrip ? (
             <div className="suggestion-strip">
               {actions.map((action) => {
-                const label = action.kind === 'task' && taskSaved ? '已保存到任务' : action.label
+                const hiddenPreparing =
+                  action.kind === 'expand_sections' && action.payload?.hiddenReady === false
+                const label = hiddenPreparing
+                  ? '生成中'
+                  : action.kind === 'task' && taskSaved
+                    ? '已保存到任务'
+                    : action.label
                 return (
                   <button
                     key={action.id}
                     type="button"
                     className={action.primary ? 'pill primary' : 'pill'}
-                    disabled={action.kind === 'task' && taskSaved}
+                    disabled={hiddenPreparing || (action.kind === 'task' && taskSaved)}
                     onClick={() => handleAction(action)}
                   >
                     {label}

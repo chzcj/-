@@ -1,5 +1,19 @@
 import type { DailyCards, OrchestrationOutput } from '@/types/database'
 import type { DailySection } from '@/types/daily-message'
+import { THEORY_CARDS } from '@/lib/server/memory/deep-mechanism/theory-cards'
+
+const THEORY_SOURCES: Record<string, string> = {
+  attachment: 'Bowlby / Ainsworth 依恋研究',
+  self_determination: 'Deci 与 Ryan 自我决定理论',
+  family_systems: 'Bowen 家庭系统理论',
+  family_communication: '家庭沟通研究',
+  emotion_socialization: '情绪社会化研究',
+  coercive_cycle: 'Patterson 强制循环理论',
+  parenting_style: 'Baumrind 亲职风格研究',
+  coparenting: '共同养育研究',
+  sociocultural_scaffolding: 'Vygotsky 社会文化发展理论',
+  stage_environment_fit: '阶段—环境匹配理论',
+}
 
 function isHighConfidence(cards: DailyCards, output: OrchestrationOutput): boolean {
   const rel = output.relationshipToExistingModel.type
@@ -11,7 +25,7 @@ function isHighConfidence(cards: DailyCards, output: OrchestrationOutput): boole
   )
 }
 
-function composeHighConfidenceSkeleton(): DailySection[] {
+function composeHighConfidenceSkeleton(output: OrchestrationOutput): DailySection[] {
   const sections: DailySection[] = [
     { id: 'diagnosis_headline', label: '深度分析', kind: 'paragraphs', paragraphs: [] },
     { id: 'history_thinking', label: '判断依据', kind: 'list', items: [] },
@@ -32,6 +46,18 @@ function composeHighConfidenceSkeleton(): DailySection[] {
       hidden: true,
     },
   ]
+  const matched = output.retrievedContext.matchedMechanisms || []
+  const theory = THEORY_CARDS.find((card) => matched.some((item) => item.includes(card.name)))
+  if (theory) {
+    sections.push({
+      id: 'professional_perspective',
+      label: '专业视角',
+      kind: 'mixed',
+      paragraphs: [],
+      items: [],
+      note: `相关理论：${theory.name}${THEORY_SOURCES[theory.id] ? `（${THEORY_SOURCES[theory.id]}）` : ''}。这不是诊断，而是帮助理解这次互动的一种视角。`,
+    })
+  }
   return sections
 }
 
@@ -82,7 +108,7 @@ export function composeDailySections(
     return composeLowConfidenceSkeleton()
   }
 
-  const sections = composeHighConfidenceSkeleton()
+  const sections = composeHighConfidenceSkeleton(output)
   if (output.inputType === 'ask_advice') {
     sections.push({
       id: 'deep_analysis',

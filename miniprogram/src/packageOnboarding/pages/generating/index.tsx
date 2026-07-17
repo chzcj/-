@@ -10,7 +10,11 @@ import {
   isPendingProfileRegen,
   setPendingProfileRegen,
 } from '@/services/entryStorage'
-import { runProfileGeneratingPipeline } from '@/services/profilePipeline'
+import {
+  ensureProfileBuildInFlight,
+  getProfileBuildRunState,
+  subscribeProfileBuildRun,
+} from '@/services/profilePipeline'
 
 const STEPS = [
   '整理四个模块的关键事实',
@@ -62,10 +66,17 @@ export default function OnboardingGenerating() {
       }
 
       setAllowed(true)
-      setStep(0)
-      const result = await runProfileGeneratingPipeline((s) => {
+      setStep(getProfileBuildRunState()?.phase || 0)
+      const unsubscribe = subscribeProfileBuildRun((run) => {
+        if (!cancelledRef.current) {
+          setStep(run.phase)
+          if (run.status === 'failed') setError(run.error || '画像整理未完成')
+        }
+      })
+      const result = await ensureProfileBuildInFlight((s) => {
         if (!cancelledRef.current) setStep(s)
       })
+      unsubscribe()
 
       if (cancelledRef.current) return
 

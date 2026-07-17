@@ -9,6 +9,7 @@ export default defineAppConfig({
     'pages/rehearsal/dialogue-result/index',
     'pages/profile/index',
     'pages/profile/card/index',
+    'pages/profile/trajectory/index',
     'pages/profile/deep/index',
     'pages/profile/evidence/index',
     'pages/profile/verify/index',

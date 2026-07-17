@@ -213,7 +213,7 @@ export function allModulesCompleted(state?: BuildState): boolean {
 export function canAccessProfileGenerating(state?: BuildState): boolean {
   if (isPendingProfileRegen()) return true
   if (isSupplementFlow()) return true
-  if (!allModulesCompleted(state)) return false
-  const finalText = (state || loadBuildState()).finalFollowUpText?.trim() || ''
-  return finalText.length >= 20
+  const build = state || loadBuildState()
+  if (!allModulesCompleted(build)) return false
+  return Boolean(build.finalFollowUpSubmitted)
 }

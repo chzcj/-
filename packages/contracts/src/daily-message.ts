@@ -30,6 +30,9 @@ export type DailyAction = {
     route?: string
     seedText?: string
     sceneId?: string
+    parentOriginalText?: string
+    rehearsalGoal?: string
+    hiddenReady?: boolean
     stashDeep?: boolean
     taskTitle?: string
   }

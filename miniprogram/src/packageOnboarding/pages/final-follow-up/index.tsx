@@ -1,12 +1,14 @@
-import { View, Text, Textarea } from '@tarojs/components'
+import { Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState } from 'react'
+import { BuildRecordBox } from '@/components/profile/BuildRecordBox'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { allModulesCompleted } from '@/services/entryStorage'
 import { loadBuildState, saveBuildState } from '@/services/buildState'
 import { apiRequest } from '@/services/api'
+import { ensureProfileBuildInFlight } from '@/services/profilePipeline'
 
 export default function FinalFollowUpPage() {
   useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
@@ -21,16 +23,13 @@ export default function FinalFollowUpPage() {
       return
     }
     const value = text.trim()
-    if (value.length < 20) {
-      Taro.showToast({ title: '请再补充一些（至少 20 字）', icon: 'none' })
-      return
-    }
     setLoading(true)
     setError('')
     Taro.showLoading({ title: '提交中…', mask: true })
 
     const state = loadBuildState()
     state.finalFollowUpText = value
+    state.finalFollowUpSubmitted = true
     saveBuildState(state)
 
     const res = await apiRequest('/api/entry/analyze', {
@@ -47,13 +46,15 @@ export default function FinalFollowUpPage() {
       return
     }
 
-    await mpGoReplace('/packageOnboarding/pages/generating/index')
+    // 首版 synthesis → diagnosis 沿用原流水线，先在基础资料页期间预热。
+    void ensureProfileBuildInFlight()
+    await mpGoReplace('/packageOnboarding/pages/basic/index')
   }
 
   return (
     <HiFiBuildShell
-      topTitle='最后一次补充'
-      stepLabel='收尾追问'
+      topTitle='最后补充'
+      stepLabel='补充信息'
       progress={92}
       actions={[
         {
@@ -64,19 +65,18 @@ export default function FinalFollowUpPage() {
         },
       ]}
     >
-      <HiFiBuildHero
-        title='还有什么想让孩子被看见的？'
-        copy='不用面面俱到，讲一个你觉得最重要、但前面可能还没讲透的片段。'
+      <HiFiBuildHero title='还有什么想让孩子被看见的？' copy='有就补充；前面已经说完也可以直接提交。' />
+      <BuildRecordBox
+        label='最后补充'
+        status='按住说话或直接输入'
+        value={text}
+        disabled={loading}
+        placeholder='例如：其实他并不是不努力，而是…'
+        showCharHint={false}
+        showMeta={false}
+        metaLeft=''
+        onChange={setText}
       />
-      <View className='record-box'>
-        <Textarea
-          className='record-area'
-          value={text}
-          disabled={loading}
-          placeholder='例如：其实他并不是不努力，而是…'
-          onInput={(e) => setText(e.detail.value)}
-        />
-      </View>
       {error ? <Text className='hifi-voice-error'>{error}</Text> : null}
     </HiFiBuildShell>
   )

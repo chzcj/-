@@ -55,14 +55,17 @@ export default function TasksPage() {
     path: SHARE_PATHS.tasks,
   })
   const [tasks, setTasks] = useState<TaskItem[]>([])
+  const [history, setHistory] = useState<TaskItem[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const loadTasks = async () => {
     setLoading(true)
     const items = await fetchTasksFromServer()
-    setTasks(items)
+    setTasks(items.current)
+    setHistory(items.history)
     setLoading(false)
   }
 
@@ -122,7 +125,8 @@ export default function TasksPage() {
           </Text>
         </View>
       ) : (
-        tasks.map((task) => {
+        <>
+        {tasks.map((task) => {
           const open = selectedId === task.id
           const status = taskStatus(task)
           const variant = taskStatusVariant(status)
@@ -159,7 +163,21 @@ export default function TasksPage() {
               ) : null}
             </View>
           )
-        })
+        })}
+        {history.length ? (
+          <View className='task-history'>
+            <Text className='section-label' onClick={() => setHistoryOpen((value) => !value)}>
+              已完成与过去尝试 {historyOpen ? '▾' : '▸'}
+            </Text>
+            {historyOpen ? history.map((task) => (
+              <View key={task.id} className='task-history-row'>
+                <Text className='task-title'>{displayTaskTitle(task.title)}</Text>
+                <Text className='task-subtitle muted'>{taskStatus(task)}</Text>
+              </View>
+            )) : null}
+          </View>
+        ) : null}
+        </>
       )}
     </HiFiMainShell>
   )

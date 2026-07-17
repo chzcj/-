@@ -78,6 +78,7 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **风险/冲突**
 - 语音 ASR 未动；追问客观题改版仍搁置；syn/diag 保持串联
 - 场景 hydrate 失败会静默回退静态文案
+- 交流首进滚顶（2026-07-17）：`scrollIntoView('')` 闪顶 + hydrate 前滚底；已改双 anchor + `threadReady` 后再跟滚（待真机）
 
 **部署**
 - 2026-07-16 22:32：`npm run deploy` 成功，public readiness ready:true
@@ -2270,3 +2271,30 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **部署**
 - 2026-07-16 17:44：`npm run deploy` 成功，public readiness `ready:true`；远端以 `EXPLAIN` 验证登录补跑 SQL 可被 PostgreSQL 正常解析。
+
+## 2026-07-17 16:12 | Cursor | 建档体验、成长轨迹与行动闭环
+
+**做了什么**
+- 最后补充页取消 20 字限制，接入既有 `BuildRecordBox`；四模块完成后先启动原 synthesis→diagnosis，再跳基础资料页预热等待。
+- 基础资料前置并扩到昵称、年级、省份、照护者关系、陪伴时间、期望帮助；这些资料不进首版诊断，只供后续记忆、任务、预演、成长轨迹使用。
+- 增加旧 pipeline in-flight 锁和阶段状态，避免基础资料页/生成页重复启动；微信回收后仍按原流程完整重跑。
+- 简化 Hub/capture/follow-up/summary/intro/guide，删除冗余提示；语音转写按已有光标插入，未改锁定 ASR。
+- 新增成长轨迹快照、`growth_trajectory_update` Job、BFF 和小程序详情页；画像入口改“成长轨迹”，删闪光点卡。
+- 日常专业视角仅在现有理论卡与家庭事实命中时出现；hidden 未就绪按钮显示“生成中”。
+- 预演删老师场景与开始前提醒，日常预演 action 携带家长原话和场景目标；任务保留最多 3 个当前项，历史折叠，标题 refine 注入 digest/retrieval。
+
+**验证**
+- `npm run typecheck` ✓；`npm run build` ✓（既有 Hook warnings）
+- `cd miniprogram && npm run typecheck` ✓；`npm run build:weapp` ✓（既有 CSS order warning）
+- `npm run test:contracts` 前 5 组通过；既有 retrieval 静态断言仍失败（脚本期待 router 直写 `overallStrength !== 'low'`，过滤已在 helper，不由本轮引入）
+
+**下一步**
+- 部署 Web/BFF，验证 readiness；微信开发者工具重新编译后真机验收建档预热、语音光标插入、成长轨迹、任务历史、预演上下文。
+
+**风险/冲突**
+- 首版 synthesis/diagnosis 的 Prompt、字段、顺序、thinking 未动。
+- 成长轨迹首次可用前需要后台 Job 跑完，页面会保留“正在整理”状态。
+- 语音 ASR / RecorderManager / dialogue-transcribe 未动。
+
+**部署**
+- 2026-07-17 16:32：`npm run deploy` 成功，public readiness `ready:true`，`jobHealthy:true`。

@@ -16,6 +16,7 @@ type BuildRecordBoxProps = {
   metaLeft?: string
   prompt?: string
   showCharHint?: boolean
+  showMeta?: boolean
   onChange: (value: string) => void
   onVoiceText?: (text: string) => void
 }
@@ -29,17 +30,25 @@ export function BuildRecordBox({
   metaLeft = '说清楚就行，后面会帮你整理。',
   prompt,
   showCharHint = true,
+  showMeta = true,
   onChange,
   onVoiceText,
 }: BuildRecordBoxProps) {
   const voice = useTencentAsrInput()
   const charCount = value.trim().length
   const charHint = getEntryCaptureCharHint(charCount)
+  const valueRef = useRef(value)
+  const cursorRef = useRef(value.length)
   const touchStartAtRef = useRef(0)
   const holdingRef = useRef(false)
   const finishingRef = useRef(false)
   const [fingerDown, setFingerDown] = useState(false)
   const [permHint, setPermHint] = useState('')
+  const [restoreCursor, setRestoreCursor] = useState<number | undefined>()
+
+  useEffect(() => {
+    valueRef.current = value
+  }, [value])
 
   const finishVoice = () => {
     setFingerDown(false)
@@ -58,7 +67,13 @@ export function BuildRecordBox({
         finishingRef.current = false
         voice.reset()
         if (finalText) {
-          onChange(value ? `${value.trim()}\n${finalText}` : finalText)
+          const current = valueRef.current
+          const cursor = Math.max(0, Math.min(cursorRef.current, current.length))
+          const next = `${current.slice(0, cursor)}${finalText}${current.slice(cursor)}`
+          const nextCursor = cursor + finalText.length
+          cursorRef.current = nextCursor
+          setRestoreCursor(nextCursor)
+          onChange(next)
           onVoiceText?.(finalText)
         }
       })
@@ -125,6 +140,7 @@ export function BuildRecordBox({
       <Textarea
         className='record-area'
         value={value}
+        cursor={restoreCursor}
         disabled={disabled}
         placeholder={placeholder}
         maxlength={MAX_LENGTH}
@@ -151,14 +167,20 @@ export function BuildRecordBox({
               .exec()
           })
         }}
-        onInput={(e) => onChange(e.detail.value)}
+        onInput={(e) => {
+          cursorRef.current = typeof e.detail.cursor === 'number' ? e.detail.cursor : e.detail.value.length
+          setRestoreCursor(undefined)
+          onChange(e.detail.value)
+        }}
       />
-      <View className='record-meta'>
-        <Text className='record-meta-left'>{metaLeft}</Text>
-        <Text className='record-meta-count'>
-          {value.length}/{MAX_LENGTH}
-        </Text>
-      </View>
+      {showMeta ? (
+        <View className='record-meta'>
+          <Text className='record-meta-left'>{metaLeft}</Text>
+          <Text className='record-meta-count'>
+            {value.length}/{MAX_LENGTH}
+          </Text>
+        </View>
+      ) : null}
       {showCharHint && charHint ? (
         <Text className='hint-text'>{charHint}</Text>
       ) : null}

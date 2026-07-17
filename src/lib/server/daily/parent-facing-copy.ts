@@ -85,7 +85,7 @@ export async function fillDailySectionCopy(
     deepModelDigest: options?.deepModelDigest,
   })
   const task =
-    '根据 sectionSkeletons 为每个 section 生成家长可见正文。只输出 JSON：{ "sections": [{ "id", "paragraphs"?, "items"?, "quotes"?, "note"? }], "taskTitle"?: "..." }'
+    '根据 sectionSkeletons 为每个 section 生成家长可见正文。若 id=professional_perspective：必须先连到本轮已给出的家庭事实，再解释该卡 note 中的专业理论；保留理论名称和来源提示，但不得把它说成诊断、不得编造研究结论。只输出 JSON：{ "sections": [{ "id", "paragraphs"?, "items"?, "quotes"?, "note"? }], "taskTitle"?: "..." }'
 
   const result = await requireFastJson<SectionCopyResponse>(
     sectionCopySystem(),

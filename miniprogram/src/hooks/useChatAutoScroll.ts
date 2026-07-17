@@ -3,9 +3,16 @@ import type { BaseEventOrig } from '@tarojs/components'
 import type { ScrollViewProps } from '@tarojs/components/types/ScrollView'
 
 const BOTTOM_THRESHOLD = 80
-const ANCHOR_ID = 'chat-scroll-anchor'
+export const CHAT_SCROLL_ANCHOR_A = 'chat-scroll-anchor-a'
+export const CHAT_SCROLL_ANCHOR_B = 'chat-scroll-anchor-b'
 
-export function useChatAutoScroll(triggerDeps: unknown[]) {
+type UseChatAutoScrollOptions = {
+  /** 为 false 时不自动跟滚（如交流页等 thread hydrate 完成） */
+  enabled?: boolean
+}
+
+export function useChatAutoScroll(triggerDeps: unknown[], options?: UseChatAutoScrollOptions) {
+  const enabled = options?.enabled !== false
   const [scrollIntoView, setScrollIntoView] = useState('')
   const autoFollowRef = useRef(true)
   const viewHeightRef = useRef(0)
@@ -19,19 +26,13 @@ export function useChatAutoScroll(triggerDeps: unknown[]) {
     scrollTickRef.current += 1
     const tick = scrollTickRef.current
 
-    // 只用 scrollIntoView，避免与 scrollTop 双驱动打架
-    setScrollIntoView('')
-    requestAnimationFrame(() => {
-      if (tick !== scrollTickRef.current) return
-      setScrollIntoView(ANCHOR_ID)
-    })
+    // 双 anchor 交替：禁止 setScrollIntoView('')，微信端清空会闪回 scrollTop=0
+    const primary = tick % 2 === 0 ? CHAT_SCROLL_ANCHOR_A : CHAT_SCROLL_ANCHOR_B
+    setScrollIntoView(primary)
     setTimeout(() => {
       if (tick !== scrollTickRef.current) return
-      setScrollIntoView('')
-      requestAnimationFrame(() => {
-        if (tick !== scrollTickRef.current) return
-        setScrollIntoView(ANCHOR_ID)
-      })
+      const secondary = primary === CHAT_SCROLL_ANCHOR_A ? CHAT_SCROLL_ANCHOR_B : CHAT_SCROLL_ANCHOR_A
+      setScrollIntoView(secondary)
     }, 120)
   }, [])
 
@@ -41,12 +42,12 @@ export function useChatAutoScroll(triggerDeps: unknown[]) {
   }, [scrollToBottom])
 
   useEffect(() => {
-    if (!autoFollowRef.current) return
+    if (!enabled || !autoFollowRef.current) return
     scrollToBottom(true)
     const late = setTimeout(() => scrollToBottom(true), 280)
     return () => clearTimeout(late)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, triggerDeps)
+  }, [...triggerDeps, enabled])
 
   const onScroll = useCallback((e: BaseEventOrig<ScrollViewProps.onScrollDetail>) => {
     const { scrollTop: top, scrollHeight } = e.detail
@@ -70,7 +71,8 @@ export function useChatAutoScroll(triggerDeps: unknown[]) {
     onScroll,
     scrollToBottom,
     resumeFollowOnSend,
-    anchorId: ANCHOR_ID,
+    anchorId: CHAT_SCROLL_ANCHOR_A,
+    anchorAltId: CHAT_SCROLL_ANCHOR_B,
     setViewHeight,
   }
 }

@@ -51,7 +51,7 @@ export default function OnboardingHub() {
   }
 
   const actions = allDone
-    ? [{ label: '四模块够了，生成孩子画像', onClick: () => void mpGoReplace('/packageOnboarding/pages/final-follow-up/index') }]
+    ? [{ label: '继续补充后生成画像', onClick: () => void mpGoReplace('/packageOnboarding/pages/final-follow-up/index') }]
     : nextEntry
       ? [{ label: `从${nextEntry.title}开始`, onClick: () => goCapture(mpCapturePath(nextEntry.type)) }]
       : []
@@ -70,13 +70,13 @@ export default function OnboardingHub() {
     >
       <View className='hub-hero-wrap'>
         <HiFiBuildHero
-          kicker='开始使用育见'
-          title={'填写四个模块\n让系统了解孩子'}
+          kicker='育见'
+          title={'给孩子画像'}
           copy='建议使用语音输入'
           mascot
         />
       </View>
-      <Text className='section-label'>四模块 · {completedCount}/{BUILD_ENTRY_COUNT}</Text>
+      <Text className='section-label'>输入四个方面 · {completedCount}/{BUILD_ENTRY_COUNT}</Text>
       <View className='entry-list'>
         {entryConfigs.map((entry) => {
           const status = statuses[entry.type]

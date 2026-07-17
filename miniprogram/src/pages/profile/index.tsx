@@ -10,7 +10,6 @@ import {
   buildHubProfileCards,
   formatRefreshedAt,
   hasCardContent,
-  truncateText,
   type DailyPortraitCards,
   type StructuralTension,
 } from '@/lib/portraitCard'
@@ -44,13 +43,13 @@ type HubPayload = {
   highlights?: string[]
 }
 
-type SnapshotPayload = {
-  currentFocus?: string
-  recentChanges?: Array<{ title: string; body?: string }>
-}
-
-type WeeklyPayload = {
-  weeklySummary?: string
+type TrajectoryPayload = {
+  trajectory?: {
+    summary: string
+    entries: Array<{ title: string; occurredAt: string }>
+    updatedAt: string
+  } | null
+  refreshing?: boolean
 }
 
 export default function ProfilePage() {
@@ -67,8 +66,6 @@ export default function ProfilePage() {
   const [coreJudgment, setCoreJudgment] = useState('')
   const [supportFocus, setSupportFocus] = useState('')
   const [currentFocus, setCurrentFocus] = useState('')
-  const [recentTitle, setRecentTitle] = useState('')
-  const [weeklySummary, setWeeklySummary] = useState('')
   const [pendingList, setPendingList] = useState<string[]>([])
   const [portraitCards, setPortraitCards] = useState<DailyPortraitCards>({})
   const [hubMeta, setHubMeta] = useState<{
@@ -80,7 +77,8 @@ export default function ProfilePage() {
   }>({})
   const [structuralTensions, setStructuralTensions] = useState<StructuralTension[]>([])
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
-  const [highlights, setHighlights] = useState<string[]>([])
+  const [trajectory, setTrajectory] = useState<TrajectoryPayload['trajectory']>(null)
+  const [trajectoryRefreshing, setTrajectoryRefreshing] = useState(false)
   const [backgroundRefreshing, setBackgroundRefreshing] = useState(false)
   const [updateNotice, setUpdateNotice] = useState('')
   const [modal, setModal] = useState<EditModalKind>(null)
@@ -116,7 +114,6 @@ export default function ProfilePage() {
       if (data.refreshedAt !== undefined) setRefreshedAt(data.refreshedAt)
       if (data.pendingHypothesesList) setPendingList(data.pendingHypothesesList)
       if (Array.isArray(data.structuralTensions)) setStructuralTensions(data.structuralTensions)
-      if (Array.isArray(data.highlights)) setHighlights(data.highlights.filter(Boolean))
       if (data.coreJudgment) {
         setCoreJudgment(data.coreJudgment)
         setCompleteness(typeof data.completeness === 'number' ? data.completeness : 0)
@@ -141,13 +138,8 @@ export default function ProfilePage() {
           hydrateProfileFromRemote(built.data.snapshot)
           syncLocalProfile()
         }
-        const snap = cached.snapshot as { ok?: boolean; data?: SnapshotPayload } | null
-        if (snap?.ok) {
-          if (snap.data?.currentFocus) setCurrentFocus(snap.data.currentFocus)
-          if (snap.data?.recentChanges?.[0]?.title) setRecentTitle(snap.data.recentChanges[0].title)
-        }
-        const wk = cached.weekly as { ok?: boolean; data?: WeeklyPayload } | null
-        if (wk?.ok && wk.data?.weeklySummary) setWeeklySummary(wk.data.weeklySummary)
+        const snap = cached.snapshot as { ok?: boolean; data?: { currentFocus?: string } } | null
+        if (snap?.ok && snap.data?.currentFocus) setCurrentFocus(snap.data.currentFocus)
         const hub = cached.hub as { ok?: boolean; data?: HubPayload } | null
         if (hub?.ok) applyHubData(hub.data)
       }
@@ -163,13 +155,13 @@ export default function ProfilePage() {
         }
       }
 
-      const [snapshot, weekly, hub] = await Promise.all([
-        apiRequest<SnapshotPayload>('/api/profile/snapshot', { method: 'GET' }),
-        apiRequest<WeeklyPayload>('/api/profile/weekly-review', { method: 'GET' }),
+      const [snapshot, hub, trajectoryRes] = await Promise.all([
+        apiRequest<{ currentFocus?: string }>('/api/profile/snapshot', { method: 'GET' }),
         apiRequest<HubPayload>('/api/profile/hub', { method: 'GET' }),
+        apiRequest<TrajectoryPayload>('/api/profile/trajectory', { method: 'GET' }),
       ])
 
-      writeProfileTabCache({ snapshot, weekly, hub })
+      writeProfileTabCache({ snapshot, hub })
 
       if (hub.ok) {
         applyHubData(hub.data)
@@ -177,13 +169,10 @@ export default function ProfilePage() {
         setHubError(hub.error.message || '画像暂时加载失败')
       }
 
-      if (snapshot.ok) {
-        if (snapshot.data.currentFocus) setCurrentFocus(snapshot.data.currentFocus)
-        if (snapshot.data.recentChanges?.[0]?.title) setRecentTitle(snapshot.data.recentChanges[0].title)
-      }
-
-      if (weekly.ok && weekly.data.weeklySummary) {
-        setWeeklySummary(weekly.data.weeklySummary)
+      if (snapshot.ok && snapshot.data.currentFocus) setCurrentFocus(snapshot.data.currentFocus)
+      if (trajectoryRes.ok) {
+        setTrajectory(trajectoryRes.data.trajectory || null)
+        setTrajectoryRefreshing(Boolean(trajectoryRes.data.refreshing))
       }
 
       if (showLoading) setRefreshing(false)
@@ -227,13 +216,8 @@ export default function ProfilePage() {
           hydrateProfileFromRemote(built.data.snapshot)
           syncLocalProfile()
         }
-        const snap = cached.snapshot as { ok?: boolean; data?: SnapshotPayload } | null
-        if (snap?.ok) {
-          if (snap.data?.currentFocus) setCurrentFocus(snap.data.currentFocus)
-          if (snap.data?.recentChanges?.[0]?.title) setRecentTitle(snap.data.recentChanges[0].title)
-        }
-        const wk = cached.weekly as { ok?: boolean; data?: WeeklyPayload } | null
-        if (wk?.ok && wk.data?.weeklySummary) setWeeklySummary(wk.data.weeklySummary)
+        const snap = cached.snapshot as { ok?: boolean; data?: { currentFocus?: string } } | null
+        if (snap?.ok && snap.data?.currentFocus) setCurrentFocus(snap.data.currentFocus)
         const hub = cached.hub as { ok?: boolean; data?: HubPayload } | null
         if (hub?.ok) applyHubData(hub.data)
         setHubLoading(false)
@@ -283,10 +267,6 @@ export default function ProfilePage() {
       currentFocus,
     ]
   )
-  const highlightItems = highlights.length
-    ? highlights
-    : [recentTitle, weeklySummary ? truncateText(weeklySummary, 48) : ''].filter(Boolean)
-
   const openCard = (slug: string) => {
     Taro.navigateTo({ url: `/pages/profile/card/index?id=${encodeURIComponent(slug)}` })
   }
@@ -316,6 +296,11 @@ export default function ProfilePage() {
                 {card.slug === 'growth' && hasLocalProfile ? ` · ${completeness}%` : ''}
                 <Text className='card-chevron'> ▸</Text>
               </Text>
+              {card.slug === 'tensions' ? (
+                <Text className='profile-card-subtitle'>
+                  发现家庭中可能影响孩子成长的习惯与互动模式
+                </Text>
+              ) : null}
               <Text className='profile-card-summary muted'>{card.body}</Text>
               <View className='completeness-bar small'>
                 <View className='completeness-fill' style={{ width: `${card.progress}%` }} />
@@ -338,18 +323,26 @@ export default function ProfilePage() {
         ) : null}
       </View>
 
-      <View className='profile-section'>
-        <Text className='section-label'>孩子近期的闪光点</Text>
+      <View
+        className='profile-section trajectory-summary-card'
+        onClick={() => void Taro.navigateTo({ url: '/pages/profile/trajectory/index' })}
+      >
+        <Text className='section-label'>成长轨迹</Text>
         <View className='hifi-card profile-block'>
-          {highlightItems.length ? (
-            highlightItems.map((item) => (
-              <Text key={item} className='trend-item'>
-                · {item}
-              </Text>
-            ))
-          ) : (
-            <Text className='muted'>继续交流后，这里会出现孩子的进步与优势。</Text>
-          )}
+          <Text className='trajectory-summary-title'>
+            {trajectory?.entries?.[0]?.title || '正在整理家庭成长手账'}
+            <Text className='card-chevron'> ▸</Text>
+          </Text>
+          <Text className='profile-card-summary muted'>
+            {trajectory?.summary || '交流、任务反馈、预演和亲子对话中的关键变化，会在这里慢慢沉淀。'}
+          </Text>
+          <Text className='progress-hint muted'>
+            {trajectoryRefreshing
+              ? '正在整理新的成长记录…'
+              : trajectory
+                ? `已沉淀 ${trajectory.entries.length} 个成长节点`
+                : '继续记录后会自动更新'}
+          </Text>
         </View>
       </View>
 

@@ -9,7 +9,7 @@ import { DailyAiMessage } from '@/components/daily/DailyAiMessage'
 import { DailyDeepExpandCard } from '@/components/daily/DailyDeepExpandCard'
 import { DailyParentBubble } from '@/components/daily/DailyParentBubble'
 import { useTabBar } from '@/hooks/useTabBar'
-import { useChatAutoScroll } from '@/hooks/useChatAutoScroll'
+import { useChatAutoScroll, CHAT_SCROLL_ANCHOR_A, CHAT_SCROLL_ANCHOR_B } from '@/hooks/useChatAutoScroll'
 import { usePublicPageShare } from '@/hooks/useSharePage'
 import { SHARE_PATHS } from '@/lib/shareMessages'
 import { collectRecentSectionIds } from '@/lib/dailyThreadUtils'
@@ -173,8 +173,8 @@ export default function DailyPage() {
     ].join('|')
   }, [turns])
 
-  const { scrollIntoView, onScroll, scrollToBottom, resumeFollowOnSend, anchorId, setViewHeight } =
-    useChatAutoScroll([scrollFingerprint])
+  const { scrollIntoView, onScroll, scrollToBottom, resumeFollowOnSend, setViewHeight } =
+    useChatAutoScroll([scrollFingerprint], { enabled: threadReady })
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -501,7 +501,8 @@ export default function DailyPage() {
           )
         )}
       </View>
-          <View id={anchorId} className='scroll-anchor' />
+          <View id={CHAT_SCROLL_ANCHOR_A} className='scroll-anchor' />
+          <View id={CHAT_SCROLL_ANCHOR_B} className='scroll-anchor' />
         </ScrollView>
       </View>
     </HiFiMainShell>

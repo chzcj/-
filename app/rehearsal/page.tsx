@@ -86,8 +86,9 @@ export default function RehearsalPage() {
   function matchSceneFromText(raw: string): RehearsalScene {
     const t = raw || ''
     if (/手机/.test(t)) return scenes.find((s) => s.id === 'phone') || REHEARSAL_SCENES[0]
-    if (/老师|学校|告状/.test(t)) return scenes.find((s) => s.id === 'teacher_feedback') || REHEARSAL_SCENES[0]
-    if (/吵|说重了|僵|修复/.test(t)) return scenes.find((s) => s.id === 'after_conflict') || REHEARSAL_SCENES[0]
+    if (/吵|说重了|僵|修复|老师|学校|告状/.test(t)) {
+      return scenes.find((s) => s.id === 'after_conflict') || REHEARSAL_SCENES[0]
+    }
     return scenes.find((s) => s.id === 'homework_start') || REHEARSAL_SCENES[0]
   }
 
@@ -123,13 +124,19 @@ export default function RehearsalPage() {
           sceneId?: string
           seedText?: string
           parentText?: string
+          rehearsalGoal?: string
         }
         const matched =
           scenes.find((s) => s.id === handoff.sceneId) ||
           matchSceneFromText(handoff.seedText || handoff.parentText || '')
         setSelectedId(matched.id)
         setSceneTitle(matched.title)
-        setSummary(handoff.seedText?.trim() || matched.summary)
+        setSummary(
+          [handoff.parentText, handoff.rehearsalGoal, handoff.seedText]
+            .filter((part): part is string => Boolean(part?.trim()))
+            .join('。')
+            .slice(0, 800) || matched.summary
+        )
         setStep('confirm')
         return
       }
@@ -460,10 +467,6 @@ export default function RehearsalPage() {
           </section>
 
           <section className="section">
-            <div className="profile-block">
-              <h3>开始前提醒：</h3>
-              <p>你不用选标准答案。你每一轮都用自己的话输入，我来模拟孩子可能怎么接。</p>
-            </div>
             <button className="primary-button wide-button" type="button" onClick={enterRehearsal}>
               进入预演
             </button>

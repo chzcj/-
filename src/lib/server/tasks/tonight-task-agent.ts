@@ -3,6 +3,10 @@ import 'server-only'
 import { callAgentJson } from '@/lib/server/ark-agents'
 import { getUserTasks, saveUserTasks } from '@/lib/server/memory/database-manager'
 import type { TenantId } from '@/lib/server/memory/tenant'
+import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
+import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
+import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
+import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 
 const TASK_TITLE_BANNED =
   /模式能对上|标记为|观察记录|当前输入|已有画像|写入记忆|判断有更新|待验证|今晚试一下|今晚可以试一次|今晚先试一次/i
@@ -26,6 +30,15 @@ export async function refineTonightTaskInBackground(args: {
   observation?: string
   replyExcerpt?: string
 }): Promise<void> {
+  const [packet, digestLoaded] = await Promise.all([
+    buildDailyDialogueRetrievalPacket(args.observation || args.replyExcerpt || args.seedTitle, args.tenant, {
+      fast: true,
+    }).catch(() => null),
+    loadDeepModelDigest(args.tenant).catch(() => null),
+  ])
+  const digest = digestLoaded?.mechanismNarrative
+    ? digestLoaded
+    : await buildDeepModelDigest(args.tenant).catch(() => digestLoaded)
   const ai = await callAgentJson<{ title?: string }>(
     'tonightTaskGenerator',
     '生成家长可执行的小任务标题（10–20字完整一句，禁止今晚试一下套话）。',
@@ -33,6 +46,15 @@ export async function refineTonightTaskInBackground(args: {
       seedTitle: args.seedTitle.slice(0, 40),
       observation: (args.observation || '').slice(0, 80),
       replyExcerpt: (args.replyExcerpt || '').slice(0, 600),
+      deepModelDigest: pickDeepModelDigestPack(digest),
+      retrievalPack: packet
+        ? {
+            entryFacts: (packet as { entryFacts?: string[] }).entryFacts || [],
+            matchedMechanisms: packet.matchedMechanisms || [],
+            familyPatterns: packet.familyInteractionPatterns || [],
+            childQuotes: (packet as { childQuotes?: string[] }).childQuotes || [],
+          }
+        : undefined,
     },
     { maxTokens: 120 }
   ).catch(() => undefined)

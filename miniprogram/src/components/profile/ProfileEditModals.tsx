@@ -77,7 +77,11 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
     if (!childName.trim()) return setToast('请填写孩子称呼')
     if (!grade.trim()) return setToast('请选择年级')
     setSubmitting(true)
-    await saveChildBasicInfo({ childName: childName.trim(), grade: grade.trim() })
+    await saveChildBasicInfo({
+      ...loadChildBasicInfo(),
+      childName: childName.trim(),
+      grade: grade.trim(),
+    })
     await pushAccountSyncToServer()
     setSubmitting(false)
     Taro.showToast({ title: '已保存', icon: 'success' })

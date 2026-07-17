@@ -1,0 +1,86 @@
+@import '../../../styles/tokens.scss';
+
+.trajectory-page {
+  min-height: 100vh;
+  padding: 0 $page-padding-x 24px;
+  box-sizing: border-box;
+  background: $shell-gradient;
+}
+
+.trajectory-scroll {
+  height: calc(100vh - 88px);
+}
+
+.trajectory-hero {
+  margin: 8px 0 $spacing-lg;
+  padding: $spacing-xl;
+  border-radius: $radius-card;
+  background: $card;
+  box-shadow: $shadow-soft;
+}
+
+.trajectory-hero-kicker,
+.trajectory-hero-meta,
+.trajectory-entry-source,
+.trajectory-refreshing {
+  display: block;
+  color: $green-deep;
+  font-size: $text-small;
+  line-height: $text-small-lh;
+}
+
+.trajectory-hero-summary {
+  display: block;
+  margin: 10px 0 14px;
+  color: $ink;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.trajectory-day {
+  margin-top: $spacing-xl;
+}
+
+.trajectory-day-title {
+  display: block;
+  margin-bottom: $spacing-sm;
+  color: $ink-soft;
+  font-size: $text-small;
+  font-weight: 700;
+}
+
+.trajectory-entry {
+  margin-bottom: $spacing-sm;
+  padding: $spacing-md;
+  border-radius: $radius-control;
+  background: rgba(255, 255, 247, 0.72);
+}
+
+.trajectory-entry-title,
+.trajectory-entry-summary {
+  display: block;
+}
+
+.trajectory-entry-title {
+  margin-top: 4px;
+  color: $ink;
+  font-size: $text-title;
+  font-weight: 700;
+}
+
+.trajectory-entry-summary {
+  margin-top: 6px;
+  color: $ink-soft;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+}
+
+.trajectory-state {
+  padding: 48px $spacing-lg;
+  text-align: center;
+}
+
+.trajectory-refreshing {
+  margin: 6px 0 12px;
+}

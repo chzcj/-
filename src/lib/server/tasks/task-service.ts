@@ -10,13 +10,20 @@ import { createId } from '@/lib/storage/storageIds'
 import { refineTonightTaskInBackground } from '@/lib/server/tasks/tonight-task-agent'
 
 const MAX_STORED = 50
-const MAX_LIST = 7
+const MAX_CURRENT = 3
 
-export async function listRecentUserTasks(tenant: TenantId): Promise<UserTask[]> {
+function isCurrentTask(task: UserTask): boolean {
+  return task.status !== '已完成' && task.status !== '已过期'
+}
+
+export async function listRecentUserTasks(tenant: TenantId): Promise<{ current: UserTask[]; history: UserTask[] }> {
   const all = await getUserTasks(tenant)
-  return all
+  const sorted = all
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, MAX_LIST)
+  return {
+    current: sorted.filter(isCurrentTask).slice(0, MAX_CURRENT),
+    history: sorted.filter((task) => !isCurrentTask(task)).slice(0, MAX_STORED),
+  }
 }
 
 export async function createUserTask(
@@ -48,8 +55,17 @@ export async function createUserTask(
   }
 
   const existing = await getUserTasks(tenant)
-  const merged = [task, ...existing]
+  const sorted = [task, ...existing]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  let activeSeen = 0
+  const merged = sorted
+    .map((item) => {
+      if (!isCurrentTask(item)) return item
+      activeSeen += 1
+      return activeSeen > MAX_CURRENT
+        ? { ...item, status: '已过期', updatedAt: now }
+        : item
+    })
     .slice(0, MAX_STORED)
 
   await saveUserTasks(merged, tenant)

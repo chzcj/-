@@ -21,6 +21,8 @@ export type BuildModuleState = {
 export type BuildState = {
   entryMap: Partial<Record<BuildEntryType, BuildModuleState>>
   finalFollowUpText?: string
+  /** 最后补充可以为空；单独记录“用户已确认提交”避免把空值误当成未完成。 */
+  finalFollowUpSubmitted?: boolean
   currentModule?: BuildEntryType
 }
 

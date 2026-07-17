@@ -23,8 +23,13 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { entryType, rawText, stage, appendMode } = body
     const isAppend = Boolean(appendMode)
-    if (!entryType || !rawText) {
+    if (!entryType || (!rawText && entryType !== 'final')) {
       return fail('BAD_REQUEST', '内容暂时没有收到，请返回重新录入。', undefined, 400)
+    }
+
+    // 最后补充不是第五模块：允许家长确认“前面已经说完了”，不为一段空文本调用追问模型。
+    if (entryType === 'final' && !String(rawText || '').trim() && stage !== 'summary') {
+      return ok({ shouldAsk: false })
     }
 
     if (stage === 'summary') {

@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   const [digest, childBasic, recentTasks] = await Promise.all([
     loadDeepModelDigest(tenant).catch(() => null),
     getChildBasicInfo(tenant).catch(() => null),
-    listRecentUserTasks(tenant).catch(() => []),
+    listRecentUserTasks(tenant).catch(() => ({ current: [], history: [] })),
   ])
 
   const result = await callAgentJson<FamilyPlanResult>(
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         ? [childBasic.age ? `${childBasic.age}岁` : '', childBasic.grade || ''].filter(Boolean).join('，')
         : '',
       deepModelDigest: pickDeepModelDigestPack(digest),
-      recentTasks: recentTasks.slice(0, 6).map((t) => ({
+      recentTasks: [...recentTasks.current, ...recentTasks.history].slice(0, 6).map((t) => ({
         title: t.title,
         status: t.status,
         feedback: t.feedback || null,

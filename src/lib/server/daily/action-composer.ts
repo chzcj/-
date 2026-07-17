@@ -5,6 +5,16 @@ import type { DailyAction, DailySection } from '@/types/daily-message'
 const TASK_TITLE_BANNED =
   /模式能对上|标记为|观察记录|当前输入|已有画像|写入记忆|判断有更新|待验证/i
 
+function sectionHasContent(section: DailySection): boolean {
+  return Boolean(
+    section.streamingText?.trim() ||
+      section.paragraphs?.some((value) => value.trim()) ||
+      section.items?.some((value) => value.trim()) ||
+      section.quotes?.some((value) => value.trim()) ||
+      section.note?.trim()
+  )
+}
+
 /** 从 advice / 正文抽 6–24 字祈使句；禁止 prose 叙事首句当标题 */
 function deriveImperativeTaskTitle(
   sections: DailySection[],
@@ -56,10 +66,12 @@ export function composeDailyActions(
   cards: DailyCards,
   sections: DailySection[],
   fullText: string,
-  taskTitle?: string
+  taskTitle?: string,
+  userText?: string
 ): DailyAction[] {
   const actions: DailyAction[] = []
   const hiddenIds = sections.filter((s) => s.hidden).map((s) => s.id)
+  const hiddenReady = hiddenIds.length === 0 || sections.filter((s) => s.hidden).every(sectionHasContent)
   const rel = output.relationshipToExistingModel.type
   const lowConf =
     rel === 'insufficient' ||
@@ -67,11 +79,16 @@ export function composeDailyActions(
 
   const resolvedTaskTitle = deriveImperativeTaskTitle(sections, fullText, taskTitle)
   const seedScene = fullText.split(/[。！？\n]/).find((s) => s.trim().length > 4)?.trim()?.slice(0, 28)
-  const rehearsalSeed = fullText.trim().slice(0, 600)
+  const rehearsalSeed = (userText || fullText).trim().slice(0, 1200)
+  const rehearsalText = userText || fullText
+  const hasCommunicationEvidence = Boolean(
+    output.retrievedContext.entryFacts?.length ||
+      output.retrievedContext.relevantFamilyInteractionPatterns?.length ||
+      output.retrievedContext.childQuotes?.length
+  )
   const wantsRehearsal =
-    /吵|催|作业|顶嘴|发脾气|手机|开口|沟通|对峙|僵|拒绝|不想听|说重了/.test(fullText) ||
-    output.inputType === 'ask_advice' ||
-    output.routingDecision.frontResponseType === 'model_based_explanation'
+    hasCommunicationEvidence &&
+    /吵|催|顶嘴|发脾气|开口|沟通|对峙|僵|拒绝|不想听|说重了|怎么和.{0,8}说/.test(rehearsalText)
 
   if (output.inputType === 'risk_followup') {
     actions.push({
@@ -79,7 +96,7 @@ export function composeDailyActions(
       label: '接下来观察什么',
       kind: 'expand_sections',
       primary: true,
-      payload: { sectionIds: hiddenIds.length ? hiddenIds : ['deep_analysis'] },
+      payload: { sectionIds: hiddenIds.length ? hiddenIds : ['deep_analysis'], hiddenReady },
     })
     actions.push({
       id: 'back_daily',
@@ -96,18 +113,16 @@ export function composeDailyActions(
       label: '查看深度展开',
       kind: 'expand_sections',
       primary: true,
-      payload: { sectionIds: hiddenIds },
+      payload: { sectionIds: hiddenIds, hiddenReady },
     })
   }
 
   if (wantsRehearsal && rehearsalSeed.length >= 8) {
     const sceneId = /手机/.test(fullText)
       ? 'phone'
-      : /老师|学校|告状/.test(fullText)
-        ? 'teacher_feedback'
-        : /吵|说重了|僵|修复/.test(fullText)
-          ? 'after_conflict'
-          : 'homework_start'
+      : /吵|说重了|僵|修复|老师|学校|告状/.test(fullText)
+        ? 'after_conflict'
+        : 'homework_start'
     actions.push({
       id: 'open_rehearsal',
       label: '沟通预演',
@@ -116,6 +131,8 @@ export function composeDailyActions(
       payload: {
         seedText: rehearsalSeed,
         sceneId,
+        parentOriginalText: (userText || '').trim().slice(0, 1600),
+        rehearsalGoal: '围绕刚才这件事，练一句更容易被孩子听进去的开口。',
         route: '/rehearsal',
       },
     })

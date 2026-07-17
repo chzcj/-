@@ -9,11 +9,7 @@ import {
 } from '@/lib/server/memory/database-manager'
 import { setUserOnboardingComplete } from '@/lib/server/db'
 
-/**
- * 孩子基础档（昵称/年级/年龄）。
- * Onboarding basic 页此前只写 localStorage，后端推理对孩子年龄一无所知；
- * 现同步落库（memory_layer_items: child_basic），供预演口吻、发展阶段判断、digest 注入。
- */
+/** 建档基础资料。首版画像不读取；后续任务、预演、成长轨迹可读取。 */
 export async function GET(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
   const tenant = await resolveTenant()
@@ -29,12 +25,25 @@ export async function POST(request: Request) {
   const nickname = clean(body?.nickname, 20)
   const grade = clean(body?.grade, 20)
   const age = clean(body?.age, 10)
-  if (!nickname && !grade && !age) {
-    return fail('BAD_REQUEST', '至少提供昵称、年级或年龄之一。', undefined, 400)
+  const province = clean(body?.province, 30)
+  const caregiverRelation = clean(body?.caregiverRelation, 40)
+  const companionTime = clean(body?.companionTime, 200)
+  const helpGoal = clean(body?.helpGoal, 500)
+  if (!nickname || !grade || !province || !caregiverRelation || !companionTime || !helpGoal) {
+    return fail('BAD_REQUEST', '请完成孩子和家庭的基础资料。', undefined, 400)
   }
   const tenant = await resolveTenant()
   await saveChildBasicInfo(
-    { nickname, grade, age, updatedAt: new Date().toISOString() },
+    {
+      nickname,
+      grade,
+      age,
+      province,
+      caregiverRelation,
+      companionTime,
+      helpGoal,
+      updatedAt: new Date().toISOString(),
+    },
     tenant
   )
   const user = await getCurrentUser()

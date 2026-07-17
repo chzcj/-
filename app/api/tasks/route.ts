@@ -6,8 +6,8 @@ import { resolveTenant } from '@/lib/server/memory/tenant'
 export async function GET(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
   const tenant = await resolveTenant()
-  const tasks = await listRecentUserTasks(tenant)
-  return ok({ tasks })
+  const { current, history } = await listRecentUserTasks(tenant)
+  return ok({ tasks: current, history })
 }
 
 export async function POST(request: Request) {

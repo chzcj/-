@@ -230,7 +230,9 @@ export async function runDailyTurnBff(args: {
   await new Promise((r) => setTimeout(r, ACTIONS_PAUSE_MS))
 
   // actions 在 sections 全部完成后才 compose 并发出（3A + 300ms）
-  const actions = isSafety ? [] : composeDailyActions(output, cards, sections, finalText, taskTitleFromSections)
+  let actions = isSafety
+    ? []
+    : composeDailyActions(output, cards, sections, finalText, taskTitleFromSections, userText)
   if (!isSafety) args.onActions?.(actions)
   const tSections = Date.now()
 
@@ -242,6 +244,9 @@ export async function runDailyTurnBff(args: {
       sections = sections.map((s) => byId.get(s.id) ?? s)
       // 再发一次 sections 事件，前端把 hidden 内容合并进去（供"查看深度展开"使用）
       args.onSections?.(sections)
+      // hidden 已就绪后重算 action，让“生成中”恢复为可点击的深度展开。
+      actions = composeDailyActions(output, cards, sections, finalText, taskTitleFromSections, userText)
+      args.onActions?.(actions)
     } catch {
       // hidden 填充失败：保留骨架，展开时由 understanding-card 兜底；不影响前台
     }

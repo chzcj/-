@@ -232,6 +232,10 @@ export function hydrateFromChildOSV1(raw: unknown): boolean {
     saveChildBasicInfoLocal({
       childName: String(child.nickname || ''),
       grade: String(child.grade || ''),
+      province: '',
+      caregiverRelation: '',
+      companionTime: '',
+      helpGoal: '',
     })
   }
 

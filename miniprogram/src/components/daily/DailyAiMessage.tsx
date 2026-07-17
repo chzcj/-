@@ -116,9 +116,14 @@ export function DailyAiMessage({
         {showActions && actionsReady && actions?.length ? (
           <View className='end-actions'>
             {actions.map((action) => {
-              const label =
-                action.kind === 'task' && taskSaved ? '已保存到任务' : action.label
-              const disabled = action.kind === 'task' && taskSaved
+              const hiddenPreparing =
+                action.kind === 'expand_sections' && action.payload?.hiddenReady === false
+              const label = hiddenPreparing
+                ? '生成中'
+                : action.kind === 'task' && taskSaved
+                  ? '已保存到任务'
+                  : action.label
+              const disabled = (action.kind === 'task' && taskSaved) || hiddenPreparing
               const isPrimary = primaryKinds.has(action.kind)
               return (
                 <Text
@@ -143,7 +148,8 @@ export function DailyAiMessage({
                         Taro.setStorageSync('childos_rehearsal_handoff', {
                           sceneId,
                           seedText: seed,
-                          parentText: text.slice(0, 800),
+                          parentText: action.payload?.parentOriginalText || seed,
+                          rehearsalGoal: action.payload?.rehearsalGoal || '',
                           traceId: traceId || '',
                         })
                         Taro.setStorageSync('childos_rehearsal_scene_seed', seed.slice(0, 80))

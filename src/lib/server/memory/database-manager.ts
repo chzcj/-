@@ -279,12 +279,16 @@ export async function getAccountClientBackup(tenant: TenantId): Promise<AccountC
   return (await readLayer<AccountClientBackup>('account_client_backup', tenant)).slice(-1)[0] || null
 }
 
-/** 孩子基础档（昵称/年级/年龄）：Onboarding basic 页采集。
- *  此前仅存前端 localStorage、从不上送，后端推理对孩子年龄一无所知（预演口吻/发展阶段判断均无据）。 */
+/** 孩子基础档：建档后采集，供后续任务、预演与成长轨迹个性化读取。
+ * 首版 synthesis/diagnosis 保持既有输入，本字段不注入首版诊断。 */
 export type ChildBasicInfo = {
   nickname?: string
   grade?: string
   age?: string
+  province?: string
+  caregiverRelation?: string
+  companionTime?: string
+  helpGoal?: string
   updatedAt: string
 }
 
@@ -408,6 +412,40 @@ export async function getUserTaskById(tenant: TenantId, taskId: string): Promise
   }
   const all = await getUserTasks(tenant)
   return all.find((t) => t.taskId === taskId) || null
+}
+
+/* ================================================================
+   GrowthTrajectory：面向家长的成长手账快照。
+   原始事件仍分别存于 turn/task/rehearsal 等层；这里只保存可展示的筛选与汇总结果。
+   ================================================================ */
+export type GrowthTrajectoryEntry = {
+  entryId: string
+  occurredAt: string
+  title: string
+  summary: string
+  sourceTypes: string[]
+  sourceIds: string[]
+  relatedTaskIds?: string[]
+  relatedRehearsalIds?: string[]
+}
+
+export type GrowthTrajectorySnapshot = {
+  sourceHash: string
+  summary: string
+  entries: GrowthTrajectoryEntry[]
+  updatedAt: string
+}
+
+export async function getGrowthTrajectorySnapshot(tenant: TenantId): Promise<GrowthTrajectorySnapshot | null> {
+  return (await readLayer<GrowthTrajectorySnapshot>('growth_trajectory', tenant)).slice(-1)[0] || null
+}
+
+export async function saveGrowthTrajectorySnapshot(snapshot: GrowthTrajectorySnapshot, tenant: TenantId) {
+  await replaceLayer(
+    'growth_trajectory',
+    [toItem('growth_trajectory', snapshot, tenant, `${tenant.familyId}:${tenant.childId}:latest`)],
+    tenant
+  )
 }
 
 export type ParentInputRecord = {

@@ -195,7 +195,6 @@ export default function EntrySummaryPage() {
       <HiFiBuildHero
         kicker={`${config.stepLabel} 已整理`}
         title={config.summaryTitle}
-        copy='看一下整理是否贴近真实情况。不够也可以先继续，后面还能补。'
         compact
         mascot={false}
       />
@@ -267,10 +266,6 @@ export default function EntrySummaryPage() {
             <StructuralTensionCard tensions={structuralTensions} compact />
           ) : null}
 
-          <View className='soft-card' style={{ marginTop: '12px' }}>
-            <Text className='soft-card-title'>请确认一下</Text>
-            <Text className='soft-card-body'>{config.confirm}</Text>
-          </View>
         </>
       ) : null}
     </HiFiBuildShell>

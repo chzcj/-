@@ -1,3 +1,4 @@
+import Taro from '@tarojs/taro'
 import { apiRequest } from '@/services/api'
 import type { DailyTurn } from '@/services/dailyStream'
 import {
@@ -20,6 +21,63 @@ export type BuiltSnapshotInput = {
     strength: 'weak' | 'medium' | 'strong'
   }>
   verificationPoints?: Array<{ title: string; description: string }>
+}
+
+export type ProfileBuildRunState = {
+  buildVersion: string
+  status: 'idle' | 'running' | 'succeeded' | 'failed'
+  phase: number
+  label: string
+  startedAt?: string
+  updatedAt: string
+  error?: string
+}
+
+const PROFILE_BUILD_RUN_KEY = 'yujian_profile_build_run'
+let activeProfileBuildPromise: Promise<{ ok: true } | { ok: false; message: string }> | null = null
+const profileBuildRunListeners = new Set<(state: ProfileBuildRunState) => void>()
+
+function makeBuildVersion(state: BuildState): string {
+  const input = [
+    state.finalFollowUpText || '',
+    ...BUILD_MODULES.flatMap((mod) => {
+      const value = state.entryMap[mod.key]
+      return [...(value?.rawTexts || []), ...(value?.followUps || []), value?.stageSummary || '']
+    }),
+  ].join('\u0001')
+  let hash = 0
+  for (let i = 0; i < input.length; i++) hash = (hash * 31 + input.charCodeAt(i)) | 0
+  return `${Math.abs(hash)}-${input.length}`
+}
+
+export function getProfileBuildRunState(): ProfileBuildRunState | null {
+  try {
+    const raw = Taro.getStorageSync(PROFILE_BUILD_RUN_KEY)
+    if (!raw) return null
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!parsed?.buildVersion || !parsed?.status) return null
+    return parsed as ProfileBuildRunState
+  } catch {
+    return null
+  }
+}
+
+function saveProfileBuildRunState(state: ProfileBuildRunState) {
+  try {
+    Taro.setStorageSync(PROFILE_BUILD_RUN_KEY, JSON.stringify(state))
+  } catch {
+    /* 本地运行提示丢失不影响原画像流程 */
+  }
+  for (const listener of profileBuildRunListeners) listener(state)
+}
+
+export function subscribeProfileBuildRun(listener: (state: ProfileBuildRunState) => void) {
+  profileBuildRunListeners.add(listener)
+  const current = getProfileBuildRunState()
+  if (current) listener(current)
+  return () => {
+    profileBuildRunListeners.delete(listener)
+  }
 }
 
 function mapStrength(s: string | undefined): 'weak' | 'medium' | 'strong' {
@@ -230,6 +288,66 @@ export async function runProfileGeneratingPipeline(
   await waitForProfileReadiness()
 
   return { ok: true }
+}
+
+/**
+ * 不改 synthesis → diagnosis 本身，只为小程序跨页面预热加一个运行锁。
+ * 最后补充页启动后，基础资料页和生成页都可订阅同一条 Promise；进程被微信回收时，
+ * 生成页会按既有完整流程重跑，不使用不完整的中间结果拼接。
+ */
+export function ensureProfileBuildInFlight(
+  onStep?: (step: number, label: string) => void
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (activeProfileBuildPromise) return activeProfileBuildPromise
+
+  const buildVersion = makeBuildVersion(loadBuildState())
+  const startedAt = new Date().toISOString()
+  const report = (phase: number, label: string) => {
+    const next: ProfileBuildRunState = {
+      buildVersion,
+      status: 'running',
+      phase,
+      label,
+      startedAt,
+      updatedAt: new Date().toISOString(),
+    }
+    saveProfileBuildRunState(next)
+    onStep?.(phase, label)
+  }
+
+  report(0, '正在整理四个模块的关键事实…')
+  activeProfileBuildPromise = runProfileGeneratingPipeline(report)
+    .then((result) => {
+      saveProfileBuildRunState({
+        buildVersion,
+        status: result.ok ? 'succeeded' : 'failed',
+        phase: result.ok ? 4 : getProfileBuildRunState()?.phase || 0,
+        label: result.ok ? '画像已准备好' : '画像整理未完成',
+        startedAt,
+        updatedAt: new Date().toISOString(),
+        error: result.ok ? undefined : result.message,
+      })
+      return result
+    })
+    .catch((error) => {
+      const message = error instanceof Error ? error.message : '画像整理未完成'
+      const result = { ok: false as const, message }
+      saveProfileBuildRunState({
+        buildVersion,
+        status: 'failed',
+        phase: getProfileBuildRunState()?.phase || 0,
+        label: '画像整理未完成',
+        startedAt,
+        updatedAt: new Date().toISOString(),
+        error: message,
+      })
+      return result
+    })
+    .finally(() => {
+      activeProfileBuildPromise = null
+    })
+
+  return activeProfileBuildPromise
 }
 
 export async function waitForProfileReadiness(): Promise<void> {

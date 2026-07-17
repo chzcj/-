@@ -2,7 +2,7 @@ import { View, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useMemo, useState } from 'react'
 import { BuildRecordBox } from '@/components/profile/BuildRecordBox'
-import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
+import { HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { getEntryConfig } from '@/data/entryConfig'
 import {
@@ -105,18 +105,6 @@ export default function EntryCapturePage() {
         },
       ]}
     >
-      <HiFiBuildHero
-        kicker={supplementMode ? `${config.stepLabel} 补充信息` : `${config.stepLabel} 专项采集`}
-        title={supplementMode ? `补充${config.title}` : config.title}
-        copy={
-          supplementMode
-            ? '再补一段真实场景即可，不会覆盖已有记录。'
-            : config.subtitle
-        }
-        compact
-        mascot={false}
-      />
-
       {supplementMode && existingPreview ? (
         <View className='soft-card supplement-existing'>
           <Text className='section-label' onClick={() => setShowExisting((v) => !v)}>
@@ -128,13 +116,6 @@ export default function EntryCapturePage() {
         </View>
       ) : null}
 
-      <View className='soft-card'>
-        <Text className='soft-card-body'>{config.body}</Text>
-        <View className='hint-block'>
-          <Text>{config.defaultHint}</Text>
-        </View>
-      </View>
-
       <BuildRecordBox
         label='真实情况记录'
         status='按住说话 1–2 分钟'
@@ -142,6 +123,9 @@ export default function EntryCapturePage() {
         placeholder={config.placeholder}
         disabled={loading}
         prompt={currentPrompt}
+        metaLeft=''
+        showMeta={false}
+        showCharHint={false}
         onChange={setDraft}
       />
 
