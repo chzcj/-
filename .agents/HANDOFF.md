@@ -2312,3 +2312,32 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **下一步**
 - 真机预览重点验收：基础资料六项输入高度、长文本滚动、建档后台预热、语音光标插入、成长轨迹首次整理。
+
+## 2026-07-17 17:10 | Cursor | 全仓架构审查（只读）
+
+**做了什么**
+- 完成只读全链路审查（小程序 / BFF / PG 记忆层 / job_queue / Agent），约 658 个源码与契约文件；未改代码、未部署。
+- 结论：当前「最后补充 → 基础资料预热 → generating」的 **客户端 in-flight 锁**（`profilePipeline.ensureProfileBuildInFlight`）已满足本轮 UX，但 **建档真源仍在小程序 local storage**，服务端 `build-state` 只存模块摘要，不存 rawTexts / followUps / final supplement。
+
+**P0 待办（下一轮大改，勿与本轮小步 UI 混做）**
+1. **Durable `profile_build_run`**：final 提交后服务端冻结 `build_input_snapshot`，按 stage 执行 synthesis → diagnosis → built → deep mechanism；`(tenant, inputVersion, stage)` 幂等。
+2. **恢复断点**：换设备 / 清缓存 / 微信回收后，generating 应订阅 run 而非重跑整条客户端 pipeline。
+3. **final follow-up 持久化**：写入 snapshot，不再仅依赖 `finalFollowUpText` 本地字段。
+
+**P1 待办**
+- 任务离线 fallback 升级为 outbox + clientId 幂等重放（问卷已拍板，代码未落地）。
+- 画像 UI snapshot / built snapshot / digest 缺统一版本 watermark。
+- 预演模拟 transcript 不跨页恢复；与 dialogue_analyses 仍是两条状态机。
+- synthesis/diagnosis 的 `memory_write` 无幂等 key，generating 重进可能重复写。
+
+**推荐方案**
+- 以 **方案 C（basic 页承接 + 服务端 Build Run）** 为目标架构；现有客户端预热可保留为过渡，最终由 run 轮询/订阅取代 `runProfileGeneratingPipeline` 直连。
+
+**别动**
+- 锁定语音链路；synthesis→diagnosis 串联与 Prompt 在本轮审查中 **不建议** 为并行而改。
+
+**验证**
+- 只读审查，无构建。
+
+**下一步**
+- 真机先验当前已上线功能；若要做 durable build run，单独立项：表结构 + API + 小程序 generating/basic 改订阅，不与画像文案/UI 小修并行。
