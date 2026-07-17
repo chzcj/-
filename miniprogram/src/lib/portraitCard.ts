@@ -207,7 +207,7 @@ export function buildHubProfileCards(input: BuildHubCardsInput): HubProfileCard[
       progress: hasCardContent(portraitCards.behavior, hubCards.behaviorSummary || '') ? 55 : 8,
       progressHint: hasCardContent(portraitCards.behavior, hubCards.behaviorSummary || '')
         ? '已从交流中提取行为模式，继续记录会持续修正。'
-        : '完成几次交流后，这里会出现孩子的行为模式总结。',
+        : '完成几次交流后，这里会出现孩子的行为模式。',
     },
     {
       title: '亲子互动关系',

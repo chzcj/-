@@ -2298,3 +2298,17 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **部署**
 - 2026-07-17 16:32：`npm run deploy` 成功，public readiness `ready:true`，`jobHealthy:true`。
+
+## 2026-07-17 16:39 | Cursor | 基础资料与画像标题 UI 收尾
+
+**做了什么**
+- 基础资料页将通用大文本框改为紧凑表单控件，避免六项资料每项占 184px 高导致页面冗长。
+- 画像列表、详情和 Web 同步改名：孩子行为模式、亲子互动关系、孩子健康成长阻力。
+- 完成小程序 typecheck/build:weapp 与 Web build；尝试 DevTools 自动化，但 `cli auto` 在 30 秒内超时，未能自动截图。
+
+**验证**
+- Web / 小程序 typecheck 通过；Web build、build:weapp 通过（既有 Hook/CSS order warnings）。
+- 2026-07-17 16:39：deploy 成功，`/api/readiness` 返回 `ready:true`、`jobHealthy:true`。
+
+**下一步**
+- 真机预览重点验收：基础资料六项输入高度、长文本滚动、建档后台预热、语音光标插入、成长轨迹首次整理。

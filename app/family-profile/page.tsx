@@ -257,14 +257,14 @@ export default function FamilyProfilePage() {
       progressHint: hasCardContent(portraitCards.focus, focusText) ? '已基于已记录交流生成，继续使用会越来越准。' : '完成更多交流后，关注点会在这里更新。',
     },
     {
-      title: '行为模式总结',
+      title: '孩子行为模式',
       slug: 'behavior',
       body: cardSummary(portraitCards.behavior, hubCards.behaviorSummary || (hasLocalProfile && coreJudgment ? truncate(coreJudgment, 120) : '交流积累后，会在这里看到模式总结。')),
       progress: hasCardContent(portraitCards.behavior, hubCards.behaviorSummary || '') ? 55 : 8,
       progressHint: hasCardContent(portraitCards.behavior, hubCards.behaviorSummary || '') ? '已从交流中提取行为模式，继续记录会持续修正。' : '完成几次交流后，这里会出现孩子的行为模式总结。',
     },
     {
-      title: '家庭互动模式',
+      title: '亲子互动关系',
       slug: 'interaction',
       body: cardSummary(portraitCards.interaction, hubCards.interactionPattern || (hubCards.hasRealData ? '' : '完成画像与多轮交流后更新。')),
       progress: hasCardContent(portraitCards.interaction, hubCards.interactionPattern || '') ? 55 : 8,
@@ -278,7 +278,7 @@ export default function FamilyProfilePage() {
       progressHint: hasCardContent(portraitCards.strategies, hubCards.effectiveStrategies || '') ? '已积累验证过的策略，继续反馈任务结果会扩充。' : '试过任务后回来反馈，验证有效的策略会出现在这里。',
     },
     {
-      title: '家庭运转张力',
+      title: '孩子健康成长阻力',
       slug: 'tensions',
       body: cardSummary(
         portraitCards.tensions,

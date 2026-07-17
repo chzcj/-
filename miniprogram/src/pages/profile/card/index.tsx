@@ -11,11 +11,11 @@ import './index.scss'
 const CARD_TITLES: Record<string, string> = {
   growth: '动态成长画像',
   focus: '值得长期关注',
-  behavior: '行为模式总结',
-  interaction: '家庭互动模式',
+  behavior: '孩子行为模式',
+  interaction: '亲子互动关系',
   strategies: '试试这些好方法',
   hypotheses: '孩子写作业的机制',
-  tensions: '家庭运转张力',
+  tensions: '孩子健康成长阻力',
 }
 
 type ApiSection = PortraitCardSection | { id?: string; title?: string; body?: string }

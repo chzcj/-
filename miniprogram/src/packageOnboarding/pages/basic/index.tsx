@@ -106,9 +106,9 @@ export default function OnboardingBasic() {
               : '资料会用于后续交流、任务、预演和成长轨迹，不改变正在整理的首版画像。'
         }
       />
-      <View className='record-box'>
+      <View className='record-box basic-info-form'>
         <TaroInput
-          className='record-textarea'
+          className='basic-field'
           placeholder='孩子昵称（仅用于产品内称呼）'
           value={childName}
           onInput={(e) => setChildName(e.detail.value)}
@@ -119,7 +119,7 @@ export default function OnboardingBasic() {
           value={gradeIndex >= 0 ? gradeIndex : 0}
           onChange={(e) => setGrade(GRADES[Number(e.detail.value)] || '')}
         >
-          <View className='record-textarea picker-field' style={{ marginTop: '12px' }}>
+          <View className='basic-field basic-picker' style={{ marginTop: '12px' }}>
             <Text>{grade || '请选择年级'}</Text>
           </View>
         </Picker>
@@ -129,25 +129,25 @@ export default function OnboardingBasic() {
           value={provinceIndex >= 0 ? provinceIndex : 0}
           onChange={(e) => setProvince(PROVINCES[Number(e.detail.value)] || '')}
         >
-          <View className='record-textarea picker-field' style={{ marginTop: '12px' }}>
+          <View className='basic-field basic-picker' style={{ marginTop: '12px' }}>
             <Text>{province || '孩子所在省份'}</Text>
           </View>
         </Picker>
         <TaroInput
-          className='record-textarea'
+          className='basic-field'
           placeholder='您是孩子的妈妈、爸爸，还是其他主要照护者？'
           value={caregiverRelation}
           onInput={(e) => setCaregiverRelation(e.detail.value)}
         />
         <Textarea
-          className='record-area basic-textarea'
+          className='basic-field basic-textarea'
           placeholder='您平时陪孩子的时间大概有多少？'
           value={companionTime}
           maxlength={200}
           onInput={(e) => setCompanionTime(e.detail.value)}
         />
         <Textarea
-          className='record-area basic-textarea'
+          className='basic-field basic-textarea'
           placeholder='您希望育见怎么帮到孩子？'
           value={helpGoal}
           maxlength={500}
