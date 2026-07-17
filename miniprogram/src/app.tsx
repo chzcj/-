@@ -5,6 +5,7 @@ import { fetchCurrentUser } from '@/services/auth'
 import { getSessionToken } from '@/services/api'
 import { hydrateBuildStateFromServer } from '@/services/buildState'
 import { hydrateProfileFromRemoteIfNeeded } from '@/services/profileHydrate'
+import { fetchTasksFromServer } from '@/services/taskStorage'
 import { routeAfterAuth } from '@/utils/navigation'
 import './app.scss'
 
@@ -26,6 +27,8 @@ function App({ children }: PropsWithChildren) {
     if (!user.onboardingComplete) {
       await hydrateProfileFromRemoteIfNeeded()
     }
+
+    void fetchTasksFromServer()
 
     const fresh = await fetchCurrentUser()
     routeAfterAuth(fresh || user, false)

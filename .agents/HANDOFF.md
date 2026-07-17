@@ -2362,3 +2362,21 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **风险/冲突**
 - 新 run 与旧 `/api/synthesis`+`/api/diagnosis` 直连并存；正常建档只走 build-run job。
 - stage 中间结果缓存在 `profile_build_stage_cache`，成功后会清；失败重试可复用已完成的 synthesis。
+
+## 2026-07-17 17:20 | Cursor | Web generating 接 build-run + 任务 outbox
+
+**做了什么**
+- Web `/profile/generating` 改订阅服务端 `profile_build_run`（`src/lib/profile/profileBuildRun.ts`），删除客户端直连 synthesis/diagnosis 大段逻辑；刷新可恢复进度。
+- 任务离线 outbox：创建/反馈失败入队 `taskOutbox`，登录与拉取任务时 `flush`；服务端 `clientId` 幂等创建、`clientFeedbackAt` 较新才覆盖反馈。
+- 小程序同步 outbox + 启动时 flush；Web `taskStorage` 同样接入。
+
+**验证**
+- Web / 小程序 typecheck ✓；Web build、build:weapp ✓
+- 2026-07-17 17:18：deploy 成功，`ready:true`，`jobHealthy:true`
+
+**下一步**
+- 真机：建档断点恢复、离线保存任务后联网是否进服务端记忆闭环。
+- 小程序本地需 `build:weapp` 后预览 outbox 与 build-run 变更。
+
+**风险/冲突**
+- outbox 超 8 次失败仍留本地，需后续 UI 提示「同步失败」；语音 ASR 未动。

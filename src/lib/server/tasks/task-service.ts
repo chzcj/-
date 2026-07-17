@@ -35,10 +35,17 @@ export async function createUserTask(
     observation?: string
     /** 本轮 AI 回复节选，供今晚任务 Agent 异步润色标题 */
     replyExcerpt?: string
+    clientId?: string
   }
 ): Promise<UserTask> {
   const title = args.title.trim()
   if (!title) throw new Error('EMPTY_TITLE')
+
+  const existing = await getUserTasks(tenant)
+  if (args.clientId?.trim()) {
+    const hit = existing.find((t) => t.clientId === args.clientId)
+    if (hit) return hit
+  }
 
   const now = new Date().toISOString()
   const task: UserTask = {
@@ -50,11 +57,11 @@ export async function createUserTask(
     status: '待执行',
     sourceTraceId: args.sourceTraceId?.trim() || undefined,
     observation: args.observation?.trim() || undefined,
+    clientId: args.clientId?.trim() || undefined,
     createdAt: now,
     updatedAt: now,
   }
 
-  const existing = await getUserTasks(tenant)
   const sorted = [task, ...existing]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   let activeSeen = 0
@@ -101,18 +108,30 @@ export async function applyUserTaskFeedback(
   tenant: TenantId,
   taskId: string,
   feedback: NonNullable<UserTask['feedback']>,
-  status: string
+  status: string,
+  clientFeedbackAt?: string
 ): Promise<UserTask | null> {
   const all = await getUserTasks(tenant)
   const idx = all.findIndex((t) => t.taskId === taskId)
   if (idx < 0) return null
 
+  const current = all[idx]
+  const incomingAt = clientFeedbackAt?.trim()
+  if (
+    incomingAt &&
+    current.feedbackClientAt &&
+    new Date(incomingAt).getTime() < new Date(current.feedbackClientAt).getTime()
+  ) {
+    return current
+  }
+
   const note = feedback.note?.trim()
   const updated: UserTask = {
-    ...all[idx],
+    ...current,
     feedback,
-    status: status || all[idx].status,
-    observation: note || all[idx].observation,
+    status: status || current.status,
+    observation: note || current.observation,
+    feedbackClientAt: incomingAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
   all[idx] = updated

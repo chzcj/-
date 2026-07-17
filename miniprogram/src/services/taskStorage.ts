@@ -1,6 +1,13 @@
 import Taro from '@tarojs/taro'
 import { apiRequest } from '@/services/api'
 import { normalizeTaskTitle } from '@/lib/textDisplay'
+import {
+  enqueueTaskCreate,
+  enqueueTaskFeedback,
+  flushTaskOutbox,
+  makeTaskClientId,
+  patchLocalTaskIdByClientId,
+} from '@/services/taskOutbox'
 
 export type TaskFeedback = {
   completed?: string
@@ -17,6 +24,7 @@ export type TaskItem = {
   status?: string
   feedback?: TaskFeedback
   sourceTraceId?: string
+  clientId?: string
   createdAt: string
 }
 
@@ -80,6 +88,9 @@ function mergeTasks(local: TaskItem[], server: TaskItem[]): TaskItem[] {
 
 export async function fetchTasksFromServer(): Promise<{ current: TaskItem[]; history: TaskItem[] }> {
   try {
+    await flushTaskOutbox((clientId, serverTaskId) => {
+      saveLocalTasks(patchLocalTaskIdByClientId(loadLocalTasks(), clientId, serverTaskId))
+    })
     const local = loadLocalTasks()
     const res = await apiRequest<{ tasks?: ServerTask[]; history?: ServerTask[] }>('/api/tasks', { method: 'GET' })
     if (!res.ok || !Array.isArray(res.data.tasks)) return { current: local, history: [] }
@@ -110,12 +121,14 @@ export async function saveTask(
   if (!normalizedTitle.trim()) return false
   const observation = extras?.observation?.trim() || undefined
   const replyExcerpt = extras?.replyExcerpt?.trim() || undefined
+  const clientId = makeTaskClientId()
   try {
     const res = await apiRequest<{ task?: ServerTask }>('/api/tasks', {
       method: 'POST',
       data: {
         title: normalizedTitle,
         source,
+        clientId,
         ...(sourceTraceId ? { sourceTraceId } : {}),
         ...(observation ? { observation } : {}),
         ...(replyExcerpt ? { replyExcerpt } : {}),
@@ -126,10 +139,19 @@ export async function saveTask(
       return true
     }
   } catch {
-    /* fallback local */
+    /* fallback outbox */
   }
+  enqueueTaskCreate({
+    clientId,
+    title: normalizedTitle,
+    source,
+    sourceTraceId,
+    observation,
+    replyExcerpt,
+  })
   const next: TaskItem = {
-    id: `task_${Date.now()}`,
+    id: clientId,
+    clientId,
     title: normalizedTitle,
     source,
     status: '待执行',
@@ -154,12 +176,14 @@ export async function updateTaskFeedback(
   feedback: TaskFeedback,
   status: string
 ): Promise<void> {
+  const clientFeedbackAt = new Date().toISOString()
+  const feedbackClientId = `cfeedback_${taskId}_${Date.now()}`
   try {
     const res = await apiRequest<{ task?: ServerTask }>(
       `/api/tasks/${encodeURIComponent(taskId)}/feedback`,
       {
         method: 'POST',
-        data: { feedback, status },
+        data: { feedback, status, clientFeedbackAt },
       }
     )
     if (res.ok) {
@@ -167,8 +191,15 @@ export async function updateTaskFeedback(
       return
     }
   } catch {
-    /* fallback local */
+    /* fallback outbox */
   }
+  enqueueTaskFeedback({
+    clientId: feedbackClientId,
+    taskId,
+    feedback,
+    status,
+    clientFeedbackAt,
+  })
   const items = loadLocalTasks().map((t) =>
     t.id === taskId
       ? {

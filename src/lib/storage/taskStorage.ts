@@ -13,6 +13,7 @@ export type TaskItem = {
   status?: string
   feedback?: TaskFeedback
   sourceTraceId?: string
+  clientId?: string
   createdAt: string
 }
 
@@ -47,6 +48,7 @@ function mapServerTask(t: {
   observation?: string
   feedback?: TaskFeedback
   sourceTraceId?: string
+  clientId?: string
   createdAt: string
 }): TaskItem {
   return {
@@ -57,17 +59,31 @@ function mapServerTask(t: {
     observation: t.observation,
     feedback: t.feedback,
     sourceTraceId: t.sourceTraceId,
+    clientId: t.clientId,
     createdAt: t.createdAt,
   }
 }
 
 export async function fetchTasksFromServer(): Promise<TaskItem[]> {
   if (typeof window === 'undefined') return []
+  const {
+    flushTaskOutbox,
+    patchLocalTaskIdByClientId,
+  } = await import('@/lib/storage/taskOutbox')
+  await flushTaskOutbox((clientId, serverTaskId) => {
+    saveLocalTasks(patchLocalTaskIdByClientId(loadLocalTasks(), clientId, serverTaskId))
+  })
   try {
     const res = await fetch('/api/tasks')
-    const json = (await res.json()) as { ok?: boolean; data?: { tasks?: unknown[] } }
+    const json = (await res.json()) as {
+      ok?: boolean
+      data?: { tasks?: unknown[]; history?: unknown[] }
+    }
     if (!json.ok || !Array.isArray(json.data?.tasks)) return loadLocalTasks()
-    const tasks = json.data.tasks.map((t) => mapServerTask(t as never))
+    const tasks = [
+      ...json.data.tasks,
+      ...(Array.isArray(json.data.history) ? json.data.history : []),
+    ].map((t) => mapServerTask(t as never))
     saveLocalTasks(tasks)
     return tasks
   } catch {
@@ -86,8 +102,10 @@ export async function saveTask(
   extras?: { observation?: string; replyExcerpt?: string }
 ) {
   if (typeof window === 'undefined' || !title.trim()) return
+  const { enqueueTaskCreate, makeTaskClientId } = await import('@/lib/storage/taskOutbox')
   const observation = extras?.observation?.trim()
   const replyExcerpt = extras?.replyExcerpt?.trim()
+  const clientId = makeTaskClientId()
   try {
     const res = await fetch('/api/tasks', {
       method: 'POST',
@@ -96,20 +114,30 @@ export async function saveTask(
         title: title.trim(),
         source,
         sourceTraceId,
+        clientId,
         ...(observation ? { observation } : {}),
         ...(replyExcerpt ? { replyExcerpt } : {}),
       }),
     })
-    const json = (await res.json()) as { ok?: boolean; data?: { task?: { taskId: string } } }
+    const json = (await res.json()) as { ok?: boolean }
     if (json.ok) {
       await fetchTasksFromServer()
       return
     }
   } catch {
-    /* fallback local */
+    /* outbox */
   }
+  enqueueTaskCreate({
+    clientId,
+    title: title.trim(),
+    source,
+    sourceTraceId,
+    observation,
+    replyExcerpt,
+  })
   const next: TaskItem = {
-    id: `task_${Date.now()}`,
+    id: clientId,
+    clientId,
     title: title.trim(),
     source,
     status: '待执行',
@@ -125,11 +153,14 @@ export async function saveTaskFromRehearsal(title: string, source = '沟通预�
 
 export async function updateTaskFeedback(taskId: string, feedback: TaskFeedback, status: string) {
   if (typeof window === 'undefined') return
+  const { enqueueTaskFeedback } = await import('@/lib/storage/taskOutbox')
+  const clientFeedbackAt = new Date().toISOString()
+  const feedbackClientId = `cfeedback_${taskId}_${Date.now()}`
   try {
     const res = await fetch(`/api/tasks/${encodeURIComponent(taskId)}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ feedback, status }),
+      body: JSON.stringify({ feedback, status, clientFeedbackAt }),
     })
     const json = (await res.json()) as { ok?: boolean }
     if (json.ok) {
@@ -137,8 +168,15 @@ export async function updateTaskFeedback(taskId: string, feedback: TaskFeedback,
       return
     }
   } catch {
-    /* fallback */
+    /* outbox */
   }
+  enqueueTaskFeedback({
+    clientId: feedbackClientId,
+    taskId,
+    feedback,
+    status,
+    clientFeedbackAt,
+  })
   const items = loadLocalTasks().map((t) =>
     t.id === taskId
       ? {

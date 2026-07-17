@@ -600,6 +600,10 @@ export interface UserTask {
   status: string
   sourceTraceId?: string
   observation?: string
+  /** 客户端幂等键：离线 outbox 重放时去重 */
+  clientId?: string
+  /** 客户端反馈时间戳：较旧的重放会被忽略 */
+  feedbackClientAt?: string
   feedback?: {
     completed?: string
     effect?: string

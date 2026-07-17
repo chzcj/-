@@ -15,6 +15,7 @@ export async function POST(
   const body = await request.json().catch(() => ({} as Record<string, unknown>))
   const feedback = body.feedback as Record<string, unknown> | undefined
   const status = typeof body.status === 'string' ? body.status : '已完成'
+  const clientFeedbackAt = typeof body.clientFeedbackAt === 'string' ? body.clientFeedbackAt : undefined
 
   if (!feedback || typeof feedback !== 'object') {
     return fail('BAD_REQUEST', '请提交反馈内容', undefined, 400)
@@ -30,7 +31,8 @@ export async function POST(
       reaction: typeof feedback.reaction === 'string' ? feedback.reaction : undefined,
       note: typeof feedback.note === 'string' ? feedback.note : undefined,
     },
-    status
+    status,
+    clientFeedbackAt
   )
 
   if (!updated) return fail('NOT_FOUND', '找不到这条任务', undefined, 404)

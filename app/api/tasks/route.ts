@@ -19,10 +19,11 @@ export async function POST(request: Request) {
   const sourceTraceId = typeof body.sourceTraceId === 'string' ? body.sourceTraceId.trim() : undefined
   const observation = typeof body.observation === 'string' ? body.observation.trim() : undefined
   const replyExcerpt = typeof body.replyExcerpt === 'string' ? body.replyExcerpt.trim() : undefined
+  const clientId = typeof body.clientId === 'string' ? body.clientId.trim() : undefined
 
   if (!title) return fail('EMPTY_TITLE', '任务内容不能为空', undefined, 400)
 
   const tenant = await resolveTenant()
-  const task = await createUserTask(tenant, { title, source, sourceTraceId, observation, replyExcerpt })
+  const task = await createUserTask(tenant, { title, source, sourceTraceId, observation, replyExcerpt, clientId })
   return ok({ task })
 }
