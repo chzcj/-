@@ -49,18 +49,18 @@ const SLICE_LIMITS_THIN: Record<FrontendReadPackKey, number> = {
   parentVerbatimSnippets: 4,
 }
 
-/** 厚包：机制人话卡可达 20；事实/原话大幅放宽（排序高价值由检索层负责） */
+/** 厚包：面向深度前台表达，保留字段级预算而非截断为薄包。 */
 const SLICE_LIMITS_THICK: Record<FrontendReadPackKey, number> = {
-  childStructureModels: 12,
-  entryEvidence: 12,
-  entryFacts: 40,
-  matchedMechanisms: 20,
-  familyPatterns: 10,
-  parentUnderstanding: 12,
-  recentEvents: 12,
-  pendingHypotheses: 10,
-  childQuotes: 16,
-  parentVerbatimSnippets: 16,
+  childStructureModels: 24,
+  entryEvidence: 24,
+  entryFacts: 80,
+  matchedMechanisms: 40,
+  familyPatterns: 20,
+  parentUnderstanding: 24,
+  recentEvents: 24,
+  pendingHypotheses: 20,
+  childQuotes: 32,
+  parentVerbatimSnippets: 32,
 }
 
 export function getFrontendReadSliceLimits(): Record<FrontendReadPackKey, number> {

@@ -20,6 +20,13 @@ import { apiRequest } from '@/services/api'
 import { fetchCurrentUser } from '@/services/auth'
 import { getLatestProfile } from '@/services/profileStorage'
 import { saveTaskFromRehearsal } from '@/services/taskStorage'
+import {
+  clearRehearsalSession,
+  loadLastDialogueAnalysisId,
+  loadRehearsalSession,
+  saveRehearsalSession,
+  type RehearsalFeedItem,
+} from '@/services/rehearsalSessionStorage'
 import { requireOnboardingComplete } from '@/utils/navigation'
 import './index.scss'
 
@@ -34,7 +41,10 @@ type DialogueRehearsalContext = {
   openingHint?: string
   tryTonight?: string
   sampleDialogue?: string
+  sourceAnalysisId?: string
 }
+
+type FeedItem = RehearsalFeedItem | { type: 'thinking' }
 
 type RehearsalHandoff = {
   sceneId?: string
@@ -43,19 +53,6 @@ type RehearsalHandoff = {
   rehearsalGoal?: string
   traceId?: string
 }
-
-type FeedItem =
-  | { type: 'parent'; text: string }
-  | {
-      type: 'child'
-      childText: string
-      hintTitle: string
-      hintText: string
-      suggestedTitle?: string
-      suggestedText?: string
-    }
-  | { type: 'system_hint'; text: string }
-  | { type: 'thinking' }
 
 function truncate(text: string, max = 72) {
   const value = text.trim()
@@ -92,10 +89,29 @@ export default function RehearsalPage() {
   const [taskSaved, setTaskSaved] = useState(false)
   const [tonightSaved, setTonightSaved] = useState(false)
   const [rehearsalTraceId, setRehearsalTraceId] = useState<string | undefined>()
+  const [sourceAnalysisId, setSourceAnalysisId] = useState<string | undefined>()
+  const [lastDialogueAnalysisId, setLastDialogueAnalysisId] = useState<string | null>(null)
 
   const selectedScene = scenes.find((s) => s.id === selectedId) || scenes[0] || REHEARSAL_SCENES[0]
 
-  const applySceneSeed = useCallback(() => {
+  const restoreRehearsalSession = useCallback((saved: NonNullable<ReturnType<typeof loadRehearsalSession>>) => {
+    setSelectedId(saved.selectedId)
+    setSummary(saved.summary)
+    setSceneTitle(saved.sceneTitle)
+    setStatusText(saved.statusText)
+    setFeed(saved.feed)
+    setRound(saved.round)
+    setRoundsSinceCheckpoint(saved.roundsSinceCheckpoint)
+    setShowCheckpoint(saved.showCheckpoint)
+    setEndData(saved.endData)
+    setRehearsalTraceId(saved.rehearsalTraceId)
+    setTaskSaved(saved.taskSaved)
+    setTonightSaved(saved.tonightSaved)
+    setSourceAnalysisId(saved.sourceAnalysisId)
+    setStep(saved.step)
+  }, [])
+
+  const applySceneSeed = useCallback((): boolean => {
     try {
       const dialogueCtx = Taro.getStorageSync(REHEARSAL_DIALOGUE_CONTEXT_KEY) as DialogueRehearsalContext | ''
       if (dialogueCtx && typeof dialogueCtx === 'object' && dialogueCtx.sceneSummary) {
@@ -106,8 +122,9 @@ export default function RehearsalPage() {
         setSelectedId(matched.id)
         setSceneTitle(dialogueCtx.sceneTitle || matched.title)
         setSummary(dialogueCtx.sceneSummary)
+        setSourceAnalysisId(dialogueCtx.sourceAnalysisId)
         setStep('confirm')
-        return
+        return true
       }
       const handoff = Taro.getStorageSync(REHEARSAL_HANDOFF_KEY) as RehearsalHandoff | ''
       if (handoff && typeof handoff === 'object' && (handoff.seedText || handoff.sceneId)) {
@@ -124,10 +141,10 @@ export default function RehearsalPage() {
             .slice(0, 800) || matched.summary
         )
         setStep('confirm')
-        return
+        return true
       }
       const seed = Taro.getStorageSync(REHEARSAL_SCENE_SEED_KEY)
-      if (!seed) return
+      if (!seed) return false
       Taro.removeStorageSync(REHEARSAL_SCENE_SEED_KEY)
       const seedText = String(seed)
       const matched =
@@ -138,8 +155,9 @@ export default function RehearsalPage() {
       setSummary(seedText.length > 40 ? seedText : matched.summary)
       setSceneTitle(matched.title)
       setStep('confirm')
+      return true
     } catch {
-      /* ignore */
+      return false
     }
   }, [scenes])
 
@@ -164,8 +182,53 @@ export default function RehearsalPage() {
   useDidShow(async () => {
     const user = await fetchCurrentUser()
     if (!requireOnboardingComplete(user)) return
-    applySceneSeed()
+    const seeded = applySceneSeed()
+    if (!seeded) {
+      const saved = loadRehearsalSession()
+      if (saved && saved.step !== 'entry') {
+        restoreRehearsalSession(saved)
+        Taro.showToast({ title: '已恢复上次预演', icon: 'none', duration: 2000 })
+      }
+    }
+    setLastDialogueAnalysisId(loadLastDialogueAnalysisId())
   })
+
+  useEffect(() => {
+    if (step === 'entry') return
+    saveRehearsalSession({
+      version: 1,
+      savedAt: new Date().toISOString(),
+      step,
+      selectedId,
+      summary,
+      sceneTitle,
+      statusText,
+      feed: feed.filter((item): item is RehearsalFeedItem => item.type !== 'thinking'),
+      round,
+      roundsSinceCheckpoint,
+      showCheckpoint,
+      endData,
+      rehearsalTraceId,
+      taskSaved,
+      tonightSaved,
+      sourceAnalysisId,
+    })
+  }, [
+    step,
+    selectedId,
+    summary,
+    sceneTitle,
+    statusText,
+    feed,
+    round,
+    roundsSinceCheckpoint,
+    showCheckpoint,
+    endData,
+    rehearsalTraceId,
+    taskSaved,
+    tonightSaved,
+    sourceAnalysisId,
+  ])
 
   const selectScenario = (sceneId: string) => {
     const scene = scenes.find((s) => s.id === sceneId)
@@ -367,6 +430,7 @@ export default function RehearsalPage() {
   }
 
   const restartSimulation = () => {
+    clearRehearsalSession()
     setSelectedId(scenes[0]?.id || REHEARSAL_SCENES[0].id)
     setSummary(scenes[0]?.summary || REHEARSAL_SCENES[0].summary)
     setSceneTitle(scenes[0]?.title || REHEARSAL_SCENES[0].title)
@@ -378,6 +442,7 @@ export default function RehearsalPage() {
     setTaskSaved(false)
     setTonightSaved(false)
     setRehearsalTraceId(undefined)
+    setSourceAnalysisId(undefined)
     setStep('entry')
   }
 
@@ -455,6 +520,20 @@ export default function RehearsalPage() {
             开始预演
           </Text>
 
+          {lastDialogueAnalysisId ? (
+            <View
+              className='dialogue-entry-card dialogue-entry-card--resume'
+              onClick={() =>
+                void Taro.navigateTo({
+                  url: `/pages/rehearsal/dialogue-result/index?id=${encodeURIComponent(lastDialogueAnalysisId)}`,
+                })
+              }
+            >
+              <Text className='dialogue-entry-title'>查看上次对话分析</Text>
+              <Text className='dialogue-entry-desc muted'>录音转写与解读已保存，可继续带入情景预演</Text>
+            </View>
+          ) : null}
+
           <View
             className='dialogue-entry-card'
             onClick={() => void Taro.navigateTo({ url: '/pages/rehearsal/dialogue/index' })}
@@ -474,7 +553,7 @@ export default function RehearsalPage() {
 
       {step === 'confirm' ? (
         <>
-          <Text className='section-label back-link' onClick={() => setStep('entry')}>
+          <Text className='section-label back-link' onClick={() => { clearRehearsalSession(); setStep('entry') }}>
             ← 返回选场景
           </Text>
           <Text className='section-label'>这次先按这个场景来练</Text>

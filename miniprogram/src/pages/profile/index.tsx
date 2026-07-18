@@ -41,6 +41,13 @@ type HubPayload = {
   pendingHypothesesList?: string[]
   structuralTensions?: StructuralTension[]
   highlights?: string[]
+  presentationWatermark?: {
+    compositeVersion?: string
+    partiallyRefreshing?: boolean
+    uiStale?: boolean
+    digestStale?: boolean
+    buildRunStatus?: string | null
+  }
 }
 
 type TrajectoryPayload = {
@@ -81,6 +88,7 @@ export default function ProfilePage() {
   const [trajectoryRefreshing, setTrajectoryRefreshing] = useState(false)
   const [backgroundRefreshing, setBackgroundRefreshing] = useState(false)
   const [updateNotice, setUpdateNotice] = useState('')
+  const [partialRefreshing, setPartialRefreshing] = useState(false)
   const [modal, setModal] = useState<EditModalKind>(null)
   const [isWechatUser, setIsWechatUser] = useState(true)
 
@@ -121,6 +129,8 @@ export default function ProfilePage() {
       }
       if (data.supportFocus) setSupportFocus(data.supportFocus)
       if (data.currentFocus) setCurrentFocus(data.currentFocus)
+      const wm = data.presentationWatermark
+      setPartialRefreshing(Boolean(wm?.partiallyRefreshing))
     },
     []
   )
@@ -165,6 +175,14 @@ export default function ProfilePage() {
 
       if (hub.ok) {
         applyHubData(hub.data)
+        const cachedVersion = (
+          cached?.hub as { ok?: boolean; data?: HubPayload } | null | undefined
+        )?.data?.presentationWatermark?.compositeVersion
+        const nextVersion = hub.data?.presentationWatermark?.compositeVersion
+        if (cachedVersion && nextVersion && cachedVersion !== nextVersion) {
+          setUpdateNotice('画像已根据最新记录更新')
+          setTimeout(() => setUpdateNotice(''), 4000)
+        }
       } else {
         setHubError(hub.error.message || '画像暂时加载失败')
       }
@@ -281,6 +299,11 @@ export default function ProfilePage() {
           ) : null}
         </View>
         {backgroundRefreshing ? <Text className='muted'>后台整理中…</Text> : null}
+        {partialRefreshing && !backgroundRefreshing ? (
+          <Text className='update-notice update-notice--pending'>
+            部分卡片仍在根据最新记录更新
+          </Text>
+        ) : null}
         {updateNotice ? <Text className='update-notice'>{updateNotice}</Text> : null}
 
         {hubLoading ? (

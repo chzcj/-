@@ -87,16 +87,15 @@ console.log('audit:memory-contract — 记忆读写契约审计')
     'E5 shouldWriteL1 必须排除 isShortGreeting')
 }
 
-// E6 episode 选择性
+// E6 每个有效 daily 都进入幂等 Episode 队列
 {
   const src = read('app/api/daily/stream/route.ts')
-  assert(/relType\s*===\s*['"]counter_evidence['"]/.test(src) && /enqueueJob\(['"]episode_ingest['"]/.test(src),
-    'E6 stream 必须在 counter_evidence 轮选择性 enqueue episode_ingest')
-  // 禁止无条件每轮入队 episode：episode 入队必须出现在条件分支内（粗检：前面有 if (...counter_evidence)
+  assert(/if\s*\(shouldWriteL1\)/.test(src) && /enqueueJob\(['"]episode_ingest['"]/.test(src),
+    'E6 stream 必须在有效 daily 轮 enqueue episode_ingest')
   const episodeIdx = src.indexOf("enqueueJob('episode_ingest'")
   const preceding = src.slice(Math.max(0, episodeIdx - 400), episodeIdx)
-  assert(preceding.includes('counter_evidence'),
-    'E6 episode_ingest 不得无条件每轮入队，必须由高价值轮条件触发')
+  assert(preceding.includes('episodeId') && preceding.includes('shouldWriteL1'),
+    'E6 episode_ingest 必须使用有效轮 gate 与确定性 episodeId')
 }
 
 // E7 前端 AI 读取门控：prose-context 必须经 pickFrontendReadPack

@@ -35,6 +35,7 @@ npm run sync:gitee
   - 更新：`npx impeccable skills update`
   - 审计：`npx impeccable detect app/ src/`
   - Cursor 聊天可用 `/impeccable` 子命令（如 `audit`、`polish`、`craft`）
+  - Trae：自动发现 `.agents/skills/*/SKILL.md`，`Skill("impeccable")` 即可调用，无需安装；UI 任务硬规则与收工校验见 `.trae/rules/project_rules.md`
 - **小程序 Porting（Web → 微信）**：[miniprogram/docs/PORTING.md](miniprogram/docs/PORTING.md) · Token：[DESIGN-TOKENS.md](miniprogram/docs/DESIGN-TOKENS.md) · 自检：[PORTING-SELF-CHECK.md](miniprogram/docs/PORTING-SELF-CHECK.md) · Cursor 规则：`.cursor/rules/miniprogram-porting.mdc`
 
 ## 环境与部署

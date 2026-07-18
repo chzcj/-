@@ -111,7 +111,7 @@ export async function callAgentJson<T>(
 
     // JSON Agent 的截断只重试一次，并仅放宽输出上限；system/user 不变，
     // 因此不改变 Prompt、thinking 或缓存前缀，也避免整条异步 Job 从头重跑。
-    const currentMaxTokens = options?.maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 2048)
+    const currentMaxTokens = options?.maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 4096)
     const retryMaxTokens = Math.min(Math.ceil(currentMaxTokens * 1.5), 16_384)
     console.warn(`[agent-json] ${agent} JSON 截断，使用 max_tokens=${retryMaxTokens} 局部重试`)
     return callOpenAICompatibleJson<T>({ ...request, maxTokens: retryMaxTokens });
@@ -273,7 +273,7 @@ async function callOpenAICompatibleJson<T>({
           { role: 'user', content: user }
         ],
         temperature: temp,
-        max_tokens: maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 2048),
+        max_tokens: maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 4096),
         response_format: { type: 'json_object' },
         // 仅前台表达类调用传入；后台 agent 不传，保留完整思考
         ...(disableThinking ? { thinking: { type: 'disabled' } } : {})
@@ -289,7 +289,7 @@ async function callOpenAICompatibleJson<T>({
     const text = data.choices?.[0]?.message?.content || '';
     if (!text) throw new Error('FAST_AI_EMPTY_OUTPUT');
     console.info(
-      `[json:timing] lane=${lane} model=${model} thinkingDisabled=${Boolean(disableThinking)} maxTokens=${maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 2048)} responseMs=${Date.now() - tRequestStart}`
+      `[json:timing] lane=${lane} model=${model} thinkingDisabled=${Boolean(disableThinking)} maxTokens=${maxTokens ?? Number(process.env.FAST_AI_JSON_MAX_TOKENS || 4096)} responseMs=${Date.now() - tRequestStart}`
     )
     logCacheHit(`json:${lane}`, model, data.usage);
     return parseJson<T>(text);

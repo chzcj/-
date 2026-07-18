@@ -34,7 +34,9 @@ export interface ContextPack {
 }
 
 const TAU = Math.max(1, Number(process.env.RETRIEVAL_TIME_TAU || 30))
-const COARSE_K = Math.max(1, Number(process.env.RETRIEVAL_COARSE_K || 20))
+const COARSE_K = Math.max(15, Number(process.env.RETRIEVAL_COARSE_K || 30))
+const DEFAULT_EPISODE_TOP_N = Math.max(1, Number(process.env.RETRIEVAL_EPISODE_TOP_N || 15))
+const DEFAULT_HIGH_VALUE_ATOM_TOP_K = Math.max(1, Number(process.env.RETRIEVAL_HV_ATOM_TOP_K || 10))
 
 function timeDecay(sourceCreatedAt?: string): number {
   if (!sourceCreatedAt) return 0.5
@@ -67,7 +69,7 @@ export async function retrieveContextPack(query: string, opts: RetrieveOpts = {}
   if (hits.length === 0) return { episodes: [], extraHighValueAtoms: [] }
 
   // 精排：向量相似度（0.7）+ 时间衰减（0.3）
-  const topN = opts.topN || 5
+  const topN = opts.topN || DEFAULT_EPISODE_TOP_N
   const ranked = hits
     .map(h => ({ h, score: 0.7 * (1 - h.distance) + 0.3 * timeDecay(h.sourceCreatedAt) }))
     .sort((a, b) => b.score - a.score)
@@ -98,7 +100,7 @@ export async function retrieveContextPack(query: string, opts: RetrieveOpts = {}
   const hvAtoms = (await searchHighValueAtoms(queryVector, {
     familyId: opts.familyId,
     childId: opts.childId,
-    topK: 5
+    topK: DEFAULT_HIGH_VALUE_ATOM_TOP_K
   })) || []
   const extraHighValueAtoms = hvAtoms.map(a => ({ content: a.content, sourceType: a.sourceType }))
 

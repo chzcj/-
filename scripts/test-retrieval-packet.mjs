@@ -30,13 +30,14 @@ console.log('=== retrieval packet 契约测试 ===\n')
 // 2. matchedMechanisms 阈值：排除 low，不是仅 high
 {
   const src = read('src/lib/server/memory/retrieval/router.ts')
+  const formatter = read('src/lib/server/memory/deep-modeling/pick-deep-model-digest.ts')
   assert(
-    src.includes("overallStrength !== 'low'"),
-    'matchedMechanisms 过滤 overallStrength !== low'
+    formatter.includes("overallStrength !== 'low'"),
+    'matchedMechanisms 格式化器过滤 overallStrength !== low'
   )
   assert(
-    !/matchedMechanisms:.*overallStrength\s*===\s*'high'/.test(src.split('buildDailyDialogueRetrievalPacket')[1]?.split('return {')[0] || ''),
-    'daily dialogue packet 不以 ===high 作为唯一门槛（粗检）'
+    src.includes('formatMatchedMechanismCards'),
+    'daily dialogue packet 使用统一机制格式化器'
   )
 }
 

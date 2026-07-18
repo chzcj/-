@@ -2396,3 +2396,60 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 
 **风险/冲突**
 - 画像 UI snapshot 统一 watermark 仍未做；语音 ASR 未动。
+
+## 2026-07-17 17:30 | Cursor | 画像 presentation watermark
+
+**做了什么**
+- 新增 `buildProfilePresentationWatermark`：`/api/profile/hub` 返回 `presentationWatermark`（compositeVersion、built/ui/digest 时间戳、uiStale/digestStale、buildRun 状态）。
+- 小程序画像 Tab：部分层落后或 build-run 进行中时显示「部分卡片仍在根据最新记录更新」；compositeVersion 变化时提示「画像已根据最新记录更新」。
+
+**验证**
+- typecheck ✓；Web build、build:weapp ✓
+- 部署 2026-07-17 17:33 ✓；`https://yujian.yihe.site/api/readiness` → `ready: true`
+
+**下一步**
+- 真机：建档后立刻进画像 Tab，应看到 pending 提示并在 daily-refresh 完成后消失。
+
+**风险/冲突**
+- Web family-profile 页尚未接 watermark UI；语音 ASR 未动。
+
+## 2026-07-17 17:45 | Cursor | 架构审查 P1 技术债（不含 Web UI）
+
+**做了什么**
+- BFF：`/api/synthesis`、`/api/diagnosis` 的 `memory_write` 增加幂等键（`legacy_synthesis/diagnosis:family:child:…`），与 build-run 路径并存，避免 deprecated 直连或重进重复写。
+- 小程序预演：`rehearsalSessionStorage` 持久化 confirm/active/end 会话（24h TTL）；切 Tab / 杀进程后可恢复；入口展示「查看上次对话分析」。
+- 顺带：presentation watermark 仍在本地产线（API + 小程序画像 Tab），Web family-profile 未接。
+
+**验证**
+- Web / 小程序 typecheck ✓；Web build、build:weapp ✓
+
+**下一步**
+- 真机：预演进行中切 Tab 再回来应恢复对话；建档后画像 Tab 看 watermark 提示。
+- 仍 open：预演与 dialogue_analyses 服务端统一状态机（当前仅客户端桥接）；Web 端一律不做。
+
+**风险/冲突**
+- 语音 ASR 未动。
+
+## 2026-07-17 21:30 | Cursor | 日常记忆高频写入与确定性深度检索
+
+**做了什么**
+- daily 有效交流轮（保留 safety/信息不足/短寒暄 gate）现在均异步写入幂等 `episode_ingest`；`memory_write` 同样使用 traceId 幂等键，避免重发产生重复任务。
+- 同线程 `warmTurn` 不再跳过 embedding/pgvector：每轮按当前输入重建检索 packet；Episode 精排默认 top15、高价值 Atom top10，前台厚包字段上限约翻倍，四模块摘要扩至每模块 500 字。
+- 每个成功 Episode 以 episode 指纹唤醒 `deep_mechanism_review`；深度建模指纹纳入最近 daily 输入，刷新机制、家长叙事、deep digest，并将有效机制亲子链写入 L7 family interaction cycles。空亲子链/空家长叙事不覆盖旧值。
+- 后台 JSON 默认输出提升至 4096；深度生态分类、理论匹配、机制综合、结构张力提取提升至 8192/12288/6144 级别。
+- 新增 `.cursor/rules/ai-product-engineering.mdc`：后续 AI/BFF/Job/Agent 改动必须遵循 producer→storage→consumer、确定性检索、幂等与三轮验证。
+
+**验证**
+- `npm run typecheck` ✓
+- `npm run build` ✓（既有 React Hook warnings）
+- frontend-read-pack / retrieval-packet / memory-write audit ✓
+- `npm run test:contracts` 前置契约均通过；最后的 deep-model 审计因本机 shell 未导出 `DATABASE_URL` 未执行（非 TypeScript/构建失败）。
+- 2026-07-17 21:30：`npm run deploy` ✓；生产 `/api/readiness` → `ready:true`、`vectorReady:true`、`embeddingConfigured:true`、job worker healthy。
+
+**下一步**
+- 真机/网页 daily：连续输入两个不同话题，验证第二轮仍使用新语义检索；发送有效日常输入后检查 memory 标签与深度画像刷新。
+- 观察 job 队列：高频 Episode 会增加 `episode_ingest` 与 `deep_mechanism_review` 次数；若积压，优先调整 worker 并发/防抖，不回退为首轮缓存。
+
+**风险/冲突**
+- 未修改语音 ASR/录音链路。
+- `child_quote` / `material_observation` 前台路由按用户要求未改；它们仍作为后台/向量证据存在。

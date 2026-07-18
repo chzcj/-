@@ -7,6 +7,8 @@ import { enqueueJob } from '@/lib/server/jobs/queue'
 import { createId } from '@/lib/storage/storageIds'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { buildEntryPack } from '@/lib/server/memory/entry-builder'
+import { legacySynthesisMemoryWriteKey } from '@/lib/profile/legacy-build-idempotency'
+import type { ProfileBuildEntryModule } from '@/lib/profile/build-input'
 import type { EntryEvidencePack } from '@/types/database'
 
 export async function POST(request: Request) {
@@ -75,7 +77,17 @@ export async function POST(request: Request) {
     })
 
     // 后台记忆写入入队（可靠重试）。输出 synthesis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
-    void enqueueJob('memory_write', { plan: writePlan, tenant }, null, createId('trace'))
+    void enqueueJob(
+      'memory_write',
+      { plan: writePlan, tenant },
+      legacySynthesisMemoryWriteKey(tenant, {
+        entryMap: entryMap as Record<string, ProfileBuildEntryModule> | undefined,
+        crossCuttingSupplement: typeof crossCuttingSupplement === 'string' ? crossCuttingSupplement.trim() : undefined,
+        maturityLevel,
+        entryPacks: packs,
+      }),
+      createId('trace')
+    )
     console.info(
       `[profile:synthesis] durationMs=${Date.now() - startedAt} packs=${packs.length} crossEntry=${output.crossEntryEvidenceMap.length} mechanisms=${output.candidateMechanismMatrix.length} thinking=enabled`
     )

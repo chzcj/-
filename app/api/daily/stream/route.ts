@@ -6,6 +6,7 @@ import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { saveTurnEvent } from '@/lib/server/memory/database-manager'
 import { buildTurnEvent } from '@/lib/server/orchestration/pipeline'
+import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { fail } from '@/lib/api-response'
 import { DailyLlmRequiredError } from '@/lib/server/daily/llm-required'
@@ -143,20 +144,22 @@ export async function POST(request: Request) {
                 nextVerificationNeed: result.output.routingDecision.needFollowup ? result.output.routingDecision.followupQuestion : ''
               }
             })
-            void enqueueJob('memory_write', { plan: writePlan, tenant }, null, traceId)
+            void enqueueJob('memory_write', { plan: writePlan, tenant }, `memory_write:${traceId}`, traceId)
             // S2：有效交流轮计数；每 10 轮独立入队 deep_mechanism（与日桶正交）
             void import('@/lib/server/memory/deep-mechanism/note-effective-turn')
               .then(({ noteEffectiveFamilyTurn }) => noteEffectiveFamilyTurn(tenant, 'daily', traceId))
               .catch(() => {})
           }
 
-          // episode 选择性触发（向量抽取贵，不每轮）：仅反证等高价值日常轮主动 ingest，
-          // 让「刚聊的内容」尽快可被语义检索命中。深度展开/任务/采集另由对应接口触发。
-          if (!result.isSafety && relType === 'counter_evidence') {
+          // 每个有效交流轮都异步沉淀为 Episode/Atom。前台回复已完成，写入绝不阻塞首字；
+          // 以确定性 episodeId 去重，重发或重试不会制造重复的向量证据。
+          if (shouldWriteL1) {
+            const episodeCtx = { familyId: tenant.familyId, childId: tenant.childId, sourceEventId: traceId }
+            const episodeId = deriveEpisodeId(text, episodeCtx)
             void enqueueJob('episode_ingest', {
               text,
-              ctx: { familyId: tenant.familyId, childId: tenant.childId, sourceEventId: traceId },
-            }, null, traceId).catch(err => console.warn('[daily/stream] counter_evidence episode 入队失败:', err))
+              ctx: { ...episodeCtx, episodeId },
+            }, `episode_ingest:${episodeId}`, traceId).catch(err => console.warn('[daily/stream] episode 入队失败:', err))
           }
 
           controller.close()

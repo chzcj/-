@@ -6,6 +6,7 @@ import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { createId } from '@/lib/storage/storageIds'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
+import { legacyDiagnosisMemoryWriteKey } from '@/lib/profile/legacy-build-idempotency'
 import type { DiagnosisTaskType, MaturityLevel, SynthesisOutput } from '@/types/database'
 
 const maturityLevels: MaturityLevel[] = ['L0', 'L1', 'L2', 'L3', 'L4']
@@ -122,7 +123,21 @@ export async function POST(request: Request) {
     })
 
     // 后台记忆写入入队（可靠重试）。输出 diagnosis 是画像生成管线所需，由 profile/generating 深度消费，故保留完整结构。
-    void enqueueJob('memory_write', { plan: writePlan, tenant }, null, createId('trace'))
+    void enqueueJob(
+      'memory_write',
+      { plan: writePlan, tenant },
+      legacyDiagnosisMemoryWriteKey(tenant, {
+        taskType,
+        surfaceProblem,
+        parentSurfaceJudgment,
+        maturityLevel: resolvedMaturityLevel,
+        facts: incomingFacts.length > 0 ? incomingFacts : retrievalPacket.highStrengthEvidence,
+        childQuotes: incomingChildQuotes.length > 0 ? incomingChildQuotes : retrievalPacket.childQuotes,
+        parentQuotes: incomingParentQuotes.length > 0 ? incomingParentQuotes : retrievalPacket.parentQuotes,
+        synthesisOutput,
+      }),
+      createId('trace')
+    )
     console.info(
       `[profile:diagnosis] durationMs=${Date.now() - startedAt} facts=${(incomingFacts.length > 0 ? incomingFacts : retrievalPacket.highStrengthEvidence).length} loopSteps=${output.familyInteractionLoop.loopSteps.length} verification=${output.needsFurtherVerification.length} thinking=enabled`
     )

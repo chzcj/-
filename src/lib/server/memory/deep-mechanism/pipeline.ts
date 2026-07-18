@@ -11,6 +11,7 @@ import {
   getLatestBuiltProfileSnapshot,
   saveBuiltProfileSnapshot,
   getFamilyInteractionCycles,
+  saveFamilyInteractionCycles,
   getParentNarrativePattern,
   saveEvidenceNetwork,
   savePendingHypotheses,
@@ -27,6 +28,7 @@ import type {
   EntryName,
   EvidenceStrength,
   FamilyInteractionChain,
+  FamilyInteractionCycle,
   HypothesisWeight,
   MechanismType,
   ParentNarrativePattern,
@@ -306,8 +308,8 @@ async function runLegacyMonolith(payload: Record<string, unknown>): Promise<Mech
     'deepMechanismReview',
     '用五大生态系统+20家庭理论框架，产出回归家庭结构根因的深度机制（覆盖旧机制层；目标多域10–20条）。',
     payload,
-    // 多域 10–20 条机制矩阵 + 假设，4096 易截断；放宽到 8192。
-    8192,
+    // 多域机制矩阵、假设与亲子链输出较长，给后台理论抽象足够空间。
+    12288,
   )
 }
 
@@ -336,7 +338,12 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
   const totalFacts = flatFacts.length + inputHistory.length
   if (totalFacts < 3) return false
   const sourceFingerprint = createHash('sha256')
-    .update(JSON.stringify(flatFacts.map((fact) => [fact.factId, fact.text, fact.entryName])))
+    // 日常 Episode/turn 也是深度机制输入；仅对四模块事实做指纹会让新 daily 证据
+    // 复用过期 checkpoint，表现为后台“没有重新理解”。
+    .update(JSON.stringify({
+      facts: flatFacts.map((fact) => [fact.factId, fact.text, fact.entryName]),
+      recentInputs: inputHistory.slice(-100).map((item) => [item.traceId || '', item.timestamp || '', item.text]),
+    }))
     .digest('hex')
   const checkpoint = await loadDeepMechanismHandoff(tenant)
   const canResume = checkpoint?.sourceFingerprint === sourceFingerprint
@@ -391,8 +398,8 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
         'ecosystemClassifier',
         '对每条家庭事实做五大生态系统分类。',
         { facts: flatFacts },
-        // 全量事实逐条分类输出很长，默认 2048 截断 JSON（"Unexpected end of JSON input" 主因）
-        4096,
+        // 全量事实逐条分类输出很长，避免后台事实加工被输出上限截断。
+        8192,
       )
     } catch (error) {
       console.warn('[deep-mechanism] 生态分类失败，回退 micro 层:', error)
@@ -440,7 +447,7 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
         'theoryMatcher',
         '基于生态系统分类匹配理论卡。',
         { ecosystemMap, theoryCards: THEORY_CARDS },
-        6144,
+        8192,
       )
     } catch (error) {
       console.warn('[deep-mechanism] 理论匹配失败，继续使用空匹配:', error)
@@ -478,8 +485,8 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
       'mechanismSynthesizer',
       '综合理论匹配与全量证据，产出多域深度机制矩阵（目标10–20条）。',
       { ...sharedContext, ecosystemMap, theoryMatches },
-      // 多域矩阵体量大，4096 易截断
-      8192,
+      // 多域矩阵、家庭链与理论解释体量大，保留充分输出预算。
+      12288,
     )
   } catch (error) {
     console.warn('[deep-mechanism] 多域综合失败，尝试 legacy 回退:', error)
@@ -501,7 +508,7 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
         candidateMechanismMatrix: ai.candidateMechanismMatrix,
         builtCoreJudgment: builtSnapshot?.coreJudgment || '',
       },
-      3072,
+      6144,
     )
   } catch (error) {
     // 张力是展示增强项，不应阻止已完成的机制矩阵与假设写回。
@@ -546,6 +553,43 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
   }
   await saveEvidenceNetwork(network, tenant)
 
+  // familyPatterns 是前台厚包的独立消费字段。深度机制已经产出完整亲子链时，
+  // 把链显式固化为 cycle；无完整链不写，避免空 Agent 结果覆盖已有有效模式。
+  const refreshedCycles: FamilyInteractionCycle[] = network.candidateMechanismMatrix
+    .filter((m) => m.overallStrength !== 'low')
+    .map<FamilyInteractionCycle | null>((m) => {
+      const chain = m.familyInteractionChain
+      const hasChain = [chain.parentTriggerAction, chain.childReaction, chain.longTermEffect].some(Boolean)
+      if (!hasChain) return null
+      const previous = cycles.find((cycle) => cycle.cycleName === m.mechanismName)
+      return {
+        cycleId: previous?.cycleId || createId('cycle'),
+        familyId: tenant.familyId,
+        childId: tenant.childId,
+        cycleName: m.mechanismName,
+        parentTriggerAction: chain.parentTriggerAction,
+        parentReasonableGoal: chain.parentReasonableGoal,
+        childReception: chain.childReception,
+        childReaction: chain.childReaction,
+        parentSecondInterpretation: chain.parentSecondInterpretation,
+        parentReinforcementAction: chain.parentReinforcementAction,
+        childFurtherStrategy: chain.childFurtherStrategy,
+        longTermEffect: chain.longTermEffect,
+        supportingEvidence: m.supportingEvidence.slice(0, 12),
+        sceneScope: m.applicableScope,
+        status: m.overallStrength === 'high' ? 'stable' : 'stage',
+        version: (previous?.version || 0) + 1,
+        previousVersionId: previous?.cycleId,
+        createdAt: previous?.createdAt || now,
+        updatedAt: now,
+      }
+    })
+    .filter((cycle): cycle is FamilyInteractionCycle => Boolean(cycle))
+    .slice(0, 20)
+  if (refreshedCycles.length > 0) {
+    await saveFamilyInteractionCycles(refreshedCycles, tenant)
+  }
+
   const newHypotheses: PendingHypothesis[] = (ai.pendingHypotheses || [])
     .filter((h) => str(h.hypothesis))
     .map((h) => ({
@@ -571,19 +615,21 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
   }
 
   const rawPattern = ai.parentNarrativePattern
-  if (rawPattern) {
+  const patternObservations = arr(rawPattern?.observations)
+  const patternImplications = arr(rawPattern?.interactionImplications)
+  if (rawPattern && (patternObservations.length > 0 || patternImplications.length > 0)) {
     const pattern: ParentNarrativePattern = {
       patternId: createId('pnp'),
       familyId: tenant.familyId,
       childId: tenant.childId,
-      observations: arr(rawPattern.observations).slice(0, 8),
+      observations: patternObservations.slice(0, 16),
       labelTendency: 'occasional',
       moralizeTendency: 'occasional',
       effortEmphasis: 'occasional',
       selfBlameTendency: 'occasional',
       correctionReceptivity: normReceptivity(rawPattern.correctionReceptivity),
       factProvisionAbility: normReceptivity(rawPattern.factProvisionAbility),
-      interactionImplications: arr(rawPattern.interactionImplications).slice(0, 6),
+      interactionImplications: patternImplications.slice(0, 12),
       createdAt: now,
       updatedAt: now,
     }

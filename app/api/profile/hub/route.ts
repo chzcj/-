@@ -6,6 +6,7 @@ import {
   getFamilyInteractionCycles,
   getPendingHypotheses,
   getBuildProgress,
+  getLatestProfileBuildRun,
 } from '@/lib/server/memory/database-manager'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { humanizeEntryRef } from '@/lib/entry-name-i18n'
@@ -15,6 +16,7 @@ import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-st
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { enrichPortraitCards } from '@/lib/server/profile/portrait-card-enrich'
+import { buildProfilePresentationWatermark } from '@/lib/server/profile/presentation-watermark'
 import { dedupeTextParts } from '@/types/portrait-card'
 import { sanitizeForParent } from '@/lib/server/daily/profile-sanitize'
 import {
@@ -79,13 +81,14 @@ export async function GET(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
 
   const tenant = await resolveTenant()
-  const [built, network, cycles, hypotheses, progress, uiSnapshot] = await Promise.all([
+  const [built, network, cycles, hypotheses, progress, uiSnapshot, buildRun] = await Promise.all([
     getLatestBuiltProfileSnapshot(tenant).catch(() => null),
     getLatestEvidenceNetwork(tenant).catch(() => null),
     getFamilyInteractionCycles(tenant).catch(() => []),
     getPendingHypotheses(tenant).catch(() => []),
     getBuildProgress(tenant).catch(() => null),
     loadDailyUiSnapshot(tenant).catch(() => null),
+    getLatestProfileBuildRun(tenant).catch(() => null),
   ])
 
   let coreJudgment = built?.coreJudgment?.trim() || ''
@@ -137,6 +140,13 @@ export async function GET(request: Request) {
       })
     : undefined
 
+  const presentationWatermark = buildProfilePresentationWatermark({
+    built,
+    uiSnapshot,
+    digest,
+    buildRun,
+  })
+
   return ok({
     coreJudgment,
     completeness: completenessFromProgress(progress, built?.completeness ?? 0),
@@ -152,5 +162,6 @@ export async function GET(request: Request) {
     portraitCards,
     highlights: uiSnapshot?.highlights || [],
     refreshedAt: uiSnapshot?.refreshedAt || null,
+    presentationWatermark,
   })
 }

@@ -16,11 +16,6 @@ import { createId } from '@/lib/storage/storageIds'
 import { classifySafetyTier } from '@/lib/server/daily/safety-tier'
 import { flattenParentUnderstanding } from '@/lib/server/memory/retrieval/router'
 import type { TenantId } from '@/lib/server/memory/tenant'
-import {
-  getCachedRetrievalPacket,
-  mergeIncrementalRetrievalPacket,
-  setCachedRetrievalPacket,
-} from '@/lib/server/memory/retrieval-session-cache'
 
 import { buildDailyComponentPick } from '@/lib/server/daily/component-refiner'
 import { humanizeBuiltJudgment, sanitizeForParent } from '@/lib/server/daily/profile-sanitize'
@@ -34,7 +29,7 @@ export interface OrchestrationInput {
   userText: string
   maturityLevel?: MaturityLevel
   tenant: TenantId
-  /** 同线程后续轮：跳过向量检索，用最近对话加速 */
+  /** 同线程后续轮：前端会话提示；服务端仍必须用本轮输入重检索。 */
   warmTurn?: boolean
 }
 
@@ -228,21 +223,9 @@ export function buildTurnEvent(args: {
 export async function runOrchestrationPipeline(input: OrchestrationInput): Promise<OrchestrationOutput> {
   const maturity = input.maturityLevel ? { level: input.maturityLevel } : getCurrentMaturityState(input.tenant)
 
-  // warmTurn：同线程后续轮，复用首轮缓存的检索 packet（含画像/向量/假设），仅刷新最近家长输入，
-  // 避免「fast 模式只取最近 8 条文本」丢掉画像与历史向量证据。
-  let retrievalPacket
-  if (input.warmTurn) {
-    const cached = getCachedRetrievalPacket(input.tenant)
-    if (cached) {
-      retrievalPacket = await mergeIncrementalRetrievalPacket(cached, input.userText, input.tenant)
-    }
-  }
-  if (!retrievalPacket) {
-    retrievalPacket = await buildDailyDialogueRetrievalPacket(input.userText, input.tenant, {
-      fast: input.warmTurn,
-    })
-    setCachedRetrievalPacket(input.tenant, retrievalPacket)
-  }
+  // 每轮使用当前输入重跑向量检索。warmTurn 只表示前端线程状态，绝不能成为
+  // 跳过记忆搜索的开关，否则对话话题切换后会锁死首轮证据。
+  const retrievalPacket = await buildDailyDialogueRetrievalPacket(input.userText, input.tenant)
   const effectiveMaturity = retrievalPacket.contextMaturityLevel || maturity.level
 
   const inputType = classifyInputType(input.userText)

@@ -28,3 +28,11 @@ export function deepMechanismTurnMilestoneKey(
 ): string {
   return `deep_mechanism:turn:${tenant.familyId}:${tenant.childId}:${milestone}`
 }
+
+/** 每条新 Episode 的证据指纹键：同一证据只触发一次深度复核，不受日桶限制。 */
+export function deepMechanismEvidenceKey(
+  tenant: DeepMechanismTenantRef,
+  episodeId: string
+): string {
+  return `deep_mechanism:evidence:${tenant.familyId}:${tenant.childId}:${episodeId}`
+}

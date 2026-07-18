@@ -1,0 +1,20 @@
+---
+description: Enforce full-lifecycle contracts for AI, BFF, memory, and job changes
+alwaysApply: true
+---
+# AI Product Engineering
+
+For changes involving frontend AI flows, BFF/API, memory, agents, LLM runtime, or async jobs, work from:
+`Frontend → BFF/API → Backend → Database → Job → Agent → LLM → UI render`.
+
+Before editing, state the user flow, current state transitions, contracts, persistence, jobs, agents, and UI outcome. Identify producer → storage → consumer for every added or changed field. Do not add fields that have no reader or let `undefined` / free-text agent handoffs silently propagate.
+
+- Define explicit state owner, storage, transitions, triggers, and recovery for complex flows.
+- Long-running work must be job-backed with ID, status, result/error, retry, timeout, idempotency, and refresh recovery.
+- Keep business code behind the agent runtime / LLM gateway; specify prompt version, input/output schema, token budget, timeout, retry, validation, and streaming behavior.
+- Make retrieval, routing, and safety decisions deterministic in code when correctness depends on them. Do not rely on an LLM choosing to search, refresh, persist, or preserve evidence.
+- Trace a request through requestId/traceId, tenant, job ID, agent/prompt, storage writes, and UI consumption.
+- For agent or job changes, prevent empty output from overwriting existing valid state and make no-op outcomes observable.
+- For frontend AI interactions, verify idle/loading/streaming/success/error, disabled/loading/retry behavior, duplicate submit, refresh recovery, iPhone 13 layout, keyboard, and scroll behavior.
+
+Every completed change requires: typecheck/build, product-flow verification, and contract/state/job consistency checks. Stop and ask when business rules, agent schema, migration risk, or async behavior is unclear.

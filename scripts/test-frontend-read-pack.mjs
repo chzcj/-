@@ -56,16 +56,16 @@ assert(!('recentDiagnosis' in pack), 'pack 不含 recentDiagnosis')
 console.log('\n3. slice 上限（当前环境）')
 assert(isThickFamilyMemoryPack() === true, '默认厚包开启（未设 FAMILY_MEMORY_THICK_PACK=0）')
 const limits = getFrontendReadSliceLimits()
-assert(limits.entryFacts === 40, `厚包 entryFacts=40 (got ${limits.entryFacts})`)
-assert(limits.matchedMechanisms === 20, `厚包 matchedMechanisms=20 (got ${limits.matchedMechanisms})`)
+assert(limits.entryFacts === 80, `厚包 entryFacts=80 (got ${limits.entryFacts})`)
+assert(limits.matchedMechanisms === 40, `厚包 matchedMechanisms=40 (got ${limits.matchedMechanisms})`)
 const bigCtx = {
   ...mockCtx,
-  entryFacts: Array.from({ length: 50 }, (_, i) => `fact${i}`),
-  matchedMechanisms: Array.from({ length: 30 }, (_, i) => `m${i}`),
+  entryFacts: Array.from({ length: 100 }, (_, i) => `fact${i}`),
+  matchedMechanisms: Array.from({ length: 60 }, (_, i) => `m${i}`),
 }
 const sliced = pickFrontendReadPack(bigCtx)
-assert(sliced.entryFacts.length === 40, `entryFacts slice 40 (got ${sliced.entryFacts.length})`)
-assert(sliced.matchedMechanisms.length === 20, `matchedMechanisms slice 20 (got ${sliced.matchedMechanisms.length})`)
+assert(sliced.entryFacts.length === 80, `entryFacts slice 80 (got ${sliced.entryFacts.length})`)
+assert(sliced.matchedMechanisms.length === 40, `matchedMechanisms slice 40 (got ${sliced.matchedMechanisms.length})`)
 
 // 3b. 薄包回退
 console.log('\n3b. 薄包回退 FAMILY_MEMORY_THICK_PACK=0')

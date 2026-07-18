@@ -3,7 +3,7 @@ import pg from 'pg'
 import { createHash } from 'node:crypto'
 import { isDatabaseEnabled } from '@/lib/server/db'
 import { executeWritePlan } from '@/lib/server/memory/write/decision-engine'
-import { ingestEpisodeStrict, type IngestContext } from '@/lib/server/memory/episode/pipeline'
+import { deriveEpisodeId, ingestEpisodeStrict, type IngestContext } from '@/lib/server/memory/episode/pipeline'
 import { rebuildBriefAndBoard } from '@/lib/server/memory/digest/updaters'
 import { runEntryEvidenceBuild, type EntryEvidencePayload } from '@/lib/server/memory/entry-evidence/builder'
 import { runModelReview } from '@/lib/server/memory/model-review/reviewer'
@@ -18,6 +18,7 @@ import {
 import {
   deepMechanismBucketKey,
   deepMechanismDailyOpenKey,
+  deepMechanismEvidenceKey,
 } from '@/lib/server/memory/deep-mechanism/s2-flags'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { MemoryWritePlan } from '@/types/database'
@@ -25,6 +26,7 @@ import type { MemoryWritePlan } from '@/types/database'
 export {
   deepMechanismBucketKey,
   deepMechanismDailyOpenKey,
+  deepMechanismEvidenceKey,
   deepMechanismTurnMilestoneKey,
 } from '@/lib/server/memory/deep-mechanism/s2-flags'
 
@@ -144,6 +146,18 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   } else if (jobType === 'episode_ingest') {
     const p = payload as EpisodeIngestPayload
     await ingestEpisodeStrict(p.text, p.ctx)
+    // 每个成功入库的新 Episode 都是深度建模可消费的新证据。用 episode 指纹去重，
+    // 让更新不再被日桶锁死，同时防止同一文本重试反复唤醒 Agent。
+    if (p.ctx.familyId && p.ctx.childId) {
+      const tenant = { familyId: p.ctx.familyId, childId: p.ctx.childId }
+      const episodeId = p.ctx.episodeId || deriveEpisodeId(p.text, p.ctx)
+      await enqueueJob(
+        'deep_mechanism_review',
+        { tenant },
+        deepMechanismEvidenceKey(tenant, episodeId),
+        p.ctx.sourceEventId || null
+      )
+    }
   } else if (jobType === 'digest_update') {
     const p = payload as DigestUpdatePayload
     await rebuildBriefAndBoard(p.tenant) // 幂等，重跑安全

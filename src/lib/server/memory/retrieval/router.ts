@@ -100,7 +100,7 @@ export function flattenParentUnderstanding(packet: Record<string, unknown>): str
 export async function buildDailyDialogueRetrievalPacket(
   query: string | undefined,
   tenant: TenantId,
-  options?: { fast?: boolean }
+  _options?: { fast?: boolean }
 ): Promise<DailyDialogueRetrievalPacket> {
   const maturity = getCurrentMaturityState(tenant)
   const [profiles, packs, updates, hypotheses, network, model, cycles, builtSnapshot, buildProgress, parentPattern] = await Promise.all([
@@ -131,31 +131,27 @@ export async function buildDailyDialogueRetrievalPacket(
   const allEvents = inputHistory.map((h) => h.text).filter(Boolean)
 
   // 三级降级链：① Episode 语义检索 → ② 向量精排 → ③ 取最近。
-  // warm 轮（fast）：跳过 embedding 检索，直接用最近对话，省 2–5s。
+  // 注意：即使上游传入 fast，也不能跳过本轮 query 的语义检索；否则同线程会锁死首轮记忆。
   let recentEvents: string[]
   let supportingEvidence: string[]
-  const fast = options?.fast === true
-  if (fast) {
-    recentEvents = allEvents.slice(-8)
-    supportingEvidence = allEvents.slice(-5)
+  const pack = query ? await retrieveContextPack(query, { familyId: tenant.familyId, childId: tenant.childId }) : undefined
+  if (pack) {
+    const episodeTexts = pack.episodes.map(e => e.summary)
+    const highValueAtomTexts = pack.episodes
+      .flatMap(e => e.atoms.filter(a => a.isHighValue).map(a => a.content))
+      .concat(pack.extraHighValueAtoms.map(a => a.content))
+    recentEvents = episodeTexts.length > 0 ? episodeTexts : allEvents.slice(-20)
+    supportingEvidence = [...episodeTexts.slice(0, 8), ...highValueAtomTexts.slice(0, 7)]
+      .filter((value, index, values) => values.indexOf(value) === index)
+      .slice(0, 15)
+    if (supportingEvidence.length === 0) supportingEvidence = allEvents.slice(-12)
+  } else if (query && isEmbeddingEnabled() && allEvents.length > 0) {
+    const ranked = await rankByRelevance(query, allEvents, (e) => e, 20)
+    recentEvents = ranked.map(r => r.item)
+    supportingEvidence = ranked.slice(0, 15).map(r => r.item)
   } else {
-    const pack = query ? await retrieveContextPack(query, { familyId: tenant.familyId, childId: tenant.childId }) : undefined
-    if (pack) {
-      const episodeTexts = pack.episodes.map(e => e.summary)
-      const highValueAtomTexts = pack.episodes
-        .flatMap(e => e.atoms.filter(a => a.isHighValue).map(a => a.content))
-        .concat(pack.extraHighValueAtoms.map(a => a.content))
-      recentEvents = episodeTexts.length > 0 ? episodeTexts : allEvents.slice(-10)
-      supportingEvidence = [...episodeTexts.slice(0, 3), ...highValueAtomTexts.slice(0, 2)].slice(0, 5)
-      if (supportingEvidence.length === 0) supportingEvidence = allEvents.slice(-5)
-    } else if (query && isEmbeddingEnabled() && allEvents.length > 0) {
-      const ranked = await rankByRelevance(query, allEvents, (e) => e, 10)
-      recentEvents = ranked.map(r => r.item)
-      supportingEvidence = ranked.slice(0, 5).map(r => r.item)
-    } else {
-      recentEvents = allEvents.slice(-10)
-      supportingEvidence = allEvents.slice(-5)
-    }
+    recentEvents = allEvents.slice(-20)
+    supportingEvidence = allEvents.slice(-12)
   }
 
   const slice = getFrontendReadSliceLimits()
@@ -207,7 +203,7 @@ export async function buildDailyDialogueRetrievalPacket(
       const name = p.entryName || 'module'
       const summary = (p.rawInputSummary || '').trim()
       if (!summary) return ''
-      return `[${name}] ${summary.slice(0, 160)}`
+      return `[${name}] ${summary.slice(0, 500)}`
     })
     .filter(Boolean)
     .slice(0, slice.entryEvidence)
