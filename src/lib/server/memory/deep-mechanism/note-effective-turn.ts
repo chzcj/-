@@ -5,7 +5,7 @@ import {
   isDeepMechanismS2Enabled,
 } from '@/lib/server/memory/deep-mechanism/turn-signal'
 import { deepMechanismTurnMilestoneKey } from '@/lib/server/memory/deep-mechanism/s2-flags'
-import { enqueueJob } from '@/lib/server/jobs/queue'
+import { enqueueDeepMechanismReview } from '@/lib/server/jobs/queue'
 import type { TenantId } from '@/lib/server/memory/tenant'
 
 /**
@@ -21,12 +21,12 @@ export async function noteEffectiveFamilyTurn(
   try {
     const { milestoneHit, milestone } = await bumpEffectiveFamilyTurn(tenant)
     if (!milestoneHit || milestone <= 0) return
-    await enqueueJob(
-      'deep_mechanism_review',
-      { tenant, reason: 'turn_milestone', source, milestone },
-      deepMechanismTurnMilestoneKey(tenant, milestone),
-      traceId ?? null
-    )
+    await enqueueDeepMechanismReview(tenant, {
+      reason: 'turn_milestone',
+      idempotencyKey: deepMechanismTurnMilestoneKey(tenant, milestone),
+      traceId: traceId ?? null,
+      forceFull: true,
+    })
   } catch (err) {
     console.warn(`[deep-mechanism] noteEffectiveFamilyTurn(${source}) 失败:`, err)
   }

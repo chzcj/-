@@ -32,6 +32,8 @@ import { createId } from '@/lib/storage/storageIds'
 import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import { getLatestDossier } from '@/lib/server/memory/deep-modeling/digest-store'
+import { pickDefaultTaskTitle } from '@/lib/server/memory/dossier/dossier-slicer'
 
 export type DailyRuntimeFlags = {
   fastAiEnabled: boolean
@@ -211,6 +213,10 @@ export async function runDailyTurnBff(args: {
     finalText = mainResult.prose
     visibleFilled = mainResult.sections
     taskTitleFromSections = mainResult.taskTitle
+    if (!taskTitleFromSections && output.routingDecision.frontResponseType === 'advice_from_dossier') {
+      const dossier = await getLatestDossier(args.tenant).catch(() => null)
+      taskTitleFromSections = pickDefaultTaskTitle(dossier)
+    }
     llmSectionCopyUsed = true
 
     hiddenSkeletons.length = 0

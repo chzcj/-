@@ -46,5 +46,6 @@ npm run sync:gitee
 
 ## 禁止
 
+- 工程经验总索引（链到 .cursor/rules、postmortems、HANDOFF、小程序专项）：[.agents/ENGINEERING-PLAYBOOK.md](.agents/ENGINEERING-PLAYBOOK.md)
 - 不要把 `.env.local`、API Key、Gitee 私人令牌、SSH 密码写入仓库或 HANDOFF
 - 不要假设缺 `DATABASE_URL`；当前项目已配好，以 `.env.local` 为准

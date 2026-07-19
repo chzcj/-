@@ -23,6 +23,29 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-18 17:00 | Cursor | fix-v3-implementation-gaps + dossier v3 工程链
+
+**做了什么**
+- P0-1：prediction 失败 → markDossierPredictionFailed + task feedback 链式 deep_mechanism_review；shouldReconceptualize 优先 prediction_failed；pipeline 注入 failedPredictions
+- P0-2：废弃 intervention_failed 关键词 regex，改 getRecentFailedTasks + turn_events 主题聚类
+- P1-5：router matchedMechanisms 统一 formatMatchedMechanismCards（≤8）
+- P1-8：getDossierHistory 改查 item_id LIKE dossier_v%；db 增 loadMemoryLayerItemsByIdPrefix
+- P2-9：parent-facing-copy visible section 有 dossierSlice 时改薄 payload
+- portraitSynthesizer SP 补 failedPredictions / intervention_failed 段
+- P0-3：生产 SSH psql 仍 password auth failed；已更新 portrait-real-data-validation.md
+
+**验证**
+- npm run typecheck ✓；npm run lint ✓（仅 react-hooks warning）
+- test:contracts 前 6 脚本 ✓；audit-deep-modeling-pipeline 本地 ECONNREFUSED（无 PG）
+- npm run deploy ✓；readiness ready:true
+
+**下一步**
+- DBA 同步 PG 密码后重跑 Task 0 SQL + audit-deep-modeling-pipeline
+- PORTRAIT_V3=1 真实库双路径验收
+
+**风险/冲突**
+- 勿动语音链路；PORTRAIT_V3 默认仍 off
+
 ## 部署状态
 
 - 2026-07-16 22:32 | Cursor | 前台精简·预演·深度展开整理中；ready:true
@@ -2453,3 +2476,85 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **风险/冲突**
 - 未修改语音 ASR/录音链路。
 - `child_quote` / `material_observation` 前台路由按用户要求未改；它们仍作为后台/向量证据存在。
+
+## 2026-07-18 15:40 | Cursor | SP 内容深度铁律 + 全链路 SP 丰富
+
+**做了什么**
+- 新增 `.cursor/rules/sp-content-depth.mdc`（alwaysApply）：SP 内容深度铁律——先构思链路再反推深度；便条级 SP 必须丰富到有血有肉；深度标杆 deepMechanismReview.md(135)/parentFacingStyle.md(188)；已深留着；理论卡单源（theory-cards.ts 注入 systemSuffix，SP 不抄卡）；理论隐身；交织非贴卡。
+- 新增 `.trae/documents/sp-chain-depth-spec.md`：6 条链路 × 每个 agent 的链路角色/要求输出深度/SP 必含清单/行数目标。
+- 丰富 22 个便条级 SP（prompts/{background,front,core}/*.md），每个加：角色定位、你要解决什么（常见误判→正确做法）、判断流程、证据/置信度硬规则、逐字段规范、反模式、输出 JSON schema、**Worked Examples（好 vs 坏对照）**。
+  - background: portraitSynthesizer(~170)/dossierPatcher(~150)/theoryMatcher(~130)/ecosystemClassifier(~110)/mechanismSynthesizer(~110)/structuralRiskExtractor(~85)/deepDiagnosis(~90)/multiEntrySynthesis(~95)/episodeExtractor(~115)/entryEvidenceBuilder(~115)/memoryWrite(~80)/dailyDecompose(~80)/modelReview(~80)/familyBriefUpdater(~75)/boardUpdater(~80)/profileSnapshot(~70)/memoryDepositionRetrieval(~95)
+  - front: entryStageSummary/materialUnderstanding/eventRecording/multiViewCorrection/entryFollowUp(~85)/weeklyReview(~85)/familyPlanner(~95)/tonightTaskGenerator(~80)；communicationRehearsal/educationDiagnosis 已达标留着
+  - core: entryBuildStyle(~75 加 worked examples)；deepModelingParentDigest 已达标留着
+- pipeline.ts：portraitSynthesizer 调用注入 systemSuffix（THEORY_CARDS rich 库 + theoryCardsSystemAppendix），落实单源原则。
+
+**为什么**
+- 用户铁律反馈：后台 Agent SP（如深度机制 Agent）内容太单薄，没根据整体规划丰富，支撑不起期望输出深度。要求全部前后台 SP 过一遍，便条级全丰富，先构思链路再反推深度，写进记忆作今后标准规则。
+
+**验证**
+- `npm run typecheck` ✓（47 prompts 生成）
+- `npm run build` ✓
+- 未部署（用户仍在审阅深度，待确认）
+
+**下一步**
+- 待用户确认深度是否够；够则 `npm run deploy`（SP 经 registry.generated.ts 编入构建）。
+- 后续改任何 SP 前先核对 `.cursor/rules/sp-content-depth.mdc` + `.trae/documents/sp-chain-depth-spec.md`。
+
+**风险/冲突**
+- 仅改 prompts/*.md + pipeline.ts（systemSuffix）+ 两份规则/规格文档；未动语音链路、未动数据库 schema。
+- SP 改动需 deploy 才在生产生效（registry 在构建期生成）。
+
+## 2026-07-18 16:00 | Cursor | 前台 SP 深度二轮：补 BFF 链路与 worked examples
+
+**做了什么**
+- 更新 `.cursor/rules/sp-content-depth.mdc`：新增规则 8「前台 SP 必须写 BFF 配合」；便条级必含链路位置+BFF payload+下游消费+Worked Examples。
+- 更新 `.trae/documents/sp-chain-depth-spec.md`：新增「前台 SP 必含 · BFF 配合清单」、建档链/日常链 ASCII 流程、验收标准。
+- 前台 SP 二轮丰富（含 BFF→Agent→Job→消费全链路）：
+  - 通用：entryStageSummary(~95)、entryFollowUp(+BFF 段)
+  - build 四模块：entryDaily/Homework/Communication/Family Summary+FollowUp（各 ~50-70 行）、entryFinalFollowUp
+  - build 合成：profileBuildSynthesis、profileBuildDiagnosis（含 AiSynthesisOutput/AiDiagnosisOutput 消费链）
+  - daily 前台：materialUnderstanding、eventRecording、multiViewCorrection、communicationRehearsal(~75)、educationDiagnosis(~95)
+- 每个补过的 SP 含：链路位置、BFF 输入字段表、输出 normalize/Job 消费、逐字段深度、Worked Examples 好/坏、反模式。
+
+**为什么**
+- 用户反馈：前台 SP 仍不够丰满，缺「决定输出质量」部分；要求结合 spec 深入思考前后端 BFF 如何配合，先构思链路再反推深度。
+
+**验证**
+- `npm run typecheck` ✓（47 prompts）
+- `npm run build` ✓
+- 未部署（用户仍在审阅 SP 深度）
+
+**下一步**
+- 用户指定仍薄的 SP 继续灌（如 parentFacingCopy 复核、dailyPortraitRefresh 与 dossierSlice 对齐等）
+- 确认深度够后 deploy
+
+**风险/冲突**
+- 仅 prompts + 规则/规格文档；registry 构建期生成。
+
+## 2026-07-18 15:55 | Cursor | 剩余任务全景：SP 补完 + dossier 工程收尾 + deploy
+
+**做了什么**
+- P0–P2 SP：deepModelDigestBuilder、dossier v3 对齐（parentFacingStyle/Copy、dailyPortraitRefresh、dailyDialogueOrchestration、deepModelingParentDigest）、portraitSynthesizer 附录 A、theoryMatcher 9 字段表。
+- P1 build：四模块 FollowUp/Summary + entryFinalFollowUp 补 BFF 链 + 2 组 worked examples；profileBuildSynthesis/Diagnosis 补 AiOutput 逐字段 + 附录样例。
+- P2 后台 10 SP：familyBriefUpdater/boardUpdater/profileSnapshot/structuralRiskExtractor/memoryWrite/dailyDecompose/modelReview/memoryDepositionRetrieval/multiEntrySynthesis/deepDiagnosis → 80+ 行。
+- 工程：`llm-digest-builder` 注入 dossierProjection；`prose-section-stream` taskTitle 优先 dossier 干预靶点；`test-frontend-read-pack` 断言 dossierSlice（11 键）；`DESIGN.md` 画像/daily 读包 matrix。
+- 更新 `sp-chain-depth-spec.md` 状态表（✅/🟡/v3 对齐）。
+
+**为什么**
+- 用户要求按「剩余任务全景」计划 SP-first 执行至全部 todo 完成。
+
+**验证**
+- `npm run typecheck` ✓
+- `npx tsx scripts/test-frontend-read-pack.mjs` ✓（30/30）
+- 远程 `npm run build` ✓；`npm run deploy` ✓；`curl readiness` → `ready:true`
+- 本地 `npm run build` 因缺 @next/swc-darwin-arm64 失败（未改 package.json）；以远程构建为准
+- PORTRAIT_V3=1 附录 A 人工验收仍待真实库（DBA 阻塞）
+
+**下一步**
+- 用户确认后 `[cursor]` commit + push
+- PORTRAIT_V3 双路径真实数据验收（需 DB 连接）
+- 仍 🟡 的前台 SP（weeklyReview 等）可按 spec 继续迭代
+
+**风险/冲突**
+- 大量 prompts + dossier 工程 diff 未 commit；勿动语音链路。
+- deploy 已上线 SP registry；PORTRAIT_V3 默认仍 off（portrait-v3-flags）。

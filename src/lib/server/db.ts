@@ -1097,6 +1097,26 @@ export async function loadMemoryLayerItems<T>(layerName: string, familyId = 'f_d
   return result.rows.map(row => row.data);
 }
 
+/** 按 item_id 前缀查 memory_layer_items（如 dossier_v% 历史版本） */
+export async function loadMemoryLayerItemsByIdPrefix<T>(
+  layerName: string,
+  itemIdPrefix: string,
+  familyId = 'f_demo',
+  childId = 'c_demo'
+): Promise<T[] | undefined> {
+  const pool = getPool();
+  if (!pool) return undefined;
+  await ensureDbSchema();
+  const result = await pool.query<{ data: T }>(
+    `SELECT data
+     FROM memory_layer_items
+     WHERE layer_name = $1 AND family_id = $2 AND child_id = $3 AND item_id LIKE $4
+     ORDER BY item_id ASC`,
+    [layerName, familyId, childId, `${itemIdPrefix}%`]
+  );
+  return result.rows.map((row) => row.data);
+}
+
 // 按 item_id 主键直查单项（PK 命中，O(1)）——审计/按 traceId 取回等场景避免加载整层再 JS 过滤。
 export async function loadMemoryLayerItemById<T>(layerName: string, itemId: string, familyId = 'f_demo', childId = 'c_demo'): Promise<T | undefined> {
   const pool = getPool();

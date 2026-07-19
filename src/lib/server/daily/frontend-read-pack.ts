@@ -1,4 +1,5 @@
 import type { RetrievedContext } from '@/types/database'
+import { MATCHED_MECHANISMS_CARD_LIMIT } from '@/lib/server/memory/deep-modeling/digest-limits'
 
 /**
  * 前端 AI（daily prose/section）只读子集键序。
@@ -11,6 +12,7 @@ export const FRONTEND_READ_PACK_KEYS = [
   'childStructureModels',
   'entryEvidence',
   'entryFacts',
+  'dossierSlice',
   'matchedMechanisms',
   'familyPatterns',
   'parentUnderstanding',
@@ -40,6 +42,7 @@ const SLICE_LIMITS_THIN: Record<FrontendReadPackKey, number> = {
   childStructureModels: 4,
   entryEvidence: 4,
   entryFacts: 6,
+  dossierSlice: 8,
   matchedMechanisms: 3,
   familyPatterns: 2,
   parentUnderstanding: 6,
@@ -54,7 +57,8 @@ const SLICE_LIMITS_THICK: Record<FrontendReadPackKey, number> = {
   childStructureModels: 24,
   entryEvidence: 24,
   entryFacts: 80,
-  matchedMechanisms: 40,
+  dossierSlice: 24,
+  matchedMechanisms: MATCHED_MECHANISMS_CARD_LIMIT,
   familyPatterns: 20,
   parentUnderstanding: 24,
   recentEvents: 24,
@@ -79,6 +83,7 @@ export function pickFrontendReadPack(ctx: RetrievedContext): FrontendReadSchema 
     childStructureModels: ctx.relevantChildStructureModel?.slice(0, limits.childStructureModels) || [],
     entryEvidence: ctx.relevantEntryEvidencePacks?.slice(0, limits.entryEvidence) || [],
     entryFacts: ctx.entryFacts?.slice(0, limits.entryFacts) || [],
+    dossierSlice: ctx.dossierSlice?.slice(0, limits.dossierSlice) || [],
     matchedMechanisms: ctx.matchedMechanisms?.slice(0, limits.matchedMechanisms) || [],
     familyPatterns: ctx.relevantFamilyInteractionPatterns?.slice(0, limits.familyPatterns) || [],
     parentUnderstanding: ctx.parentNarrativePattern?.slice(0, limits.parentUnderstanding) || [],

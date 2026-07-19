@@ -12,13 +12,15 @@
 
 基于家长输入的**具体事实与原话**、四模块证据、日常交流、多 Agent 工作流，构建可解释：
 
-- 家庭结构与支持分工
-- 家庭互动循环（家长动作 → 孩子接收 → 孩子反应 → 家长二次解读 → 强化）
-- 孩子行为的功能性解释（可能在保护什么）
+- **证据分层 + 整合底稿**（Family Understanding Dossier，schema v2，理论隐身）
+- 家庭结构与支持分工（familyStruct / fivePs）
+- 场景化理解（sceneReadings）与可证伪 workingHypothesis
+- 干预靶点（interventionTargets）与增量更新（L1 patch / L2 重概念化）
+- 孩子行为的功能性解释（protective，交织非贴卡）
 - 家长叙事模式与沟通偏好
 - 待验证假设与培优向成长重点
 
-家长可见输出必须**引用模型中的事实与机制链**，形成闭环、有广度、可验证。
+家长可见输出必须**引用底稿切片 dossierSlice 或 digest 投影**，形成有广度、可验证的叙述；`matchedMechanisms` 仅作兜底。
 
 ## 3. 两个核心记忆原则
 
@@ -54,12 +56,18 @@
 
 所有家长可见 AI 输出必须：
 
-1. 先读 `deepModelDigest`（无则读 retrievalPack 并明示信息不足）
+1. 先读 `deepModelDigest` + `dossierSlice`（无则读 retrievalPack 并明示信息不足）
 2. 至少引用 **1 条** anchoredFacts 或 entryFacts
-3. 至少 **1 句** 机制闭环（谁 → 孩子反应 → 可能在保护什么）
+3. 至少 **1 句** 整合理解（workingHypothesis / integratedSynthesis，非离散机制贴卡）
 4. **培优语气**：成长加速器，非危机拯救
-5. 禁止停在中间变量（拖延、内驱力、压力）收尾
+5. 禁止停在中间变量（拖延、内驱力、压力）收尾；禁止理论名泄漏
 
-## 8. 产品最怕变成
+## 8. 底稿更新机制（v3）
+
+- **Level 1**：memory_write 链尾 `dossier_patch` — 新事实增量，workingHypothesis 核心不变
+- **Level 2**：`deep_mechanism_review` 入口 `shouldReconceptualize` — 反证/干预无效/指纹变化 → portraitSynthesizer 全量重跑
+- **Feature flag**：`PORTRAIT_V3=0`（默认）走旧 mechanism 矩阵；`=1` 启用 dossier 主路径
+
+## 9. 产品最怕变成
 
 流水账、鸡汤、育儿百科、空泛 AI、炫技但无用、心理测评、假数据填充。

@@ -9,6 +9,8 @@ const MODELING_IDENTITY_AGENTS = new Set<AgentPromptKey>([
   'ecosystemClassifier',
   'theoryMatcher',
   'mechanismSynthesizer',
+  'portraitSynthesizer',
+  'dossierPatcher',
   'deepMechanismReview',
   'structuralRiskExtractor',
   'deepDiagnosis',

@@ -12,6 +12,8 @@ import {
 } from '@/lib/server/memory/database-manager'
 import { loadHighValueAtoms } from '@/lib/server/db'
 import { getDeepModelDigestSlices } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import { isPortraitV3Enabled } from '@/lib/server/memory/dossier/portrait-v3-flags'
+import { getLatestDossier } from '@/lib/server/memory/deep-modeling/digest-store'
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
@@ -52,6 +54,23 @@ export async function buildLlmDeepModelDigest(
     .slice(0, 6)
     .map((a) => a.content.trim())
 
+  const dossier =
+    base.dossier ||
+    (isPortraitV3Enabled() ? await getLatestDossier(tenant).catch(() => null) : null)
+  const dossierProjection = dossier
+    ? {
+        integratedSynthesis: dossier.integratedSynthesis?.trim() || '',
+        workingHypothesis: dossier.workingHypothesis?.text?.trim() || '',
+        interventionTargets: dossier.interventionTargets
+          .slice(0, 3)
+          .map((t) => t.action)
+          .filter(Boolean),
+        sceneReadings: dossier.sceneReadings
+          .slice(0, 3)
+          .map((s) => `${s.scene}：${s.reading}`),
+      }
+    : undefined
+
   const payload = {
     deterministicBase: {
       mechanismNarrative: base.mechanismNarrative,
@@ -60,6 +79,7 @@ export async function buildLlmDeepModelDigest(
       openHypotheses: base.openHypotheses,
       cultivationFocus: base.cultivationFocus,
     },
+    dossierProjection,
     coreJudgment: built?.coreJudgment || '',
     supportFocus: built?.supportFocus || '',
     topMechanisms,

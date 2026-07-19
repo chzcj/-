@@ -1,3 +1,5 @@
+import type { FamilyUnderstandingDossier } from '@/types/family-understanding-dossier'
+
 /** 家长向深度建模摘要（SecondMe digest），供前台 Agent 与画像页读取。 */
 export type StructuralTension = {
   title: string
@@ -18,6 +20,9 @@ export type DeepModelDigest = {
   structuralTensions: StructuralTension[]
   updatedAt: string
   source: 'llm' | 'deterministic'
+  /** schema v2：整合理解底稿 */
+  schemaVersion?: number
+  dossier?: FamilyUnderstandingDossier
 }
 
 export const EMPTY_DEEP_MODEL_DIGEST: DeepModelDigest = {

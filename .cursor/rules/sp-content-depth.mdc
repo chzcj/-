@@ -1,0 +1,27 @@
+---
+description: Agent SP（System Prompt）内容深度铁律：决定输出质量的 SP 不得是便条骨架，必须先构思链路再反推深度
+alwaysApply: true
+---
+
+# SP 内容深度铁律（用户铁律 · 2026-07-18）
+
+2026-07-18 用户明确要求记住：后台/前台 Agent 的 SP（`prompts/{background,front,core}/*.md`）**不得是便条级骨架**。之前一轮实现把精力放在代码接线上，对真正决定输出质量的 SP 内容深度几乎没投入，导致核心 Agent（如 `portraitSynthesizer.md`）只有几十行便条，根本支撑不起期望的输出深度。**这是失误，不得再犯。**
+
+## 必须遵守
+
+1. **先构思链路，再反推深度**：动手写/改任何 SP 前，先回答「这个 agent 在整条链路里负责产出什么、要输出到什么程度」，再反推 SP 需要写到什么深度。**禁止反过来**（先写骨架再补）。
+2. **便条级 SP 必须丰富**：凡是内容很少、像便条、连「真正决定输出质量的东西」都没灌进去的 SP，必须丰富到有血有肉——含：**链路位置（Frontend→BFF→Agent→Job→存储→下游消费）**、BFF 输入 payload 清单、BFF 如何 normalize/路由、产出被谁读/写、角色与边界、输入清单、判断流程、证据/置信度硬规则、逐字段输出规范、**Worked Examples（好 vs 坏）**、反模式、输出 JSON schema。**不得只有骨架。**
+8. **前台 SP 必须写 BFF 配合**（用户铁律 · 2026-07-18 续）：前台 Agent 的 SP 必须明确：① 它在哪条用户流（daily / entry build / rehearsal / tasks）；② BFF 给它什么（`retrievalPack` 哪些字段、`sectionSkeletons`、`responseType` 等）；③ 它产出什么、BFF 如何 normalize 后给 UI 或异步 Job；④ 下游 Agent/Job 如何消费（如 `entry_evidence` 读 `frontSummary+facts`）。契约真源：`docs/contracts/read-contract.md` + 对应 BFF 源码（`frontend-read-pack.ts`、`entry-analyze.ts`、`daily-turn-bff.ts`）。
+3. **深度标杆**：`prompts/background/deepMechanismReview.md`（135 行）是后台 Agent 的深度基准；做深度理解的 Agent 至少要到这个量级。前台深度标杆：`prompts/core/parentFacingStyle.md`（188 行）、`prompts/front/dailyDialogueOrchestration.md`（146 行）。
+4. **已经深的留着**：已经达到深度的 SP（如 `parentFacingStyle`、`dailyDialogueOrchestration`、`dailyPortraitRefresh`、`parentFacingCopy`、`secondMeCollaboratorIdentity`、`deepMechanismReview`）不必重写；只补便条级的。
+5. **单源原则**：理论卡真源是 `src/lib/server/memory/deep-mechanism/theory-cards.ts`（15×9 rich fields）。SP **不得**把理论卡全文抄一遍（防双源漂移）；改由代码把 `THEORY_CARDS` 注入该 agent 的 system 尾部（`callAgentJson` 的 `systemSuffix`），SP 只教「怎么用这 9 个字段」。
+6. **理论隐身**（dossier v3）：`portraitSynthesizer` / `dossierPatcher` 等产出家长可见底稿的 Agent，输出 JSON 不得含理论名、术语（Bowlby/SDT/强制循环/homeostasis/三角化等）、机制卡 ID；理论只在 `ecologicalCalibration`（内部段，不进 dossierSlice）出现。
+7. **交织非贴卡**：同一行为在不同场景可有不同 protective 配比；禁止「拖延=保护控制」单公式。`sceneReadings` 是交织的核心载体。
+
+## 全链路深度规格
+
+见 `.trae/documents/sp-chain-depth-spec.md`（必读）：每个 agent 的链路角色、要求输出深度、SP 必含内容清单。改任何 SP 前先核对该表。
+
+## 例外
+
+仅当用户明确说「这个 SP 不用这么深 / 简化一下」时才可低于本规则。

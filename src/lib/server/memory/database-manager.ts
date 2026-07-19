@@ -32,6 +32,26 @@ import type { TenantId } from './tenant'
 
 const MEMORY_PREFIX = 'childos.memory.v1'
 
+/** 家长输入窗口：指纹与 LLM 喂料对齐（PR-B1） */
+export const PARENT_INPUT_WINDOW = 100
+export const PARENT_INPUT_TRUNCATE = 200
+
+/** 从家长输入历史取最近 N 条，单条 trunc 防爆 prompt */
+export function sliceParentInputTexts(
+  history: Array<{ text?: string | null }>,
+  window = PARENT_INPUT_WINDOW
+): string[] {
+  return history
+    .slice(-window)
+    .map((h) => {
+      const t = (h.text || '').trim()
+      if (!t) return ''
+      if (t.length <= PARENT_INPUT_TRUNCATE) return t
+      return `${t.slice(0, PARENT_INPUT_TRUNCATE).replace(/[，,。：:；;]$/, '')}…`
+    })
+    .filter(Boolean)
+}
+
 // 进程内存 store 按租户分桶：__childosServerMemoryStore[`${familyId}:${childId}`][layerName] = unknown[]
 type ServerMemoryStore = Record<string, Record<string, unknown[]>>
 type MemoryItem<T> = { itemId: string; familyId: string; childId: string; data: T }
@@ -513,6 +533,21 @@ export async function getUserTaskById(tenant: TenantId, taskId: string): Promise
   }
   const all = await getUserTasks(tenant)
   return all.find((t) => t.taskId === taskId) || null
+}
+
+/** 近 N 天任务反馈未达预期（结构化，非关键词 regex 主路径） */
+export async function getRecentFailedTasks(tenant: TenantId, days = 14): Promise<UserTask[]> {
+  const all = await getUserTasks(tenant)
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+  return all.filter((t) => {
+    const at = new Date(t.updatedAt || t.createdAt).getTime()
+    if (at < cutoff) return false
+    if (t.status === 'completed_but_unsatisfied') return true
+    const blob = [t.feedback?.effect, t.feedback?.note, t.feedback?.completed, t.status]
+      .filter(Boolean)
+      .join(' ')
+    return blob.includes('未达预期')
+  })
 }
 
 /* ================================================================

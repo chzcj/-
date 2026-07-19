@@ -182,7 +182,8 @@ export function composeDailyActions(
   if (
     output.inputType === 'ask_explanation' ||
     output.inputType === 'daily_observation' ||
-    output.routingDecision.frontResponseType === 'model_based_explanation'
+    output.routingDecision.frontResponseType === 'model_based_explanation' ||
+    output.routingDecision.frontResponseType === 'advice_from_dossier'
   ) {
     actions.push({
       id: 'open_how_to_speak',
@@ -196,7 +197,11 @@ export function composeDailyActions(
     })
   }
 
-  if (output.routingDecision.frontResponseType === 'model_based_explanation' && hasSubstantiveTask(resolvedTaskTitle)) {
+  if (
+    (output.routingDecision.frontResponseType === 'model_based_explanation' ||
+      output.routingDecision.frontResponseType === 'advice_from_dossier') &&
+    hasSubstantiveTask(resolvedTaskTitle)
+  ) {
     actions.push({
       id: 'save_task',
       label: '保存为今晚任务',

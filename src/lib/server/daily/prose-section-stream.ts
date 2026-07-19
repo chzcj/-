@@ -10,6 +10,7 @@ import {
   createSectionStreamTracker,
   type SectionStreamCallbacks,
 } from '@/lib/server/daily/section-stream'
+import { pickFrontendReadPack } from '@/lib/server/daily/frontend-read-pack'
 
 const SECTION_MARKER_PREFIX = '---section:'
 
@@ -29,6 +30,16 @@ function combinedProseAndSectionSystem(): string {
   return `${agentPrompts.parentFacingStyle}\n\n---\n\n${agentPrompts.deepModelingParentDigest}\n\n---\n\n${agentPrompts.dailyDialogueOrchestration}\n\n---\n\n${agentPrompts.parentFacingCopy}`
 }
 
+/** 从 retrievalPack.dossierSlice 的 interventionTargets 行提炼默认 taskTitle */
+function deriveTaskTitleFromDossierSlice(output: OrchestrationOutput): string | undefined {
+  const hints = pickFrontendReadPack(output.retrievedContext).dossierSlice
+    .filter((l) => l.startsWith('可试方向：'))
+    .map((l) => l.replace(/^可试方向：/, '').trim())
+  const first = hints[0]
+  if (!first || first.length < 6) return undefined
+  return first.slice(0, 48)
+}
+
 /** 合并 task：先输出 prose 正文，再按 marker 输出 sections + taskTitle */
 function buildProseAndSectionTask(output: OrchestrationOutput, skeletons: DailySection[]): string {
   const proseTask = buildDailyProseTask(output)
@@ -37,12 +48,18 @@ function buildProseAndSectionTask(output: OrchestrationOutput, skeletons: DailyS
     return `${proseTask}\n\n本轮不输出 section，只输出上面这段正文。`
   }
   const order = skeletons.map((s) => s.id).join(' → ')
+  const interventionHints = pickFrontendReadPack(output.retrievedContext).dossierSlice
+    .filter((l) => l.startsWith('可试方向：'))
+    .map((l) => l.replace(/^可试方向：/, '').trim())
+  const taskHint = interventionHints.length
+    ? `\ntaskTitle 须优先从 dossier 干预靶点提炼 6-24 字祈使句（可略润色，勿偏离）：${interventionHints.join('；')}`
+    : ''
   return `${proseTask}
 
 接下来，在同一输出里继续生成 section 正文（不要重新开场）：
 每个 section 必须以单独一行标记开始：---section:{id}---
 标记后只写该 section 正文（段落用空行分隔；列表项每行以 - 开头）。
-全部 section 结束后，另起一行写 ---task---，下一行写 taskTitle（6-24 字祈使句，供「今晚任务」使用）。
+全部 section 结束后，另起一行写 ---task---，下一行写 taskTitle（6-24 字祈使句，供「今晚任务」使用）。${taskHint}
 section 顺序必须为：${order}
 禁止输出 markdown 标题、JSON、或任何解释性前后缀。`
 }
@@ -145,7 +162,8 @@ export async function streamProseAndSections(
 
   try {
     const result = sectionTracker.finalize()
-    return { prose: clampProse(proseText, resolveProseMode(output)), sections: result.sections, taskTitle: result.taskTitle }
+    const taskTitle = result.taskTitle || deriveTaskTitleFromDossierSlice(output)
+    return { prose: clampProse(proseText, resolveProseMode(output)), sections: result.sections, taskTitle }
   } catch (err) {
     const message = err instanceof Error ? err.message : '这部分未生成'
     const partial = sectionTracker.buildPartialSections()

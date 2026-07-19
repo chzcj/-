@@ -26,8 +26,8 @@ console.log('=== FrontendReadSchema 契约测试 ===\n')
 // 1. 键序稳定
 console.log('1. FRONTEND_READ_PACK_KEYS 键序')
 assert(FRONTEND_READ_PACK_KEYS[0] === 'childStructureModels', '首键 childStructureModels')
-assert(FRONTEND_READ_PACK_KEYS.at(-1) === 'parentVerbatimSnippets', '末键 parentVerbatimSnippets')
-assert(FRONTEND_READ_PACK_KEYS.length === 10, `共 10 个键 (got ${FRONTEND_READ_PACK_KEYS.length})`)
+assert(FRONTEND_READ_PACK_KEYS.includes('dossierSlice'), '含 dossierSlice 键')
+assert(FRONTEND_READ_PACK_KEYS.length === 11, `共 11 个键 (got ${FRONTEND_READ_PACK_KEYS.length})`)
 
 // 2. pickFrontendReadPack 形状
 console.log('\n2. pickFrontendReadPack 形状')
@@ -49,6 +49,7 @@ assert(isFrontendReadPackShape(pack), 'pick 结果通过 isFrontendReadPackShape
 assert(pack.entryFacts[0] === '错题本只抄答案', 'entryFacts 映射正确')
 assert(pack.childQuotes[0] === '孩子说知道了', 'childQuotes 映射正确')
 assert(pack.parentVerbatimSnippets[0] === '昨晚我又催他写作业', 'parentVerbatimSnippets 映射正确')
+assert(Array.isArray(pack.dossierSlice), 'dossierSlice 为数组')
 assert(pack.familyPatterns[0] === '催作业→发脾气', 'familyPatterns 映射正确')
 assert(!('recentDiagnosis' in pack), 'pack 不含 recentDiagnosis')
 
@@ -57,7 +58,7 @@ console.log('\n3. slice 上限（当前环境）')
 assert(isThickFamilyMemoryPack() === true, '默认厚包开启（未设 FAMILY_MEMORY_THICK_PACK=0）')
 const limits = getFrontendReadSliceLimits()
 assert(limits.entryFacts === 80, `厚包 entryFacts=80 (got ${limits.entryFacts})`)
-assert(limits.matchedMechanisms === 40, `厚包 matchedMechanisms=40 (got ${limits.matchedMechanisms})`)
+assert(limits.matchedMechanisms === 8, `厚包 matchedMechanisms=8 (got ${limits.matchedMechanisms})`)
 const bigCtx = {
   ...mockCtx,
   entryFacts: Array.from({ length: 100 }, (_, i) => `fact${i}`),
@@ -65,7 +66,7 @@ const bigCtx = {
 }
 const sliced = pickFrontendReadPack(bigCtx)
 assert(sliced.entryFacts.length === 80, `entryFacts slice 80 (got ${sliced.entryFacts.length})`)
-assert(sliced.matchedMechanisms.length === 40, `matchedMechanisms slice 40 (got ${sliced.matchedMechanisms.length})`)
+assert(sliced.matchedMechanisms.length === 8, `matchedMechanisms slice 8 (got ${sliced.matchedMechanisms.length})`)
 
 // 3b. 薄包回退
 console.log('\n3b. 薄包回退 FAMILY_MEMORY_THICK_PACK=0')

@@ -21,6 +21,10 @@ interface ExtractedAtom {
   factType?: string
   isHighValue?: boolean
   evidenceStrength?: string
+  /** v3 元数据：具体行为/原话/多次/跨场景/有结果对照 */
+  evidenceTier?: 'behavior' | 'verbatim' | 'repeated' | 'cross_scene' | 'outcome_checked'
+  ecologicalLayer?: 'micro' | 'meso' | 'exo' | 'macro' | 'chrono'
+  factRole?: 'presenting' | 'trigger' | 'response' | 'counter' | 'context'
 }
 
 interface ExtractedEpisode {
@@ -119,7 +123,7 @@ export async function ingestEpisodeStrict(text: string, ctx: IngestContext = {})
       factType: a.factType,
       isHighValue: hv,
       evidenceStrength: a.evidenceStrength || 'medium',
-      embedding
+      embedding,
     }
   })
 

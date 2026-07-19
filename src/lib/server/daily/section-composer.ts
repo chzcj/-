@@ -1,19 +1,5 @@
 import type { DailyCards, OrchestrationOutput } from '@/types/database'
 import type { DailySection } from '@/types/daily-message'
-import { THEORY_CARDS } from '@/lib/server/memory/deep-mechanism/theory-cards'
-
-const THEORY_SOURCES: Record<string, string> = {
-  attachment: 'Bowlby / Ainsworth 依恋研究',
-  self_determination: 'Deci 与 Ryan 自我决定理论',
-  family_systems: 'Bowen 家庭系统理论',
-  family_communication: '家庭沟通研究',
-  emotion_socialization: '情绪社会化研究',
-  coercive_cycle: 'Patterson 强制循环理论',
-  parenting_style: 'Baumrind 亲职风格研究',
-  coparenting: '共同养育研究',
-  sociocultural_scaffolding: 'Vygotsky 社会文化发展理论',
-  stage_environment_fit: '阶段—环境匹配理论',
-}
 
 function isHighConfidence(cards: DailyCards, output: OrchestrationOutput): boolean {
   const rel = output.relationshipToExistingModel.type
@@ -46,18 +32,8 @@ function composeHighConfidenceSkeleton(output: OrchestrationOutput): DailySectio
       hidden: true,
     },
   ]
-  const matched = output.retrievedContext.matchedMechanisms || []
-  const theory = THEORY_CARDS.find((card) => matched.some((item) => item.includes(card.name)))
-  if (theory) {
-    sections.push({
-      id: 'professional_perspective',
-      label: '专业视角',
-      kind: 'mixed',
-      paragraphs: [],
-      items: [],
-      note: `相关理论：${theory.name}${THEORY_SOURCES[theory.id] ? `（${THEORY_SOURCES[theory.id]}）` : ''}。这不是诊断，而是帮助理解这次互动的一种视角。`,
-    })
-  }
+  // R2：移除 professional_perspective section（理论隐身；ecologicalCalibration 仅内部）
+  void output
   return sections
 }
 

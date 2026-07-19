@@ -36,3 +36,9 @@ export function deepMechanismEvidenceKey(
 ): string {
   return `deep_mechanism:evidence:${tenant.familyId}:${tenant.childId}:${episodeId}`
 }
+
+/** 租户级 15 分钟 debounce 桶：合并高频 pending deep job（PR-B3） */
+export function deepMechanismDebounceKey(tenant: DeepMechanismTenantRef): string {
+  const floor15 = Math.floor(Date.now() / (15 * 60 * 1000))
+  return `deep_mechanism:debounce:${tenant.familyId}:${tenant.childId}:${floor15}`
+}

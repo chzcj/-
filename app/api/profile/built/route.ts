@@ -4,7 +4,7 @@ import { resolveTenant } from '@/lib/server/memory/tenant'
 import { saveBuiltProfileSnapshot, getLatestBuiltProfileSnapshot, getBuildProgress, type BuiltProfileSnapshot } from '@/lib/server/memory/database-manager'
 import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
-import { enqueueJob } from '@/lib/server/jobs/queue'
+import { enqueueDeepMechanismReview } from '@/lib/server/jobs/queue'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import {
   computeBuildCompleteness,
@@ -99,12 +99,11 @@ export async function POST(request: Request) {
     }
     await saveBuiltProfileSnapshot(snapshot, tenant)
     const dayBucket = new Date().toISOString().slice(0, 10)
-    await enqueueJob(
-      'deep_mechanism_review',
-      { tenant },
-      `deep_mechanism:build:${tenant.familyId}:${tenant.childId}:${dayBucket}`,
-      null
-    ).catch(() => {})
+    await enqueueDeepMechanismReview(tenant, {
+      reason: 'build_complete',
+      idempotencyKey: `deep_mechanism:build:${tenant.familyId}:${tenant.childId}:${dayBucket}`,
+      forceFull: true,
+    }).catch(() => {})
     void buildDeepModelDigest(tenant)
     return ok({ saved: true, onboardingComplete: Boolean(user?.onboardingComplete) })
   } catch (error) {

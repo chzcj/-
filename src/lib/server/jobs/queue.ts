@@ -18,6 +18,7 @@ import {
 import {
   deepMechanismBucketKey,
   deepMechanismDailyOpenKey,
+  deepMechanismDebounceKey,
   deepMechanismEvidenceKey,
 } from '@/lib/server/memory/deep-mechanism/s2-flags'
 import type { TenantId } from '@/lib/server/memory/tenant'
@@ -36,10 +37,12 @@ export {
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite' | 'deep_mechanism_review' | 'growth_trajectory_update' | 'profile_build_run'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite' | 'deep_mechanism_review' | 'dossier_patch' | 'growth_trajectory_update' | 'profile_build_run'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
 interface DigestUpdatePayload { tenant: TenantId }
+interface DeepMechanismReviewPayload { tenant: TenantId; reason?: string; forceFull?: boolean }
+interface DossierPatchPayload { tenant: TenantId; newFacts?: string[]; traceId?: string | null }
 
 const BATCH = Number(process.env.JOB_BATCH || 2)            // 每轮最多取几条，配合小连接池
 const ZOMBIE_MIN = Number(process.env.JOB_ZOMBIE_MIN || 15) // running 超时回收阈值（>> handler p99）
@@ -127,6 +130,20 @@ export function profileRewriteBucketKey(tenant: TenantId): string {
 
 /** 深度机制复核幂等键见 s2-flags.ts（日桶 / daily_open / turn milestone 正交）。 */
 
+/** 深度机制复核入队：带 reason 日志；debounce 键合并 15min 内 pending（milestone/build 仍用独立键） */
+export async function enqueueDeepMechanismReview(
+  tenant: TenantId,
+  opts: { reason: string; idempotencyKey: string; traceId?: string | null; forceFull?: boolean }
+): Promise<void> {
+  console.info(`[deep-mechanism] enqueue reason=${opts.reason} key=${opts.idempotencyKey}`)
+  await enqueueJob(
+    'deep_mechanism_review',
+    { tenant, reason: opts.reason, forceFull: opts.forceFull },
+    opts.idempotencyKey,
+    opts.traceId ?? null
+  )
+}
+
 // 两个 handler。executeWritePlan/ingestEpisodeStrict 内绝不吞异常，异常上抛驱动重试。
 async function runJob(jobType: JobType, payload: unknown): Promise<void> {
   if (jobType === 'memory_write') {
@@ -140,9 +157,20 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     if ((p.plan.pendingHypothesesToCreateOrUpdate?.length || 0) > 0) {
       await enqueueJob('model_review', { tenant: p.tenant }, modelReviewBucketKey(p.tenant), null)
     }
-    // 链式深度机制复核（每日桶）：覆盖 evidence_networks 机制层 + 写 parent_narrative_patterns。
-    // runDeepMechanismReview 信息不足时 no-op，桶超发安全。
-    await enqueueJob('deep_mechanism_review', { tenant: p.tenant }, deepMechanismBucketKey(p.tenant), null)
+    // PR-B3：日桶不再链式 deep_mechanism_review（仅 digest_update）；L1 patch 在 portrait v3 时链式
+    const counterRound = (p.plan.dailyInteractionUpdatesToWrite || []).some(
+      (u) => u.classification === 'counter_evidence'
+    )
+    if (!counterRound) {
+      const newFacts = (p.plan.dailyInteractionUpdatesToWrite || [])
+        .map((u) => u.newInput?.trim())
+        .filter(Boolean) as string[]
+      if (newFacts.length) {
+        const trace = p.plan.dailyInteractionUpdatesToWrite?.[0]?.sourceEventId || null
+        const patchKey = trace ? `dossier_patch:${trace}` : `dossier_patch:${p.tenant.familyId}:${digestUpdateBucketKey(p.tenant)}`
+        await enqueueJob('dossier_patch', { tenant: p.tenant, newFacts, traceId: trace }, patchKey, trace)
+      }
+    }
   } else if (jobType === 'episode_ingest') {
     const p = payload as EpisodeIngestPayload
     await ingestEpisodeStrict(p.text, p.ctx)
@@ -150,13 +178,11 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     // 让更新不再被日桶锁死，同时防止同一文本重试反复唤醒 Agent。
     if (p.ctx.familyId && p.ctx.childId) {
       const tenant = { familyId: p.ctx.familyId, childId: p.ctx.childId }
-      const episodeId = p.ctx.episodeId || deriveEpisodeId(p.text, p.ctx)
-      await enqueueJob(
-        'deep_mechanism_review',
-        { tenant },
-        deepMechanismEvidenceKey(tenant, episodeId),
-        p.ctx.sourceEventId || null
-      )
+      await enqueueDeepMechanismReview(tenant, {
+        reason: 'episode_ingest',
+        idempotencyKey: deepMechanismDebounceKey(tenant),
+        traceId: p.ctx.sourceEventId || null,
+      })
     }
   } else if (jobType === 'digest_update') {
     const p = payload as DigestUpdatePayload
@@ -182,16 +208,20 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     const p = payload as DigestUpdatePayload
     await runProfileRewrite(p.tenant)
   } else if (jobType === 'deep_mechanism_review') {
-    // 深度机制复核：读全量记忆 → 五大生态系统+16家庭理论 → 覆盖 evidence_networks 机制层 +
-    // 写 pending_hypotheses + 写 parent_narrative_patterns（修复 dead write）。
-    // 触发：四模块完成立即（build key）+ memory_write 日桶 + S2 daily_open / turn milestone。
-    const p = payload as DigestUpdatePayload
-    const wrote = await runDeepMechanismReview(p.tenant) // 信息不足时 no-op；不吞异常驱动重试
+    const p = payload as DeepMechanismReviewPayload
+    const wrote = await runDeepMechanismReview(p.tenant, {
+      reason: p.reason,
+      forceFull: p.forceFull,
+    })
     if (wrote) {
       await markDeepMechanismJobCompleted(p.tenant).catch((err) =>
         console.warn('[jobs] markDeepMechanismJobCompleted 失败:', err)
       )
     }
+  } else if (jobType === 'dossier_patch') {
+    const p = payload as DossierPatchPayload
+    const { runDossierPatch } = await import('@/lib/server/memory/dossier/dossier-patcher')
+    await runDossierPatch(p)
   } else if (jobType === 'growth_trajectory_update') {
     const p = payload as { tenant: TenantId; sourceHash?: string }
     await runGrowthTrajectoryUpdate(p.tenant, p.sourceHash)
@@ -517,8 +547,11 @@ export async function forceLoginJobCheck(tenant: TenantId, maxReplay = 5): Promi
   await enqueueJob('model_review', { tenant }, modelReviewBucketKey(tenant), null).catch(() => {})
   const deepKey = isDeepMechanismS2Enabled()
     ? deepMechanismDailyOpenKey(tenant)
-    : deepMechanismBucketKey(tenant)
-  await enqueueJob('deep_mechanism_review', { tenant }, deepKey, null).catch(() => {})
+    : deepMechanismDebounceKey(tenant)
+  await enqueueDeepMechanismReview(tenant, {
+    reason: 'login_refresh',
+    idempotencyKey: deepKey,
+  }).catch(() => {})
 }
 
 /**

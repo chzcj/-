@@ -43,6 +43,7 @@ export type InputClassification =
 export type FrontResponseType =
   | 'light_response'
   | 'model_based_explanation'
+  | 'advice_from_dossier'
   | 'one_key_followup'
   | 'communication_prehearsal'
   | 'conflict_review'
@@ -599,6 +600,8 @@ export interface UserTask {
   source: string
   status: string
   sourceTraceId?: string
+  /** 关联 dossier workingHypothesis.predictions[].id（如 pred_1） */
+  linkedPredictionId?: string
   observation?: string
   /** 客户端幂等键：离线 outbox 重放时去重 */
   clientId?: string
@@ -647,6 +650,8 @@ export interface RetrievedContext {
   relevantPendingHypotheses: string[]
   relevantFamilyInteractionPatterns: string[]
   matchedMechanisms: string[]
+  /** v3：从 dossier 确定性切片；ecologicalCalibration 不进此字段 */
+  dossierSlice?: string[]
   recentDiagnosis: string[]
   parentNarrativePattern: string[]
   /** 入口采集 / 历史事件中的孩子原话或近原话 */
@@ -715,6 +720,8 @@ export interface DailyDialogueRetrievalPacket {
   currentInputClassification: InputClassification
   relevantChildStructureModels: string[]
   matchedMechanisms: string[]
+  /** v3：dossier 确定性切片（主源） */
+  dossierSlice?: string[]
   supportingEvidence: string[]
   recentRelatedEvents: string[]
   pendingHypotheses: string[]

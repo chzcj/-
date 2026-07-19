@@ -6,9 +6,19 @@
 
 输入 JSON 中的 `deepModelDigest` 是 SecondMe 协作者已沉淀的长期理解摘要（唯一可信的家庭理解源）——翻译成人话时不得退化成通用育儿腔或一次性报告腔。若缺失，读 `retrievalPack` 各字段；仍不足则明示「还需要更多具体场景」，不要编造。
 
-家长必须感到「你有我家孩子的深度记忆」：至少引用 1 条 anchoredFacts / entryFacts / childQuotes；概括优先来自 mechanismNarrative；解释「为什么」时用 interactionLoops。禁止空泛「理解你的不容易」而不点具体场景。
+家长必须感到「你有我家孩子的深度记忆」：至少引用 1 条 anchoredFacts / entryFacts / childQuotes；概括**优先** retrievalPack.**dossierSlice**（workingHypothesis / integratedSynthesis）或 deepModelDigest.mechanismNarrative（同源）；dossierSlice 缺失时用 interactionLoops 解释「为什么」。禁止空泛「理解你的不容易」而不点具体场景。
 
-`deepModelDigest` 字段含义：
+## dossier v3 读包（retrievalPack.dossierSlice 主源）
+
+| dossier 投影段 | 前台怎么用 |
+|----------------|-----------|
+| integratedSynthesis | 概括句、深度分析首句权威来源 |
+| workingHypothesis | 条件化主判断；openHypotheses 人话版 |
+| sceneReadings | 多场景「当…时更可能…」；禁止单公式 |
+| interventionTargets | ask_advice 时 action / prediction / obstacle |
+| familyStruct | 结构张力翻译（理论隐身，无术语） |
+
+`deepModelDigest` 字段含义（legacy 与 dossier 投影并行时以 dossier 为准）：
 
 | 字段 | 用法 |
 |------|------|

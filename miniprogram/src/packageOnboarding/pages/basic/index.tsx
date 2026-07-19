@@ -1,4 +1,4 @@
-import { View, Text, Input as TaroInput, Picker, Textarea } from '@tarojs/components'
+import { View, Text, Input, Picker, Textarea } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
@@ -6,7 +6,12 @@ import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { loadChildBasicInfo, saveChildBasicInfo } from '@/services/childStorage'
 import { apiRequest } from '@/services/api'
-import { fetchServerBuildRun, getProfileBuildRunState, subscribeProfileBuildRun, type ProfileBuildRunState } from '@/services/profilePipeline'
+import {
+  fetchServerBuildRun,
+  getProfileBuildRunState,
+  subscribeProfileBuildRun,
+  type ProfileBuildRunState,
+} from '@/services/profilePipeline'
 import './index.scss'
 
 const GRADES = [
@@ -33,6 +38,34 @@ const PROVINCES = [
   '香港特别行政区', '澳门特别行政区', '台湾省',
 ] as const
 
+type ServerBasic = {
+  nickname?: string
+  grade?: string
+  province?: string
+  caregiverRelation?: string
+  companionTime?: string
+  helpGoal?: string
+}
+
+function applyBasicFields(
+  basic: ServerBasic,
+  setters: {
+    setChildName: (v: string) => void
+    setGrade: (v: string) => void
+    setProvince: (v: string) => void
+    setCaregiverRelation: (v: string) => void
+    setCompanionTime: (v: string) => void
+    setHelpGoal: (v: string) => void
+  }
+) {
+  if (basic.nickname?.trim()) setters.setChildName(basic.nickname.trim())
+  if (basic.grade?.trim()) setters.setGrade(basic.grade.trim())
+  if (basic.province?.trim()) setters.setProvince(basic.province.trim())
+  if (basic.caregiverRelation?.trim()) setters.setCaregiverRelation(basic.caregiverRelation.trim())
+  if (basic.companionTime?.trim()) setters.setCompanionTime(basic.companionTime.trim())
+  if (basic.helpGoal?.trim()) setters.setHelpGoal(basic.helpGoal.trim())
+}
+
 export default function OnboardingBasic() {
   useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
   const stored = loadChildBasicInfo()
@@ -49,6 +82,22 @@ export default function OnboardingBasic() {
   const provinceIndex = Math.max(0, PROVINCES.findIndex((p) => p === province))
 
   useEffect(() => subscribeProfileBuildRun(setBuildRun), [])
+
+  useEffect(() => {
+    void apiRequest<{ basic?: ServerBasic | null }>('/api/profile/basic', { method: 'GET' }).then(
+      (res) => {
+        if (!res.ok || !res.data.basic) return
+        applyBasicFields(res.data.basic, {
+          setChildName,
+          setGrade,
+          setProvince,
+          setCaregiverRelation,
+          setCompanionTime,
+          setHelpGoal,
+        })
+      }
+    )
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -123,53 +172,91 @@ export default function OnboardingBasic() {
               : '资料会用于后续交流、任务、预演和成长轨迹，不改变正在整理的首版画像。'
         }
       />
-      <View className='record-box basic-info-form'>
-        <TaroInput
-          className='basic-field'
-          placeholder='孩子昵称（仅用于产品内称呼）'
-          value={childName}
-          onInput={(e) => setChildName(e.detail.value)}
-        />
-        <Picker
-          mode='selector'
-          range={[...GRADES]}
-          value={gradeIndex >= 0 ? gradeIndex : 0}
-          onChange={(e) => setGrade(GRADES[Number(e.detail.value)] || '')}
-        >
-          <View className='basic-field basic-picker' style={{ marginTop: '12px' }}>
-            <Text>{grade || '请选择年级'}</Text>
+
+      <View className='basic-form'>
+        <Text className='basic-section-title'>姓名与年级</Text>
+        <View className='basic-field-card'>
+          <Text className='basic-field-label'>孩子昵称</Text>
+          <Input
+            className='basic-field-input'
+            type='text'
+            placeholder='例如：小树（仅用于产品内称呼）'
+            placeholderClass='basic-field-placeholder'
+            value={childName}
+            maxlength={20}
+            onInput={(e) => setChildName(e.detail.value)}
+          />
+        </View>
+        <View className='basic-field-row'>
+          <View className='basic-field-card basic-field-card--half'>
+            <Text className='basic-field-label'>年级</Text>
+            <Picker
+              mode='selector'
+              range={[...GRADES]}
+              value={gradeIndex >= 0 ? gradeIndex : 0}
+              onChange={(e) => setGrade(GRADES[Number(e.detail.value)] || '')}
+            >
+              <View className='basic-picker-value'>
+                <Text className={grade ? 'basic-picker-text' : 'basic-field-placeholder'}>
+                  {grade || '请选择'}
+                </Text>
+              </View>
+            </Picker>
           </View>
-        </Picker>
-        <Picker
-          mode='selector'
-          range={[...PROVINCES]}
-          value={provinceIndex >= 0 ? provinceIndex : 0}
-          onChange={(e) => setProvince(PROVINCES[Number(e.detail.value)] || '')}
-        >
-          <View className='basic-field basic-picker' style={{ marginTop: '12px' }}>
-            <Text>{province || '孩子所在省份'}</Text>
+          <View className='basic-field-card basic-field-card--half'>
+            <Text className='basic-field-label'>所在省份</Text>
+            <Picker
+              mode='selector'
+              range={[...PROVINCES]}
+              value={provinceIndex >= 0 ? provinceIndex : 0}
+              onChange={(e) => setProvince(PROVINCES[Number(e.detail.value)] || '')}
+            >
+              <View className='basic-picker-value'>
+                <Text className={province ? 'basic-picker-text' : 'basic-field-placeholder'}>
+                  {province || '请选择'}
+                </Text>
+              </View>
+            </Picker>
           </View>
-        </Picker>
-        <TaroInput
-          className='basic-field'
-          placeholder='您是孩子的妈妈、爸爸，还是其他主要照护者？'
-          value={caregiverRelation}
-          onInput={(e) => setCaregiverRelation(e.detail.value)}
-        />
-        <Textarea
-          className='basic-field basic-textarea'
-          placeholder='您平时陪孩子的时间大概有多少？'
-          value={companionTime}
-          maxlength={200}
-          onInput={(e) => setCompanionTime(e.detail.value)}
-        />
-        <Textarea
-          className='basic-field basic-textarea'
-          placeholder='您希望育见怎么帮到孩子？'
-          value={helpGoal}
-          maxlength={500}
-          onInput={(e) => setHelpGoal(e.detail.value)}
-        />
+        </View>
+
+        <Text className='basic-section-title'>家庭关系</Text>
+        <View className='basic-field-card'>
+          <Text className='basic-field-label'>您和孩子的关系</Text>
+          <Input
+            className='basic-field-input'
+            type='text'
+            placeholder='例如：妈妈、爸爸、奶奶'
+            placeholderClass='basic-field-placeholder'
+            value={caregiverRelation}
+            maxlength={40}
+            onInput={(e) => setCaregiverRelation(e.detail.value)}
+          />
+        </View>
+        <View className='basic-field-card'>
+          <Text className='basic-field-label'>平时陪孩子的时间</Text>
+          <Textarea
+            className='basic-field-textarea'
+            placeholder='例如：工作日晚上 1 小时，周末上午一起出门'
+            placeholderClass='basic-field-placeholder'
+            value={companionTime}
+            maxlength={200}
+            autoHeight
+            onInput={(e) => setCompanionTime(e.detail.value)}
+          />
+        </View>
+        <View className='basic-field-card'>
+          <Text className='basic-field-label'>希望育见怎么帮到孩子</Text>
+          <Textarea
+            className='basic-field-textarea'
+            placeholder='例如：少吼、作业开始前不那么僵、更懂他为什么抵触'
+            placeholderClass='basic-field-placeholder'
+            value={helpGoal}
+            maxlength={500}
+            autoHeight
+            onInput={(e) => setHelpGoal(e.detail.value)}
+          />
+        </View>
       </View>
     </HiFiBuildShell>
   )

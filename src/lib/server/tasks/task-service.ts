@@ -3,7 +3,9 @@ import 'server-only'
 import type { UserTask } from '@/types/database'
 import { getUserTasks, saveUserTasks } from '@/lib/server/memory/database-manager'
 import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/pipeline'
-import { enqueueJob } from '@/lib/server/jobs/queue'
+import { enqueueJob, enqueueDeepMechanismReview } from '@/lib/server/jobs/queue'
+import { deepMechanismDebounceKey } from '@/lib/server/memory/deep-mechanism/s2-flags'
+import { markDossierPredictionFailed } from '@/lib/server/memory/dossier/prediction-failure'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import { createId } from '@/lib/storage/storageIds'
@@ -11,6 +13,15 @@ import { refineTonightTaskInBackground } from '@/lib/server/tasks/tonight-task-a
 
 const MAX_STORED = 50
 const MAX_CURRENT = 3
+
+function isUnsatisfiedTaskFeedback(
+  feedback: NonNullable<UserTask['feedback']>,
+  status: string
+): boolean {
+  if (status === 'completed_but_unsatisfied') return true
+  const blob = [feedback.effect, feedback.note, feedback.completed, status].filter(Boolean).join(' ')
+  return blob.includes('未达预期')
+}
 
 function isCurrentTask(task: UserTask): boolean {
   return task.status !== '已完成' && task.status !== '已过期'
@@ -138,6 +149,23 @@ export async function applyUserTaskFeedback(
   await saveUserTasks(all, tenant)
 
   const traceId = updated.sourceTraceId || createId('trace')
+
+  const predId = updated.linkedPredictionId?.trim()
+  if (predId && isUnsatisfiedTaskFeedback(feedback, status || updated.status)) {
+    const marked = await markDossierPredictionFailed(
+      tenant,
+      predId,
+      `v*: pred_${predId} 标记 failed：任务 ${taskId} 未达预期`
+    ).catch(() => false)
+    if (marked) {
+      void enqueueDeepMechanismReview(tenant, {
+        reason: 'prediction_failed',
+        idempotencyKey: `${deepMechanismDebounceKey(tenant)}:pred_failed:${predId}`,
+        traceId,
+        forceFull: true,
+      })
+    }
+  }
   const summary = [
     feedback.completed ? `完成：${feedback.completed}` : '',
     feedback.effect ? `效果：${feedback.effect}` : '',

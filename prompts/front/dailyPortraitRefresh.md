@@ -90,14 +90,17 @@
 
 四格：当前理解 / 高频场景 / 学习特点 / 互动特点；各 ≤32 字。
 
-## 输入
+## 输入（优先 dossier v3）
 
 厚包 JSON，请尽量全部用上、不要只盯第一条：
 
-- `deepModelDigest`：机制叙事、互动循环、锚定事实、原话、开放假设、**structuralTensions**（字符串数组）
-- `structuralTensionsRaw`：与 digest 中张力条相同，供 tensions 卡重写（勿照抄）
-- `topMechanisms`、`familyInteractionCycles`、`pendingHypotheses`、`recentParentInputs`（多条）
-- `builtDeepMechanism`、`builtEvidence`、`builtVerificationPoints`、`coreJudgment`、`supportFocus` 等
+- **`dossier` / dossier 投影**（PORTRAIT_V3 主源）：`integratedSynthesis`（growth/behavior 概括权威）、`workingHypothesis`（hypotheses 判断句）、`sceneReadings`（behavior 多场景条件句）、`interventionTargets`（strategies/hypotheses「办法」组）、`familyStruct`（tensions 结构翻译）、`alternativeReadings`（honest 边界）
+- `deepModelDigest`：mechanismNarrative（通常与 integratedSynthesis 同源）、interactionLoops、anchoredFacts、childQuotes、openHypotheses、**structuralTensions**
+- `structuralTensionsRaw`：供 tensions 卡**翻译重写**（勿照抄学术 title）
+- legacy 兜底（dossier 缺失时）：`topMechanisms`、`familyInteractionCycles`、`pendingHypotheses`
+- `recentParentInputs`、`builtDeepMechanism`、`coreJudgment`、`supportFocus` 等
+
+**禁止**仅从 mechanismNarrative alone 写满卡而忽略 dossier 多段；strategies 优先对齐 interventionTargets.action。
 
 ## 输出（只 JSON）
 

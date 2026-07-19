@@ -1,30 +1,79 @@
-@import '../../../app.scss';
+@import '../../../styles/tokens.scss';
 
-.hifi-build-root .basic-info-form {
+.hifi-build-root .basic-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
-.hifi-build-root .basic-field {
-  width: 100%;
-  background: rgba(255, 255, 247, 0.88);
-  border-radius: 16px;
-  padding: 14px 16px;
+.hifi-build-root .basic-section-title {
+  display: block;
+  margin: 8px 0 2px;
+  color: $ink;
+  font-size: $text-title;
+  font-weight: 780;
+}
+
+.hifi-build-root .basic-field-card {
+  background: $card;
+  border-radius: $radius-row;
+  padding: 13px 14px;
   border: 1px solid rgba(111, 159, 86, 0.1);
-  color: #202633;
-  font-size: 16px;
-  line-height: 1.55;
+  box-shadow: $shadow-soft;
   box-sizing: border-box;
 }
 
-.hifi-build-root .basic-picker {
+.hifi-build-root .basic-field-row {
   display: flex;
-  align-items: center;
-  min-height: 48px;
+  gap: 10px;
 }
 
-.hifi-build-root .basic-textarea {
-  min-height: 92px;
-  resize: none;
+.hifi-build-root .basic-field-card--half {
+  flex: 1;
+  min-width: 0;
+}
+
+.hifi-build-root .basic-field-label {
+  display: block;
+  margin-bottom: 8px;
+  color: $muted;
+  font-size: $text-small;
+  font-weight: 720;
+  line-height: $text-small-lh;
+}
+
+.hifi-build-root .basic-field-input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  color: $ink;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+}
+
+.hifi-build-root .basic-field-placeholder {
+  color: $muted;
+  font-size: $text-body;
+}
+
+.hifi-build-root .basic-picker-value {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.hifi-build-root .basic-picker-text {
+  color: $ink;
+  font-size: $text-body;
+  line-height: $text-body-lh;
+}
+
+.hifi-build-root .basic-field-textarea {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  color: $ink;
+  font-size: $text-body;
+  line-height: $text-body-lh;
 }

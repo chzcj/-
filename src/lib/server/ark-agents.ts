@@ -95,11 +95,15 @@ export async function callAgentJson<T>(
   agent: AgentPromptKey,
   task: string,
   payload: unknown,
-  options?: { maxTokens?: number; timeoutMs?: number }
+  options?: { maxTokens?: number; timeoutMs?: number; systemSuffix?: string }
 ): Promise<T | undefined> {
   if (!isFastAIEnabled()) return undefined;
+  const baseSystem = resolveAgentSystem(agent);
+  const system = options?.systemSuffix?.trim()
+    ? `${baseSystem}\n\n---\n\n${options.systemSuffix.trim()}`
+    : baseSystem;
   const request = {
-    system: resolveAgentSystem(agent),
+    system,
     user: `${task}\n\n输入上下文 JSON：\n${JSON.stringify(payload, null, 2)}`,
     maxTokens: options?.maxTokens,
     timeoutMs: options?.timeoutMs,

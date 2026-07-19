@@ -27,6 +27,9 @@ import {
 import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
 import { formatMatchedMechanismCards } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { getFrontendReadSliceLimits } from '@/lib/server/daily/frontend-read-pack'
+import { getLatestDossier } from '@/lib/server/memory/deep-modeling/digest-store'
+import { flattenDossierSlice, sliceForDaily } from '@/lib/server/memory/dossier/dossier-slicer'
+import { isPortraitV3Enabled } from '@/lib/server/memory/dossier/portrait-v3-flags'
 
 /* ================================================================
    Retrieval Router — 检索路由
@@ -237,12 +240,19 @@ export async function buildDailyDialogueRetrievalPacket(
     .filter(Boolean)
     .slice(0, 3) as string[]
 
+  const dossier = isPortraitV3Enabled() ? await getLatestDossier(tenant).catch(() => null) : null
+  const dossierSliceLines = dossier
+    ? flattenDossierSlice(sliceForDaily(query || '', dossier))
+    : []
+  const matchedMechanisms = formatMatchedMechanismCards(network?.candidateMechanismMatrix)
+
   return {
     retrievalPurpose: 'daily_dialogue',
     contextMaturityLevel: effectiveLevel,
     currentInputClassification: 'insufficient',
     relevantChildStructureModels,
-    matchedMechanisms: formatMatchedMechanismCards(network?.candidateMechanismMatrix),
+    matchedMechanisms,
+    dossierSlice: dossierSliceLines,
     supportingEvidence: supportingEvidence.length > 0 ? supportingEvidence : builtEvidence.length > 0 ? builtEvidence : allEvents.slice(-5),
     recentRelatedEvents: recentEvents,
     pendingHypotheses: hypotheses.map(h => h.hypothesis),

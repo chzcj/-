@@ -10,7 +10,8 @@ import {
 } from '@/lib/server/memory/database-manager'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { DeepModelDigest, StructuralTension } from '@/types/deep-model-digest'
-import { saveDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
+import { saveDeepModelDigest, getLatestDossier } from '@/lib/server/memory/deep-modeling/digest-store'
+import { isPortraitV3Enabled } from '@/lib/server/memory/dossier/portrait-v3-flags'
 import { buildLlmDeepModelDigest } from '@/lib/server/memory/deep-modeling/llm-digest-builder'
 import { getDeepModelDigestSlices } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { loadDeepMechanismHandoff } from '@/lib/server/memory/deep-mechanism/handoff-store'
@@ -39,6 +40,7 @@ export async function buildDeepModelDigest(
   ])
 
   const topMechanism = network?.candidateMechanismMatrix?.find((m) => m.overallStrength !== 'low')
+  const dossier = isPortraitV3Enabled() ? await getLatestDossier(tenant).catch(() => null) : null
   const theoryRouteHint =
     handoff?.theoryMatches?.length
       ? handoff.theoryMatches
@@ -59,12 +61,17 @@ export async function buildDeepModelDigest(
       : ''
 
   const mechanismNarrativeBase =
+    dossier?.integratedSynthesis?.trim() ||
     topMechanism?.description?.trim() ||
     built?.deepMechanism?.trim() ||
     built?.coreJudgment?.trim() ||
     ''
+  const familyStructHint = dossier?.familyStruct?.length
+    ? dossier.familyStruct.slice(0, 3).map((f) => f.label).join('；')
+    : ''
   const mechanismNarrative = [
     mechanismNarrativeBase,
+    familyStructHint ? `家庭结构线索：${familyStructHint}` : '',
     theoryRouteHint ? `理论路由线索：${theoryRouteHint}` : '',
     layerCoverageHint ? `生态层覆盖：${layerCoverageHint}` : '',
   ]
@@ -161,6 +168,8 @@ export async function buildDeepModelDigest(
     structuralTensions,
     updatedAt: new Date().toISOString(),
     source: 'deterministic',
+    schemaVersion: dossier ? 2 : undefined,
+    dossier: dossier || undefined,
   }
 
   const llmDigest = await buildLlmDeepModelDigest(tenant, deterministic).catch(() => undefined)

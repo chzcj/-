@@ -2,6 +2,8 @@ import type { CandidateMechanism } from '@/types/database'
 import type { DeepModelDigest, StructuralTension } from '@/types/deep-model-digest'
 import { EMPTY_DEEP_MODEL_DIGEST } from '@/types/deep-model-digest'
 import { isThickFamilyMemoryPack } from '@/lib/server/daily/frontend-read-pack'
+import { isPortraitV3Enabled } from '@/lib/server/memory/dossier/portrait-v3-flags'
+import { MATCHED_MECHANISMS_CARD_LIMIT } from '@/lib/server/memory/deep-modeling/digest-limits'
 
 /** 供前台 Agent user payload 注入的 digest 形状（全 string / string[]，禁止结构化对象泄漏）。 */
 export type DeepModelDigestPack = {
@@ -61,8 +63,13 @@ export function pickDeepModelDigestPack(
     .filter(Boolean)
     .slice(0, slice.structuralTensions)
 
+  const dossierNarrative =
+    isPortraitV3Enabled() && d.dossier?.integratedSynthesis?.trim()
+      ? d.dossier.integratedSynthesis.trim()
+      : d.mechanismNarrative?.trim() || ''
+
   return {
-    mechanismNarrative: d.mechanismNarrative?.trim() || '',
+    mechanismNarrative: dossierNarrative,
     interactionLoops: (d.interactionLoops || []).slice(0, slice.interactionLoops),
     anchoredFacts: (d.anchoredFacts || []).slice(0, slice.anchoredFacts),
     parentVerbatimSnippets: (d.parentVerbatimSnippets || []).slice(0, slice.parentVerbatimSnippets),
@@ -95,7 +102,7 @@ export function formatMatchedMechanismCards(
 ): string[] {
   const list = (matrix || []).filter((m) => m.overallStrength !== 'low' && m.mechanismName?.trim())
   const thick = isThickFamilyMemoryPack()
-  const limit = thick ? 20 : 3
+  const limit = thick ? MATCHED_MECHANISMS_CARD_LIMIT : 3
 
   return list.slice(0, limit).map((m) => {
     const name = m.mechanismName.trim()
@@ -111,3 +118,5 @@ export function formatMatchedMechanismCards(
     return parts.join('。')
   })
 }
+
+export { MATCHED_MECHANISMS_CARD_LIMIT } from '@/lib/server/memory/deep-modeling/digest-limits'

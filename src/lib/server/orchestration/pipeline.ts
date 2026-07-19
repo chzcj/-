@@ -131,7 +131,10 @@ export function buildDailyCards(output: OrchestrationOutput, userText?: string):
       ctx.relevantFamilyInteractionPatterns?.[0] ||
       ctx.relevantChildStructureModel?.[1] ||
       '先选一个你们家今晚做得到的小动作，试一次再看孩子反应。'
-  } else if (route.frontResponseType === 'model_based_explanation') {
+  } else if (
+    route.frontResponseType === 'model_based_explanation' ||
+    route.frontResponseType === 'advice_from_dossier'
+  ) {
     cards.adviceSeed =
       ctx.relevantFamilyInteractionPatterns?.[0] ||
       ctx.relevantChildStructureModel?.[1] ||
@@ -345,7 +348,7 @@ function buildRoutingDecision(
 
   if (relationship === 'old_mechanism_repetition') {
     if (inputType === 'ask_advice' && canExplain) {
-      responseType = 'model_based_explanation'
+      responseType = 'advice_from_dossier'
     } else {
       responseType = maturity >= 'L3' ? 'model_based_explanation' : 'one_key_followup'
     }
@@ -426,6 +429,7 @@ function buildFrontResponse(
 ): string {
   switch (responseType) {
     case 'model_based_explanation':
+    case 'advice_from_dossier':
       if (retrieval.relevantChildStructureModels.length > 0) {
         const readable = sanitizeForParent(retrieval.relevantChildStructureModels[0])
         if (readable) {

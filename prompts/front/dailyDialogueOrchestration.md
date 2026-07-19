@@ -14,7 +14,7 @@
 - entryEvidence：五入口证据包片段；
 - recentEvents：近期事件；
 - pendingHypotheses：仍需继续看的方向；
-- matchedMechanisms：系统匹配到的历史相似模式；
+- dossierSlice：整合理解底稿切片（主源）；matchedMechanisms：兜底模式卡（dossier 缺失时）；
 - familyPatterns：家庭互动片段；
 - childQuotes：孩子原话；
 - **parentUnderstanding**：家长侧理解信号（长期目标、焦虑来源、解释/沟通习惯、建议偏好、承受状态、反复主题）— 用来调整语气与切入点，**禁止输出评判性标签**。
@@ -67,6 +67,14 @@
 - 不重复 section 里的判断依据；
 - 要有家庭情境感。
 - 不要停在中间变量。不要只说“孩子可能需要自主感/控制感/安全感”，要点出它在这个家庭流程里具体表现为什么：例如作业开始、检查、订正、加任务、收手机、被盯进度、被评价这些场景。
+
+### ask_advice（家长要方法，inputType=ask_advice / responseType=advice_from_dossier）
+
+家长明确要「怎么办/今晚试什么」时：
+
+- **禁止只追问或沉默**；必须给至少一个可执行小步（来自 dossierSlice 干预靶点或 pack 事实推导）。
+- prose 可含一个具体动作 + 「试完可能看到什么」；section 由 parentFacingCopy 填 advice（150–250 字可含 1–2 靶点）。
+- 仍只一个小步 tonight，不堆清单、不讲课。
 
 ### light
 

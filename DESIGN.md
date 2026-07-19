@@ -294,7 +294,7 @@ UI 不展示「记忆库」「Agent」等术语，但每个关键组件都应对
 |------|-------------|------|------|
 | 空态引导 | `hero-card` + `suggestion-strip` | 短文案 + 可点 chips | chips 来自 hub `thinkingChips`（有 digest 时） |
 | 用户气泡 | `message-row.user` | 右对齐 | 对应 `turn_events` 家长输入 |
-| AI 气泡 | `message-row.ai` + `bubble` | 左对齐，主体为 AI 输出 | prose 注入 `retrievalPack` + `deepModelDigest` |
+| AI 气泡 | `message-row.ai` + `bubble` | 左对齐，主体为 AI 输出 | prose 注入 `retrievalPack`（**dossierSlice 主源**）+ `deepModelDigest` |
 | Thinking | `thinking-bubble` / 四宫格 chips | 首字前占位，不假装已想好 | `dailyPortraitRefresh` 或流式 thinking 事件 |
 | Section | `bubble-section` + `section-label` | prose 后的结构化展开 | section skeleton + enrich 读 pack |
 | Actions | action 条 | sections 完成后出现，解锁输入 | 来自当轮 LLM actions，可含「今晚可试」入口 |
@@ -310,12 +310,13 @@ UI 不展示「记忆库」「Agent」等术语，但每个关键组件都应对
 - **首进**：await `daily-refresh` → 清 tab cache → 拉 hub（「正在整理今日画像」）
 - **进度**：`progress-bar` + `progressHint` ← hub completeness / `portraitCards` 实内容
 - **二级卡** `PortraitCardDetail`：L2 读 `/api/profile/card/[card]`，展示 digest 切片
+- **Portrait v3（PORTRAIT_V3=1）**：画像 Tab 长文与 daily 读包主源为 `FamilyUnderstandingDossier` 投影（`integratedSynthesis` / `workingHypothesis` / `sceneReadings` / `interventionTargets`），经 `dossier-slicer` → `frontend-read-pack.dossierSlice`；legacy `matchedMechanisms` 仅兜底
 
 ### 任务 · `/tasks`
 
 - 状态 pill、来源底边对齐（见 `tasks-ui.css`）
 - `task-submit-dock` 反馈区
-- **记忆**：任务生成读 `deepModelDigest` + 近期交流；完成反馈可回流 `daily_updates`
+- **记忆**：任务生成读 `deepModelDigest` + `retrievalPack.dossierSlice.interventionTargets`；`taskTitle` 优先从 dossier 靶点提炼（`prose-section-stream` / `pickDefaultTaskTitle` 双路径）；完成反馈可回流 `daily_updates`
 
 ### 预演 · `/rehearsal`
 

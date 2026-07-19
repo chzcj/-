@@ -16,6 +16,8 @@ import {
   saveEvidenceNetwork,
   savePendingHypotheses,
   saveParentNarrativePattern,
+  PARENT_INPUT_WINDOW,
+  sliceParentInputTexts,
 } from '@/lib/server/memory/database-manager'
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
 import { createId } from '@/lib/storage/storageIds'
@@ -35,7 +37,12 @@ import type {
   PendingHypothesis,
 } from '@/types/database'
 import type { StructuralTension } from '@/types/deep-model-digest'
-import { THEORY_CARDS } from '@/lib/server/memory/deep-mechanism/theory-cards'
+import { THEORY_CARDS, theoryCardsSystemAppendix } from '@/lib/server/memory/deep-mechanism/theory-cards'
+import { isPortraitV3Enabled } from '@/lib/server/memory/dossier/portrait-v3-flags'
+import { shouldReconceptualize } from '@/lib/server/memory/dossier/should-reconceptualize'
+import { getFailedPredictions } from '@/lib/server/memory/dossier/prediction-failure'
+import { getLatestDossier, saveDossierVersion } from '@/lib/server/memory/deep-modeling/digest-store'
+import type { FamilyUnderstandingDossier } from '@/types/family-understanding-dossier'
 import {
   loadDeepMechanismHandoff,
   saveDeepMechanismHandoff,
@@ -196,6 +203,13 @@ interface MechanismSynthesizeOutput {
   parentNarrativePattern?: RawPattern
 }
 
+interface PortraitSynthesizeOutput {
+  dossier?: FamilyUnderstandingDossier
+  pendingHypotheses?: RawHypothesis[]
+  parentNarrativePattern?: RawPattern
+  candidateMechanismMatrix?: RawMechanism[]
+}
+
 function normEntryNames(v: unknown): EntryName[] {
   const got = arr(v)
   return got.filter((x): x is EntryName => (ENTRY_NAMES as string[]).includes(x)) as EntryName[]
@@ -285,13 +299,15 @@ async function callDeepAgentJson<T>(
   agent: Parameters<typeof callAgentJson>[0],
   task: string,
   payload: unknown,
-  maxTokens: number
+  maxTokens: number,
+  options?: { systemSuffix?: string }
 ): Promise<T | undefined> {
   for (let attempt = 0; attempt <= DEEP_JSON_PARSE_RETRIES; attempt += 1) {
     try {
       return await callAgentJson<T>(agent, task, payload, {
         maxTokens,
         timeoutMs: DEEP_STEP_TIMEOUT_MS,
+        systemSuffix: options?.systemSuffix,
       })
     } catch (error) {
       if (!isJsonParseFailure(error) || attempt === DEEP_JSON_PARSE_RETRIES) throw error
@@ -313,7 +329,10 @@ async function runLegacyMonolith(payload: Record<string, unknown>): Promise<Mech
   )
 }
 
-export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean> {
+export async function runDeepMechanismReview(
+  tenant: TenantId,
+  opts?: { reason?: string; forceFull?: boolean }
+): Promise<boolean> {
   const maturity = getCurrentMaturityState(tenant)
 
   const [
@@ -342,14 +361,23 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
     // 复用过期 checkpoint，表现为后台“没有重新理解”。
     .update(JSON.stringify({
       facts: flatFacts.map((fact) => [fact.factId, fact.text, fact.entryName]),
-      recentInputs: inputHistory.slice(-100).map((item) => [item.traceId || '', item.timestamp || '', item.text]),
+      recentInputs: inputHistory.slice(-PARENT_INPUT_WINDOW).map((item) => [item.traceId || '', item.timestamp || '', item.text]),
     }))
     .digest('hex')
-  const checkpoint = await loadDeepMechanismHandoff(tenant)
-  const canResume = checkpoint?.sourceFingerprint === sourceFingerprint
+  const recon = await shouldReconceptualize(tenant, {
+    sourceFingerprint,
+    forceFull: opts?.forceFull,
+    reason: opts?.reason,
+  })
+  const forceFullRun = recon.should
+  if (forceFullRun) {
+    console.info(`[deep-mechanism] reason=${opts?.reason || 'reconceptualize'} recon=${recon.reasons.join(',')}`)
+  }
+  const checkpoint = forceFullRun ? null : await loadDeepMechanismHandoff(tenant)
+  const canResume = !forceFullRun && checkpoint?.sourceFingerprint === sourceFingerprint
 
   const packDigest = buildRichPackDigest(packs)
-  const recentInputs = inputHistory.slice(-30).map((h) => h.text).filter(Boolean)
+  const recentInputs = sliceParentInputTexts(inputHistory, PARENT_INPUT_WINDOW)
   const sharedContext = {
     entryPacks: packDigest,
     flatFacts,
@@ -446,8 +474,11 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
       matchRaw = await callDeepAgentJson<{ theoryMatches?: TheoryMatchHandoff[] }>(
         'theoryMatcher',
         '基于生态系统分类匹配理论卡。',
-        { ecosystemMap, theoryCards: THEORY_CARDS },
+        { ecosystemMap },
         8192,
+        {
+          systemSuffix: `理论卡库（固定前缀，用于匹配；user 仅含 ecosystemMap）：\n${JSON.stringify(THEORY_CARDS, null, 2)}\n\n${theoryCardsSystemAppendix()}`,
+        },
       )
     } catch (error) {
       console.warn('[deep-mechanism] 理论匹配失败，继续使用空匹配:', error)
@@ -480,20 +511,75 @@ export async function runDeepMechanismReview(tenant: TenantId): Promise<boolean>
   )
 
   let ai: MechanismSynthesizeOutput | undefined
-  try {
-    ai = await callDeepAgentJson<MechanismSynthesizeOutput>(
-      'mechanismSynthesizer',
-      '综合理论匹配与全量证据，产出多域深度机制矩阵（目标10–20条）。',
-      { ...sharedContext, ecosystemMap, theoryMatches },
-      // 多域矩阵、家庭链与理论解释体量大，保留充分输出预算。
-      12288,
-    )
-  } catch (error) {
-    console.warn('[deep-mechanism] 多域综合失败，尝试 legacy 回退:', error)
+  let portraitOut: PortraitSynthesizeOutput | undefined
+  const previousDossier = await getLatestDossier(tenant).catch(() => null)
+  const usePortrait = isPortraitV3Enabled()
+
+  const failedPredictions = recon.reasons.includes('prediction_failed')
+    ? getFailedPredictions(previousDossier)
+    : []
+
+  if (usePortrait) {
+    try {
+      portraitOut = await callDeepAgentJson<PortraitSynthesizeOutput>(
+        'portraitSynthesizer',
+        '综合全量证据产出 FamilyUnderstandingDossier（schema v2）；理论仅作内部透镜。',
+        { ...sharedContext, ecosystemMap, theoryMatches, previousDossier, failedPredictions },
+        12288,
+        {
+          systemSuffix: `理论卡库（15×9 rich fields，作内部判断透镜；输出理论隐身）：\n${JSON.stringify(THEORY_CARDS, null, 2)}\n\n${theoryCardsSystemAppendix()}`,
+        },
+      )
+    } catch (error) {
+      console.warn('[deep-mechanism] portraitSynthesizer 失败，回退 mechanismSynthesizer:', error)
+    }
+    if (portraitOut?.dossier?.workingHypothesis?.text) {
+      const version = (previousDossier?.version || 0) + 1
+      await saveDossierVersion(
+        {
+          ...portraitOut.dossier,
+          version,
+          updatedAt: new Date().toISOString(),
+          changeLog: portraitOut.dossier.changeLog?.length
+            ? portraitOut.dossier.changeLog
+            : [`v${version}: portraitSynthesizer 全量整合`],
+        },
+        tenant
+      ).catch((err) => console.warn('[deep-mechanism] saveDossierVersion 失败:', err))
+      void buildDeepModelDigest(tenant).catch(() => {})
+    }
   }
 
-  if (!ai?.candidateMechanismMatrix?.length) {
-    ai = await runLegacyMonolith({ ...sharedContext, ecosystemMap, theoryMatches })
+  if (!portraitOut?.dossier?.workingHypothesis?.text) {
+    try {
+      ai = await callDeepAgentJson<MechanismSynthesizeOutput>(
+        'mechanismSynthesizer',
+        '综合理论匹配与全量证据，产出多域深度机制矩阵（目标10–20条）。',
+        { ...sharedContext, ecosystemMap, theoryMatches },
+        12288,
+      )
+    } catch (error) {
+      console.warn('[deep-mechanism] 多域综合失败，尝试 legacy 回退:', error)
+    }
+
+    if (!ai?.candidateMechanismMatrix?.length) {
+      ai = await runLegacyMonolith({ ...sharedContext, ecosystemMap, theoryMatches })
+    }
+  } else {
+    ai = {
+      candidateMechanismMatrix: portraitOut.candidateMechanismMatrix,
+      pendingHypotheses: portraitOut.pendingHypotheses,
+      parentNarrativePattern: portraitOut.parentNarrativePattern,
+    }
+  }
+
+  if (!ai?.candidateMechanismMatrix?.length && !portraitOut?.dossier?.workingHypothesis?.text) return false
+  if (!ai?.candidateMechanismMatrix?.length && portraitOut?.dossier) {
+    ai = {
+      candidateMechanismMatrix: existingNetwork?.candidateMechanismMatrix || [],
+      pendingHypotheses: portraitOut.pendingHypotheses,
+      parentNarrativePattern: portraitOut.parentNarrativePattern,
+    }
   }
 
   if (!ai?.candidateMechanismMatrix?.length) return false

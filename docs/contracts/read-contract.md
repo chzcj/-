@@ -11,7 +11,7 @@
 
 | 值 | 行为 |
 |----|------|
-| 缺省 / `1` / `on` / `true` | **厚包**（一批默认）：机制人话卡≤20、事实≤40、digest 含结构张力 |
+| 缺省 / `1` / `on` / `true` | **厚包**（一批默认）：dossierSlice 主源、机制人话卡兜底≤8、事实≤80、digest 含结构张力 |
 | `0` / `off` / `false` / `thin` | **薄包回退**：旧 slice（机制名≤3、事实≤6） |
 
 实现：`isThickFamilyMemoryPack()` / `getFrontendReadSliceLimits()`（[frontend-read-pack.ts](../../src/lib/server/daily/frontend-read-pack.ts)）。
@@ -26,8 +26,9 @@
 |------|------|------|---------|---------|
 | `childStructureModels` | built_profile_snapshots.coreJudgment / ConditionalProfile.childTendency | 画像文本（人话） | 12 | 4 |
 | `entryEvidence` | entry_evidence_packs | 四模块采集包摘要 | 12 | 4 |
-| `entryFacts` | entry_evidence_packs.decomposedInput 的 verifiableFacts+childBehaviors+triggerPoints | **具体事实直喂** | 40 | 6 |
-| `matchedMechanisms` | evidence_networks.candidateMechanismMatrix（非 low）→ **人话卡**（名+描述+依据+保护功能） | **深度机制直读** | 20 | 3（仅名） |
+| `entryFacts` | entry_evidence_packs.decomposedInput 的 verifiableFacts+childBehaviors+triggerPoints | **具体事实直喂** | 80 | 6 |
+| `dossierSlice` | deep_model_digest.dossier → dossier-slicer（按 query 切） | **v3 主源** | 24 | 8 |
+| `matchedMechanisms` | evidence_networks → formatMatchedMechanismCards（兜底） | dossier 缺失时 | **8** | 3（仅名） |
 | `familyPatterns` | L7 FamilyInteractionCycle | 家庭互动模式 | 10 | 2 |
 | `parentUnderstanding` | parent_narrative_patterns flatten | 家长叙事模式 | 12 | 6 |
 | `recentEvents` | turn_events + daily_updates | 近期对话 | 12 | 5 |
