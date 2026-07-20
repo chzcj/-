@@ -6,8 +6,14 @@ import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval
 import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import { listTurnEvents } from '@/lib/server/memory/database-manager'
 import { promptRegistry } from '@/lib/server/prompts/registry.generated'
 import { REHEARSAL_SCENES } from '@/data/rehearsalScenes'
+import {
+  EXTENDED_SCENE_SEEDS,
+  rankPainClusters,
+  type PainClusterId,
+} from '@/lib/server/rehearsal/scene-pain-ranker'
 
 type HydratedScene = {
   id: string
@@ -34,18 +40,46 @@ type HydrateResponse = {
   }>
 }
 
+function seedForCluster(id: PainClusterId): HydratedScene {
+  const fromStatic = REHEARSAL_SCENES.find((s) => s.id === id)
+  if (fromStatic) {
+    return {
+      id: fromStatic.id,
+      title: fromStatic.title,
+      subtitle: fromStatic.subtitle,
+      summary: fromStatic.summary,
+      openingHint: fromStatic.openingHint,
+      openingChild: fromStatic.openingChild,
+      openingHintTitle: fromStatic.openingHintTitle,
+      seed: fromStatic.seed,
+    }
+  }
+  const ext = EXTENDED_SCENE_SEEDS[id]
+  return {
+    id,
+    title: ext.title,
+    subtitle: ext.subtitle,
+    summary: ext.summary,
+    openingHint: ext.openingHint,
+    openingChild: ext.openingChild,
+    openingHintTitle: '他可能是这样听到的',
+    seed: ext.seed,
+  }
+}
+
 /**
- * 固定预演场景记忆化：用 digest + retrieval 改写 summary/openingHint。
- * 失败时前端仍用静态文案。关 thinking，厚记忆只放 user。
+ * Top5 痛点场景：turn_events 规则计频排序 → LLM 只润色 title/lede/summary；
+ * mentionCountHint **一律代码覆盖**。
  */
 export async function GET(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
 
   try {
     const tenant = await resolveTenant()
-    const [packet, digestLoaded] = await Promise.all([
+    const [packet, digestLoaded, turns] = await Promise.all([
       buildDailyDialogueRetrievalPacket('沟通预演场景', tenant, { fast: true }).catch(() => null),
       loadDeepModelDigest(tenant).catch(() => null),
+      listTurnEvents(tenant, 400).catch(() => []),
     ])
     let digest = digestLoaded
     if (!digest?.mechanismNarrative) {
@@ -53,31 +87,49 @@ export async function GET(request: Request) {
     }
     const digestPack = pickDeepModelDigestPack(digest)
 
-    const staticScenes = REHEARSAL_SCENES.map((s) => ({
-      id: s.id,
-      title: s.title,
-      subtitle: s.subtitle,
-      summary: s.summary,
-      openingHint: s.openingHint,
-      openingChild: s.openingChild,
-      openingHintTitle: s.openingHintTitle,
-      seed: s.seed,
-    }))
+    const ranked = rankPainClusters(
+      turns.map((t) => ({
+        text: t.userMessage || '',
+        createdAt: t.createdAt,
+        mode: t.mode,
+      })),
+      { excludeRehearsalMode: true, topN: 5 }
+    )
+
+    const rankedScenes = ranked.map((r) => {
+      const base = seedForCluster(r.id)
+      return {
+        ...base,
+        mentionCountHint: r.mentionCountHint || undefined,
+        _samples: r.samples,
+        _n14: r.n14,
+        _n90: r.n90,
+      }
+    })
 
     const hasMemory =
+      ranked.some((r) => r.score > 0) ||
       Boolean(digestPack.mechanismNarrative?.trim()) ||
       Boolean(packet?.matchedMechanisms?.length) ||
       Boolean((packet as { entryFacts?: string[] } | null)?.entryFacts?.length)
 
     if (!hasMemory) {
-      return ok({ scenes: staticScenes as HydratedScene[], hydrated: false })
+      // 无信号：最多返回静态 3 条，不写假频次
+      const fallback = REHEARSAL_SCENES.slice(0, 3).map((s) => seedForCluster(s.id as PainClusterId))
+      return ok({ scenes: fallback, hydrated: false, rankedFromDialogue: false })
     }
 
     const result = await callFastJson<HydrateResponse>(
       [promptRegistry.parentFacingStyle, promptRegistry.rehearsalSceneHydrator].join('\n\n---\n\n'),
       {
-        task: `为每个固定场景生成贴合本家庭的 title（≤16字）、lede（≤48字）、mentionCountHint（如「近2周 · 提过3次」或「近期提过」）、summary（80–160字）、openingHint（60–120字）。`,
-        scenes: staticScenes.map((s) => ({ id: s.id, title: s.title, intent: s.summary })),
+        task: `为每个痛点场景生成贴合本家庭的 title（≤16字）、lede（≤48字）、summary（80–160字）、openingHint（60–120字）。mentionCountHint 由代码填写，你不要输出次数。`,
+        scenes: rankedScenes.map((s) => ({
+          id: s.id,
+          title: s.title,
+          intent: s.summary,
+          sampleQuotes: s._samples || [],
+          codeMentionHint: s.mentionCountHint || '',
+        })),
         deepModelDigest: digestPack,
         retrievalPack: packet
           ? {
@@ -88,24 +140,32 @@ export async function GET(request: Request) {
             }
           : undefined,
       },
-      { maxTokens: 2200, disableThinking: frontAiThinkingDisabled() }
+      { maxTokens: 2800, disableThinking: frontAiThinkingDisabled() }
     )
 
     const byId = new Map((result?.scenes || []).map((s) => [s.id, s]))
-    const scenes: HydratedScene[] = staticScenes.map((base) => {
+    const scenes: HydratedScene[] = rankedScenes.map((base) => {
       const patch = byId.get(base.id)
       return {
-        ...base,
+        id: base.id,
         title: patch?.title?.trim() || base.title,
         subtitle: patch?.lede?.trim() || patch?.subtitle?.trim() || base.subtitle,
         lede: patch?.lede?.trim() || patch?.subtitle?.trim() || base.subtitle,
-        mentionCountHint: patch?.mentionCountHint?.trim(),
+        // 硬规则：频次只认代码
+        mentionCountHint: base.mentionCountHint,
         summary: patch?.summary?.trim() || base.summary,
         openingHint: patch?.openingHint?.trim() || base.openingHint,
+        openingChild: base.openingChild,
+        openingHintTitle: base.openingHintTitle,
+        seed: base.seed,
       }
     })
 
-    return ok({ scenes, hydrated: true })
+    return ok({
+      scenes,
+      hydrated: true,
+      rankedFromDialogue: ranked.some((r) => r.score > 0),
+    })
   } catch (error) {
     return failFromError(error)
   }

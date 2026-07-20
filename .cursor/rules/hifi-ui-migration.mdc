@@ -1,0 +1,51 @@
+---
+description: 高保真 HTML→TSX 迁移强制手册（高保真/mock/改版稿/design-reference/PORTING 任务全文生效）
+alwaysApply: true
+---
+# 高保真界面迁移（强制）
+
+**激活**：高保真 HTML/mock→Web/小程序 TSX 时，与 [ai-product-engineering.mdc](./ai-product-engineering.mdc) **同时生效**。  
+**完整版**：[docs/architecture/hifi-ui-migration-playbook.md](../docs/architecture/hifi-ui-migration-playbook.md)
+
+## P0 禁止
+
+1. 先改 TSX 后补 Agent 字段 2. Phase B 假 AI 文案 3. 只 SCSS 截断 4. 无 gather 读包就写 SP  
+5. 新区块塞进旧 Agent 6. 降低刷新频率 7. 无 producer/consumer 字段上线
+
+## 六步法
+
+资产→链路画布→**L1/L2/L3 字段映射**→**记忆生产反推**→UI壳→读包→SP→验收
+
+## 三级界面
+
+- **L1** 短：summary/teaser/计数  
+- **L2** 中：常 **lead**（≠ summary）  
+- **L3** 长：lead+sections scroll  
+
+## Agent 三档
+
+继承 / 微调加厚 / 重建（勿合并 schema 不同的 Agent）
+
+## 记忆
+
+生产：turn_events→L1 gate→memory_write→digest/dossier  
+读包 **先于** SP；materialThreshold 不足→no-op；刷新频率≥旧页
+
+## 收工
+
+trace 表 + audit:fullchain + 一行结论句
+
+## 与大任务回看联动
+
+大任务（手账/画像/预演/memory）每卷必须按 [big-task-recheck.mdc](./big-task-recheck.mdc)：**调研→方案→小改→对照前10–20轮→下一卷**。禁止一口气做完。
+
+## 小程序平台期望（强制校准）
+
+滞涩/不清晰常被当成「没做好」，本质含平台机制差：
+
+1. **双线程**：逻辑层与渲染层经桥通信，高频交互天生有延迟  
+2. **WebView 渲染**：多数小程序非 Skyline，复杂动效难稳 60fps  
+3. **包体**：主包 ≤2MB、总包 ≤20MB，资源难全预置 → 切换有加载  
+4. **内存配额**：寄生微信，超限回收 → 复杂页易降频  
+
+**迁移要求**：像素对齐 mock 信息架构与文案契约；**不承诺**与原生 APP 同级动效/秒开。图片用 2x/3x 清晰资源；动效克制；大列表分页/虚拟化。

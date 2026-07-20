@@ -101,20 +101,23 @@ export default function RehearsalPage() {
         const res = await fetch('/api/rehearsal/scenes')
         const json = (await res.json()) as { ok?: boolean; data?: { scenes?: RehearsalScene[] } }
         if (!json.ok || !json.data?.scenes?.length) return
-        const merged = REHEARSAL_SCENES.map((base) => {
-          const patch = json.data!.scenes!.find((s) => s.id === base.id)
-          if (!patch) return base
+        const next = json.data.scenes.map((patch) => {
+          const base = REHEARSAL_SCENES.find((s) => s.id === patch.id)
           return {
-            ...base,
-            title: patch.title || base.title,
-            subtitle: patch.subtitle || patch.lede || base.subtitle,
-            lede: patch.lede || patch.subtitle || base.lede,
+            id: patch.id,
+            title: patch.title || base?.title || '练一句开口',
+            subtitle: patch.subtitle || patch.lede || base?.subtitle || '',
+            lede: patch.lede || patch.subtitle || base?.lede,
             mentionCountHint: patch.mentionCountHint,
-            summary: patch.summary || base.summary,
-            openingHint: patch.openingHint || base.openingHint,
-          }
+            summary: patch.summary || base?.summary || '',
+            placeholder: base?.placeholder || '描述一下你想练的场景。',
+            seed: patch.seed || base?.seed || patch.title || '',
+            openingHint: patch.openingHint || base?.openingHint,
+            openingChild: patch.openingChild || base?.openingChild,
+            openingHintTitle: patch.openingHintTitle || base?.openingHintTitle,
+          } satisfies RehearsalScene
         })
-        setScenes(merged)
+        setScenes(next)
       } catch {
         /* keep static */
       }

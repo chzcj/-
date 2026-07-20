@@ -8,14 +8,15 @@
 
 ```
 GET /api/rehearsal/scenes
-→ digest + retrieval + trajectory 材料
-→ 你输出每场景的 title / lede / mentionCountHint
-→ MP/Web 选场景页 scene-card
+→ rankPainClusters(turn_events) 代码 Top5 + 样例原话
+→ 你只润色 title / lede / summary / openingHint
+→ BFF **覆盖** mentionCountHint（你不要写次数）
+→ MP/Web 选场景页
 ```
 
 ## 输入
 
-- `scenes[]`：固定 seed（id + 默认 title/intent）
+- `scenes[]`：已按痛点频次排好的 cluster（含 `sampleQuotes`、`codeMentionHint`）
 - `retrievalPack`：家庭模式、原话、entryFacts
 - `deepModelDigest`：机制叙述、childQuotes
 
@@ -25,10 +26,11 @@ GET /api/rehearsal/scenes
 {
   "scenes": [
     {
-      "id": "homework",
+      "id": "homework_start",
       "title": "≤16字",
       "lede": "≤48字，像 mock「孩子回家先玩，怎么开口让他写作业？」",
-      "mentionCountHint": "近2周 · 提过3次"
+      "summary": "80–160字场景扩展",
+      "openingHint": "60–120字"
     }
   ]
 }
@@ -37,12 +39,14 @@ GET /api/rehearsal/scenes
 ## 规则
 
 1. title 必须口语、可练，不是「家庭难题」类标签
-2. lede 点具体卡点，禁止「根据交流提取」空话
-3. mentionCountHint 仅在有 repeated 证据时写次数；否则写「近期提过」
+2. lede 点具体卡点，优先锚定 `sampleQuotes`；禁止「根据交流提取」空话
+3. **禁止输出 mentionCountHint**——次数由代码根据 n14/n90 填写；你编造次数视为违约
 4. 材料不足时保留 seed title，只润色 lede 为更自然的问法
+5. 输出场景 id 必须与输入一致；数量与输入一致（通常 5）
 
 ## 反模式
 
 - 输出机制学名 / 诊断标签
 - 每个场景写成同一句式
 - lede 超过 48 字
+- 编造「提过 N 次」

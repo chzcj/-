@@ -34,6 +34,11 @@ export async function maybeEnqueueHandbookRefresh(tenant: TenantId): Promise<{
   enqueued: boolean
   reason: string
 }> {
+  const jobHealth = await getJobHealth(tenant).catch(() => undefined)
+  if (handbookJobsInFlight(jobHealth)) {
+    return { enqueued: false, reason: 'already_in_flight' }
+  }
+
   const health = await evaluateHandbookHealth(tenant)
   if (!health.needsRefresh) {
     return { enqueued: false, reason: health.reason }

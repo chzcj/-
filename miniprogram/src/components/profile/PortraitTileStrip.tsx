@@ -18,6 +18,12 @@ type Props = {
   onOpenAll?: () => void
 }
 
+function tileBody(text: string): string {
+  const t = (text || '').trim()
+  if (t.length <= 42) return t
+  return `${t.slice(0, 40).replace(/[，,。：:；;…]$/, '')}…`
+}
+
 export function PortraitTileStrip({ cards, onOpenCard, onOpenAll }: Props) {
   if (!cards.length) return null
 
@@ -42,7 +48,7 @@ export function PortraitTileStrip({ cards, onOpenCard, onOpenAll }: Props) {
             >
               <Text className='tile-badge'>{TILE_BADGE[card.slug] || card.title}</Text>
               <View className='tile-glass'>
-                <Text className='tile-cap'>{card.body}</Text>
+                <Text className='tile-cap'>{tileBody(card.body)}</Text>
                 <Text className='tile-sub'>完整度 {card.progress}%</Text>
                 <View className='tile-mini-bar'>
                   <View className='tile-mini-fill' style={{ width: `${card.progress}%` }} />

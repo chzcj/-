@@ -259,13 +259,13 @@
 }
 
 .hifi-app-root .tile-cap {
-  font-size: 15px;
+  font-size: 15.5px; /* +0.5pt 量级 */
   font-weight: 740;
-  line-height: 1.35;
+  line-height: 1.38;
   color: #202633;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   overflow: hidden;
 }
 

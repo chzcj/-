@@ -168,20 +168,29 @@ export default function RehearsalPage() {
     void (async () => {
       const res = await apiRequest<{ scenes?: RehearsalScene[] }>('/api/rehearsal/scenes')
       if (!res.ok || !res.data.scenes?.length) return
-      const merged = REHEARSAL_SCENES.map((base) => {
-        const patch = res.data.scenes!.find((s) => s.id === base.id)
-        if (!patch) return base
+      // API 已按对话痛点 Top5 排序；不再锁死静态 3 seed
+      const next = res.data.scenes!.map((patch) => {
+        const base = REHEARSAL_SCENES.find((s) => s.id === patch.id)
         return {
-          ...base,
-          title: patch.title || base.title,
-          subtitle: patch.lede || patch.subtitle || base.subtitle,
-          lede: patch.lede || patch.subtitle || base.subtitle,
+          id: patch.id,
+          title: patch.title || base?.title || '练一句开口',
+          subtitle: patch.lede || patch.subtitle || base?.subtitle || '',
+          lede: patch.lede || patch.subtitle || base?.lede,
           mentionCountHint: patch.mentionCountHint,
-          summary: patch.summary || base.summary,
-          openingHint: patch.openingHint || base.openingHint,
-        }
+          summary: patch.summary || base?.summary || '',
+          placeholder: base?.placeholder || '描述一下你想练的场景。',
+          seed: patch.seed || base?.seed || patch.title || '',
+          openingHint: patch.openingHint || base?.openingHint,
+          openingChild: patch.openingChild || base?.openingChild,
+          openingHintTitle: patch.openingHintTitle || base?.openingHintTitle,
+        } satisfies RehearsalScene
       })
-      setScenes(merged)
+      setScenes(next)
+      if (next[0] && !REHEARSAL_SCENES.some((s) => s.id === selectedId)) {
+        setSelectedId(next[0].id)
+        setSceneTitle(next[0].title)
+        setSummary(next[0].summary)
+      }
     })()
   }, [])
 

@@ -23,6 +23,55 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-20 03:10 | Cursor | 续：预演 Top5 痛点排序接 API（不改像素）
+
+**本卷只改 / 不改**
+- 只改：生产摸底写入契约；`scene-pain-ranker`；`/api/rehearsal/scenes|brief`；前端按 API 列表渲染最多 5 条；hydrator SP
+- 不改：预演视觉高保真、任务页、语音
+
+**做了什么**
+- 生产 diag：homework 18 / after_conflict 5 / phone 3（滤【预演场景】套话）
+- `rankPainClusters` + mentionCountHint 代码覆盖 LLM
+- MP/Web 不再 merge 锁死静态 3
+
+**验证**
+- `test-scene-pain-ranker` ✓；typecheck ✓；deploy / build:weapp 跟本轮
+
+**下一步**
+- 真机看预演是否出现带真实频次的多场景；像素等新 mock
+- 用户确认后 commit 本轮大包改动
+
+## 2026-07-20 02:50 | Cursor | 分步计划 Phase0→卷4（记忆消费·手账·画像·预演调研）
+
+**本卷只改 / 明确不改**
+- 只改：纪律规则、verbatim 读包、手账 evidence/详情缓存、状态机 debounce、enrich candidates、画像 tile/materialThreshold/SP、预演字段库存文档
+- 不改：预演/任务 UI 像素、DAILY_MEMORY_WRITE_BATCH=10、语音链路、Phase5 预演高保真
+- 对照：02 禁摘要冒充、状态不闪、详情不长转、读侧 20 轮原话、预演先契约
+
+**做了什么**
+- Phase0：`big-task-recheck.mdc` + hifi playbook §§12–13 平台约束
+- 卷1.1：`gatherParentVerbatimWindow(20)` → dailyPortraitRefresh
+- 卷2.3：daily-refresh debounce + 单一状态条 + handbook 在途不重复入队
+- 卷2.1/2.2：evidenceBody 硬规则 + pageId 直读 + interpretation 缓存
+- 卷1.2：enrich parentQuote/sceneHint/sourceTraceId
+- 卷3：tile +0.5pt/clamp4；`materialThreshold` no-op；SP 加厚
+- 卷4：`docs/product/rehearsal-field-inventory.md` + `scripts/diag-rehearsal-pain-points.mjs`（本地 DB 未起时跳过摸底）
+
+**验证**
+- `./node_modules/.bin/tsc --noEmit` ✓；handbook/quality/moment 测试 ✓；prompts rebuild ✓
+- `npm run deploy` ✓；readiness `ready:true`（2026-07-20 ~02:58 CST）
+- `miniprogram npm run build:weapp` ✓（既有 css order warning）
+- 本地 Postgres 未起：diag 痛点摸底未跑出表（契约文档仍交付）
+
+**下一步**
+- 真机验收手账 02 / 画像状态 / tile；DB 可达时跑 `scripts/diag-rehearsal-pain-points.mjs`
+- Phase5 等新 mock 再动预演 UI
+- 用户确认后可 commit（本轮未主动 commit）
+
+**风险/冲突**
+- 勿把静态 3 seed 当 Top5；勿降画像刷新频率
+- 工作区仍有大量并行未提交改动；package.json 仅增 tsx/server-only/optional swc
+
 ## 2026-07-20 02:05 | Cursor | 手账内容质量 + 统一刷新 + 预演高保真
 
 **做了什么**
@@ -32,6 +81,8 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - enriched：`episode_ingest` / `how-to-speak` 写 handbook 候选
 - 预演：`rehearsal-flow-preview.html` → design-reference；`rehearsalSceneHydrator/Brief` SP + `/api/rehearsal/brief`；MP/Web 三屏（选场景→摘要→对话）；对话屏 hideTabBar
 - 测试：`test-handbook-quality-gate` / `test-memory-moment-detail`；pack/admission 扩展
+- 内部 API：`handbook-backfill?fullRefresh=true` 触发 purge→backfill→weekly
+- **已 commit + push**：`c42f05f` → Gitee master
 
 **为什么**
 - 根因是准入层 rawEvidence 取错/不落库、详情 API 混用 whyIncluded 与正文、老用户无自动回填
@@ -40,16 +91,26 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - `npm run typecheck` ✓；handbook 测试 51/51 ✓
 - 远程 `npm run deploy` ✓；readiness `ready:true`
 - `miniprogram npm run build:weapp` ✓
-- 本地 `npm run build` 因缺 `@next/swc-darwin-arm64` 失败（远程构建正常）
+- 单租户 `fam_1783439265597_luqfco` 全量刷新已入队（reason: `bad_ratio`）；memoryLayerItems 5429→5410（purge 生效）
 
 **下一步**
-- 真机验收画像 Tab：触发 refresh 后列表无「收到无意义输入」「交流」等坏页
-- 记忆详情 01/轻解读有实质内容；Weekly Top3 类型多样
-- 用户确认后 commit + push
+- 真机打开画像 Tab / 手账列表验收内容质量
+- backfill 异步完成后复查 Weekly Top3 与记忆详情
 
 **风险/冲突**
 - 全量 purge/backfill 有 LLM 成本；orchestrator 已 health 门槛幂等
 - 语音链路未动；预演录音仅 UI 入口
+- 工作区仍有未提交 onboarding/prose 等并行改动，勿与本次 commit 混用
+
+## 2026-07-20 02:10 | Cursor | 详情原文摘录 + 刷新 banner 修正
+
+**做了什么**
+- MP/Web 记忆详情：02 原文摘录绑定 evidenceBody；无原话占位提示
+- isHandbookRefreshing 仅 job 在途时为 true
+- backfill 日志 skippedNoEvidence / skippedUnpolishable
+- 复盘文档 `.trae/documents/handbook-quality-retrospective-and-next-plan.md`
+
+**验证** — deploy ✓；build:weapp ✓；push ee8b7ee
 
 ## 2026-07-20 01:45 | Cursor | 手账滚动7天 + 导航拆分 + UI 对齐
 

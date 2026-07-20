@@ -82,9 +82,35 @@
 - sections 每组 **至少 2 条** items（材料极少时 1 条 + 诚实说明）
 - 禁止整卡只有 summary 没有 lead/sections
 
-## highlights（必出）
+## highlights / highlightMoments（必出 · L1/L2/L3 契约）
 
-2～5 条「孩子近期的闪光点」：具体好事/进步、性格优势。每条 **15～48 字**完整句。禁止「交流了 N 次」等统计。
+**两层输出**（JSON 同时给 `highlights` 与 `highlightMoments`，内容一致）：
+
+| 层级 | 字段 | UI 落点 | 要求 |
+|------|------|---------|------|
+| L1 | `highlights[]` | hero 区「闪光时刻」计数 + tile 旁摘要 | 2～5 条 teaser 句，各 **15～48 字** |
+| L2 | `highlightMoments[].title` + `.teaser` | `/moments` 列表标题 + 一行摘要 | title **8～24 字**；teaser **15～48 字** |
+| L3 | `.whyHighlighted` + `.occurredAt` | moments 详情 / shine 记忆 | whyHighlighted **20～80 字**，说明「为何值得记」；occurredAt ISO 或近时 `"2026-07-16"` |
+
+**highlightMoments 每条必含**：`title`、`teaser`、`whyHighlighted`、`occurredAt`；可选 `sourceRef`（turn/update id）、`sourceKind`（`turn`/`journal`/`task`/`agent`）。
+
+**内容规则**：
+- 具体好事/进步/性格优势/主动提出过渡等，必须来自输入材料
+- 禁止「交流了 N 次」「完整度 XX%」等统计
+- 禁止理论术语；像手账里随手记下的亮点
+- 材料不足时给 1～2 条诚实短句（如「还在积累闪光点」），禁止编造具体事件
+
+**兼容**：`highlights[i]` 应与 `highlightMoments[i].teaser` 一致（便于旧客户端）。
+
+## L1 / L2 / L3 与 portraitCards 映射（验收）
+
+| Mock / UI | BFF 字段 | Agent 产出 |
+|-----------|----------|------------|
+| 横滑 tile `.cap` | `portraitCards.*.summary` | 本 Agent |
+| 详情 `.ic-body` / lead 段 | `portraitCards.*.lead` | 本 Agent |
+| 详情 accordion | `portraitCards.*.sections[]` | 本 Agent |
+| hero 闪光计数 | `highlightMoments.length` | 本 Agent |
+| moments 列表 | `highlightMoments[]` | 本 Agent |
 
 ## thinkingChips
 
@@ -100,6 +126,19 @@
 - legacy 兜底（dossier 缺失时）：`topMechanisms`、`familyInteractionCycles`、`pendingHypotheses`
 - `recentParentInputs`、`builtDeepMechanism`、`coreJudgment`、`supportFocus` 等
 
+### recentParentInputs（2026-07-20 起 · 读侧厚包）
+
+BFF 经 `gatherParentVerbatimWindow(limit=20)` 注入：**近 20 轮 `turn_events.userMessage` 全量原话**（单条上限约 800 字，**不再截成 200 字糊弄**）。
+
+你必须：
+
+1. 从原话里抽出**可指认的场景**（如「催作业时孩子说知道了」），写入 summary/lead/highlightMoments  
+2. **禁止**只写「家长尝试放权」这类无场景标签——家长要能想起「哪件事」  
+3. highlightMoments.teaser / whyHighlighted 须能对上某条 recentParentInputs（或诚实「还在积累」）  
+4. 材料不足（原话 &lt; 3 条有效）时各卡「还在了解」；**禁止编造**具体事件  
+5. **刷新频率**：每次进画像 Tab 的 debounce 刷新仍会调用你——勿因「昨天写过」偷懒空转；有新原话必须反映  
+6. 若输入含 `materialThreshold.met=false`：上游可能已 no-op 不调你；若仍收到，诚实写「还在了解」，**禁止编造**
+
 **禁止**仅从 mechanismNarrative alone 写满卡而忽略 dossier 多段；strategies 优先对齐 interventionTargets.action。
 
 ## 输出（只 JSON）
@@ -112,6 +151,15 @@
     { "label": "互动特点", "text": "..." }
   ],
   "highlights": ["...", "..."],
+  "highlightMoments": [
+    {
+      "title": "主动提出先休息十分钟",
+      "teaser": "放学回来自己说要先喝水休息，十分钟后拿出作业本。",
+      "whyHighlighted": "这是少见的主动过渡安排，不是等家长催才动。",
+      "occurredAt": "2026-07-16",
+      "sourceKind": "journal"
+    }
+  ],
   "portraitCards": {
     "growth": { "summary": "...", "lead": "...", "sections": [{ "heading": "...", "items": ["..."] }] },
     "focus": { "summary": "...", "lead": "...", "sections": [{ "heading": "...", "items": ["..."] }] },

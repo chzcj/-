@@ -92,11 +92,11 @@
 .tile-cap {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px; /* +0.5pt 量级相对 12px */
   font-weight: 740;
-  line-height: 1.35;
+  line-height: 1.38;
   color: #202633;
   white-space: normal;
 }

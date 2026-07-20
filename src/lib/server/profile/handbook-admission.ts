@@ -114,13 +114,17 @@ export async function scanHandbookAdmissionCandidates(
   }
 
   for (const c of pending) {
+    const raw =
+      [c.sceneHint ? `场景：${c.sceneHint}` : '', c.parentQuote ? `家长：${c.parentQuote}` : '', c.childQuote ? `孩子：${c.childQuote}` : '']
+        .filter(Boolean)
+        .join('\n') || c.rawEvidence
     pushGated(items, seen, {
       source: c.source,
       sourceRef: c.sourceRef,
       occurredAt: c.occurredAt,
-      rawEvidence: c.rawEvidence,
-      evidenceRef: c.sourceRef,
-      titleHint: c.contextSummary || c.source,
+      rawEvidence: raw,
+      evidenceRef: c.sourceTraceId || c.sourceRef,
+      titleHint: c.sceneHint || c.contextSummary || c.source,
       contextSummary: c.contextSummary,
     })
   }
@@ -255,13 +259,17 @@ export async function scanHandbookAdmissionCandidatesAllTime(
   }
 
   for (const c of pending) {
+    const raw =
+      [c.sceneHint ? `场景：${c.sceneHint}` : '', c.parentQuote ? `家长：${c.parentQuote}` : '', c.childQuote ? `孩子：${c.childQuote}` : '']
+        .filter(Boolean)
+        .join('\n') || c.rawEvidence
     pushGated(items, seen, {
       source: c.source,
       sourceRef: c.sourceRef,
       occurredAt: c.occurredAt,
-      rawEvidence: c.rawEvidence,
-      evidenceRef: c.sourceRef,
-      titleHint: c.contextSummary || c.source,
+      rawEvidence: raw,
+      evidenceRef: c.sourceTraceId || c.sourceRef,
+      titleHint: c.sceneHint || c.contextSummary || c.source,
       contextSummary: c.contextSummary,
     })
   }

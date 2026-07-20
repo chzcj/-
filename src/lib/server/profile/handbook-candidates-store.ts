@@ -14,6 +14,14 @@ export type HandbookCandidate = {
   occurredAt: string
   weekKey: string
   contextSummary?: string
+  /** 家长原话（优先作 rawEvidence） */
+  parentQuote?: string
+  /** 孩子原话 / 关键句 */
+  childQuote?: string
+  /** 场景提示，如「催作业时」 */
+  sceneHint?: string
+  /** 指向 turn_events.traceId，不复制全文 */
+  sourceTraceId?: string
 }
 
 function candidateItemId(candidateId: string) {

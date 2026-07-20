@@ -55,7 +55,7 @@ export default function MemoryDetailPage() {
             <section className="profile-block" style={{ marginTop: 16 }}>
               <h4>02 · 原文摘录</h4>
               <p className="hint-text">
-                这条记忆发生时的原话还在整理中。若刚触发过手账刷新，稍后再来看通常会补上。
+                本条缺少可溯源原话，暂不展示「原文摘录」。若只是标签或摘要，不会当作家长当时说的话。
               </p>
             </section>
           ) : null}

@@ -69,5 +69,6 @@ export function handbookPageToFeedItem(page: HandbookPage): MemoryFeedItem {
     title: feedTypeLabelFromSource(page.source),
     durationLabel: page.source === 'rehearsal_voice' ? '录音' : undefined,
     linkedTrajectoryId: page.source === 'trajectory_hard' ? page.sourceRef : undefined,
+    hasRawEvidence: Boolean(page.rawEvidence?.trim() && page.rawEvidence.trim().length >= 12),
   }
 }

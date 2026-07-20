@@ -150,17 +150,35 @@ export async function ingestEpisodeStrict(text: string, ctx: IngestContext = {})
 
   if (ctx.familyId && ctx.childId) {
     const tenant = { familyId: ctx.familyId, childId: ctx.childId }
-    const quoteAtom = atomRows.find((a) => a.sourceType === 'child_quote' || a.isHighValue)
-    const rawEvidence = quoteAtom?.content || ep.summary.trim()
-    void import('@/lib/server/profile/handbook-enriched-candidate').then(({ saveEnrichedHandbookCandidate }) =>
-      saveEnrichedHandbookCandidate(tenant, {
-        source: 'episode_atom',
-        sourceRef: quoteAtom?.atomId || episodeId,
-        rawEvidence,
-        contextSummary: ep.summary.trim(),
-        occurredAt: nowIso,
-      })
-    ).catch(() => undefined)
+    const childQuoteAtom = atomRows.find((a) => a.sourceType === 'child_quote')
+    const parentAtom = atomRows.find(
+      (a) => a.sourceType === 'parent_explicit' || a.sourceType === 'material_observation'
+    )
+    const hv = atomRows.find((a) => a.isHighValue)
+    const sceneHint = (ep.sceneTags || []).slice(0, 2).join('·') || undefined
+    const parentQuote = parentAtom?.content || text.trim().slice(0, 400)
+    const childQuote = childQuoteAtom?.content
+    const rawEvidence =
+      [sceneHint ? `场景：${sceneHint}` : '', parentQuote ? `家长：${parentQuote}` : '', childQuote ? `孩子：${childQuote}` : '']
+        .filter(Boolean)
+        .join('\n') ||
+      hv?.content ||
+      ep.summary.trim()
+    void import('@/lib/server/profile/handbook-enriched-candidate')
+      .then(({ saveEnrichedHandbookCandidate }) =>
+        saveEnrichedHandbookCandidate(tenant, {
+          source: 'episode_atom',
+          sourceRef: childQuoteAtom?.atomId || parentAtom?.atomId || hv?.atomId || episodeId,
+          rawEvidence,
+          parentQuote,
+          childQuote,
+          sceneHint,
+          sourceTraceId: ctx.sourceEventId,
+          contextSummary: ep.summary.trim(),
+          occurredAt: nowIso,
+        })
+      )
+      .catch(() => undefined)
   }
 }
 

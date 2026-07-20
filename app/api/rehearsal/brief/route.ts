@@ -8,6 +8,26 @@ import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-b
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { promptRegistry } from '@/lib/server/prompts/registry.generated'
 import { REHEARSAL_SCENES } from '@/data/rehearsalScenes'
+import { EXTENDED_SCENE_SEEDS, type PainClusterId } from '@/lib/server/rehearsal/scene-pain-ranker'
+
+function resolveSceneSeed(sceneId: string) {
+  const fromStatic = REHEARSAL_SCENES.find((s) => s.id === sceneId)
+  if (fromStatic) return fromStatic
+  const ext = EXTENDED_SCENE_SEEDS[sceneId as PainClusterId]
+  if (ext) {
+    return {
+      id: sceneId,
+      title: ext.title,
+      subtitle: ext.subtitle,
+      summary: ext.summary,
+      placeholder: '',
+      seed: ext.seed,
+      openingHint: ext.openingHint,
+      openingChild: ext.openingChild,
+    }
+  }
+  return REHEARSAL_SCENES[0]
+}
 
 export async function POST(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
@@ -15,7 +35,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { sceneId?: string }
     const sceneId = body.sceneId || REHEARSAL_SCENES[0].id
-    const base = REHEARSAL_SCENES.find((s) => s.id === sceneId) || REHEARSAL_SCENES[0]
+    const base = resolveSceneSeed(sceneId)
     const tenant = await resolveTenant()
 
     const [packet, digestLoaded] = await Promise.all([

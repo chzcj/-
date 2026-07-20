@@ -198,8 +198,11 @@ export default function ProfilePage() {
           cached?.hub as { ok?: boolean; data?: HubPayload } | null | undefined
         )?.data?.presentationWatermark?.compositeVersion
         const nextVersion = hub.data?.presentationWatermark?.compositeVersion
-        if (cachedVersion && nextVersion && cachedVersion !== nextVersion) {
-          setUpdateNotice('手账已根据最新记录更新')
+        const packBusy = Boolean(
+          handbookRes.ok && handbookRes.data?.watermark?.handbookRefreshing
+        )
+        if (cachedVersion && nextVersion && cachedVersion !== nextVersion && !packBusy) {
+          setUpdateNotice('手账已根据最新交流更新')
           setTimeout(() => setUpdateNotice(''), 4000)
         }
       } else {
@@ -215,11 +218,20 @@ export default function ProfilePage() {
   )
 
   const bootedRef = useRef(false)
-  const lastRefreshAtRef = useRef(0)
+  /** 5 分钟内不重复 POST daily-refresh，避免状态条来回跳 */
+  const lastDisplayRefreshAtRef = useRef(0)
+  const DISPLAY_REFRESH_DEBOUNCE_MS = 5 * 60 * 1000
 
   const runDisplayRefresh = useCallback(
     async (prevAt: string | null) => {
+      const now = Date.now()
+      if (now - lastDisplayRefreshAtRef.current < DISPLAY_REFRESH_DEBOUNCE_MS) {
+        return
+      }
+      lastDisplayRefreshAtRef.current = now
+
       setBackgroundRefreshing(true)
+      setUpdateNotice('')
       try {
         await apiRequest('/api/account/daily-refresh', { method: 'POST' })
       } catch {
@@ -227,6 +239,11 @@ export default function ProfilePage() {
       }
       await refreshProfile(false, true)
       setBackgroundRefreshing(false)
+      const packRefreshing = Boolean(
+        (readProfileTabCache()?.handbookPack as { ok?: boolean; data?: HandbookPack } | null)?.data
+          ?.watermark?.handbookRefreshing
+      )
+      if (packRefreshing) return
       const nextAt =
         (readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null)?.data
           ?.refreshedAt || null
@@ -270,10 +287,6 @@ export default function ProfilePage() {
 
       bootedRef.current = true
 
-      const now = Date.now()
-      if (now - lastRefreshAtRef.current < 1500) return
-      lastRefreshAtRef.current = now
-
       const prevAt =
         (readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null)?.data
           ?.refreshedAt || refreshedAt
@@ -316,6 +329,17 @@ export default function ProfilePage() {
 
   const hero = handbookPack.hero
   const stats = handbookPack.stats
+  const handbookJobsPending = Boolean(handbookPack.watermark.handbookRefreshing)
+  /** 单一状态：同一时刻只显示一条进度/成功提示 */
+  const statusLine = handbookJobsPending
+    ? { kind: 'pending' as const, text: '手账记忆正在根据过往交流重新整理…' }
+    : backgroundRefreshing
+      ? { kind: 'pending' as const, text: '后台整理中…' }
+      : partialRefreshing
+        ? { kind: 'pending' as const, text: '部分卡片仍在根据最新记录更新' }
+        : updateNotice
+          ? { kind: 'ok' as const, text: updateNotice }
+          : null
 
   return (
     <HiFiMainShell surface='white'>
@@ -323,16 +347,15 @@ export default function ProfilePage() {
         {refreshedAt ? (
           <Text className='profile-refreshed-at'>上次整理：{formatRefreshedAt(refreshedAt)}</Text>
         ) : null}
-        {backgroundRefreshing ? <Text className='muted'>后台整理中…</Text> : null}
-        {handbookPack.watermark.handbookRefreshing ? (
-          <Text className='update-notice update-notice--pending'>
-            手账记忆正在根据过往交流重新整理…
+        {statusLine ? (
+          <Text
+            className={
+              statusLine.kind === 'ok' ? 'update-notice' : 'update-notice update-notice--pending'
+            }
+          >
+            {statusLine.text}
           </Text>
         ) : null}
-        {partialRefreshing && !backgroundRefreshing && !handbookPack.watermark.handbookRefreshing ? (
-          <Text className='update-notice update-notice--pending'>部分卡片仍在根据最新记录更新</Text>
-        ) : null}
-        {updateNotice ? <Text className='update-notice'>{updateNotice}</Text> : null}
 
         {hubLoading ? (
           <View className='loading-wrap'>

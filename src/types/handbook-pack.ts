@@ -28,6 +28,10 @@ export type HandbookPage = {
   weekKey: string
   /** 准入 job 润色完成前可为 false */
   polished?: boolean
+  /** 轻解读缓存（详情二次打开免 LLM） */
+  interpretationCached?: string
+  keyQuotesCached?: string[]
+  lightCachedAt?: string
 }
 
 export type MemoryFeedItem = {
@@ -42,6 +46,8 @@ export type MemoryFeedItem = {
   source?: HandbookAdmissionSource
   occurredAt: string
   sourceRef: string
+  /** 是否有可溯源原文（Top3 / 详情 02） */
+  hasRawEvidence?: boolean
   title?: string
   durationLabel?: string
   linkedTrajectoryId?: string

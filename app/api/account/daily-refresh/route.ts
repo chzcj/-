@@ -15,9 +15,10 @@ export async function POST(request: Request) {
     const windowKey = getRollingWindowKey()
     const refreshPromise = runDailyPortraitRefresh(tenant)
 
-    void maybeEnqueueHandbookRefresh(tenant).catch((err) =>
+    const handbookRefresh = await maybeEnqueueHandbookRefresh(tenant).catch((err) => {
       console.warn('[account/daily-refresh] handbook refresh check failed:', err)
-    )
+      return { enqueued: false, reason: 'error' as const }
+    })
 
     void getGrowthTrajectorySourceHash(tenant)
       .then((sourceHash) =>
@@ -30,12 +31,15 @@ export async function POST(request: Request) {
       )
       .catch(() => {})
 
-    void enqueueJob(
-      'weekly_handbook_update',
-      { tenant },
-      handbookJobKey(tenant, windowKey),
-      null
-    ).catch(() => {})
+    // 仅健康刷新未入队时，用稳定 week key 幂等补一次周手账（已成功则 ON CONFLICT 跳过）
+    if (!handbookRefresh.enqueued && handbookRefresh.reason === 'ok') {
+      void enqueueJob(
+        'weekly_handbook_update',
+        { tenant },
+        handbookJobKey(tenant, windowKey),
+        null
+      ).catch(() => {})
+    }
 
     await forceLoginJobCheck(tenant).catch((err) => {
       console.warn('[account/daily-refresh] 登录补跑 job 失败:', err)

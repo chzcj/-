@@ -7,9 +7,9 @@ import {
   getFamilyInteractionCycles,
   getLatestBuiltProfileSnapshot,
   getLatestEvidenceNetwork,
-  getMergedParentInputHistory,
   getPendingHypotheses,
 } from '@/lib/server/memory/database-manager'
+import { gatherParentVerbatimTexts } from '@/lib/server/memory/gather-parent-verbatim'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { DailyThinkingChip } from '@/types/daily-message'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
@@ -22,6 +22,8 @@ import {
 import { enrichPortraitCards } from '@/lib/server/profile/portrait-card-enrich'
 import type { DailyPortraitCards } from '@/types/portrait-card'
 import { truncateSummary } from '@/types/portrait-card'
+import type { HighlightMoment } from '@/types/highlight-moment'
+import { normalizeHighlightsInput } from '@/types/highlight-moment'
 
 const LAYER = 'daily_ui_snapshot'
 const ITEM_ID = 'latest'
@@ -33,6 +35,7 @@ export type DailyUiSnapshot = {
   portraitCards: DailyPortraitCards
   /** 孩子近期的闪光点（展示层） */
   highlights?: string[]
+  highlightMoments?: HighlightMoment[]
   refreshedAt: string
   source: 'llm' | 'fallback'
 }
@@ -59,17 +62,6 @@ export async function loadDailyUiSnapshot(tenant: TenantId): Promise<DailyUiSnap
 function truncate(text: string, max = 36): string {
   const t = text.trim()
   return t.length <= max ? t : `${t.slice(0, max).replace(/[，,。：:；;]$/, '')}…`
-}
-
-function normalizeHighlights(raw: unknown, prev?: string[]): string[] {
-  const fromLlm = Array.isArray(raw)
-    ? raw
-        .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
-        .map((x) => x.trim().slice(0, 48))
-        .slice(0, 5)
-    : []
-  if (fromLlm.length) return fromLlm
-  return (prev || []).slice(0, 5)
 }
 
 /** 无 LLM 兜底：真实字段拼人话，禁止假模板。 */
@@ -128,16 +120,41 @@ type RefreshContext = {
   builtEvidence: Array<{ sourceLabel: string; evidenceText: string; explanation?: string }>
   builtVerification: Array<{ title: string; description: string }>
   builtDeepMechanism: string
+  /** 材料门槛：不足时 LLM no-op（保留旧快照），不降刷新触发频率 */
+  materialThreshold: { met: boolean; reason: string }
+}
+
+function portraitMaterialThreshold(ctx: {
+  recentInputs: string[]
+  built: Awaited<ReturnType<typeof getLatestBuiltProfileSnapshot>>
+  topMechanisms: string[]
+  familyCycles: string[]
+}): { met: boolean; reason: string } {
+  const verbatimOk = ctx.recentInputs.filter((t) => (t || '').trim().length >= 8).length
+  const hasBuilt =
+    !!ctx.built &&
+    (!isPlaceholderProfileText(ctx.built.coreJudgment) ||
+      !isPlaceholderProfileText(ctx.built.supportFocus))
+  const hasMechanism = ctx.topMechanisms.length > 0 || ctx.familyCycles.length > 0
+  // 原话≥3 或已有建成画像/机制材料 → 可跑 LLM；否则 no-op 保旧图
+  if (verbatimOk >= 3) return { met: true, reason: `verbatim>=3(${verbatimOk})` }
+  if (hasBuilt) return { met: true, reason: 'built_profile' }
+  if (hasMechanism) return { met: true, reason: 'mechanism_or_cycle' }
+  return { met: false, reason: '原话不足3条且无建成画像/机制材料' }
 }
 
 /** 厚喂料：禁止保守切片——多给机制/循环/假设/原话。 */
+export async function gatherPortraitRefreshContext(tenant: TenantId): Promise<RefreshContext> {
+  return gatherRefreshContext(tenant)
+}
+
 async function gatherRefreshContext(tenant: TenantId): Promise<RefreshContext> {
-  const [built, network, cycles, hypotheses, history] = await Promise.all([
+  const [built, network, cycles, hypotheses, recentInputs] = await Promise.all([
     getLatestBuiltProfileSnapshot(tenant).catch(() => null),
     getLatestEvidenceNetwork(tenant).catch(() => null),
     getFamilyInteractionCycles(tenant).catch(() => []),
     getPendingHypotheses(tenant).catch(() => []),
-    getMergedParentInputHistory(tenant, 30).catch(() => []),
+    gatherParentVerbatimTexts(tenant, { limit: 20, maxChars: 800 }).catch(() => [] as string[]),
   ])
 
   const matrix = network?.candidateMechanismMatrix || []
@@ -162,12 +179,6 @@ async function gatherRefreshContext(tenant: TenantId): Promise<RefreshContext> {
     .slice(0, 12)
     .map((h) => truncate(h.hypothesis, 120))
 
-  const recentInputs = history
-    .map((h) => h.text)
-    .filter(Boolean)
-    .map((t) => truncate(t, 200))
-    .slice(0, 30)
-
   const builtEvidence = (built?.evidence || [])
     .filter((e) => e.evidenceText?.trim())
     .slice(0, 12)
@@ -185,6 +196,13 @@ async function gatherRefreshContext(tenant: TenantId): Promise<RefreshContext> {
       description: truncate(v.description || '', 160),
     }))
 
+  const materialThreshold = portraitMaterialThreshold({
+    recentInputs,
+    built,
+    topMechanisms,
+    familyCycles,
+  })
+
   return {
     built,
     topMechanisms,
@@ -194,6 +212,7 @@ async function gatherRefreshContext(tenant: TenantId): Promise<RefreshContext> {
     builtEvidence,
     builtVerification,
     builtDeepMechanism: (built?.deepMechanism || '').trim().slice(0, 800),
+    materialThreshold,
   }
 }
 
@@ -206,7 +225,13 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
   const digest = await buildDeepModelDigest(tenant).catch(() => null)
   const digestPack = pickDeepModelDigestPack(digest, { forceThick: true })
 
+  // 材料不足：保留旧快照（observable no-op），不降客户端刷新触发频率
+  if (!ctx.materialThreshold.met && prev?.thinkingChips?.length) {
+    return prev
+  }
+
   const payload = {
+    materialThreshold: ctx.materialThreshold,
     coreJudgment: isPlaceholderProfileText(ctx.built?.coreJudgment) ? '' : (ctx.built?.coreJudgment || ''),
     supportFocus: isPlaceholderProfileText(ctx.built?.supportFocus) ? '' : (ctx.built?.supportFocus || ''),
     completeness: ctx.built?.completeness ?? 0,
@@ -228,6 +253,7 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
     thinkingChips: DailyThinkingChip[]
     portraitCards: DailyPortraitCards
     highlights?: string[]
+    highlightMoments?: HighlightMoment[]
   }>(displaySystem(promptRegistry.dailyPortraitRefresh), payload, {
     maxTokens: 6144,
     disableThinking: frontAiThinkingDisabled(),
@@ -235,19 +261,33 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
 
   const snapshot: DailyUiSnapshot =
     llmCards && Array.isArray(llmCards.thinkingChips) && llmCards.thinkingChips.length > 0
-      ? {
-          thinkingChips: llmCards.thinkingChips.slice(0, 4),
-          portraitCards: llmCards.portraitCards || {},
-          highlights: normalizeHighlights(llmCards.highlights, prev?.highlights),
-          refreshedAt: new Date().toISOString(),
-          source: 'llm',
-        }
+      ? (() => {
+          const highlightMoments = normalizeHighlightsInput(
+            llmCards.highlightMoments || llmCards.highlights,
+            prev?.highlightMoments || prev?.highlights
+          )
+          return {
+            thinkingChips: llmCards.thinkingChips.slice(0, 4),
+            portraitCards: llmCards.portraitCards || {},
+            highlightMoments,
+            highlights: highlightMoments.map((h) => h.teaser),
+            refreshedAt: new Date().toISOString(),
+            source: 'llm' as const,
+          }
+        })()
       : (() => {
           const fb = buildFallbackSnapshot(ctx, digestPack)
+          const highlightMoments = normalizeHighlightsInput(
+            undefined,
+            prev?.highlightMoments || prev?.highlights
+          )
           return {
             ...fb,
-            highlights: normalizeHighlights(undefined, prev?.highlights).length
-              ? normalizeHighlights(undefined, prev?.highlights)
+            highlightMoments: highlightMoments.length
+              ? highlightMoments
+              : normalizeHighlightsInput(fb.highlights),
+            highlights: highlightMoments.length
+              ? highlightMoments.map((h) => h.teaser)
               : fb.highlights,
           }
         })()
@@ -258,7 +298,10 @@ export async function runDailyPortraitRefresh(tenant: TenantId): Promise<DailyUi
     preferLlm: snapshot.source === 'llm',
   })
 
-  if (!snapshot.highlights?.length && prev?.highlights?.length) {
+  if (!snapshot.highlightMoments?.length && prev?.highlightMoments?.length) {
+    snapshot.highlightMoments = prev.highlightMoments
+    snapshot.highlights = prev.highlightMoments.map((h) => h.teaser)
+  } else if (!snapshot.highlights?.length && prev?.highlights?.length) {
     snapshot.highlights = prev.highlights
   }
 
