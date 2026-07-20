@@ -60,12 +60,15 @@ function truncate(text: string, max = 72) {
   return `${value.slice(0, max).trim()}…`
 }
 
-function matchSceneFromText(text: string): RehearsalScene {
+function matchSceneFromText(text: string, pool: RehearsalScene[]): RehearsalScene {
+  const list = pool.length ? pool : REHEARSAL_SCENES
   const t = text || ''
-  if (/手机/.test(t)) return REHEARSAL_SCENES.find((s) => s.id === 'phone') || REHEARSAL_SCENES[0]
+  if (/手机|平板|游戏/.test(t)) return list.find((s) => s.id === 'phone') || list[0]
+  if (/起床|出门|迟到|早上/.test(t)) return list.find((s) => s.id === 'morning') || list[0]
+  if (/成绩|分数|考试|卷子/.test(t)) return list.find((s) => s.id === 'grades') || list[0]
   if (/吵|说重了|僵|修复|老师|学校|告状/.test(t))
-    return REHEARSAL_SCENES.find((s) => s.id === 'after_conflict') || REHEARSAL_SCENES[0]
-  return REHEARSAL_SCENES.find((s) => s.id === 'homework_start') || REHEARSAL_SCENES[0]
+    return list.find((s) => s.id === 'after_conflict') || list[0]
+  return list.find((s) => s.id === 'homework_start') || list[0]
 }
 
 export default function RehearsalPage() {
@@ -76,6 +79,8 @@ export default function RehearsalPage() {
   })
   const [step, setStep] = useState<SimulationStep>('entry')
   const [scenes, setScenes] = useState<RehearsalScene[]>(REHEARSAL_SCENES)
+  const [scenesLoading, setScenesLoading] = useState(true)
+  const [rankedFromDialogue, setRankedFromDialogue] = useState(false)
   const [selectedId, setSelectedId] = useState(REHEARSAL_SCENES[0].id)
   const [summary, setSummary] = useState(REHEARSAL_SCENES[0].summary)
   const [sceneTitle, setSceneTitle] = useState(REHEARSAL_SCENES[0].title)
@@ -120,7 +125,8 @@ export default function RehearsalPage() {
       if (dialogueCtx && typeof dialogueCtx === 'object' && dialogueCtx.sceneSummary) {
         Taro.removeStorageSync(REHEARSAL_DIALOGUE_CONTEXT_KEY)
         const matched = matchSceneFromText(
-          `${dialogueCtx.sceneTitle || ''} ${dialogueCtx.sceneSummary || ''}`
+          `${dialogueCtx.sceneTitle || ''} ${dialogueCtx.sceneSummary || ''}`,
+          scenes
         )
         setSelectedId(matched.id)
         setSceneTitle(dialogueCtx.sceneTitle || matched.title)
@@ -134,7 +140,7 @@ export default function RehearsalPage() {
         Taro.removeStorageSync(REHEARSAL_HANDOFF_KEY)
         const matched =
           scenes.find((s) => s.id === handoff.sceneId) ||
-          matchSceneFromText(handoff.seedText || handoff.parentText || '')
+          matchSceneFromText(handoff.seedText || handoff.parentText || '', scenes)
         setSelectedId(matched.id)
         setSceneTitle(matched.title)
         setSummary(
@@ -153,7 +159,7 @@ export default function RehearsalPage() {
       const matched =
         scenes.find(
           (s) => s.title.includes(seedText) || s.seed === seedText || seedText.includes(s.title.slice(0, 2))
-        ) || matchSceneFromText(seedText)
+        ) || matchSceneFromText(seedText, scenes)
       setSelectedId(matched.id)
       setSummary(seedText.length > 40 ? seedText : matched.summary)
       setSceneTitle(matched.title)
@@ -166,8 +172,17 @@ export default function RehearsalPage() {
 
   useEffect(() => {
     void (async () => {
-      const res = await apiRequest<{ scenes?: RehearsalScene[] }>('/api/rehearsal/scenes')
-      if (!res.ok || !res.data.scenes?.length) return
+      setScenesLoading(true)
+      const res = await apiRequest<{
+        scenes?: RehearsalScene[]
+        rankedFromDialogue?: boolean
+      }>('/api/rehearsal/scenes')
+      if (!res.ok || !res.data.scenes?.length) {
+        setScenesLoading(false)
+        setRankedFromDialogue(false)
+        return
+      }
+      setRankedFromDialogue(Boolean(res.data.rankedFromDialogue))
       // API 已按对话痛点 Top5 排序；不再锁死静态 3 seed
       const next = res.data.scenes!.map((patch) => {
         const base = REHEARSAL_SCENES.find((s) => s.id === patch.id)
@@ -186,11 +201,12 @@ export default function RehearsalPage() {
         } satisfies RehearsalScene
       })
       setScenes(next)
-      if (next[0] && !REHEARSAL_SCENES.some((s) => s.id === selectedId)) {
+      if (next[0] && !next.some((s) => s.id === selectedId)) {
         setSelectedId(next[0].id)
         setSceneTitle(next[0].title)
         setSummary(next[0].summary)
       }
+      setScenesLoading(false)
     })()
   }, [])
 
@@ -574,26 +590,38 @@ export default function RehearsalPage() {
 
           <View className='section-head-row'>
             <Text className='section-label'>从对话里提出的痛点</Text>
-            <Text className='section-head-meta muted'>高频场景</Text>
+            <Text className='section-head-meta muted'>
+              {scenesLoading ? '整理中…' : rankedFromDialogue ? '按近期交流排序' : '可练场景'}
+            </Text>
           </View>
 
           <View className='scenario-grid'>
-            {scenes.map((scene) => (
+            {scenesLoading ? (
+              <Text className='muted' style={{ padding: '12px 4px' }}>
+                正在根据交流整理痛点场景…
+              </Text>
+            ) : null}
+            {!scenesLoading
+              ? scenes.map((scene) => (
               <View
                 key={scene.id}
                 className={`scenario-card scene-card${selectedId === scene.id ? ' active' : ''}`}
                 onClick={() => selectScenario(scene.id)}
               >
                 <View className='scene-meta'>
-                  <Text className='scene-tag'>对话提取</Text>
                   {scene.mentionCountHint ? (
-                    <Text className='scene-tag scene-tag--muted'>{scene.mentionCountHint}</Text>
-                  ) : null}
+                    <Text className='scene-tag'>{scene.mentionCountHint}</Text>
+                  ) : rankedFromDialogue ? (
+                    <Text className='scene-tag scene-tag--muted'>可练场景</Text>
+                  ) : (
+                    <Text className='scene-tag scene-tag--muted'>示例场景</Text>
+                  )}
                 </View>
                 <Text className='scenario-title'>{scene.title}</Text>
                 <Text className='scenario-desc muted'>{scene.lede || scene.subtitle}</Text>
               </View>
-            ))}
+                ))
+              : null}
           </View>
           <Text className='pill primary wide-pill' onClick={() => void startSimulation()}>
             {briefLoading ? '正在整理场景…' : '开始预演'}

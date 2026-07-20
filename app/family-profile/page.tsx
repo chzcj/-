@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
 import {
@@ -56,6 +56,9 @@ export default function FamilyProfilePage() {
   const [updateNotice, setUpdateNotice] = useState('')
   const [structuralTensions, setStructuralTensions] = useState<StructuralTension[]>([])
   const [handbookPack, setHandbookPack] = useState<HandbookPack>(DEFAULT_HANDBOOK_PACK)
+  /** 5 分钟内不重复 POST daily-refresh，对齐小程序，避免状态条闪跳 */
+  const lastDisplayRefreshAtRef = useRef(0)
+  const DISPLAY_REFRESH_DEBOUNCE_MS = 5 * 60 * 1000
 
   const applyHubData = useCallback((hub: { ok?: boolean; data?: Record<string, unknown> } | null) => {
     if (!hub?.ok || !hub.data) return
@@ -155,6 +158,39 @@ export default function FamilyProfilePage() {
     [applyHandbookPack, applyHubData, refreshing, syncLocalProfile]
   )
 
+  const runDisplayRefresh = useCallback(
+    async (prevAt: string | null) => {
+      const now = Date.now()
+      if (now - lastDisplayRefreshAtRef.current < DISPLAY_REFRESH_DEBOUNCE_MS) {
+        return
+      }
+      lastDisplayRefreshAtRef.current = now
+
+      setBackgroundRefreshing(true)
+      setUpdateNotice('')
+      try {
+        await fetch('/api/account/daily-refresh', { method: 'POST', credentials: 'include' })
+      } catch {
+        /* ignore */
+      }
+      await refreshProfile(false, true)
+      setBackgroundRefreshing(false)
+      const packRefreshing = Boolean(
+        (readProfileTabCache()?.handbookPack as { ok?: boolean; data?: HandbookPack } | null)?.data
+          ?.watermark?.handbookRefreshing
+      )
+      if (packRefreshing) return
+      const nextAt = (
+        readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null
+      )?.data?.refreshedAt
+      if (nextAt && prevAt && nextAt !== prevAt) {
+        setUpdateNotice('手账已根据最新交流更新')
+        window.setTimeout(() => setUpdateNotice(''), 4000)
+      }
+    },
+    [refreshProfile]
+  )
+
   useEffect(() => {
     let cancelled = false
     const boot = async () => {
@@ -174,30 +210,13 @@ export default function FamilyProfilePage() {
       const prevAt =
         (readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null)?.data
           ?.refreshedAt || null
-      setBackgroundRefreshing(true)
-      try {
-        await fetch('/api/account/daily-refresh', { method: 'POST', credentials: 'include' })
-      } catch {
-        /* ignore */
-      }
-      if (cancelled) return
-      await refreshProfile(false, true)
-      if (!cancelled) {
-        setBackgroundRefreshing(false)
-        const nextAt = (
-          readProfileTabCache()?.hub as { ok?: boolean; data?: { refreshedAt?: string } } | null
-        )?.data?.refreshedAt
-        if (nextAt && prevAt && nextAt !== prevAt) {
-          setUpdateNotice('手账已根据最新交流更新')
-          window.setTimeout(() => setUpdateNotice(''), 4000)
-        }
-      }
+      await runDisplayRefresh(prevAt)
     }
     void boot()
     return () => {
       cancelled = true
     }
-  }, [applyHandbookPack, applyHubData, refreshProfile, syncLocalProfile])
+  }, [applyHandbookPack, applyHubData, refreshProfile, runDisplayRefresh, syncLocalProfile])
 
   const hasLocalProfile = profileReady || hasProfile()
   const profileCards = useMemo(
@@ -226,6 +245,15 @@ export default function FamilyProfilePage() {
 
   const hero = handbookPack.hero
   const stats = handbookPack.stats
+  const handbookJobsPending = Boolean(handbookPack.watermark.handbookRefreshing)
+  /** 单一状态：同一时刻只显示一条进度/成功提示 */
+  const statusLine = handbookJobsPending
+    ? { kind: 'pending' as const, text: '手账记忆正在根据过往交流重新整理…' }
+    : backgroundRefreshing
+      ? { kind: 'pending' as const, text: '后台整理中…' }
+      : updateNotice
+        ? { kind: 'ok' as const, text: updateNotice }
+        : null
 
   return (
     <OnboardingGuard>
@@ -234,15 +262,12 @@ export default function FamilyProfilePage() {
           {refreshedAt ? (
             <p className="profile-refreshed-at">上次整理：{formatRefreshedAt(refreshedAt)}</p>
           ) : null}
-          {backgroundRefreshing ? <p className="hint-text">后台整理中…</p> : null}
-          {handbookPack.watermark.handbookRefreshing ? (
-            <p className="hint-text update-notice-pending">
-              手账记忆正在根据过往交流重新整理…
-            </p>
-          ) : null}
-          {updateNotice ? (
-            <p className="hint-text" style={{ color: '#6f9f56' }}>
-              {updateNotice}
+          {statusLine ? (
+            <p
+              className="hint-text"
+              style={statusLine.kind === 'ok' ? { color: '#6f9f56' } : undefined}
+            >
+              {statusLine.text}
             </p>
           ) : null}
 

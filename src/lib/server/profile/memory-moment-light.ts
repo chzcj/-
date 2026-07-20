@@ -13,14 +13,7 @@ import { handbookPageToFeedItem } from '@/lib/profile/handbook-feed-map'
 import { loadHandbookPage, saveHandbookPage } from '@/lib/server/profile/handbook-pages-store'
 import { loadDailyUiSnapshot } from '@/lib/server/profile/daily-refresh-agent'
 import type { HandbookPage, MemoryMomentDetail } from '@/types/handbook-pack'
-
-function looksLikeGenericSummary(text: string): boolean {
-  const t = text.trim()
-  if (t.length < 8) return true
-  if (/本周出现|记录下当前|还在整理|缺少可溯源/.test(t)) return true
-  if (/^(交流|预演|任务反馈|画像更新)/.test(t) && t.length < 20) return true
-  return false
-}
+import { looksLikeGenericSummary } from '@/lib/profile/handbook-evidence'
 
 async function resolveEvidenceBody(
   tenant: TenantId,

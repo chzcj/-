@@ -19,7 +19,7 @@ function itemScore(item: MemoryFeedItem): number {
   return score
 }
 
-/** 近7天 Top3：可读性优先；无原话证据的不进 Top3 */
+/** 近7天 Top3：可读性优先；无明确可溯源原话的不进 Top3 */
 export function curateMemoryFeedPreview(items: MemoryFeedItem[], limit = 3): MemoryFeedItem[] {
   const seen = new Set<string>()
   return [...items]
@@ -27,9 +27,8 @@ export function curateMemoryFeedPreview(items: MemoryFeedItem[], limit = 3): Mem
     .filter((item) => {
       const key = (item.displayLine || item.snippet || '').trim()
       if (!key || seen.has(key)) return false
-      if (item.hasRawEvidence === false) return false
-      // 未显式标记时：snippet/why 过短且像标签则剔除
-      if (item.hasRawEvidence === undefined && isBadHandbookPage(key, key, item.source)) return false
+      // 仅 hasRawEvidence===true 准入（摘要冒充原话在 feed-map 已标 false）
+      if (item.hasRawEvidence !== true) return false
       seen.add(key)
       return !isBadHandbookPage(key, key, item.source)
     })

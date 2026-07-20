@@ -87,14 +87,16 @@ assert('handbookRefreshing' in mockPack.watermark || mockPack.watermark.handbook
 
 console.log('\n5. curateMemoryFeedPreview Top3')
 const feed = [
-  { id: '1', type: 'hard', displayLine: '家庭难题本周出现', snippet: '家庭难题本周出现', occurredAt: '2026-07-16', sourceRef: 'a', keyword: '难题' },
-  { id: '2', type: 'voice', displayLine: '催作业时声调又抬高', teaser: '预演里练过更轻的开口', whyIncluded: '预演记录了冲突升级瞬间，方便对照怎么改口。', occurredAt: '2026-07-17', sourceRef: 'b', keyword: '预演' },
-  { id: '3', type: 'shine', displayLine: '自己拿出作业本开工', teaser: '少见的主动过渡', occurredAt: '2026-07-18', sourceRef: 'c', keyword: '作业' },
-  { id: '4', type: 'diary', displayLine: '回家路上主动说了学校的事', occurredAt: '2026-07-19', sourceRef: 'd', keyword: '学校' },
+  { id: '1', type: 'hard', displayLine: '家庭难题本周出现', snippet: '家庭难题本周出现', occurredAt: '2026-07-16', sourceRef: 'a', keyword: '难题', hasRawEvidence: false },
+  { id: '2', type: 'voice', displayLine: '催作业时声调又抬高', teaser: '预演里练过更轻的开口', whyIncluded: '预演记录了冲突升级瞬间，方便对照怎么改口。', occurredAt: '2026-07-17', sourceRef: 'b', keyword: '预演', hasRawEvidence: true },
+  { id: '3', type: 'shine', displayLine: '自己拿出作业本开工', teaser: '少见的主动过渡', occurredAt: '2026-07-18', sourceRef: 'c', keyword: '作业', hasRawEvidence: true },
+  { id: '4', type: 'diary', displayLine: '回家路上主动说了学校的事', occurredAt: '2026-07-19', sourceRef: 'd', keyword: '学校', hasRawEvidence: true },
+  { id: '5', type: 'shine', displayLine: '交流本周出现', occurredAt: '2026-07-19', sourceRef: 'e', keyword: '交流', hasRawEvidence: false },
 ]
 const top3 = curateMemoryFeedPreview(feed, 3)
 assert(top3.length === 3, 'Top3 数量')
 assert(!top3.some((i) => i.displayLine.includes('家庭难题本周出现')), '劣质 hard 被降权/剔除')
+assert(!top3.some((i) => i.hasRawEvidence === false), '无原话证据不进 Top3')
 assert(top3[0].type === 'voice' || top3[0].type === 'shine', 'voice/shine 优先')
 
 console.log(`\n=== 结果: ${pass} pass, ${fail} fail ===`)

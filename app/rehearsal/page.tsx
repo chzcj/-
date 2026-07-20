@@ -65,6 +65,8 @@ function mapAnalyzeToSecondMe(data: RehearsalAnalyzeData) {
 export default function RehearsalPage() {
   const [step, setStep] = useState<SimulationStep>('entry')
   const [scenes, setScenes] = useState<RehearsalScene[]>(REHEARSAL_SCENES)
+  const [scenesLoading, setScenesLoading] = useState(true)
+  const [rankedFromDialogue, setRankedFromDialogue] = useState(false)
   const [selectedId, setSelectedId] = useState(REHEARSAL_SCENES[0].id)
   const [summary, setSummary] = useState(REHEARSAL_SCENES[0].summary)
   const [sceneTitle, setSceneTitle] = useState(REHEARSAL_SCENES[0].title)
@@ -87,20 +89,31 @@ export default function RehearsalPage() {
     scenes.find((s) => s.id === selectedId) || scenes[0] || REHEARSAL_SCENES[0]
 
   function matchSceneFromText(raw: string): RehearsalScene {
+    const pool = scenes.length ? scenes : REHEARSAL_SCENES
     const t = raw || ''
-    if (/手机/.test(t)) return scenes.find((s) => s.id === 'phone') || REHEARSAL_SCENES[0]
+    if (/手机|平板|游戏/.test(t)) return pool.find((s) => s.id === 'phone') || pool[0]
+    if (/起床|出门|迟到|早上/.test(t)) return pool.find((s) => s.id === 'morning') || pool[0]
+    if (/成绩|分数|考试|卷子/.test(t)) return pool.find((s) => s.id === 'grades') || pool[0]
     if (/吵|说重了|僵|修复|老师|学校|告状/.test(t)) {
-      return scenes.find((s) => s.id === 'after_conflict') || REHEARSAL_SCENES[0]
+      return pool.find((s) => s.id === 'after_conflict') || pool[0]
     }
-    return scenes.find((s) => s.id === 'homework_start') || REHEARSAL_SCENES[0]
+    return pool.find((s) => s.id === 'homework_start') || pool[0]
   }
 
   useEffect(() => {
     void (async () => {
+      setScenesLoading(true)
       try {
         const res = await fetch('/api/rehearsal/scenes')
-        const json = (await res.json()) as { ok?: boolean; data?: { scenes?: RehearsalScene[] } }
-        if (!json.ok || !json.data?.scenes?.length) return
+        const json = (await res.json()) as {
+          ok?: boolean
+          data?: { scenes?: RehearsalScene[]; rankedFromDialogue?: boolean }
+        }
+        if (!json.ok || !json.data?.scenes?.length) {
+          setRankedFromDialogue(false)
+          return
+        }
+        setRankedFromDialogue(Boolean(json.data.rankedFromDialogue))
         const next = json.data.scenes.map((patch) => {
           const base = REHEARSAL_SCENES.find((s) => s.id === patch.id)
           return {
@@ -120,6 +133,8 @@ export default function RehearsalPage() {
         setScenes(next)
       } catch {
         /* keep static */
+      } finally {
+        setScenesLoading(false)
       }
     })()
   }, [])
@@ -492,12 +507,17 @@ export default function RehearsalPage() {
             <div className="section-head-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span className="section-label">从对话里提出的痛点</span>
               <span className="hint-text" style={{ fontSize: 12 }}>
-                高频场景
+                {scenesLoading ? '整理中…' : rankedFromDialogue ? '按近期交流排序' : '可练场景'}
               </span>
             </div>
 
             <div className="scenario-grid" id="scenarioGrid">
-              {scenes.map((scene) => (
+              {scenesLoading ? (
+                <p className="hint-text" style={{ padding: '12px 4px' }}>
+                  正在根据交流整理痛点场景…
+                </p>
+              ) : (
+                scenes.map((scene) => (
                 <button
                   key={scene.id}
                   type="button"
@@ -505,15 +525,19 @@ export default function RehearsalPage() {
                   onClick={() => selectScenario(scene)}
                 >
                   <div className="scene-meta">
-                    <span className="scene-tag">对话提取</span>
                     {scene.mentionCountHint ? (
-                      <span className="scene-tag scene-tag--muted">{scene.mentionCountHint}</span>
-                    ) : null}
+                      <span className="scene-tag">{scene.mentionCountHint}</span>
+                    ) : rankedFromDialogue ? (
+                      <span className="scene-tag scene-tag--muted">可练场景</span>
+                    ) : (
+                      <span className="scene-tag scene-tag--muted">示例场景</span>
+                    )}
                   </div>
                   <span className="scenario-title">{scene.title}</span>
                   <span className="scenario-desc">{scene.lede || scene.subtitle}</span>
                 </button>
-              ))}
+                ))
+              )}
             </div>
           </section>
 

@@ -23,6 +23,21 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-20 03:25 | Cursor | 验收缝补丁：Top3 原话判定 + Web debounce + 预演去假标签
+
+**本卷只改 / 不改**
+- 只改：`hasTraceableRawEvidence` 共享判定；Web 画像 5min debounce+单一 statusLine；预演 loading/标签/matchScene
+- 不改：Phase5 像素、onboarding/prose WIP、语音
+
+**为什么**
+- 全面审计后最大家长痛点缝：摘要冒充进 Top3、Web 状态闪、预演永远「对话提取」
+
+**验证**
+- typecheck ✓；handbook-pack 25/25；deploy ready；build:weapp ✓
+
+**下一步**
+- 真机看 Top3/预演标签；WIP 分卷（onboarding / prose）另开
+
 ## 2026-07-20 03:15 | Cursor | 已 push：分步记忆/手账/画像/Top5（7373064）
 
 **做了什么**

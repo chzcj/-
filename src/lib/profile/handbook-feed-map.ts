@@ -1,4 +1,5 @@
 import type { HandbookAdmissionSource, HandbookPage, MemoryFeedItem, MemoryFeedType } from '@/types/handbook-pack'
+import { hasTraceableRawEvidence } from '@/lib/profile/handbook-evidence'
 
 export function handbookPageId(source: string, sourceRef: string) {
   return `${source}:${sourceRef}`
@@ -69,6 +70,6 @@ export function handbookPageToFeedItem(page: HandbookPage): MemoryFeedItem {
     title: feedTypeLabelFromSource(page.source),
     durationLabel: page.source === 'rehearsal_voice' ? '录音' : undefined,
     linkedTrajectoryId: page.source === 'trajectory_hard' ? page.sourceRef : undefined,
-    hasRawEvidence: Boolean(page.rawEvidence?.trim() && page.rawEvidence.trim().length >= 12),
+    hasRawEvidence: hasTraceableRawEvidence(page.rawEvidence),
   }
 }
