@@ -107,11 +107,39 @@ export default function ProfileMemoryDetailPage() {
               </View>
             ) : null}
 
-            {detail.keyQuotes?.length ? (
+            {detail.evidenceBody ? (
               <View className='detail-section-card is-open'>
                 <View className='detail-section-head'>
                   <View className='detail-section-index'>
                     <Text>02</Text>
+                  </View>
+                  <Text className='detail-section-title'>原文摘录</Text>
+                </View>
+                <View className='detail-section-body memory-detail-body detail-evidence-body'>
+                  <Text className='memory-detail-prose memory-detail-evidence'>{detail.evidenceBody}</Text>
+                </View>
+              </View>
+            ) : detail.whyIncluded ? (
+              <View className='detail-section-card is-open detail-section-card--muted'>
+                <View className='detail-section-head'>
+                  <View className='detail-section-index'>
+                    <Text>02</Text>
+                  </View>
+                  <Text className='detail-section-title'>原文摘录</Text>
+                </View>
+                <View className='detail-section-body memory-detail-body'>
+                  <Text className='muted memory-detail-prose'>
+                    这条记忆发生时的原话还在整理中。若刚触发过手账刷新，稍后再来看通常会补上。
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {detail.keyQuotes?.length ? (
+              <View className='detail-section-card is-open'>
+                <View className='detail-section-head'>
+                  <View className='detail-section-index'>
+                    <Text>{detail.evidenceBody || detail.whyIncluded ? '03' : '02'}</Text>
                   </View>
                   <Text className='detail-section-title'>提炼关键句</Text>
                 </View>

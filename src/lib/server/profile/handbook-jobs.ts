@@ -27,11 +27,16 @@ import type { HandbookPage } from '@/types/handbook-pack'
 async function polishAndSaveNewPages(
   tenant: TenantId,
   pages: HandbookPageWithMeta[]
-): Promise<number> {
+): Promise<{ saved: number; skippedNoEvidence: number; skippedUnpolishable: number }> {
   let saved = 0
+  let skippedNoEvidence = 0
+  let skippedUnpolishable = 0
   for (const page of pages) {
     const raw = page.rawEvidence || page.rawFallback || ''
-    if (!raw.trim()) continue
+    if (!raw.trim()) {
+      skippedNoEvidence++
+      continue
+    }
     const polished = await polishHandbookLine({
       source: page.source,
       rawEvidence: raw,
@@ -40,6 +45,7 @@ async function polishAndSaveNewPages(
       occurredAt: page.occurredAt,
     })
     if (!polished.accepted) {
+      skippedUnpolishable++
       console.info('[handbook-jobs] skip unpolishable page', page.pageId)
       continue
     }
@@ -61,7 +67,7 @@ async function polishAndSaveNewPages(
     await saveHandbookPage(tenant, stored)
     saved++
   }
-  return saved
+  return { saved, skippedNoEvidence, skippedUnpolishable }
 }
 
 /** 润色尚未 polished 的页（幂等） */
@@ -112,7 +118,8 @@ export async function runHandbookPurgeBadPages(tenant: TenantId): Promise<number
 export async function runHandbookPageAdmit(tenant: TenantId): Promise<number> {
   const weekKey = getRollingWindowKey()
   const newPages = await admitHandbookCandidates(tenant, weekKey)
-  const admitted = newPages.length ? await polishAndSaveNewPages(tenant, newPages) : 0
+  const polishStats = newPages.length ? await polishAndSaveNewPages(tenant, newPages) : null
+  const admitted = polishStats?.saved ?? 0
   await polishUnpolishedPages(tenant, weekKey).catch(() => 0)
   return admitted
 }
@@ -165,18 +172,30 @@ export async function runHandbookHistoricalBackfill(tenant: TenantId): Promise<{
   candidates: number
   admitted: number
   polished: number
+  skippedNoEvidence: number
+  skippedUnpolishable: number
 }> {
   const purged = await runHandbookPurgeBadPages(tenant)
   const candidates = await scanHandbookAdmissionCandidatesAllTime(tenant)
   const newPages = await admitHandbookCandidatesFromList(tenant, candidates)
-  const admitted = newPages.length ? await polishAndSaveNewPages(tenant, newPages) : 0
+  const polishStats = newPages.length ? await polishAndSaveNewPages(tenant, newPages) : null
+  const admitted = polishStats?.saved ?? 0
 
   const weekKey = getRollingWindowKey()
   await polishUnpolishedPages(tenant).catch(() => 0)
   const items = await buildMemoryFeedAll(tenant)
   await saveMemoryFeedSnapshot(tenant, weekKey, items)
 
-  return { purged, candidates: candidates.length, admitted, polished: admitted }
+  const stats = {
+    purged,
+    candidates: candidates.length,
+    admitted,
+    polished: admitted,
+    skippedNoEvidence: polishStats?.skippedNoEvidence ?? 0,
+    skippedUnpolishable: polishStats?.skippedUnpolishable ?? 0,
+  }
+  console.info('[handbook-jobs] historical backfill done', tenant.familyId, stats)
+  return stats
 }
 
 export async function runHandbookFullRefresh(tenant: TenantId): Promise<void> {

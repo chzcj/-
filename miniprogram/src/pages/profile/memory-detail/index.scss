@@ -37,6 +37,16 @@
   color: #202633;
 }
 
+.memory-detail-evidence {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.detail-section-card--muted .memory-detail-prose {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .detail-body {
   display: block;
   font-size: 14px;

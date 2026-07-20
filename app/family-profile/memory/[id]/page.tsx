@@ -38,27 +38,30 @@ export default function MemoryDetailPage() {
           <p style={{ fontSize: 12, color: '#6f9f56' }}>{detail.kicker}</p>
           <h3>{detail.title}</h3>
           {detail.lead ? <p style={{ color: '#6f9f56', fontWeight: 600 }}>{detail.lead}</p> : null}
-            {detail.whyIncluded ? (
-              <section className="profile-block" style={{ marginTop: 16 }}>
-                <h4>01 · 为什么进手账</h4>
-                <p className="hint-text">{detail.whyIncluded}</p>
-              </section>
-            ) : null}
-            {detail.evidenceBody ? (
-              <section className="profile-block" style={{ marginTop: 16 }}>
-                <h4>原文摘录</h4>
-                <p className="hint-text">{detail.evidenceBody}</p>
-              </section>
-            ) : null}
-            {!detail.evidenceBody && detail.body && !detail.whyIncluded ? (
-              <section className="profile-block" style={{ marginTop: 16 }}>
-                <h4>原文摘录</h4>
-                <p className="hint-text">{detail.body}</p>
-              </section>
-            ) : null}
+          {detail.whyIncluded ? (
+            <section className="profile-block" style={{ marginTop: 16 }}>
+              <h4>01 · 为什么进手账</h4>
+              <p className="hint-text">{detail.whyIncluded}</p>
+            </section>
+          ) : null}
+          {detail.evidenceBody ? (
+            <section className="profile-block" style={{ marginTop: 16 }}>
+              <h4>02 · 原文摘录</h4>
+              <p className="hint-text" style={{ whiteSpace: 'pre-wrap' }}>
+                {detail.evidenceBody}
+              </p>
+            </section>
+          ) : detail.whyIncluded ? (
+            <section className="profile-block" style={{ marginTop: 16 }}>
+              <h4>02 · 原文摘录</h4>
+              <p className="hint-text">
+                这条记忆发生时的原话还在整理中。若刚触发过手账刷新，稍后再来看通常会补上。
+              </p>
+            </section>
+          ) : null}
           {detail.keyQuotes?.length ? (
             <section className="profile-block" style={{ marginTop: 16 }}>
-              <h4>提炼关键句</h4>
+              <h4>{detail.evidenceBody || detail.whyIncluded ? '03 · 提炼关键句' : '02 · 提炼关键句'}</h4>
               <ul>
                 {detail.keyQuotes.map((q) => (
                   <li key={q}>{q}</li>
