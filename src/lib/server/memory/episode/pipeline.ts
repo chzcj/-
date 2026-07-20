@@ -127,10 +127,41 @@ export async function ingestEpisodeStrict(text: string, ctx: IngestContext = {})
     }
   })
 
+  // 抽取器偶发返回 0 atom：用 episode summary 落一条低价值 scene atom，避免「空 episode」
+  if (!atomRows.length && ep.summary.trim()) {
+    atomRows.push({
+      atomId: `${episodeId}_a0`,
+      episodeId,
+      familyId: ctx.familyId,
+      childId: ctx.childId,
+      content: ep.summary.trim(),
+      sourceType: 'parent_explicit',
+      factType: 'scene',
+      isHighValue: false,
+      evidenceStrength: 'low',
+      embedding: null,
+    })
+  }
+
   const epResult = await upsertEpisodes([episodeRow])
   if (epResult === undefined) throw new Error('EPISODE_VECTOR_UNAVAILABLE') // 不静默，handler fail-fast
   await deleteAtomsByEpisode(episodeId) // 先删旧 atom，重试不留孤儿/重复
   if (atomRows.length > 0) await upsertAtoms(atomRows)
+
+  if (ctx.familyId && ctx.childId) {
+    const tenant = { familyId: ctx.familyId, childId: ctx.childId }
+    const quoteAtom = atomRows.find((a) => a.sourceType === 'child_quote' || a.isHighValue)
+    const rawEvidence = quoteAtom?.content || ep.summary.trim()
+    void import('@/lib/server/profile/handbook-enriched-candidate').then(({ saveEnrichedHandbookCandidate }) =>
+      saveEnrichedHandbookCandidate(tenant, {
+        source: 'episode_atom',
+        sourceRef: quoteAtom?.atomId || episodeId,
+        rawEvidence,
+        contextSummary: ep.summary.trim(),
+        occurredAt: nowIso,
+      })
+    ).catch(() => undefined)
+  }
 }
 
 // 薄壳：吞异常，供 DB 未启用的 inline 降级 / 不经队列的老调用方。

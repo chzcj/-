@@ -6,13 +6,16 @@ import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval
 import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
 import { buildDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-builder'
 import { pickDeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
+import { promptRegistry } from '@/lib/server/prompts/registry.generated'
 import { REHEARSAL_SCENES } from '@/data/rehearsalScenes'
 
 type HydratedScene = {
   id: string
   title: string
   subtitle: string
+  lede?: string
   summary: string
+  mentionCountHint?: string
   openingHint?: string
   openingChild?: string
   openingHintTitle?: string
@@ -22,8 +25,11 @@ type HydratedScene = {
 type HydrateResponse = {
   scenes: Array<{
     id: string
+    title?: string
     summary?: string
     subtitle?: string
+    lede?: string
+    mentionCountHint?: string
     openingHint?: string
   }>
 }
@@ -68,10 +74,9 @@ export async function GET(request: Request) {
     }
 
     const result = await callFastJson<HydrateResponse>(
-      `你是「育见」沟通预演场景润色助手。面向家长，用大白话把固定场景摘要改成贴合这个家庭的版本。
-规则：不评判家长；不编造未出现的事实；材料不足就保留通用说法并略作口语化；禁止学名/机制矩阵词；只输出 JSON。`,
+      [promptRegistry.parentFacingStyle, promptRegistry.rehearsalSceneHydrator].join('\n\n---\n\n'),
       {
-        task: `为每个固定场景生成贴合本家庭的 summary（80–160字）、subtitle（一句≤40字）、openingHint（60–120字）。保留场景意图，注入家庭具体材料。`,
+        task: `为每个固定场景生成贴合本家庭的 title（≤16字）、lede（≤48字）、mentionCountHint（如「近2周 · 提过3次」或「近期提过」）、summary（80–160字）、openingHint（60–120字）。`,
         scenes: staticScenes.map((s) => ({ id: s.id, title: s.title, intent: s.summary })),
         deepModelDigest: digestPack,
         retrievalPack: packet
@@ -91,7 +96,10 @@ export async function GET(request: Request) {
       const patch = byId.get(base.id)
       return {
         ...base,
-        subtitle: patch?.subtitle?.trim() || base.subtitle,
+        title: patch?.title?.trim() || base.title,
+        subtitle: patch?.lede?.trim() || patch?.subtitle?.trim() || base.subtitle,
+        lede: patch?.lede?.trim() || patch?.subtitle?.trim() || base.subtitle,
+        mentionCountHint: patch?.mentionCountHint?.trim(),
         summary: patch?.summary?.trim() || base.summary,
         openingHint: patch?.openingHint?.trim() || base.openingHint,
       }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import type { TabKey } from '@/components/layout/BottomNavTabs'
 import { HiFiBottomNav } from '@/components/hifi/HiFiBottomNav'
+import { HiFiDesktopNav } from '@/components/hifi/HiFiDesktopNav'
 import { useKeyboardOffset } from '@/hooks/useKeyboardOffset'
 import { pushAccountSyncToServer } from '@/lib/account/accountSync'
 import { isOnboardingComplete } from '@/lib/profile/onboarding'
@@ -21,6 +22,8 @@ type HiFiMainShellProps = {
   animate?: boolean
   /** 画像等页面使用纯白底 */
   surface?: 'default' | 'white'
+  /** 预演对话屏等全屏沉浸态隐藏底栏 */
+  showBottomNav?: boolean
 }
 
 /** 对齐 design-reference/extracted/2-main-app.html 的 app-shell 结构与 switchTab 动效 */
@@ -32,14 +35,16 @@ export function HiFiMainShell({
   recordingPanel,
   animate = true,
   surface = 'default',
+  showBottomNav: showBottomNavProp,
 }: HiFiMainShellProps) {
   const pathname = usePathname()
   const pageRef = useRef<HTMLElement>(null)
-  const [showBottomNav, setShowBottomNav] = useState(() => isOnboardingComplete())
+  const [onboardingNav, setOnboardingNav] = useState(() => isOnboardingComplete())
+  const showBottomNav = showBottomNavProp ?? onboardingNav
   useKeyboardOffset()
 
   useEffect(() => {
-    setShowBottomNav(isOnboardingComplete())
+    setOnboardingNav(isOnboardingComplete())
   }, [pathname])
 
   useEffect(() => {
@@ -91,18 +96,21 @@ export function HiFiMainShell({
   }, [])
 
   return (
-    <div className={`hifi-app-root${surface === 'white' ? ' surface-white' : ''}`}>
-      <main className="app-shell" aria-label="育见">
-        <div className="app-safe-top" aria-hidden="true" />
-        <section className="page-stack">
-          <section ref={pageRef} className="page active">
-            {children}
+    <div className={`hifi-app-root hifi-desktop-app${surface === 'white' ? ' surface-white' : ''}`}>
+      <div className="app-desktop-grid">
+        {showBottomNav ? <HiFiDesktopNav active={activeTab} /> : null}
+        <main className="app-shell app-main-column" aria-label="育见">
+          <div className="app-safe-top" aria-hidden="true" />
+          <section className="page-stack">
+            <section ref={pageRef} className="page active">
+              {children}
+            </section>
           </section>
-        </section>
-        {recordingPanel}
-        {showInput ? inputZone : null}
-        {showBottomNav ? <HiFiBottomNav active={activeTab} /> : null}
-      </main>
+          {recordingPanel}
+          {showInput ? inputZone : null}
+          {showBottomNav ? <HiFiBottomNav active={activeTab} /> : null}
+        </main>
+      </div>
     </div>
   )
 }

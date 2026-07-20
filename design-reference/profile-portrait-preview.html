@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>画像页 · 现状 vs 成长手账改版稿</title>
+  <style>
+    :root {
+      --green: #9dcc75;
+      --green-deep: #6f9f56;
+      --green-soft: #f1f8df;
+      --green-track: rgba(111, 159, 86, 0.15);
+      --ink: #202633;
+      --ink-soft: #5c616d;
+      --muted: #868b94;
+      --card: #ffffff;
+      --page: #ffffff;
+      --tab-wrap: #ffffff;
+      --line: rgba(73, 91, 45, 0.08);
+      --danger: #e45a5a;
+      --shadow-card: 0 14px 36px rgba(31, 39, 51, 0.06);
+      --shadow-soft: 0 6px 18px rgba(31, 39, 51, 0.05);
+      --radius-card: 24px;
+      --phone-w: 390px;
+      --phone-h: 844px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #dfe3d8;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .desk {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 22px 16px 40px;
+      text-align: center;
+    }
+
+    .desk h1 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .desk .sub {
+      font-size: 13px; color: var(--ink-soft); line-height: 1.55;
+      margin: 0 auto 14px; max-width: 720px;
+    }
+
+    .switch {
+      display: inline-flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center;
+    }
+    .switch button {
+      border: 0; border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 700;
+      cursor: pointer; background: rgba(255,255,255,.75); color: var(--ink-soft);
+    }
+    .switch button.on { background: var(--green-deep); color: #fff; }
+
+    .hint-bar {
+      font-size: 12px; color: var(--ink-soft); margin-bottom: 14px;
+    }
+    .hint-bar strong { color: var(--green-deep); }
+
+    .phones {
+      display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start;
+    }
+
+    .pane { display: none; flex-direction: column; align-items: center; gap: 8px; }
+    .pane.on { display: flex; }
+    body.mode-both .pane-exact,
+    body.mode-both .pane-revamp { display: flex; }
+    body.mode-exact .pane-exact { display: flex; }
+    body.mode-exact .pane-revamp { display: none; }
+    body.mode-revamp .pane-revamp { display: flex; }
+    body.mode-revamp .pane-exact { display: none; }
+
+    .pane-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+
+    .phone {
+      width: var(--phone-w); height: var(--phone-h); border-radius: 44px; overflow: hidden;
+      background: var(--page); position: relative;
+      box-shadow: 0 0 0 1px rgba(32,38,51,.08), 0 28px 64px rgba(32,38,51,.16);
+      display: flex; flex-direction: column; text-align: left;
+    }
+
+    .status {
+      height: 54px; padding: 16px 22px 0; display: flex; justify-content: space-between;
+      align-items: flex-start; flex-shrink: 0; background: #fff; position: relative; z-index: 2;
+    }
+    .status .time { font-size: 15px; font-weight: 600; color: #000; }
+    .status .sys { display: flex; align-items: center; gap: 5px; margin-right: 96px; }
+
+    .mp-capsule {
+      position: absolute; top: 11px; right: 12px; z-index: 5; height: 32px; display: flex;
+      border-radius: 16px; overflow: hidden; background: rgba(255,255,255,.6);
+      border: 1px solid rgba(0,0,0,.1); backdrop-filter: blur(20px);
+    }
+    .mp-capsule span {
+      width: 43px; display: grid; place-items: center; color: #181818;
+    }
+    .mp-capsule span + span { border-left: 1px solid rgba(0,0,0,.1); }
+    .mp-capsule .dots { display: flex; gap: 3px; }
+    .mp-capsule .dots i { width: 3.5px; height: 3.5px; border-radius: 50%; background: #181818; }
+    .mp-capsule .ring {
+      width: 16px; height: 16px; border: 1.5px solid #181818; border-radius: 50%; position: relative;
+    }
+    .mp-capsule .ring::after {
+      content: ""; position: absolute; inset: 3.5px; border: 1.5px solid #181818; border-radius: 50%;
+    }
+
+    .scroll {
+      flex: 1; overflow-y: auto; padding: 8px 20px 0; background: #fff;
+      -webkit-overflow-scrolling: touch;
+    }
+    .scroll::-webkit-scrollbar { width: 0; }
+
+    .hero-title {
+      font-size: 26px; line-height: 1.32; font-weight: 700; color: var(--ink);
+    }
+    .meta { margin-top: 4px; font-size: 12px; color: var(--muted); }
+    .meta.dim { color: #b0b4bc; margin-top: 2px; }
+
+    .hifi-card {
+      margin-top: 12px; background: var(--card); border-radius: var(--radius-card);
+      padding: 20px; box-shadow: var(--shadow-card); border: 1px solid rgba(255,255,255,.62);
+    }
+    .card-title { font-size: 17px; line-height: 24px; font-weight: 700; margin-bottom: 6px; }
+    .card-title .chev { color: var(--muted); font-weight: 400; }
+    .card-body { font-size: 14px; line-height: 1.55; color: var(--ink-soft); margin-bottom: 8px; }
+    .card-lead { font-size: 13px; line-height: 1.5; color: var(--green-deep); font-weight: 600; margin-bottom: 6px; }
+    .bar {
+      height: 6px; border-radius: 999px; background: var(--green-track); overflow: hidden; margin: 8px 0;
+    }
+    .bar > span {
+      display: block; height: 100%; border-radius: inherit;
+      background: linear-gradient(90deg, #a7d77a, #7fb964);
+    }
+    .hint { font-size: 12px; line-height: 1.45; color: var(--muted); }
+    .section-label {
+      display: block; margin: 22px 0 8px; color: var(--green-deep);
+      font-size: 13px; font-weight: 760;
+    }
+    .trail-status { margin-top: 12px; font-size: 12px; color: var(--muted); }
+    .setting-group { padding: 4px 20px; }
+    .setting-row {
+      display: block; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,.06);
+      font-size: 15px; color: var(--ink);
+    }
+    .setting-row:last-child { border-bottom: 0; }
+    .setting-row.danger { color: var(--danger); }
+    .scroll-end { height: calc(20px + 58px + 18px); }
+
+    /* —— 底栏两版对照 —— */
+    .tab-wrap {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
+      background: #ffffff;
+      box-sizing: border-box;
+    }
+    .tab-wrap .tabs {
+      display: flex; align-items: stretch; justify-content: space-between;
+      height: 52px;
+      padding: 0 6px;
+      background: transparent;
+      border: 0; box-shadow: none; border-radius: 0;
+    }
+    .tab-wrap .tab {
+      width: 25%; border-radius: 0; background: transparent;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px;
+      color: rgba(91,96,106,.72); font-size: 11px; line-height: 1.1; font-weight: 500;
+    }
+    .tab-wrap .tab svg { width: 22px; height: 22px; display: block; }
+    .tab-wrap .tab.active {
+      color: var(--green-deep); font-weight: 650; background: transparent;
+    }
+
+    /* A · 平铺白底 + 顶细线，无白胶囊 */
+    .tab-wrap.tab-a {
+      padding: 0 0 calc(8px + 10px);
+      border-top: 1px solid rgba(0,0,0,.06);
+    }
+    .tab-wrap.tab-a .tab.active svg path,
+    .tab-wrap.tab-a .tab.active svg circle {
+      stroke: #6f9f56;
+    }
+
+    /* B · 白底：顶轻阴影 + 选中项浮起阴影 */
+    .tab-wrap.tab-b {
+      padding: 0 0 calc(8px + 10px);
+      border-top: 0;
+      box-shadow: 0 -6px 16px rgba(31,39,51,.06);
+    }
+    .tab-wrap.tab-b .tabs {
+      padding: 4px 8px;
+      height: 56px;
+    }
+    .tab-wrap.tab-b .tab {
+      height: 48px;
+      border-radius: 14px;
+      gap: 2px;
+    }
+    .tab-wrap.tab-b .tab.active {
+      color: var(--green-deep);
+      font-weight: 650;
+      background: #f4f7ef;
+      box-shadow:
+        0 4px 12px rgba(31,39,51,.08),
+        0 1px 2px rgba(31,39,51,.04);
+    }
+
+    /* ========== 改版稿 ========== */
+    .phone-revamp .scroll {
+      background:
+        radial-gradient(120% 55% at 8% -8%, rgba(238,247,207,.9), transparent 52%),
+        radial-gradient(70% 36% at 100% 4%, rgba(246,237,180,.5), transparent 48%),
+        #fff;
+    }
+
+    .memory-hero {
+      margin-top: 4px; padding: 16px 14px 14px; border-radius: 22px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.94), rgba(255,255,247,.78)),
+        linear-gradient(180deg, #eef7cf 0%, #f8f6e5 100%);
+      border: 1px solid rgba(255,255,255,.85);
+      box-shadow: 0 10px 28px rgba(111,159,86,.1);
+      position: relative; overflow: hidden;
+    }
+    .memory-hero::after {
+      content: ""; position: absolute; right: -24px; top: -36px; width: 140px; height: 140px;
+      border-radius: 50%; background: rgba(167,215,122,.22); pointer-events: none;
+    }
+    .hero-top {
+      display: flex; align-items: flex-start; gap: 12px;
+      position: relative; z-index: 1;
+    }
+    .hero-copy-col { flex: 1; min-width: 0; padding-top: 2px; }
+    .eyebrow {
+      font-size: 12px; font-weight: 720; color: var(--green-deep); letter-spacing: .04em;
+      margin-bottom: 6px;
+    }
+    .memory-hero h2 {
+      font-size: 22px; font-weight: 800; letter-spacing: -.02em; line-height: 1.28;
+    }
+    .memory-hero .hero-copy {
+      margin-top: 8px; font-size: 13px; line-height: 1.55; color: var(--ink-soft);
+    }
+
+    /* 页数印章：数字是首屏成就锚点 */
+    .page-seal {
+      flex: 0 0 auto;
+      width: 96px;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+      text-align: center;
+      position: relative;
+      filter: drop-shadow(0 8px 16px rgba(111,159,86,.18));
+    }
+    .page-seal:active { transform: scale(.97); }
+    .page-seal .stack {
+      position: relative;
+      height: 88px;
+      margin: 0 auto 6px;
+    }
+    .page-seal .sheet {
+      position: absolute; left: 50%; bottom: 0;
+      width: 72px; height: 78px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid rgba(111,159,86,.18);
+      transform: translateX(-50%);
+      box-shadow: 0 2px 0 rgba(111,159,86,.06);
+    }
+    .page-seal .sheet.s1 {
+      transform: translateX(-50%) rotate(-7deg) translateY(4px);
+      background: #f3f7e8;
+      z-index: 1;
+    }
+    .page-seal .sheet.s2 {
+      transform: translateX(-50%) rotate(5deg) translateY(2px);
+      background: #fbfaf3;
+      z-index: 2;
+    }
+    .page-seal .sheet.s3 {
+      transform: translateX(-50%);
+      z-index: 3;
+      background:
+        linear-gradient(180deg, #fff 0%, #f8fbf0 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding-top: 4px;
+    }
+    .page-seal .num {
+      font-size: 40px; font-weight: 860; line-height: .95;
+      letter-spacing: -.04em;
+      color: var(--green-deep);
+      font-variant-numeric: tabular-nums;
+      display: inline-block;
+    }
+    .page-seal .num.pop {
+      animation: page-pop .55s cubic-bezier(.2,.8,.2,1) both;
+    }
+    @keyframes page-pop {
+      0% { transform: scale(.86); opacity: .5; }
+      60% { transform: scale(1.06); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .page-seal .num.pop { animation: none; }
+    }
+    .page-seal .unit {
+      margin-top: 2px;
+      font-size: 11px; font-weight: 760;
+      color: var(--ink-soft);
+    }
+    .page-seal .delta {
+      display: inline-flex; align-items: center; gap: 2px;
+      padding: 3px 8px; border-radius: 999px;
+      background: rgba(111,159,86,.14);
+      color: var(--green-deep);
+      font-size: 11px; font-weight: 760;
+    }
+    .page-seal .delta em {
+      font-style: normal; font-weight: 860;
+    }
+
+    .hero-stats {
+      margin-top: 12px; display: flex; gap: 8px; position: relative; z-index: 1;
+    }
+    .hero-stat {
+      flex: 1; background: rgba(255,255,255,.72); border-radius: 14px;
+      padding: 10px 8px 9px; text-align: center; cursor: pointer;
+      transition: transform .15s ease, background .15s ease;
+      border: 0; font: inherit; color: inherit;
+    }
+    .hero-stat:active { transform: scale(.97); background: #fff; }
+    .hero-stat strong {
+      display: block; font-size: 18px; font-weight: 800; letter-spacing: -.02em;
+    }
+    .hero-stat span { font-size: 11px; color: var(--muted); }
+
+    .strip-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin: 20px 0 10px;
+    }
+    .strip-head h3 { font-size: 16px; font-weight: 760; }
+    .strip-head button {
+      border: 0; background: none; font-size: 12px; font-weight: 680;
+      color: var(--green-deep); cursor: pointer; padding: 0;
+    }
+
+    .media-strip {
+      display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 8px; margin: 0 -2px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      cursor: grab;
+    }
+    .media-strip.is-dragging { cursor: grabbing; }
+    .media-strip::-webkit-scrollbar { height: 0; }
+    .media-scroll-track {
+      position: relative;
+      width: 100%;
+      height: 4px;
+      margin: 4px 0 22px;
+      border-radius: 999px;
+      background: rgba(32, 38, 51, 0.08);
+      cursor: pointer;
+      touch-action: none;
+    }
+    .media-scroll-thumb {
+      position: absolute; top: 0; left: 0;
+      width: 64px;
+      height: 100%;
+      border-radius: 999px;
+      background: rgba(32, 38, 51, 0.28);
+      will-change: transform;
+      cursor: grab;
+      touch-action: none;
+    }
+    .media-scroll-thumb:active { cursor: grabbing; }
+
+    /* 画像横滑卡 · 沿用记忆碎片玻璃绿植风格 */
+    .portrait-tile {
+      flex: 0 0 132px; height: 168px; border-radius: 18px; position: relative;
+      overflow: hidden; display: flex; flex-direction: column;
+      justify-content: flex-end; padding: 0;
+      border: 1px solid rgba(73,91,45,.08);
+      cursor: pointer; text-align: left; scroll-snap-align: start;
+      box-shadow: var(--shadow-soft);
+      transition: transform .15s ease;
+      color: var(--ink);
+      background: linear-gradient(165deg, #fbfaf3 0%, var(--green-soft) 55%, #e4efc8 100%);
+    }
+    .portrait-tile:active { transform: scale(.97); }
+    .portrait-tile .flora {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      opacity: .55;
+    }
+    .portrait-tile .flora svg {
+      position: absolute; width: 100%; height: 100%;
+    }
+    .portrait-tile .badge {
+      position: absolute; top: 8px; left: 8px; right: 8px; z-index: 2;
+      width: fit-content; max-width: calc(100% - 16px);
+      font-size: 10px; font-weight: 740;
+      padding: 4px 8px; border-radius: 999px;
+      color: var(--green-deep);
+      background: rgba(255,255,255,.62);
+      backdrop-filter: blur(10px) saturate(1.1);
+      -webkit-backdrop-filter: blur(10px) saturate(1.1);
+      border: 1px solid rgba(255,255,255,.75);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .portrait-tile .glass {
+      position: relative; z-index: 1;
+      margin: 0 6px 6px;
+      padding: 9px 9px 8px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.52));
+      backdrop-filter: blur(12px) saturate(1.15);
+      -webkit-backdrop-filter: blur(12px) saturate(1.15);
+      border: 1px solid rgba(255,255,255,.78);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+    }
+    .portrait-tile .cap {
+      font-size: 12px; font-weight: 740; line-height: 1.35;
+      color: var(--ink);
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .portrait-tile .sub {
+      font-size: 10px; font-weight: 650; margin-top: 4px;
+      color: var(--muted);
+    }
+    .portrait-tile .mini-bar {
+      margin-top: 6px; height: 4px; border-radius: 999px;
+      background: rgba(111,159,86,.16); overflow: hidden;
+    }
+    .portrait-tile .mini-bar > span {
+      display: block; height: 100%; border-radius: inherit;
+      background: linear-gradient(90deg, #a7d77a, #7fb964);
+    }
+    .portrait-tile.t1 {
+      background:
+        radial-gradient(ellipse 80% 60% at 78% 16%, rgba(255,255,255,.55), transparent 58%),
+        linear-gradient(160deg, #fbfaf0 0%, #f1f8df 48%, #dcecbc 100%);
+    }
+    .portrait-tile.t2 {
+      background:
+        radial-gradient(ellipse 80% 60% at 18% 18%, rgba(255,255,255,.5), transparent 58%),
+        linear-gradient(155deg, #f7faef 0%, #eef7cf 50%, #cfe6a8 100%);
+    }
+    .portrait-tile.t3 {
+      background:
+        radial-gradient(ellipse 80% 60% at 72% 14%, rgba(255,255,255,.5), transparent 58%),
+        linear-gradient(158deg, #fbf8ef 0%, #f6edb4 52%, #e8d9a0 100%);
+    }
+    .portrait-tile.t4 {
+      background:
+        radial-gradient(ellipse 80% 60% at 22% 12%, rgba(255,255,255,.55), transparent 58%),
+        linear-gradient(152deg, #f8faf2 0%, #e8f3d4 48%, #b7d992 100%);
+    }
+
+    .handbook {
+      border-radius: 20px; overflow: hidden; background: #fff;
+      box-shadow: var(--shadow-card); border: 1px solid rgba(73,91,45,.06);
+    }
+    .handbook-cover {
+      padding: 16px;
+      background: linear-gradient(120deg, rgba(111,159,86,.12), transparent 60%), #fffef8;
+      border-bottom: 1px dashed rgba(73,91,45,.12);
+    }
+    .handbook-cover .month {
+      font-size: 12px; font-weight: 720; color: var(--green-deep); margin-bottom: 4px;
+    }
+    .handbook-cover h4 { font-size: 18px; font-weight: 800; letter-spacing: -.02em; }
+    .handbook-cover p {
+      margin-top: 8px; font-size: 13px; line-height: 1.55; color: var(--ink-soft);
+    }
+    .handbook-body { padding: 14px 16px 16px; display: grid; gap: 14px; }
+    .hb-row { display: grid; grid-template-columns: 42px 1fr; gap: 12px; align-items: start; }
+    .hb-ico {
+      width: 40px; height: 40px; border-radius: 0; display: grid; place-items: center;
+      background: transparent; flex-shrink: 0;
+      overflow: visible;
+    }
+    .hb-ico svg {
+      width: 34px; height: 34px; display: block;
+    }
+    .hb-row strong { display: block; font-size: 13px; font-weight: 740; margin-bottom: 6px; }
+    .hb-row span {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+      font-size: 12px; color: var(--ink-soft);
+      line-height: 1.7;
+    }
+    .hb-row[data-open] { cursor: pointer; }
+    .hb-row[data-open]:active { opacity: .88; }
+
+    .cta-handbook {
+      margin-top: 2px; height: 44px; border: 0; border-radius: 14px; cursor: pointer;
+      background: linear-gradient(135deg, #a7d77a, #7fb964); color: #fff;
+      font-size: 14px; font-weight: 760; width: 100%;
+      box-shadow: 0 8px 18px rgba(127,185,100,.28);
+    }
+    .cta-handbook:active { opacity: .92; }
+
+    .years-ago {
+      margin-top: 12px; padding: 14px 16px; border-radius: 18px; background: #fff;
+      border: 1px solid rgba(73,91,45,.06); display: flex; gap: 12px; align-items: center;
+      width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit;
+      box-shadow: var(--shadow-soft);
+    }
+    .years-ago:active { opacity: .94; }
+    .years-ago .stamp {
+      width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+      background: linear-gradient(145deg, #f6edb4, #eef7cf);
+      display: grid; place-items: center; font-size: 11px; font-weight: 800;
+      color: var(--green-deep); text-align: center; line-height: 1.2;
+    }
+    .years-ago .txt strong { display: block; font-size: 14px; font-weight: 760; margin-bottom: 3px; }
+    .years-ago .txt span { font-size: 12px; color: var(--ink-soft); line-height: 1.45; }
+
+    .insight-fold { margin-top: 18px; }
+    .insight-fold > summary {
+      list-style: none; cursor: pointer; display: flex; justify-content: space-between;
+      align-items: center; padding: 12px 14px; background: #fff; border-radius: 16px;
+      font-size: 14px; font-weight: 740; box-shadow: var(--shadow-card);
+    }
+    .insight-fold > summary::-webkit-details-marker { display: none; }
+    .insight-fold[open] > summary {
+      border-radius: 16px 16px 0 0; border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+    .insight-fold .inner {
+      background: #fff; padding: 4px 6px 10px; border-radius: 0 0 16px 16px;
+    }
+    .mini-card {
+      width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer;
+      padding: 12px 8px; border-bottom: 1px solid rgba(0,0,0,.05); font: inherit; color: inherit;
+    }
+    .mini-card:last-child { border-bottom: 0; }
+    .mini-card:active { background: rgba(241,248,223,.45); }
+    .mini-card h5 { font-size: 14px; font-weight: 740; margin-bottom: 4px; }
+    .mini-card p { font-size: 12px; line-height: 1.5; color: var(--ink-soft); }
+
+    .setting-row.clickable { cursor: pointer; width: 100%; background: none; border: 0; border-bottom: 1px solid rgba(0,0,0,.06); font: inherit; text-align: left; }
+    .setting-group .setting-row.clickable:last-child { border-bottom: 0; }
+
+    /* 子页叠加层 */
+    .sheet {
+      position: absolute; inset: 0; z-index: 30; display: none; flex-direction: column;
+      background: #fff;
+      padding-top: 54px;
+    }
+    .sheet.open { display: flex; }
+    .sheet-head {
+      flex-shrink: 0; padding: 8px 16px 12px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--line); background: #fff;
+    }
+    .sheet-back {
+      border: 0; background: var(--green-soft); color: var(--green-deep);
+      width: 36px; height: 36px; border-radius: 12px; font-size: 18px; cursor: pointer;
+      font-weight: 700;
+    }
+    .sheet-head h2 { font-size: 17px; font-weight: 760; flex: 1; }
+    .sheet-body {
+      flex: 1; overflow-y: auto; padding: 16px 20px 28px;
+    }
+    .sheet-body::-webkit-scrollbar { width: 0; }
+    .sheet-kicker {
+      font-size: 12px; font-weight: 720; color: var(--green-deep); margin-bottom: 6px;
+    }
+    .sheet-body h3 {
+      font-size: 20px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 10px;
+      line-height: 1.3;
+    }
+    .sheet-body .lead {
+      font-size: 14px; line-height: 1.65; color: var(--ink-soft); margin-bottom: 16px;
+    }
+    .sheet-block {
+      background: #f7f8f4; border-radius: 16px; padding: 14px; margin-bottom: 12px;
+    }
+    .sheet-block strong {
+      display: block; font-size: 13px; font-weight: 740; margin-bottom: 6px;
+    }
+    .sheet-block p, .sheet-block li {
+      font-size: 13px; line-height: 1.55; color: var(--ink-soft);
+    }
+    .sheet-block ul { padding-left: 18px; }
+    .sheet-block li + li { margin-top: 4px; }
+    .play-row {
+      display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+      background: #fff; border-radius: 14px; border: 1px solid var(--line); margin-bottom: 12px;
+    }
+    .play-btn {
+      width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer;
+      background: linear-gradient(135deg, #a7d77a, #7fb964); color: #fff; font-size: 14px;
+    }
+    .wave {
+      flex: 1; height: 28px;
+      background: repeating-linear-gradient(90deg, #c5dfa8 0 3px, transparent 3px 7px);
+      border-radius: 4px; opacity: .7;
+    }
+    .compare {
+      display: flex; flex-direction: column; gap: 0;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .compare-card {
+      border-radius: 18px; padding: 14px 16px 15px;
+      background: #fff;
+      border: 1px solid rgba(73,91,45,.08);
+      box-shadow: 0 6px 16px rgba(73,91,45,.06);
+      position: relative;
+    }
+    .compare-card .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 740;
+      padding: 3px 9px; border-radius: 999px;
+      margin-bottom: 10px;
+      color: var(--muted);
+      background: rgba(32,38,51,.05);
+    }
+    .compare-card .tag .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #b0b4bc;
+    }
+    .compare-card p {
+      font-size: 14px; line-height: 1.65; color: var(--ink-soft);
+      margin: 0;
+    }
+    .compare-card.then {
+      background: #f7f7f5;
+      border-color: rgba(32,38,51,.06);
+      box-shadow: none;
+    }
+    .compare-card.now {
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.95), rgba(241,248,223,.65)),
+        #fffef8;
+      border-color: rgba(111,159,86,.28);
+      box-shadow: 0 8px 20px rgba(111,159,86,.1);
+    }
+    .compare-card.now .tag {
+      color: var(--green-deep);
+      background: rgba(111,159,86,.14);
+    }
+    .compare-card.now .tag .dot {
+      background: var(--green-deep);
+    }
+    .compare-bridge {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px;
+      padding: 8px 0;
+      position: relative;
+      z-index: 1;
+    }
+    .compare-bridge::before {
+      content: "";
+      position: absolute; left: 28px; top: 0; bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(176,180,188,.45), rgba(111,159,86,.45));
+      border-radius: 999px;
+    }
+    .compare-bridge .label {
+      position: relative;
+      font-size: 11px; font-weight: 760;
+      color: var(--green-deep);
+      background: #fbfaf3;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(111,159,86,.22);
+      letter-spacing: .02em;
+    }
+    #sheet-years {
+      background:
+        radial-gradient(120% 45% at 8% -8%, rgba(238,247,207,.85), transparent 52%),
+        radial-gradient(70% 35% at 100% 0%, rgba(246,237,180,.4), transparent 48%),
+        #fbfaf3;
+    }
+    #sheet-years .sheet-head {
+      background: transparent; border-bottom: 0;
+    }
+    #sheet-years .sheet-block {
+      background: rgba(255,255,255,.82);
+      border: 1px solid rgba(255,255,255,.9);
+      box-shadow: 0 6px 16px rgba(73,91,45,.05);
+    }
+    .sheet-cta {
+      display: block; width: 100%; height: 46px; border: 0; border-radius: 14px;
+      background: linear-gradient(135deg, #a7d77a, #7fb964); color: #fff;
+      font-size: 14px; font-weight: 760; cursor: pointer; margin-top: 8px;
+    }
+    .sheet-cta.ghost {
+      background: #fff; color: var(--green-deep);
+      border: 1px solid rgba(111,159,86,.35);
+    }
+    .sheet-grab {
+      display: flex; justify-content: center; padding: 8px 0 0;
+    }
+    .sheet-grab i {
+      width: 36px; height: 4px; border-radius: 999px;
+      background: rgba(32,38,51,.18); display: block;
+    }
+    .mem-list { display: grid; gap: 0; }
+    .mem-row {
+      width: 100%; border: 0; background: transparent;
+      padding: 0 0 14px; text-align: left;
+      cursor: pointer; font: inherit; color: inherit;
+      display: grid; grid-template-columns: 52px 1fr; gap: 10px;
+      position: relative;
+    }
+    .mem-row:last-child { padding-bottom: 0; }
+    .mem-row:last-child .mem-axis::after { display: none; }
+    .mem-axis {
+      position: relative;
+      display: flex; flex-direction: column; align-items: center;
+      padding-top: 2px;
+    }
+    .mem-axis .day {
+      width: 44px; text-align: center;
+      font-size: 13px; font-weight: 800; letter-spacing: -.02em;
+      color: var(--green-deep); line-height: 1.15;
+    }
+    .mem-axis .mon {
+      font-size: 10px; font-weight: 650; color: var(--muted);
+      margin-top: 1px;
+    }
+    .mem-axis .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1.5px rgba(111,159,86,.45);
+      margin-top: 8px; flex-shrink: 0;
+    }
+    .mem-axis::after {
+      content: "";
+      position: absolute;
+      left: 50%; top: 42px; bottom: -14px;
+      width: 1.5px; transform: translateX(-50%);
+      background: rgba(111,159,86,.22);
+    }
+    .mem-card {
+      background: #fff; border: 1px solid var(--line);
+      border-radius: 14px; padding: 12px 14px;
+    }
+    .mem-row:active .mem-card { background: #f7f8f4; }
+    .mem-row .top {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      margin-bottom: 4px;
+    }
+    .mem-row .kw {
+      font-size: 14px; font-weight: 760; color: var(--ink);
+    }
+    .mem-row .type {
+      font-size: 11px; font-weight: 700; color: var(--green-deep);
+      background: var(--green-soft); padding: 2px 8px; border-radius: 999px;
+      flex-shrink: 0;
+    }
+    .mem-row .desc {
+      font-size: 12px; line-height: 1.45; color: var(--ink-soft);
+    }
+    .archive-row {
+      width: 100%; border: 1px solid var(--line); border-radius: 14px;
+      background: #fff; padding: 14px; text-align: left; margin-bottom: 8px;
+      cursor: pointer; font: inherit; color: inherit;
+    }
+    .archive-row:active { background: #f7f8f4; }
+    .archive-row .when {
+      font-size: 12px; font-weight: 720; color: var(--green-deep); margin-bottom: 4px;
+    }
+    .archive-row h5 {
+      font-size: 15px; font-weight: 760; margin-bottom: 4px; line-height: 1.35;
+    }
+    .archive-row p { font-size: 12px; color: var(--ink-soft); line-height: 1.45; }
+    .archive-row.current {
+      border-color: rgba(111,159,86,.35);
+      background: rgba(241,248,223,.45);
+    }
+    .sheet-body .hifi-card {
+      margin-top: 10px;
+    }
+    .sheet-body .hifi-card:first-of-type { margin-top: 4px; }
+
+    /* 画像详情页 · 手账风（告别灰白报告墙） */
+    #sheet-insight {
+      background:
+        radial-gradient(120% 50% at 0% -5%, rgba(238,247,207,.95), transparent 55%),
+        radial-gradient(80% 40% at 100% 0%, rgba(246,237,180,.55), transparent 50%),
+        #fbfaf3;
+    }
+    #sheet-insight .sheet-head {
+      background: transparent;
+      border-bottom: 0;
+    }
+    #sheet-insight .sheet-body.insight-body {
+      padding: 4px 16px 32px;
+      background: transparent;
+    }
+    .insight-hero {
+      margin: 0 0 14px;
+      padding: 16px 16px 14px;
+      border-radius: 20px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.92), rgba(255,255,247,.72)),
+        linear-gradient(180deg, #eef7cf 0%, #f8f6e5 100%);
+      border: 1px solid rgba(255,255,255,.85);
+      box-shadow: 0 10px 24px rgba(111,159,86,.1);
+      position: relative;
+      overflow: hidden;
+    }
+    .insight-hero::after {
+      content: "";
+      position: absolute; right: -20px; top: -28px;
+      width: 110px; height: 110px; border-radius: 50%;
+      background: rgba(167,215,122,.22); pointer-events: none;
+    }
+    .insight-hero .eyebrow {
+      position: relative; z-index: 1;
+      margin-bottom: 4px;
+    }
+    .insight-hero h3 {
+      position: relative; z-index: 1;
+      font-size: 20px; font-weight: 800; letter-spacing: -.02em;
+      margin: 0 0 8px; line-height: 1.3;
+    }
+    .insight-hero p {
+      position: relative; z-index: 1;
+      margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-soft);
+    }
+    .insight-hero .pct-row {
+      position: relative; z-index: 1;
+      margin-top: 12px; display: flex; align-items: center; gap: 10px;
+    }
+    .insight-hero .pct-num {
+      font-size: 28px; font-weight: 860; letter-spacing: -.03em;
+      color: var(--green-deep); line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .insight-hero .pct-meta {
+      flex: 1; min-width: 0;
+    }
+    .insight-hero .pct-meta strong {
+      display: block; font-size: 12px; font-weight: 740; color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .insight-hero .pct-meta .bar { margin: 0; height: 5px; }
+
+    .insight-card {
+      display: block; width: 100%;
+      margin-bottom: 12px;
+      border: 0; padding: 0;
+      border-radius: 20px;
+      overflow: hidden;
+      text-align: left;
+      font: inherit; color: inherit;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(73,91,45,.08);
+      border: 1px solid rgba(73,91,45,.06);
+      background: #fff;
+      transition: transform .15s ease;
+    }
+    .insight-card:active { transform: scale(.985); }
+    .insight-card .ic-top {
+      position: relative;
+      padding: 14px 14px 10px;
+      min-height: 72px;
+      overflow: hidden;
+    }
+    .insight-card .ic-top .flora {
+      position: absolute; inset: 0; opacity: .5; pointer-events: none;
+    }
+    .insight-card .ic-top .flora svg {
+      position: absolute; width: 100%; height: 100%;
+    }
+    .insight-card .ic-badge {
+      position: relative; z-index: 1;
+      display: inline-block;
+      font-size: 10px; font-weight: 740;
+      padding: 4px 8px; border-radius: 999px;
+      color: var(--green-deep);
+      background: rgba(255,255,255,.62);
+      backdrop-filter: blur(10px) saturate(1.1);
+      -webkit-backdrop-filter: blur(10px) saturate(1.1);
+      border: 1px solid rgba(255,255,255,.75);
+      margin-bottom: 8px;
+    }
+    .insight-card .ic-title {
+      position: relative; z-index: 1;
+      font-size: 16px; font-weight: 800; letter-spacing: -.01em;
+      line-height: 1.3; margin: 0;
+    }
+    .insight-card .ic-glass {
+      margin: 0 8px 8px;
+      padding: 12px 12px 11px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.58));
+      backdrop-filter: blur(12px) saturate(1.1);
+      -webkit-backdrop-filter: blur(12px) saturate(1.1);
+      border: 1px solid rgba(255,255,255,.8);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+    }
+    .insight-card .ic-body {
+      font-size: 13px; line-height: 1.55; color: var(--ink-soft);
+      margin: 0 0 10px;
+    }
+    .insight-card .ic-foot {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .insight-card .ic-foot .bar {
+      flex: 1; margin: 0; height: 5px;
+    }
+    .insight-card .ic-pct {
+      flex-shrink: 0;
+      font-size: 12px; font-weight: 760;
+      color: var(--green-deep);
+      font-variant-numeric: tabular-nums;
+    }
+    .insight-card .ic-hint {
+      margin-top: 6px;
+      font-size: 11px; color: var(--muted); line-height: 1.4;
+    }
+    .insight-card.t1 .ic-top {
+      background:
+        radial-gradient(ellipse 80% 70% at 88% 10%, rgba(255,255,255,.55), transparent 58%),
+        linear-gradient(160deg, #fbfaf0 0%, #f1f8df 48%, #dcecbc 100%);
+    }
+    .insight-card.t2 .ic-top {
+      background:
+        radial-gradient(ellipse 80% 70% at 12% 12%, rgba(255,255,255,.5), transparent 58%),
+        linear-gradient(155deg, #f7faef 0%, #eef7cf 50%, #cfe6a8 100%);
+    }
+    .insight-card.t3 .ic-top {
+      background:
+        radial-gradient(ellipse 80% 70% at 80% 8%, rgba(255,255,255,.5), transparent 58%),
+        linear-gradient(158deg, #fbf8ef 0%, #f6edb4 52%, #e8d9a0 100%);
+    }
+    .insight-card.t4 .ic-top {
+      background:
+        radial-gradient(ellipse 80% 70% at 18% 8%, rgba(255,255,255,.55), transparent 58%),
+        linear-gradient(152deg, #f8faf2 0%, #e8f3d4 48%, #b7d992 100%);
+    }
+
+    /* 单卡详情也统一手账风 */
+    .sheet.card-detail {
+      background:
+        radial-gradient(120% 45% at 8% -8%, rgba(238,247,207,.85), transparent 52%),
+        #fbfaf3;
+    }
+    .sheet.card-detail .sheet-head {
+      background: transparent; border-bottom: 0;
+    }
+    .sheet.card-detail .sheet-body {
+      padding-top: 8px;
+    }
+    .sheet.card-detail .detail-panel {
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.94), rgba(255,255,247,.8)),
+        linear-gradient(180deg, #eef7cf 0%, #fffef8 100%);
+      border: 1px solid rgba(255,255,255,.85);
+      border-radius: 20px;
+      padding: 18px 16px;
+      box-shadow: 0 10px 24px rgba(111,159,86,.08);
+    }
+    .sheet.card-detail .detail-panel .bar { margin: 10px 0 12px; }
+
+    .handbook {
+      cursor: pointer;
+    }
+    .handbook:active { opacity: .96; }
+    .toast {
+      position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(12px);
+      background: rgba(32,38,51,.88); color: #fff; font-size: 13px; padding: 10px 16px;
+      border-radius: 999px; opacity: 0; pointer-events: none; z-index: 40;
+      transition: opacity .2s ease, transform .2s ease; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .legend {
+      max-width: 820px; margin: 28px auto 0; text-align: left;
+      background: rgba(255,255,255,.72); border-radius: 16px; padding: 16px 18px;
+      font-size: 13px; line-height: 1.65; color: var(--ink-soft);
+    }
+    .legend h2 { font-size: 14px; color: var(--ink); margin-bottom: 8px; }
+    .legend ol { padding-left: 18px; }
+    .legend li + li { margin-top: 4px; }
+    .legend strong { color: var(--ink); }
+  </style>
+</head>
+<body class="mode-both">
+  <div class="desk">
+    <h1>画像页 · 现状复原 vs 成长手账改版稿</h1>
+    <p class="sub">左：对齐真机截图的现状。右：纪念感优先的改版稿（可点）。改版保留 AI 理解，把回忆 / 月季手账 / 时间胶囊抬到首屏。</p>
+    <div class="switch">
+      <button type="button" class="on" data-mode="both">左右对照</button>
+      <button type="button" data-mode="exact">仅现状</button>
+      <button type="button" data-mode="revamp">仅改版稿</button>
+    </div>
+    <p class="hint-bar">底栏两版对照：左 <strong>A 平铺</strong>（白底 + 顶细线）；右 <strong>B 选中阴影</strong>（白底，选中项浅绿底 + 浮起阴影）。改版稿可点：画像横滑 · 本周手账 · 时间胶囊。</p>
+
+    <div class="phones">
+      <!-- ========== 现状 ========== -->
+      <div class="pane pane-exact on">
+        <div class="pane-label">现状页 · 底栏 A（白底平铺 · 顶细线）</div>
+        <div class="phone">
+          <div class="status">
+            <span class="time">15:58</span>
+            <div class="sys" aria-hidden="true">
+              <svg width="17" height="12" viewBox="0 0 17 12" fill="#111"><rect x="0" y="8" width="3" height="4" rx="0.5"/><rect x="4.5" y="5.5" width="3" height="6.5" rx="0.5"/><rect x="9" y="3" width="3" height="9" rx="0.5"/><rect x="13.5" y="0" width="3" height="12" rx="0.5"/></svg>
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 9.8a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4z" fill="#111"/><path d="M4.2 7.6a5.4 5.4 0 0 1 7.6 0" stroke="#111" stroke-width="1.4" stroke-linecap="round"/><path d="M1.6 5a9 9 0 0 1 12.8 0" stroke="#111" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <svg width="27" height="13" viewBox="0 0 27 13"><rect x="0.5" y="1.5" width="22" height="10" rx="2.2" stroke="#111" stroke-opacity="0.4" fill="none"/><rect x="23.5" y="4.2" width="2.2" height="4.6" rx="0.8" fill="#111" fill-opacity="0.4"/><rect x="2" y="3" width="3.2" height="7" rx="1" fill="#e45a5a"/></svg>
+            </div>
+          </div>
+          <div class="mp-capsule" aria-hidden="true">
+            <span><span class="dots"><i></i><i></i><i></i></span></span>
+            <span><span class="ring"></span></span>
+          </div>
+          <div class="scroll">
+            <h1 class="hero-title">画像数据中心</h1>
+            <p class="meta">上次整理：今天 15:39</p>
+            <p class="meta dim">后台整理中…</p>
+
+            <article class="hifi-card">
+              <h3 class="card-title">动态成长画像 · 25%<span class="chev"> ▸</span></h3>
+              <p class="card-body">孩子不是懒，而是需要自己的节奏感。回家后先放松、被催促时容易拖；他们需要信任和一段可控的过渡期，而不是立刻进入作业状态。</p>
+              <div class="bar"><span style="width:25%"></span></div>
+              <p class="hint">已收集 25%，继续交流/补模块会提升完整度。</p>
+            </article>
+            <article class="hifi-card">
+              <h3 class="card-title">值得长期关注<span class="chev"> ▸</span></h3>
+              <p class="card-body">作业前的过渡安排、催促与拖延的循环、自主性建设，以及家长沟通方式的调整。</p>
+              <div class="bar"><span style="width:55%"></span></div>
+              <p class="hint">已基于已记录交流生成，继续使用会越来越准。</p>
+            </article>
+            <article class="hifi-card">
+              <h3 class="card-title">孩子行为模式<span class="chev"> ▸</span></h3>
+              <p class="card-body">拖延常不是偷懒，而是在维持一点自主感；被催促时更容易进入防御，启动成本上升。</p>
+              <div class="bar"><span style="width:40%"></span></div>
+              <p class="hint">已从交流中提取行为模式，继续记录会持续修正。</p>
+            </article>
+            <article class="hifi-card">
+              <h3 class="card-title">亲子互动关系<span class="chev"> ▸</span></h3>
+              <p class="card-body">家长越用力催促，孩子越容易拖延；拖延又加剧焦虑，双方都卡在同一套循环里。</p>
+              <div class="bar"><span style="width:45%"></span></div>
+              <p class="hint">已识别家庭互动循环，多轮交流后会越来越清晰。</p>
+            </article>
+            <article class="hifi-card">
+              <h3 class="card-title">试试这些好方法<span class="chev"> ▸</span></h3>
+              <p class="card-body">作业前先告诉孩子可以休息 25 分钟再开始；开始后家长短暂离开，回来只确认进展，不反复催。</p>
+              <div class="bar"><span style="width:45%"></span></div>
+              <p class="hint">这些是结合你们家情况整理出的试法。</p>
+            </article>
+            <article class="hifi-card">
+              <h3 class="card-title">孩子健康成长阻力<span class="chev"> ▸</span></h3>
+              <p class="card-lead">发现家庭中可能影响孩子成长的习惯和互动模式。</p>
+              <p class="card-body">催促一起，孩子更容易去逗宠物、拖到很晚；家长焦虑上升，冲突更容易点燃。</p>
+              <div class="bar"><span style="width:45%"></span></div>
+              <p class="hint">这些运转方式可能在消耗孩子精力，后续交流会继续修正。</p>
+            </article>
+            <article class="hifi-card">
+              <h3 class="card-title">孩子写作业的机制<span class="chev"> ▸</span></h3>
+              <p class="card-body">孩子需要找到自己的节奏；被催促时会觉得「自由被夺走」，更难启动。把开始权交还给他，阻力会下降。</p>
+              <div class="bar"><span style="width:28%"></span></div>
+              <p class="hint">围绕作业场景整理的机制与实践，后续交流会继续精修。</p>
+            </article>
+
+            <span class="section-label">成长轨迹</span>
+            <article class="hifi-card">
+              <h3 class="card-title">识别出状态切换困难<span class="chev"> ▸</span></h3>
+              <p class="card-body">放学后从休息/玩耍切到写作业时阻力明显。这更像需要过渡期，而不是懒。催促容易触发「唠叨—烦躁—更拖」的循环，家长压力也会强化孩子的防御。</p>
+              <p class="trail-status">正在整理新的成长记录…</p>
+            </article>
+
+            <span class="section-label">画像维护</span>
+            <div class="hifi-card setting-group">
+              <div class="setting-row">补充画像 ›</div>
+            </div>
+            <span class="section-label">账号管理</span>
+            <div class="hifi-card setting-group">
+              <div class="setting-row">编辑个人资料 ›</div>
+              <div class="setting-row">编辑孩子信息 ›</div>
+              <div class="setting-row danger">注销账号 ›</div>
+              <div class="setting-row">退出登录 ›</div>
+            </div>
+            <div class="scroll-end"></div>
+          </div>
+          <div class="tab-wrap tab-a" id="tabs-exact"></div>
+        </div>
+      </div>
+
+      <!-- ========== 改版稿 ========== -->
+      <div class="pane pane-revamp on">
+        <div class="pane-label">改版稿 · 底栏 B（白底 · 选中阴影浮起）</div>
+        <div class="phone phone-revamp" id="phone-revamp">
+          <div class="status">
+            <span class="time">15:58</span>
+            <div class="sys" aria-hidden="true">
+              <svg width="17" height="12" viewBox="0 0 17 12" fill="#111"><rect x="0" y="8" width="3" height="4" rx="0.5"/><rect x="4.5" y="5.5" width="3" height="6.5" rx="0.5"/><rect x="9" y="3" width="3" height="9" rx="0.5"/><rect x="13.5" y="0" width="3" height="12" rx="0.5"/></svg>
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 9.8a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4z" fill="#111"/><path d="M4.2 7.6a5.4 5.4 0 0 1 7.6 0" stroke="#111" stroke-width="1.4" stroke-linecap="round"/><path d="M1.6 5a9 9 0 0 1 12.8 0" stroke="#111" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <svg width="27" height="13" viewBox="0 0 27 13"><rect x="0.5" y="1.5" width="22" height="10" rx="2.2" stroke="#111" stroke-opacity="0.4" fill="none"/><rect x="23.5" y="4.2" width="2.2" height="4.6" rx="0.8" fill="#111" fill-opacity="0.4"/><rect x="2" y="3" width="3.2" height="7" rx="1" fill="#e45a5a"/></svg>
+            </div>
+          </div>
+          <div class="mp-capsule" aria-hidden="true">
+            <span><span class="dots"><i></i><i></i><i></i></span></span>
+            <span><span class="ring"></span></span>
+          </div>
+
+          <div class="scroll" id="revamp-home">
+            <section class="memory-hero">
+              <div class="hero-top">
+                <div class="hero-copy-col">
+                  <p class="eyebrow">育见 · 家庭成长手账</p>
+                  <h2>果果的七月手账</h2>
+                  <p class="hero-copy">本周沉淀了冲突语音、随笔与亮点瞬间。不是数据报告——是你们家自己的成长回忆。</p>
+                </div>
+                <button type="button" class="page-seal" data-open="sheet-pages" aria-label="七月手账已写下 12 页，本周新增 3 页">
+                  <div class="stack" aria-hidden="true">
+                    <span class="sheet s1"></span>
+                    <span class="sheet s2"></span>
+                    <span class="sheet s3">
+                      <span class="num" id="page-count-num">12</span>
+                      <span class="unit">页手账</span>
+                    </span>
+                  </div>
+                  <span class="delta">本周 <em>+3</em></span>
+                </button>
+              </div>
+              <div class="hero-stats">
+                <button type="button" class="hero-stat" data-open="sheet-moments"><strong>2</strong><span>闪光时刻</span></button>
+                <button type="button" class="hero-stat" data-open="sheet-insight"><strong>25%</strong><span>画像</span></button>
+                <button type="button" class="hero-stat" data-open="sheet-memories"><strong>4</strong><span>本周记忆</span></button>
+              </div>
+            </section>
+
+            <div class="strip-head">
+              <h3>画像卡片</h3>
+              <button type="button" data-open="sheet-insight">全部 ›</button>
+            </div>
+            <div class="media-strip" id="media-strip">
+              <button type="button" class="portrait-tile t1" data-open="sheet-card-growth">
+                <span class="flora" aria-hidden="true">
+                  <svg viewBox="0 0 132 168" fill="none">
+                    <ellipse cx="98" cy="30" rx="28" ry="15" fill="#fff" fill-opacity=".45" transform="rotate(18 98 30)"/>
+                    <path d="M24 112c9-28 24-48 42-62" stroke="#6f9f56" stroke-width="2" stroke-linecap="round" opacity=".35"/>
+                    <ellipse cx="62" cy="44" rx="17" ry="10" fill="#9dcc75" fill-opacity=".55" transform="rotate(-28 62 44)"/>
+                    <ellipse cx="44" cy="62" rx="15" ry="9" fill="#c8e89a" fill-opacity=".7" transform="rotate(16 44 62)"/>
+                    <ellipse cx="84" cy="64" rx="13" ry="8" fill="#7fb964" fill-opacity=".45" transform="rotate(-10 84 64)"/>
+                    <circle cx="104" cy="54" r="6" fill="#f6edb4" fill-opacity=".8"/>
+                  </svg>
+                </span>
+                <span class="badge">成长画像</span>
+                <span class="glass">
+                  <div class="cap">不是懒，是需要自己的节奏感与可控过渡期</div>
+                  <div class="sub">完整度 25%</div>
+                  <div class="mini-bar"><span style="width:25%"></span></div>
+                </span>
+              </button>
+              <button type="button" class="portrait-tile t2" data-open="sheet-card-focus">
+                <span class="flora" aria-hidden="true">
+                  <svg viewBox="0 0 132 168" fill="none">
+                    <ellipse cx="28" cy="32" rx="26" ry="14" fill="#fff" fill-opacity=".42" transform="rotate(-16 28 32)"/>
+                    <path d="M64 120c2-30 11-52 26-72" stroke="#6f9f56" stroke-width="2" stroke-linecap="round" opacity=".32"/>
+                    <ellipse cx="82" cy="40" rx="16" ry="10" fill="#b7d992" fill-opacity=".6" transform="rotate(22 82 40)"/>
+                    <ellipse cx="64" cy="58" rx="14" ry="9" fill="#9dcc75" fill-opacity=".5" transform="rotate(-24 64 58)"/>
+                    <ellipse cx="96" cy="62" rx="12" ry="8" fill="#eef7cf" fill-opacity=".85" transform="rotate(8 96 62)"/>
+                    <circle cx="40" cy="68" r="5.5" fill="#f6edb4" fill-opacity=".75"/>
+                  </svg>
+                </span>
+                <span class="badge">长期关注</span>
+                <span class="glass">
+                  <div class="cap">过渡安排、催促循环、自主性建设</div>
+                  <div class="sub">完整度 55%</div>
+                  <div class="mini-bar"><span style="width:55%"></span></div>
+                </span>
+              </button>
+              <button type="button" class="portrait-tile t3" data-open="sheet-insight">
+                <span class="flora" aria-hidden="true">
+                  <svg viewBox="0 0 132 168" fill="none">
+                    <ellipse cx="96" cy="28" rx="24" ry="13" fill="#fff" fill-opacity=".4" transform="rotate(14 96 28)"/>
+                    <path d="M32 114c11-26 26-46 46-58" stroke="#a89a5c" stroke-width="2" stroke-linecap="round" opacity=".3"/>
+                    <ellipse cx="58" cy="44" rx="16" ry="10" fill="#e8d9a0" fill-opacity=".7" transform="rotate(-20 58 44)"/>
+                    <ellipse cx="76" cy="60" rx="14" ry="9" fill="#f6edb4" fill-opacity=".85" transform="rotate(26 76 60)"/>
+                    <ellipse cx="46" cy="64" rx="12" ry="8" fill="#c8dfa0" fill-opacity=".55" transform="rotate(-8 46 64)"/>
+                  </svg>
+                </span>
+                <span class="badge">行为模式</span>
+                <span class="glass">
+                  <div class="cap">拖延常是在维持自主感，被催更难启动</div>
+                  <div class="sub">完整度 40%</div>
+                  <div class="mini-bar"><span style="width:40%"></span></div>
+                </span>
+              </button>
+              <button type="button" class="portrait-tile t4" data-open="sheet-card-interact">
+                <span class="flora" aria-hidden="true">
+                  <svg viewBox="0 0 132 168" fill="none">
+                    <ellipse cx="30" cy="30" rx="24" ry="13" fill="#fff" fill-opacity=".42" transform="rotate(-12 30 30)"/>
+                    <path d="M56 118c4-30 18-52 36-70" stroke="#6f9f56" stroke-width="2" stroke-linecap="round" opacity=".35"/>
+                    <ellipse cx="74" cy="40" rx="16" ry="10" fill="#9dcc75" fill-opacity=".55" transform="rotate(18 74 40)"/>
+                    <ellipse cx="56" cy="58" rx="14" ry="9" fill="#7fb964" fill-opacity=".45" transform="rotate(-26 56 58)"/>
+                    <ellipse cx="92" cy="60" rx="12" ry="8" fill="#c8e89a" fill-opacity=".7" transform="rotate(10 92 60)"/>
+                    <circle cx="42" cy="70" r="5.5" fill="#f6edb4" fill-opacity=".8"/>
+                  </svg>
+                </span>
+                <span class="badge">亲子互动</span>
+                <span class="glass">
+                  <div class="cap">越用力催，越容易卡在同一套循环</div>
+                  <div class="sub">完整度 45%</div>
+                  <div class="mini-bar"><span style="width:45%"></span></div>
+                </span>
+              </button>
+              <button type="button" class="portrait-tile t1" data-open="sheet-insight">
+                <span class="flora" aria-hidden="true">
+                  <svg viewBox="0 0 132 168" fill="none">
+                    <ellipse cx="98" cy="30" rx="28" ry="15" fill="#fff" fill-opacity=".45" transform="rotate(18 98 30)"/>
+                    <path d="M24 112c9-28 24-48 42-62" stroke="#6f9f56" stroke-width="2" stroke-linecap="round" opacity=".35"/>
+                    <ellipse cx="62" cy="44" rx="17" ry="10" fill="#9dcc75" fill-opacity=".55" transform="rotate(-28 62 44)"/>
+                    <ellipse cx="44" cy="62" rx="15" ry="9" fill="#c8e89a" fill-opacity=".7" transform="rotate(16 44 62)"/>
+                    <circle cx="104" cy="54" r="6" fill="#f6edb4" fill-opacity=".8"/>
+                  </svg>
+                </span>
+                <span class="badge">好方法</span>
+                <span class="glass">
+                  <div class="cap">先休息再写；家长短暂离开，只确认进展</div>
+                  <div class="sub">完整度 45%</div>
+                  <div class="mini-bar"><span style="width:45%"></span></div>
+                </span>
+              </button>
+              <button type="button" class="portrait-tile t3" data-open="sheet-insight">
+                <span class="flora" aria-hidden="true">
+                  <svg viewBox="0 0 132 168" fill="none">
+                    <ellipse cx="96" cy="28" rx="24" ry="13" fill="#fff" fill-opacity=".4" transform="rotate(14 96 28)"/>
+                    <path d="M32 114c11-26 26-46 46-58" stroke="#a89a5c" stroke-width="2" stroke-linecap="round" opacity=".3"/>
+                    <ellipse cx="58" cy="44" rx="16" ry="10" fill="#e8d9a0" fill-opacity=".7" transform="rotate(-20 58 44)"/>
+                    <ellipse cx="76" cy="60" rx="14" ry="9" fill="#f6edb4" fill-opacity=".85" transform="rotate(26 76 60)"/>
+                  </svg>
+                </span>
+                <span class="badge">成长阻力</span>
+                <span class="glass">
+                  <div class="cap">催促一紧，冲突更容易被点燃</div>
+                  <div class="sub">完整度 45%</div>
+                  <div class="mini-bar"><span style="width:45%"></span></div>
+                </span>
+              </button>
+              <button type="button" class="portrait-tile t2" data-open="sheet-insight">
+                <span class="flora" aria-hidden="true">
+                  <svg viewBox="0 0 132 168" fill="none">
+                    <ellipse cx="28" cy="32" rx="26" ry="14" fill="#fff" fill-opacity=".42" transform="rotate(-16 28 32)"/>
+                    <path d="M64 120c2-30 11-52 26-72" stroke="#6f9f56" stroke-width="2" stroke-linecap="round" opacity=".32"/>
+                    <ellipse cx="82" cy="40" rx="16" ry="10" fill="#b7d992" fill-opacity=".6" transform="rotate(22 82 40)"/>
+                    <ellipse cx="64" cy="58" rx="14" ry="9" fill="#9dcc75" fill-opacity=".5" transform="rotate(-24 64 58)"/>
+                    <circle cx="40" cy="68" r="5.5" fill="#f6edb4" fill-opacity=".75"/>
+                  </svg>
+                </span>
+                <span class="badge">作业机制</span>
+                <span class="glass">
+                  <div class="cap">把开始权交还给他，启动阻力会下降</div>
+                  <div class="sub">完整度 28%</div>
+                  <div class="mini-bar"><span style="width:28%"></span></div>
+                </span>
+              </button>
+            </div>
+            <div class="media-scroll-track" id="media-scroll-track" aria-hidden="true">
+              <span class="media-scroll-thumb" id="media-scroll-thumb"></span>
+            </div>
+
+            <article class="handbook" data-open="sheet-memories" role="button" tabindex="0">
+              <div class="handbook-cover">
+                <p class="month">本周 · 7月14日 – 7月20日</p>
+                <h4>从「被催」到「自己开第一步」</h4>
+                <p>本周沉淀了冲突语音、随笔与亮点瞬间。系统帮你收成可回看的一周记忆。</p>
+              </div>
+              <div class="handbook-body">
+                <div class="hb-row">
+                  <div class="hb-ico" id="ico-highlight" aria-hidden="true">
+                    <svg viewBox="0 0 40 40" fill="none">
+                      <path d="M12 31.5c2.2-1.4 5-2.2 8-2.2s5.8.8 8 2.2" stroke="#6f9f56" stroke-width="1.7" stroke-linecap="round"/>
+                      <path d="M20 29.5V15" stroke="#6f9f56" stroke-width="1.7" stroke-linecap="round"/>
+                      <path d="M20 15C15.8 14.5 12.6 11.8 12.2 8.6" stroke="#6f9f56" stroke-width="1.7" stroke-linecap="round"/>
+                      <path d="M20 15C24.2 14.5 27.4 11.8 27.8 8.6" stroke="#6f9f56" stroke-width="1.7" stroke-linecap="round"/>
+                      <path d="M12.2 8.6c.6-2.4 3.2-3.6 5.6-2.2 1.4.8 2 2.6 2.2 4.6" stroke="#6f9f56" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M27.8 8.6c-.6-2.4-3.2-3.6-5.6-2.2-1.4.8-2 2.6-2.2 4.6" stroke="#6f9f56" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <strong>阶段性亮点</strong>
+                    <span>本周「自己开工」出现 2 次，连续两天自己拿出作业本。先休息再写作业，过渡更顺；催促升级点也比上周少。</span>
+                  </div>
+                </div>
+                <div class="hb-row">
+                  <div class="hb-ico" id="ico-relation" aria-hidden="true">
+                    <svg viewBox="0 0 40 40" fill="none">
+                      <path d="M7 17h12a4.8 4.8 0 0 1 4.8 4.8v1.4a4.8 4.8 0 0 1-4.8 4.8H15.8l-3.6 3v-3H7a4.8 4.8 0 0 1-4.8-4.8v-1.4A4.8 4.8 0 0 1 7 17z" stroke="#8b7bb0" stroke-width="1.7" stroke-linejoin="round"/>
+                      <path d="M18.8 9.2H29.5a4.6 4.6 0 0 1 4.6 4.6v1.8a4.6 4.6 0 0 1-4.6 4.6h-2l-2.4 2.1v-2.1H18.8a4.6 4.6 0 0 1-4.6-4.6v-1.8a4.6 4.6 0 0 1 4.6-4.6z" stroke="#8b7bb0" stroke-width="1.7" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <strong>关系瞬间</strong>
+                    <span>1 段催作业语音记下了升级点（约第 38 秒）。随笔里出现「我先休息十分钟」的主动提出，冲突少了一点硬顶。</span>
+                  </div>
+                </div>
+                <div class="hb-row" role="button" tabindex="0" data-open="sheet-years">
+                  <div class="hb-ico" id="ico-compare" aria-hidden="true">
+                    <svg viewBox="0 0 40 40" fill="none">
+                      <circle cx="22" cy="18.5" r="10.2" stroke="#c45a4a" stroke-width="1.7"/>
+                      <circle cx="22" cy="18.5" r="6.2" stroke="#c45a4a" stroke-width="1.7"/>
+                      <circle cx="22" cy="18.5" r="2.3" stroke="#c45a4a" stroke-width="1.7"/>
+                      <!-- 红色箭头从左下斜向靶心 -->
+                      <path d="M8.5 31 L18.2 21.3" stroke="#c45a4a" stroke-width="1.8" stroke-linecap="round"/>
+                      <path d="M18.2 21.3 L14.6 23.1 L15.8 19 Z" stroke="#c45a4a" stroke-width="1.5" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <strong>对比上次</strong>
+                    <span>上次还在「一回家就催作业」；这次过渡更清楚，有主动提出休息。点开看 3 个月前（4月18日）到今天。</span>
+                  </div>
+                </div>
+                <button type="button" class="cta-handbook" data-open="sheet-memories">查看本周全部记忆</button>
+              </div>
+            </article>
+
+            <button type="button" class="years-ago" data-open="sheet-years">
+              <div class="stamp">对比<br />上次</div>
+              <div class="txt">
+                <strong>那时你们还在「一回家就催作业」</strong>
+                <span>过渡安排更清楚了。点开看看上次的交流与语音片段。</span>
+              </div>
+            </button>
+
+            <span class="section-label">画像维护</span>
+            <div class="hifi-card setting-group">
+              <button type="button" class="setting-row clickable" data-open="sheet-upload">补充画像 / 上传本周记忆 ›</button>
+            </div>
+            <span class="section-label">账号管理</span>
+            <div class="hifi-card setting-group">
+              <div class="setting-row">编辑个人资料 ›</div>
+              <div class="setting-row">编辑孩子信息 ›</div>
+              <div class="setting-row">退出登录 ›</div>
+            </div>
+            <div class="scroll-end"></div>
+          </div>
+
+          <!-- 子页们 -->
+          <div class="sheet" id="sheet-voice">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>记忆详情</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="sheet-kicker">冲突语音 · 7月3日</p>
+              <h3>催作业冲突 · 2′18″</h3>
+              <p class="lead">先听原声，再看系统提炼的关键句——纪念感在前，分析在后。</p>
+              <div class="play-row">
+                <button type="button" class="play-btn" id="play-voice">▶</button>
+                <div class="wave" aria-hidden="true"></div>
+                <span style="font-size:12px;color:var(--muted)">2′18″</span>
+              </div>
+              <div class="sheet-block">
+                <strong>提炼关键句</strong>
+                <ul>
+                  <li>家长：「怎么又拖，作业写完再玩。」</li>
+                  <li>孩子：「你一催我就更不想写。」</li>
+                  <li>系统标注：催促升级点出现在开场 38 秒。</li>
+                </ul>
+              </div>
+              <div class="sheet-block">
+                <strong>AI 轻解读</strong>
+                <p>这不是「谁对谁错」，而是循环里的一次取样。当时缺的是过渡安排，不是更多提醒。</p>
+              </div>
+              <button type="button" class="sheet-cta" data-open="sheet-memories">写入本周手账</button>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-diary">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>随笔</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="sheet-kicker">7月16日 · 家长随笔</p>
+              <h3>「今天他主动说：我先休息十分钟」</h3>
+              <p class="lead">这句被标为闪光时刻——主动提出过渡，而不是被动挨催。</p>
+              <div class="sheet-block">
+                <strong>原文摘录</strong>
+                <p>放学回来他说想先喝水，我说可以。十分钟后他自己拿出作业本。我忍住没问进度。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-hard">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>家庭难题</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="sheet-kicker">已写入成长轨迹</p>
+              <h3>状态切换困难</h3>
+              <p class="lead">放学后从休息/玩耍切到写作业时阻力明显。更像需要过渡期，而不是懒。</p>
+              <div class="sheet-block">
+                <strong>相关记忆</strong>
+                <ul>
+                  <li>冲突语音 · 7月3日</li>
+                  <li>随笔 · 7月8日（主动要十分钟）</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-shine">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>闪光时刻</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="sheet-kicker">系统自动标亮</p>
+              <h3>连续两天自己开工</h3>
+              <p class="lead">任务反馈 + 交流记录交叉验证后标亮。这是手账里最值得回看的一类页。</p>
+              <div class="sheet-block">
+                <strong>为什么标亮</strong>
+                <p>对比三个月前「一回家就催」，这两天没有出现催促升级点，启动时间提前。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-handbook">
+            <div class="sheet-grab" aria-hidden="true"><i></i></div>
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>本周手账总结</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="sheet-kicker">本周 · 7月14日 – 7月20日</p>
+              <h3>从「被催」到「自己开第一步」</h3>
+              <p class="lead">一周一份可回看小结。素材来自交流、语音、任务反馈与随笔。</p>
+              <div class="sheet-block">
+                <strong>封面故事</strong>
+                <p>本周最明显的变化，不是作业更快写完，而是催促变少、过渡变清楚。</p>
+              </div>
+              <div class="sheet-block">
+                <strong>本周记下了</strong>
+                <ul>
+                  <li>冲突语音 1 段 · 随笔 1 则 · 亮点 2 次</li>
+                  <li>「自己开工」出现 2 次，「先休息十分钟」主动提出 1 次</li>
+                </ul>
+              </div>
+              <button type="button" class="sheet-cta" id="btn-share">生成可分享封面图</button>
+              <button type="button" class="sheet-cta ghost" data-open="sheet-memories">看本周全部记忆</button>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-years">
+            <div class="sheet-grab" aria-hidden="true"><i></i></div>
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>时间胶囊</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="sheet-kicker">对比上次</p>
+              <h3>3 个月前 · 4月18日</h3>
+              <p class="lead" style="margin-bottom:14px">把同一件事的「那时」和「此刻」叠在一起看——文字再长也能整段读完。</p>
+
+              <div class="compare">
+                <div class="compare-card then">
+                  <div class="tag"><span class="dot" aria-hidden="true"></span>上次 · 3 个月前 · 4月18日</div>
+                  <p>一回家就催作业。冲突多发生在进门 10 分钟内：看见书包、问起进度、语气变紧，循环很快被点燃。当时缺的是过渡安排，不是更多提醒。</p>
+                </div>
+                <div class="compare-bridge" aria-hidden="true">
+                  <span class="label">慢慢变成了</span>
+                </div>
+                <div class="compare-card now">
+                  <div class="tag"><span class="dot" aria-hidden="true"></span>这次 · 今天 · 7月19日</div>
+                  <p>过渡安排更清楚了。出现「我先休息十分钟」的主动提出；催促升级点变少，启动不再总卡在进门那一刻。</p>
+                </div>
+              </div>
+
+              <div class="sheet-block">
+                <strong>当时的一条交流</strong>
+                <p>「一进门看见书包就烦，忍不住先问作业。」</p>
+              </div>
+              <button type="button" class="sheet-cta" data-open="sheet-voice">听一段当时的语音</button>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-insight">
+            <div class="sheet-grab" aria-hidden="true"><i></i></div>
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>画像卡片</h2>
+            </div>
+            <div class="sheet-body insight-body">
+              <div class="insight-hero">
+                <p class="eyebrow">育见 · 理解层</p>
+                <h3>果果的成长画像</h3>
+                <p>7 张卡片，读懂孩子与亲子互动。不是报告墙——是手账里慢慢写厚的理解。</p>
+                <div class="pct-row">
+                  <div class="pct-num">25%</div>
+                  <div class="pct-meta">
+                    <strong>整体了解进度</strong>
+                    <div class="bar"><span style="width:25%"></span></div>
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" class="insight-card t1" data-open="sheet-card-growth">
+                <div class="ic-top">
+                  <span class="flora" aria-hidden="true">
+                    <svg viewBox="0 0 320 100" fill="none">
+                      <ellipse cx="280" cy="24" rx="40" ry="18" fill="#fff" fill-opacity=".4"/>
+                      <ellipse cx="60" cy="36" rx="28" ry="14" fill="#9dcc75" fill-opacity=".45" transform="rotate(-20 60 36)"/>
+                      <ellipse cx="120" cy="50" rx="22" ry="12" fill="#c8e89a" fill-opacity=".55"/>
+                    </svg>
+                  </span>
+                  <span class="ic-badge">成长画像</span>
+                  <h4 class="ic-title">动态成长画像</h4>
+                </div>
+                <div class="ic-glass">
+                  <p class="ic-body">孩子不是懒，而是需要自己的节奏感。回家后先放松、被催促时容易拖；他们需要信任和一段可控的过渡期。</p>
+                  <div class="ic-foot">
+                    <div class="bar"><span style="width:25%"></span></div>
+                    <span class="ic-pct">25%</span>
+                  </div>
+                  <p class="ic-hint">已收集 25%，继续交流会提升完整度</p>
+                </div>
+              </button>
+
+              <button type="button" class="insight-card t2" data-open="sheet-card-focus">
+                <div class="ic-top">
+                  <span class="flora" aria-hidden="true">
+                    <svg viewBox="0 0 320 100" fill="none">
+                      <ellipse cx="40" cy="28" rx="36" ry="16" fill="#fff" fill-opacity=".42"/>
+                      <ellipse cx="200" cy="40" rx="26" ry="13" fill="#b7d992" fill-opacity=".55" transform="rotate(18 200 40)"/>
+                      <ellipse cx="260" cy="58" rx="20" ry="11" fill="#eef7cf" fill-opacity=".8"/>
+                    </svg>
+                  </span>
+                  <span class="ic-badge">长期关注</span>
+                  <h4 class="ic-title">值得长期关注</h4>
+                </div>
+                <div class="ic-glass">
+                  <p class="ic-body">作业前的过渡安排、催促与拖延的循环、自主性建设，以及家长沟通方式的调整。</p>
+                  <div class="ic-foot">
+                    <div class="bar"><span style="width:55%"></span></div>
+                    <span class="ic-pct">55%</span>
+                  </div>
+                  <p class="ic-hint">已基于已记录交流生成</p>
+                </div>
+              </button>
+
+              <button type="button" class="insight-card t3" data-open="sheet-card-behavior">
+                <div class="ic-top">
+                  <span class="flora" aria-hidden="true">
+                    <svg viewBox="0 0 320 100" fill="none">
+                      <ellipse cx="270" cy="22" rx="38" ry="16" fill="#fff" fill-opacity=".38"/>
+                      <ellipse cx="90" cy="42" rx="24" ry="12" fill="#e8d9a0" fill-opacity=".65"/>
+                      <ellipse cx="150" cy="56" rx="20" ry="11" fill="#f6edb4" fill-opacity=".8"/>
+                    </svg>
+                  </span>
+                  <span class="ic-badge">行为模式</span>
+                  <h4 class="ic-title">孩子行为模式</h4>
+                </div>
+                <div class="ic-glass">
+                  <p class="ic-body">拖延常不是偷懒，而是在维持一点自主感；被催促时更容易进入防御，启动成本上升。</p>
+                  <div class="ic-foot">
+                    <div class="bar"><span style="width:40%"></span></div>
+                    <span class="ic-pct">40%</span>
+                  </div>
+                  <p class="ic-hint">已从交流中提取行为模式</p>
+                </div>
+              </button>
+
+              <button type="button" class="insight-card t4" data-open="sheet-card-interact">
+                <div class="ic-top">
+                  <span class="flora" aria-hidden="true">
+                    <svg viewBox="0 0 320 100" fill="none">
+                      <ellipse cx="36" cy="26" rx="34" ry="15" fill="#fff" fill-opacity=".4"/>
+                      <ellipse cx="180" cy="38" rx="24" ry="12" fill="#9dcc75" fill-opacity=".5"/>
+                      <ellipse cx="240" cy="54" rx="18" ry="10" fill="#c8e89a" fill-opacity=".65"/>
+                    </svg>
+                  </span>
+                  <span class="ic-badge">亲子互动</span>
+                  <h4 class="ic-title">亲子互动关系</h4>
+                </div>
+                <div class="ic-glass">
+                  <p class="ic-body">家长越用力催促，孩子越容易拖延；拖延又加剧焦虑，双方都卡在同一套循环里。</p>
+                  <div class="ic-foot">
+                    <div class="bar"><span style="width:45%"></span></div>
+                    <span class="ic-pct">45%</span>
+                  </div>
+                  <p class="ic-hint">已识别家庭互动循环</p>
+                </div>
+              </button>
+
+              <button type="button" class="insight-card t1" data-open="sheet-card-method">
+                <div class="ic-top">
+                  <span class="flora" aria-hidden="true">
+                    <svg viewBox="0 0 320 100" fill="none">
+                      <ellipse cx="280" cy="24" rx="40" ry="18" fill="#fff" fill-opacity=".4"/>
+                      <ellipse cx="70" cy="40" rx="26" ry="13" fill="#9dcc75" fill-opacity=".45"/>
+                    </svg>
+                  </span>
+                  <span class="ic-badge">好方法</span>
+                  <h4 class="ic-title">试试这些好方法</h4>
+                </div>
+                <div class="ic-glass">
+                  <p class="ic-body">作业前先告诉孩子可以休息 25 分钟再开始；开始后家长短暂离开，回来只确认进展，不反复催。</p>
+                  <div class="ic-foot">
+                    <div class="bar"><span style="width:45%"></span></div>
+                    <span class="ic-pct">45%</span>
+                  </div>
+                  <p class="ic-hint">结合你们家情况整理的试法</p>
+                </div>
+              </button>
+
+              <button type="button" class="insight-card t3" data-open="sheet-card-resist">
+                <div class="ic-top">
+                  <span class="flora" aria-hidden="true">
+                    <svg viewBox="0 0 320 100" fill="none">
+                      <ellipse cx="260" cy="20" rx="36" ry="15" fill="#fff" fill-opacity=".38"/>
+                      <ellipse cx="100" cy="44" rx="22" ry="11" fill="#e8d9a0" fill-opacity=".65"/>
+                    </svg>
+                  </span>
+                  <span class="ic-badge">成长阻力</span>
+                  <h4 class="ic-title">孩子健康成长阻力</h4>
+                </div>
+                <div class="ic-glass">
+                  <p class="ic-body">催促一起，孩子更容易去逗宠物、拖到很晚；家长焦虑上升，冲突更容易点燃。</p>
+                  <div class="ic-foot">
+                    <div class="bar"><span style="width:45%"></span></div>
+                    <span class="ic-pct">45%</span>
+                  </div>
+                  <p class="ic-hint">这些运转方式可能在消耗孩子精力</p>
+                </div>
+              </button>
+
+              <button type="button" class="insight-card t2" data-open="sheet-card-homework">
+                <div class="ic-top">
+                  <span class="flora" aria-hidden="true">
+                    <svg viewBox="0 0 320 100" fill="none">
+                      <ellipse cx="42" cy="28" rx="34" ry="15" fill="#fff" fill-opacity=".42"/>
+                      <ellipse cx="210" cy="42" rx="24" ry="12" fill="#b7d992" fill-opacity=".55"/>
+                    </svg>
+                  </span>
+                  <span class="ic-badge">作业机制</span>
+                  <h4 class="ic-title">孩子写作业的机制</h4>
+                </div>
+                <div class="ic-glass">
+                  <p class="ic-body">被催促时会觉得「自由被夺走」，更难启动。把开始权交还给他，阻力会下降。</p>
+                  <div class="ic-foot">
+                    <div class="bar"><span style="width:28%"></span></div>
+                    <span class="ic-pct">28%</span>
+                  </div>
+                  <p class="ic-hint">围绕作业场景整理的机制与实践</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div class="sheet card-detail" id="sheet-card-growth">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>动态成长画像</h2>
+            </div>
+            <div class="sheet-body">
+              <div class="detail-panel">
+                <p class="sheet-kicker">完整度</p>
+                <h3>25%</h3>
+                <div class="bar"><span style="width:25%"></span></div>
+                <p class="lead" style="margin-bottom:10px">孩子不是懒，而是需要自己的节奏感。回家后先放松、被催促时容易拖；他们需要信任和一段可控的过渡期。</p>
+                <p class="hint">已收集 25%，继续交流/补模块会提升完整度。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet card-detail" id="sheet-card-focus">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>值得长期关注</h2>
+            </div>
+            <div class="sheet-body">
+              <div class="detail-panel">
+                <p class="sheet-kicker">完整度 55%</p>
+                <h3>值得长期关注</h3>
+                <div class="bar"><span style="width:55%"></span></div>
+                <p class="lead">作业前的过渡安排、催促与拖延的循环、自主性建设，以及家长沟通方式的调整。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet card-detail" id="sheet-card-interact">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>亲子互动关系</h2>
+            </div>
+            <div class="sheet-body">
+              <div class="detail-panel">
+                <p class="sheet-kicker">完整度 45%</p>
+                <h3>亲子互动关系</h3>
+                <div class="bar"><span style="width:45%"></span></div>
+                <p class="lead">家长越用力催促，孩子越容易拖延；拖延又加剧焦虑，双方都卡在同一套循环里。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet card-detail" id="sheet-card-behavior">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>孩子行为模式</h2>
+            </div>
+            <div class="sheet-body">
+              <div class="detail-panel">
+                <p class="sheet-kicker">完整度 40%</p>
+                <h3>孩子行为模式</h3>
+                <div class="bar"><span style="width:40%"></span></div>
+                <p class="lead">拖延常不是偷懒，而是在维持一点自主感；被催促时更容易进入防御，启动成本上升。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet card-detail" id="sheet-card-method">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>试试这些好方法</h2>
+            </div>
+            <div class="sheet-body">
+              <div class="detail-panel">
+                <p class="sheet-kicker">完整度 45%</p>
+                <h3>试试这些好方法</h3>
+                <div class="bar"><span style="width:45%"></span></div>
+                <p class="lead">作业前先告诉孩子可以休息 25 分钟再开始；开始后家长短暂离开，回来只确认进展，不反复催。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet card-detail" id="sheet-card-resist">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>孩子健康成长阻力</h2>
+            </div>
+            <div class="sheet-body">
+              <div class="detail-panel">
+                <p class="sheet-kicker">完整度 45%</p>
+                <h3>孩子健康成长阻力</h3>
+                <div class="bar"><span style="width:45%"></span></div>
+                <p class="lead">催促一起，孩子更容易去逗宠物、拖到很晚；家长焦虑上升，冲突更容易点燃。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet card-detail" id="sheet-card-homework">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>孩子写作业的机制</h2>
+            </div>
+            <div class="sheet-body">
+              <div class="detail-panel">
+                <p class="sheet-kicker">完整度 28%</p>
+                <h3>孩子写作业的机制</h3>
+                <div class="bar"><span style="width:28%"></span></div>
+                <p class="lead">被催促时会觉得「自由被夺走」，更难启动。把开始权交还给他，阻力会下降。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-upload">
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>上传本周记忆</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="lead">对标亲宝宝的「增强入口」：默认仍靠交流 / 语音 / 任务自动沉淀，不强制日记。</p>
+              <button type="button" class="sheet-cta" data-toast="打开随笔编辑（示意）">写一则随笔</button>
+              <button type="button" class="sheet-cta" style="margin-top:10px;background:#fff;color:var(--green-deep);border:1px solid rgba(111,159,86,.35)" data-toast="跳转补充画像模块（示意）">补充画像模块</button>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-memories">
+            <div class="sheet-grab" aria-hidden="true"><i></i></div>
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>本周记忆</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="lead">本周 · 7月14日 – 7月20日 · 按时间倒序。左侧是日期，点一条看详情。</p>
+              <div class="mem-list">
+                <button type="button" class="mem-row" data-open="sheet-shine">
+                  <div class="mem-axis" aria-hidden="true">
+                    <div class="day">18</div>
+                    <div class="mon">7月</div>
+                    <div class="dot"></div>
+                  </div>
+                  <div class="mem-card">
+                    <div class="top"><span class="kw">自己开工</span><span class="type">亮点</span></div>
+                    <p class="desc">连续两天自己拿出作业本</p>
+                  </div>
+                </button>
+                <button type="button" class="mem-row" data-open="sheet-hard">
+                  <div class="mem-axis" aria-hidden="true">
+                    <div class="day">17</div>
+                    <div class="mon">7月</div>
+                    <div class="dot"></div>
+                  </div>
+                  <div class="mem-card">
+                    <div class="top"><span class="kw">状态切换</span><span class="type">难题</span></div>
+                    <p class="desc">放学后切到写作业阻力大 · 已写入轨迹</p>
+                  </div>
+                </button>
+                <button type="button" class="mem-row" data-open="sheet-diary">
+                  <div class="mem-axis" aria-hidden="true">
+                    <div class="day">16</div>
+                    <div class="mon">7月</div>
+                    <div class="dot"></div>
+                  </div>
+                  <div class="mem-card">
+                    <div class="top"><span class="kw">先休息十分钟</span><span class="type">随笔</span></div>
+                    <p class="desc">他主动提出过渡</p>
+                  </div>
+                </button>
+                <button type="button" class="mem-row" data-open="sheet-voice">
+                  <div class="mem-axis" aria-hidden="true">
+                    <div class="day">14</div>
+                    <div class="mon">7月</div>
+                    <div class="dot"></div>
+                  </div>
+                  <div class="mem-card">
+                    <div class="top"><span class="kw">催作业</span><span class="type">语音</span></div>
+                    <p class="desc">冲突录音 · 2′18″ · 催促升级点</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-pages">
+            <div class="sheet-grab" aria-hidden="true"><i></i></div>
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>手账页数</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="sheet-kicker">本周又厚了 3 页</p>
+              <h3>七月手账 · 12 页</h3>
+              <p class="lead">一页 ≈ 一条可回看记忆。页数往上长，是家里真实发生过的事在变厚。</p>
+              <div class="sheet-block">
+                <strong>最近新增</strong>
+                <ul>
+                  <li>7月18日 · 自己开工（亮点）</li>
+                  <li>7月17日 · 状态切换（难题）</li>
+                  <li>7月16日 · 先休息十分钟（随笔）</li>
+                </ul>
+              </div>
+              <button type="button" class="sheet-cta" data-open="sheet-memories">浏览全部记忆</button>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-moments">
+            <div class="sheet-grab" aria-hidden="true"><i></i></div>
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>闪光时刻</h2>
+            </div>
+            <div class="sheet-body">
+              <h3>本周 2 个</h3>
+              <p class="lead">系统从交流与任务反馈里自动标亮的正向瞬间。</p>
+              <div class="mem-list">
+                <button type="button" class="mem-row" data-open="sheet-shine">
+                  <div class="mem-axis" aria-hidden="true">
+                    <div class="day">18</div>
+                    <div class="mon">7月</div>
+                    <div class="dot"></div>
+                  </div>
+                  <div class="mem-card">
+                    <div class="top"><span class="kw">自己开工</span><span class="type">亮点</span></div>
+                    <p class="desc">连续两天自己拿出作业本</p>
+                  </div>
+                </button>
+                <button type="button" class="mem-row" data-open="sheet-diary">
+                  <div class="mem-axis" aria-hidden="true">
+                    <div class="day">16</div>
+                    <div class="mon">7月</div>
+                    <div class="dot"></div>
+                  </div>
+                  <div class="mem-card">
+                    <div class="top"><span class="kw">先休息十分钟</span><span class="type">随笔</span></div>
+                    <p class="desc">主动提出过渡</p>
+                  </div>
+                </button>
+              </div>
+              <button type="button" class="sheet-cta ghost" data-open="sheet-memories" style="margin-top:12px">看本周全部记忆</button>
+            </div>
+          </div>
+
+          <div class="sheet" id="sheet-archive">
+            <div class="sheet-grab" aria-hidden="true"><i></i></div>
+            <div class="sheet-head">
+              <button type="button" class="sheet-back" data-close>‹</button>
+              <h2>往期手账</h2>
+            </div>
+            <div class="sheet-body">
+              <p class="lead">按周回看。点开看当周小结。</p>
+              <button type="button" class="archive-row current" data-open="sheet-handbook">
+                <div class="when">本周 · 7月14日 – 7月20日 · 当前</div>
+                <h5>从「被催」到「自己开第一步」</h5>
+                <p>催促变少，过渡变清楚。本周仍在写。</p>
+              </button>
+              <button type="button" class="archive-row" data-open="sheet-years">
+                <div class="when">上周 · 7月7日 – 7月13日</div>
+                <h5>还在「一回家就催作业」</h5>
+                <p>可与时间胶囊对照，看看前后的变化。</p>
+              </button>
+            </div>
+          </div>
+
+          <div class="toast" id="toast"></div>
+          <div class="tab-wrap tab-b" id="tabs-revamp"></div>
+        </div>
+      </div>
+    </div>
+
+    <section class="legend">
+      <h2>改版稿怎么点 · 底栏两版</h2>
+      <ol>
+        <li><strong>底栏 A</strong>（左）：整条白底，顶细线，四标签直接铺在底色上</li>
+        <li><strong>底栏 B</strong>（右）：同白底，选中项浅绿底 + 浮起阴影</li>
+        <li><strong>画像卡片</strong>横滑条（可拖底部灰条）→ 点卡看详情 / 全部</li>
+        <li><strong>本周手账</strong> → 周小结与记忆列表（原记忆碎片已并入此处）</li>
+        <li><strong>往期</strong> → 按周列表</li>
+        <li><strong>时间胶囊</strong> → 对比上次（标 1/2/3 个月前 + 具体日期）</li>
+      </ol>
+    </section>
+  </div>
+
+  <script>
+    const TAB_HTML = `
+      <nav class="tabs" aria-label="底部导航">
+        <div class="tab">
+          <svg viewBox="0 0 28 28" fill="none"><path d="M14 5.4c-5.25 0-9.35 3.45-9.35 7.78 0 2.18 1.05 4.12 2.78 5.52l-.6 3.9 3.78-2.12c1.04.34 2.18.52 3.39.52 5.25 0 9.35-3.45 9.35-7.82S19.25 5.4 14 5.4z" stroke="rgba(91,96,106,0.72)" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 13.15h.01M14 13.15h.01M17.5 13.15h.01" stroke="rgba(91,96,106,0.72)" stroke-width="2.7" stroke-linecap="round"/></svg>
+          交流
+        </div>
+        <div class="tab">
+          <svg viewBox="0 0 28 28" fill="none"><path d="M10.2 5.9H8.1a2.2 2.2 0 0 0-2.2 2.2v14.1a2.2 2.2 0 0 0 2.2 2.2h11.8a2.2 2.2 0 0 0 2.2-2.2V8.1a2.2 2.2 0 0 0-2.2-2.2h-2.1" stroke="rgba(91,96,106,0.72)" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.3 3.7h5.4c.6 0 1.1.5 1.1 1.1v2.6c0 .6-.5 1.1-1.1 1.1h-5.4c-.6 0-1.1-.5-1.1-1.1V4.8c0-.6.5-1.1 1.1-1.1z" stroke="rgba(91,96,106,0.72)" stroke-linejoin="round"/><path d="M10.4 15.1l2.55 2.55 5-5.25" stroke="rgba(91,96,106,0.72)" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          任务
+        </div>
+        <div class="tab">
+          <svg viewBox="0 0 28 28" fill="none"><path d="M12.9 4.2l1.35 4.15a3.2 3.2 0 0 0 2.02 2.02l4.15 1.35-4.15 1.35a3.2 3.2 0 0 0-2.02 2.02l-1.35 4.15-1.35-4.15a3.2 3.2 0 0 0-2.02-2.02l-4.15-1.35 4.15-1.35a3.2 3.2 0 0 0 2.02-2.02L12.9 4.2z" stroke="rgba(91,96,106,0.72)" stroke-linecap="round" stroke-linejoin="round"/><path d="M20.65 16.3l.72 2.15a1.6 1.6 0 0 0 1.02 1.02l2.15.72-2.15.72a1.6 1.6 0 0 0-1.02 1.02l-.72 2.15-.72-2.15a1.6 1.6 0 0 0-1.02-1.02l-2.15-.72 2.15-.72a1.6 1.6 0 0 0 1.02-1.02l.72-2.15z" stroke="rgba(91,96,106,0.72)" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          预演
+        </div>
+        <div class="tab active">
+          <svg viewBox="0 0 28 28" fill="none"><path d="M14 24.4c5.74 0 10.4-4.66 10.4-10.4S19.74 3.6 14 3.6 3.6 8.26 3.6 14 8.26 24.4 14 24.4z" stroke="#6f9f56"/><path d="M10.1 11.7h.01M17.9 11.7h.01" stroke="#6f9f56" stroke-width="2.8" stroke-linecap="round"/><path d="M9.8 16.4c1.05 1.45 2.45 2.17 4.2 2.17s3.15-.72 4.2-2.17" stroke="#6f9f56" stroke-linecap="round"/></svg>
+          画像
+        </div>
+      </nav>`;
+    document.getElementById('tabs-exact').innerHTML = TAB_HTML;
+    document.getElementById('tabs-revamp').innerHTML = TAB_HTML;
+
+    document.querySelectorAll('.switch button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.switch button').forEach((b) => b.classList.toggle('on', b === btn));
+        document.body.className = 'mode-' + btn.dataset.mode;
+      });
+    });
+
+    const phone = document.getElementById('phone-revamp');
+    const toastEl = document.getElementById('toast');
+    let toastTimer;
+
+    function closeSheets() {
+      const open = [...phone.querySelectorAll('.sheet.open')];
+      if (!open.length) return;
+      open[open.length - 1].classList.remove('open');
+    }
+
+    function openSheet(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('open');
+      el.style.zIndex = String(30 + phone.querySelectorAll('.sheet.open').length);
+      el.querySelector('.sheet-body')?.scrollTo(0, 0);
+    }
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+    }
+
+    phone.addEventListener('click', (e) => {
+      const openBtn = e.target.closest('[data-open]');
+      if (openBtn) {
+        e.preventDefault();
+        openSheet(openBtn.getAttribute('data-open'));
+        return;
+      }
+      if (e.target.closest('[data-close]')) {
+        e.preventDefault();
+        closeSheets();
+        return;
+      }
+      const toastBtn = e.target.closest('[data-toast]');
+      if (toastBtn) {
+        e.preventDefault();
+        showToast(toastBtn.getAttribute('data-toast'));
+      }
+    });
+
+    document.getElementById('play-voice')?.addEventListener('click', function () {
+      this.textContent = this.textContent === '▶' ? '❚❚' : '▶';
+      showToast(this.textContent === '❚❚' ? '播放中（示意）' : '已暂停');
+    });
+
+    document.getElementById('btn-share')?.addEventListener('click', () => {
+      showToast('已生成分享封面（示意）');
+    });
+
+    /* 画像横滑 ↔ 底部拉动条位置联动（可拖灰条） */
+    (function bindMediaScrollThumb() {
+      const strip = document.getElementById('media-strip');
+      const track = document.getElementById('media-scroll-track');
+      const thumb = document.getElementById('media-scroll-thumb');
+      if (!strip || !track || !thumb) return;
+
+      function maxScroll() {
+        return Math.max(0, strip.scrollWidth - strip.clientWidth);
+      }
+      function travel() {
+        return Math.max(0, track.clientWidth - (thumb.offsetWidth || 64));
+      }
+      function sync() {
+        const max = maxScroll();
+        const t = travel();
+        const ratio = max > 0 ? Math.min(1, Math.max(0, strip.scrollLeft / max)) : 0;
+        thumb.style.transform = 'translateX(' + (t * ratio) + 'px)';
+        track.style.opacity = max > 2 ? '1' : '0.4';
+      }
+      function scrollToRatio(ratio) {
+        const max = maxScroll();
+        strip.scrollLeft = max * Math.min(1, Math.max(0, ratio));
+        sync();
+      }
+      function ratioFromClientX(clientX) {
+        const rect = track.getBoundingClientRect();
+        const thumbW = thumb.offsetWidth || 64;
+        const t = Math.max(0, rect.width - thumbW);
+        if (t <= 0) return 0;
+        const x = clientX - rect.left - thumbW / 2;
+        return Math.min(1, Math.max(0, x / t));
+      }
+
+      strip.addEventListener('scroll', sync, { passive: true });
+      window.addEventListener('resize', sync);
+
+      let dragging = false;
+      function onPointerDown(e) {
+        dragging = true;
+        thumb.setPointerCapture?.(e.pointerId);
+        scrollToRatio(ratioFromClientX(e.clientX));
+        e.preventDefault();
+      }
+      function onPointerMove(e) {
+        if (!dragging) return;
+        scrollToRatio(ratioFromClientX(e.clientX));
+        e.preventDefault();
+      }
+      function onPointerUp() {
+        dragging = false;
+      }
+      track.addEventListener('pointerdown', onPointerDown);
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointercancel', onPointerUp);
+
+      sync();
+      requestAnimationFrame(sync);
+    })();
+
+    /* 页数轻轻数上来，强化「手账在变厚」的成就感 */
+    (function animatePageCount() {
+      const el = document.getElementById('page-count-num');
+      if (!el) return;
+      const target = 12;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) {
+        el.textContent = String(target);
+        return;
+      }
+      let n = 0;
+      el.textContent = '0';
+      const step = () => {
+        n += 1;
+        el.textContent = String(n);
+        if (n < target) {
+          setTimeout(step, 45 + n * 4);
+        } else {
+          el.classList.add('pop');
+        }
+      };
+      setTimeout(step, 280);
+    })();
+  </script>
+</body>
+</html>

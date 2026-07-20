@@ -37,7 +37,7 @@ export {
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite' | 'deep_mechanism_review' | 'dossier_patch' | 'growth_trajectory_update' | 'profile_build_run'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite' | 'deep_mechanism_review' | 'dossier_patch' | 'growth_trajectory_update' | 'profile_build_run' | 'family_memory_feed_rebuild' | 'weekly_handbook_update' | 'time_capsule_update' | 'handbook_page_admit' | 'handbook_backfill' | 'handbook_purge_bad_pages'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
 interface DigestUpdatePayload { tenant: TenantId }
@@ -237,6 +237,30 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
       fromStage: p.fromStage,
       inputVersion: p.inputVersion,
     })
+  } else if (jobType === 'family_memory_feed_rebuild') {
+    const p = payload as { tenant: TenantId }
+    const { runFamilyMemoryFeedRebuild } = await import('@/lib/server/profile/handbook-jobs')
+    await runFamilyMemoryFeedRebuild(p.tenant)
+  } else if (jobType === 'handbook_page_admit') {
+    const p = payload as { tenant: TenantId }
+    const { runHandbookPageAdmit } = await import('@/lib/server/profile/handbook-jobs')
+    await runHandbookPageAdmit(p.tenant)
+  } else if (jobType === 'handbook_backfill') {
+    const p = payload as { tenant: TenantId }
+    const { runHandbookHistoricalBackfill } = await import('@/lib/server/profile/handbook-jobs')
+    await runHandbookHistoricalBackfill(p.tenant)
+  } else if (jobType === 'handbook_purge_bad_pages') {
+    const p = payload as { tenant: TenantId }
+    const { runHandbookPurgeBadPages } = await import('@/lib/server/profile/handbook-jobs')
+    await runHandbookPurgeBadPages(p.tenant)
+  } else if (jobType === 'weekly_handbook_update') {
+    const p = payload as { tenant: TenantId }
+    const { runHandbookChain } = await import('@/lib/server/profile/handbook-jobs')
+    await runHandbookChain(p.tenant)
+  } else if (jobType === 'time_capsule_update') {
+    const p = payload as { tenant: TenantId }
+    const { runTimeCapsuleUpdate } = await import('@/lib/server/profile/time-capsule')
+    await runTimeCapsuleUpdate(p.tenant)
   }
 }
 
@@ -541,6 +565,10 @@ export async function forceLoginJobCheck(tenant: TenantId, maxReplay = 5): Promi
   ).catch(err => console.warn('[jobs] 登录补跑 failed 重投失败:', err))
 
   // 强制排队 digest + model_review + deep_mechanism
+  // 补 flush 未满 10 轮的暂存 daily_update，避免只聊几轮就离开导致 L9 丢失
+  void import('@/lib/server/memory/write/batched-daily-write')
+    .then(({ flushStalePendingDailyWrites }) => flushStalePendingDailyWrites(tenant))
+    .catch((err) => console.warn('[jobs] login flush pending daily writes 失败:', err))
   // S2 开：daily_open 独立键，与 memory_write 日桶 / 10 轮里程碑不互跳过
   // S2 关：回退旧日桶键（与 memory_write 同日去重）
   await enqueueJob('digest_update', { tenant }, digestUpdateBucketKey(tenant), null).catch(() => {})
@@ -591,6 +619,29 @@ export async function getMemoryWriteStatusByTrace(traceId: string): Promise<Memo
   if (mw === 'succeeded') status.label = 'remembered'
   else if (mw === 'pending' || mw === 'running' || mw === 'retrying') status.label = 'organizing'
   else if (mw === 'failed') status.label = 'failed'
-  else if (!mw) status.label = 'in对话' // 没排 memory_write = 轮次不值得进长期记忆，只在 turn_events 里
+  else {
+    // 批量写入：未满 10 轮暂存于 pending_daily_writes，仍算「正在整理」
+    const { countPendingDailyWrites } = await import('@/lib/server/memory/write/batched-daily-write')
+    const tenantFromTrace = await resolveTenantFromTrace(traceId).catch(() => null)
+    if (tenantFromTrace) {
+      const pending = await countPendingDailyWrites(tenantFromTrace).catch(() => 0)
+      if (pending > 0) status.label = 'organizing'
+      else status.label = 'in对话'
+    } else {
+      status.label = 'in对话'
+    }
+  }
   return status
+}
+
+async function resolveTenantFromTrace(traceId: string): Promise<TenantId | null> {
+  const pool = jobPool()
+  if (!pool) return null
+  const r = await pool.query<{ family_id: string; child_id: string }>(
+    `SELECT family_id, child_id FROM memory_layer_items
+     WHERE layer_name='turn_events' AND item_id=$1 LIMIT 1`,
+    [traceId]
+  ).catch(() => ({ rows: [] as { family_id: string; child_id: string }[] }))
+  const row = r.rows[0]
+  return row ? { familyId: row.family_id, childId: row.child_id } : null
 }

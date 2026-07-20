@@ -1,11 +1,20 @@
-import { View, Text } from '@tarojs/components'
+import { ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { useEffect, useState } from 'react'
-import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
+import { useEffect, useMemo, useState } from 'react'
+import { DeepPageHeader } from '@/components/nav/DeepPageHeader'
 import { usePublicPageShare } from '@/hooks/useSharePage'
-import { formatRefreshedAt, type PortraitCardSection } from '@/lib/portraitCard'
+import {
+  buildHubProfileCards,
+  formatRefreshedAt,
+  type DailyPortraitCards,
+  type PortraitCardSection,
+  type StructuralTension,
+} from '@/lib/portraitCard'
 import { buildProfileCardSharePath } from '@/lib/shareMessages'
 import { apiRequest } from '@/services/api'
+import { getLatestProfile, hasProfile } from '@/services/profileStorage'
+import '@/styles/profile-handbook-sheet.scss'
+import '../memories/index.scss'
 import './index.scss'
 
 const CARD_TITLES: Record<string, string> = {
@@ -16,6 +25,16 @@ const CARD_TITLES: Record<string, string> = {
   strategies: '试试这些好方法',
   hypotheses: '孩子写作业的机制',
   tensions: '孩子健康成长阻力',
+}
+
+const CARD_BADGE: Record<string, string> = {
+  growth: '成长画像',
+  focus: '长期关注',
+  behavior: '行为模式',
+  interaction: '亲子互动',
+  strategies: '好方法',
+  tensions: '成长阻力',
+  hypotheses: '作业机制',
 }
 
 type ApiSection = PortraitCardSection | { id?: string; title?: string; body?: string }
@@ -41,6 +60,7 @@ export default function ProfileCardPage() {
     title: CARD_TITLES[cardId] ? `育见 · ${CARD_TITLES[cardId]}` : '育见 · 孩子画像',
     path: buildProfileCardSharePath(cardId),
   }))
+
   const [title, setTitle] = useState('')
   const [summary, setSummary] = useState('')
   const [lead, setLead] = useState('')
@@ -49,6 +69,14 @@ export default function ProfileCardPage() {
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [completeness, setCompleteness] = useState(0)
+  const [portraitCards, setPortraitCards] = useState<DailyPortraitCards>({})
+  const [hubMeta, setHubMeta] = useState<Record<string, unknown>>({})
+  const [structuralTensions, setStructuralTensions] = useState<StructuralTension[]>([])
+  const [coreJudgment, setCoreJudgment] = useState('')
+  const [supportFocus, setSupportFocus] = useState('')
+  const [currentFocus, setCurrentFocus] = useState('')
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (!cardId) return
@@ -56,24 +84,61 @@ export default function ProfileCardPage() {
     void (async () => {
       setLoading(true)
       setLoadError('')
-      const res = await apiRequest<{
-        title?: string
-        summary?: string
-        lead?: string
-        sections?: ApiSection[]
-        anchoredFacts?: string[]
-        refreshedAt?: string | null
-      }>(`/api/profile/card/${encodeURIComponent(cardId)}`, { method: 'GET' })
+      const local = getLatestProfile()
+      if (local) {
+        setCoreJudgment(local.coreJudgment)
+        setSupportFocus(local.supportFocus || '')
+      }
+
+      const [cardRes, hubRes] = await Promise.all([
+        apiRequest<{
+          title?: string
+          summary?: string
+          lead?: string
+          sections?: ApiSection[]
+          anchoredFacts?: string[]
+          refreshedAt?: string | null
+        }>(`/api/profile/card/${encodeURIComponent(cardId)}`, { method: 'GET' }),
+        apiRequest<{
+          portraitCards?: DailyPortraitCards
+          structuralTensions?: StructuralTension[]
+          completeness?: number
+          coreJudgment?: string
+          supportFocus?: string
+          currentFocus?: string
+        }>('/api/profile/hub', { method: 'GET' }),
+      ])
+
       if (cancelled) return
-      if (res.ok) {
-        setTitle(res.data.title || CARD_TITLES[cardId] || cardId)
-        setSummary(res.data.summary || '')
-        setLead(res.data.lead || '')
-        setSections(normalizeSections(res.data.sections))
-        setFacts(res.data.anchoredFacts || [])
-        setRefreshedAt(res.data.refreshedAt || null)
+
+      if (hubRes.ok) {
+        const data = hubRes.data
+        setPortraitCards(data.portraitCards || {})
+        setStructuralTensions(data.structuralTensions || [])
+        setHubMeta(data)
+        if (typeof data.completeness === 'number') setCompleteness(data.completeness)
+        else if (local) setCompleteness(local.completeness)
+        if (data.coreJudgment) setCoreJudgment(data.coreJudgment)
+        if (data.supportFocus) setSupportFocus(data.supportFocus)
+        if (data.currentFocus) setCurrentFocus(data.currentFocus)
+      }
+
+      if (cardRes.ok) {
+        const normalized = normalizeSections(cardRes.data.sections)
+        setTitle(cardRes.data.title || CARD_TITLES[cardId] || cardId)
+        setSummary(cardRes.data.summary || '')
+        setLead(cardRes.data.lead || '')
+        setSections(normalized)
+        setFacts(cardRes.data.anchoredFacts || [])
+        setRefreshedAt(cardRes.data.refreshedAt || null)
+        const initialOpen: Record<string, boolean> = {}
+        normalized.forEach((s, i) => {
+          initialOpen[s.heading] = i === 0
+        })
+        if (cardRes.data.anchoredFacts?.length) initialOpen.__facts = true
+        setOpenSections(initialOpen)
       } else {
-        setLoadError(res.error.message || '加载失败')
+        setLoadError(cardRes.error.message || '加载失败')
         setTitle(CARD_TITLES[cardId] || cardId)
       }
       setLoading(false)
@@ -83,8 +148,29 @@ export default function ProfileCardPage() {
     }
   }, [cardId])
 
+  const cardMeta = useMemo(() => {
+    const cards = buildHubProfileCards({
+      portraitCards,
+      hubCards: hubMeta as never,
+      structuralTensions,
+      hasLocalProfile: Boolean(coreJudgment) || hasProfile(),
+      completeness,
+      coreJudgment,
+      supportFocus,
+      currentFocus,
+    })
+    return cards.find((c) => c.slug === cardId)
+  }, [portraitCards, hubMeta, structuralTensions, completeness, coreJudgment, supportFocus, currentFocus, cardId])
+
+  const progress = cardMeta?.progress ?? 8
+  const progressHint = cardMeta?.progressHint ?? ''
   const hasContent = summary || lead || sections.length > 0 || facts.length > 0
-  const displayLead = lead && lead !== summary ? lead : ''
+  const displayLead = lead && lead !== summary ? lead : summary
+  const badge = CARD_BADGE[cardId] || '画像卡片'
+
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const goBack = () => {
     const pages = Taro.getCurrentPages()
@@ -96,57 +182,99 @@ export default function ProfileCardPage() {
   }
 
   return (
-    <HiFiMainShell surface='white'>
-      <Text className='pill back-pill' onClick={goBack}>
-        ‹ 返回画像
-      </Text>
-
-      <View className='profile-section'>
-        <Text className='hero-title page-heading'>{title}</Text>
-        {refreshedAt ? (
-          <Text className='muted'>上次整理：{formatRefreshedAt(refreshedAt)}</Text>
-        ) : null}
-
+    <View className='profile-subpage card-detail-page'>
+      <View className='app-safe-top' />
+      <DeepPageHeader
+        title={title || CARD_TITLES[cardId] || '画像详情'}
+        showClose
+        onBack={goBack}
+        onClose={() => void Taro.switchTab({ url: '/pages/profile/index' })}
+      />
+      <ScrollView scrollY className='profile-sub-scroll card-detail-scroll'>
         {loading ? (
-          <View className='loading-wrap'>
+          <View className='sub-state'>
             <View className='loader' />
             <Text className='muted'>正在加载…</Text>
           </View>
         ) : loadError ? (
-          <View className='hifi-card'>
+          <View className='sub-error'>
             <Text className='muted'>{loadError}</Text>
           </View>
         ) : hasContent ? (
-          <View className='hifi-card portrait-detail-card'>
-            {displayLead ? <Text className='lead'>{displayLead}</Text> : null}
-            {sections.map((section) => (
-              <View key={section.heading} className='detail-section'>
-                <Text className='section-label'>{section.heading}</Text>
-                {section.items.map((item) => (
-                  <Text key={item.slice(0, 32)} className='detail-item'>
-                    · {item}
-                  </Text>
-                ))}
+          <>
+            <View className='detail-hero'>
+              <View className='detail-hero-top'>
+                <Text className='detail-hero-badge'>{badge}</Text>
+                {refreshedAt ? (
+                  <Text className='detail-hero-time'>{formatRefreshedAt(refreshedAt)}</Text>
+                ) : null}
               </View>
-            ))}
+              <Text className='detail-hero-title'>{title}</Text>
+              {displayLead ? <Text className='detail-hero-lead'>{displayLead}</Text> : null}
+              <View className='detail-progress-card'>
+                <View className='detail-progress-head'>
+                  <Text className='detail-progress-label'>本卡了解进度</Text>
+                  <Text className='detail-progress-pct'>{progress}%</Text>
+                </View>
+                <View className='progress-bar detail-progress-bar'>
+                  <View className='progress-bar-fill' style={{ width: `${progress}%` }} />
+                </View>
+                {progressHint ? <Text className='detail-progress-hint'>{progressHint}</Text> : null}
+              </View>
+            </View>
+
+            {sections.map((section, index) => {
+              const open = openSections[section.heading] ?? index === 0
+              return (
+                <View key={section.heading} className={`detail-section-card ${open ? 'is-open' : ''}`}>
+                  <View className='detail-section-head' onClick={() => toggleSection(section.heading)}>
+                    <View className='detail-section-index'>
+                      <Text>{String(index + 1).padStart(2, '0')}</Text>
+                    </View>
+                    <Text className='detail-section-title'>{section.heading}</Text>
+                    <Text className='detail-section-chevron'>{open ? '−' : '+'}</Text>
+                  </View>
+                  {open ? (
+                    <View className='detail-section-body'>
+                      {section.items.map((item) => (
+                        <View key={item.slice(0, 32)} className='detail-bullet-row'>
+                          <View className='detail-bullet-dot' />
+                          <Text className='detail-bullet-text'>{item}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              )
+            })}
+
             {facts.length ? (
-              <View className='detail-section'>
-                <Text className='section-label'>依据你家已记录的事实</Text>
-                {facts.map((f) => (
-                  <Text key={f.slice(0, 32)} className='detail-item'>
-                    · {f}
-                  </Text>
-                ))}
+              <View className={`detail-section-card detail-facts-card ${openSections.__facts ? 'is-open' : ''}`}>
+                <View className='detail-section-head' onClick={() => toggleSection('__facts')}>
+                  <View className='detail-section-index detail-section-index--facts'>
+                    <Text>✦</Text>
+                  </View>
+                  <Text className='detail-section-title'>依据你家已记录的事实</Text>
+                  <Text className='detail-section-chevron'>{openSections.__facts ? '−' : '+'}</Text>
+                </View>
+                {openSections.__facts ? (
+                  <View className='detail-section-body detail-facts-body'>
+                    {facts.map((f) => (
+                      <View key={f.slice(0, 32)} className='detail-fact-quote'>
+                        <Text className='detail-fact-text'>{f}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
             ) : null}
-            {!displayLead && !sections.length && summary ? <Text className='lead'>{summary}</Text> : null}
-          </View>
+          </>
         ) : (
-          <View className='hifi-card'>
+          <View className='sub-state'>
             <Text className='muted'>继续交流后，这里会出现更完整的深度分析。</Text>
           </View>
         )}
-      </View>
-    </HiFiMainShell>
+      </ScrollView>
+    </View>
   )
 }

@@ -1,8 +1,13 @@
 import { fail, ok } from '@/lib/api-response'
+import { createHash } from 'node:crypto'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { callFastJson, frontAiThinkingDisabled } from '@/lib/server/ark-agents'
 import { getTurnEventByTraceId } from '@/lib/server/memory/database-manager'
 import { resolveTenant } from '@/lib/server/memory/tenant'
+import { enqueueJob } from '@/lib/server/jobs/queue'
+import { saveHandbookCandidate } from '@/lib/server/profile/handbook-candidates-store'
+import { handbookPageAdmitJobKey } from '@/lib/server/profile/handbook-jobs'
+import { getWeekKey } from '@/lib/server/profile/week-utils'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
 import { loadDeepModelDigest } from '@/lib/server/memory/deep-modeling/digest-store'
 import {
@@ -249,9 +254,45 @@ export async function POST(request: Request) {
       { maxTokens: 768, disableThinking: frontAiThinkingDisabled() }
     )
 
+    void recordHowToSpeakCandidate(tenant, traceId, parentText, raw).catch((err) =>
+      console.warn('[daily/how-to-speak] handbook candidate skipped', err)
+    )
+
     return ok(normalizeResult(raw, parentText, aiReply))
   } catch (error) {
     console.error('[daily/how-to-speak]', error)
+    void recordHowToSpeakCandidate(tenant, traceId, parentText).catch(() => {})
     return ok(buildFallback(parentText, aiReply))
   }
+}
+
+async function recordHowToSpeakCandidate(
+  tenant: Awaited<ReturnType<typeof resolveTenant>>,
+  traceId: string,
+  parentText: string,
+  result?: Partial<HowToSpeakResult>
+) {
+  const weekKey = getWeekKey()
+  const candidateId = traceId || createHash('sha256').update(parentText).digest('hex').slice(0, 16)
+  const openingSummary =
+    result?.openings
+      ?.map((o) => o.wording)
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('；') || parentText.slice(0, 120)
+  await saveHandbookCandidate(tenant, {
+    candidateId,
+    source: 'how_to_speak',
+    sourceRef: traceId || candidateId,
+    rawEvidence: openingSummary,
+    contextSummary: result?.intro?.trim() || parentText.slice(0, 80),
+    occurredAt: new Date().toISOString(),
+    weekKey,
+  })
+  void enqueueJob(
+    'handbook_page_admit',
+    { tenant },
+    handbookPageAdmitJobKey(tenant, weekKey),
+    traceId || null
+  ).catch(() => {})
 }

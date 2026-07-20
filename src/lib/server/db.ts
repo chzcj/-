@@ -390,6 +390,56 @@ export async function loadHighValueAtoms(familyId = 'f_demo', childId = 'c_demo'
   }
 }
 
+export interface HighValueAtomRecord {
+  atomId: string
+  episodeId: string
+  content: string
+  sourceType: string
+  sourceEventId?: string
+  occurredAt: string
+}
+
+/** 按租户列出高价值 Atom（含 episode 溯源），供手账准入 job 扫描 */
+export async function listHighValueAtomsForTenant(
+  familyId = 'f_demo',
+  childId = 'c_demo',
+  limit = 200
+): Promise<HighValueAtomRecord[]> {
+  const pool = getPool()
+  if (!pool) return []
+  if (!(await ensureVectorSchema())) return []
+  try {
+    const r = await pool.query<{
+      atom_id: string
+      episode_id: string
+      content: string
+      source_type: string
+      source_event_id: string | null
+      source_created_at: string | null
+      created_at: string
+    }>(
+      `SELECT a.atom_id, a.episode_id, a.content, a.source_type,
+              e.source_event_id, e.source_created_at, a.created_at
+       FROM fact_atoms a
+       JOIN evidence_episodes e ON e.episode_id = a.episode_id
+       WHERE a.family_id = $1 AND a.child_id = $2 AND a.is_high_value = TRUE
+       ORDER BY COALESCE(e.source_created_at, a.created_at) DESC
+       LIMIT $3`,
+      [familyId, childId, limit]
+    )
+    return r.rows.map((row) => ({
+      atomId: row.atom_id,
+      episodeId: row.episode_id,
+      content: row.content,
+      sourceType: row.source_type,
+      sourceEventId: row.source_event_id || undefined,
+      occurredAt: row.source_created_at || row.created_at,
+    }))
+  } catch {
+    return []
+  }
+}
+
 export interface FactAtomRecord {
   atomId: string;
   episodeId: string;
@@ -1214,6 +1264,24 @@ export async function upsertMemoryLayerItems<T>(
     );
   }
   return items.length;
+}
+
+export async function deleteMemoryLayerItems(
+  layerName: string,
+  itemIds: string[],
+  familyId = 'f_demo',
+  childId = 'c_demo'
+) {
+  const pool = getPool();
+  if (!pool || itemIds.length === 0) return 0;
+  await ensureDbSchema();
+  const result = await pool.query(
+    `DELETE FROM memory_layer_items
+     WHERE layer_name = $1 AND family_id = $2 AND child_id = $3
+       AND item_id = ANY($4::text[])`,
+    [layerName, familyId, childId, itemIds]
+  );
+  return result.rowCount ?? 0;
 }
 
 export async function debugMemoryLayerItemCounts() {

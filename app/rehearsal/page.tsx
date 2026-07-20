@@ -78,6 +78,9 @@ export default function RehearsalPage() {
   const [taskSaved, setTaskSaved] = useState(false)
   const [tonightSaved, setTonightSaved] = useState(false)
   const [rehearsalTraceId, setRehearsalTraceId] = useState<string | undefined>()
+  const [sceneSituation, setSceneSituation] = useState('')
+  const [childUnderstanding, setChildUnderstanding] = useState('')
+  const [briefLoading, setBriefLoading] = useState(false)
   const feedEndRef = useRef<HTMLDivElement>(null)
 
   const selectedScene: RehearsalScene =
@@ -103,7 +106,10 @@ export default function RehearsalPage() {
           if (!patch) return base
           return {
             ...base,
-            subtitle: patch.subtitle || base.subtitle,
+            title: patch.title || base.title,
+            subtitle: patch.subtitle || patch.lede || base.subtitle,
+            lede: patch.lede || patch.subtitle || base.lede,
+            mentionCountHint: patch.mentionCountHint,
             summary: patch.summary || base.summary,
             openingHint: patch.openingHint || base.openingHint,
           }
@@ -167,8 +173,46 @@ export default function RehearsalPage() {
   }
 
   function startSimulation() {
-    setSummary(selectedScene.summary)
-    setStep('confirm')
+    void (async () => {
+      setBriefLoading(true)
+      setSummary(selectedScene.summary)
+      try {
+        const res = await fetch('/api/rehearsal/brief', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ sceneId: selectedId }),
+        })
+        const json = (await res.json()) as {
+          ok?: boolean
+          data?: {
+            sceneSituation?: string
+            childUnderstanding?: string
+            openingHint?: string
+          }
+        }
+        if (json.ok && json.data) {
+          setSceneSituation(json.data.sceneSituation || selectedScene.summary)
+          setChildUnderstanding(json.data.childUnderstanding || '')
+          if (json.data.openingHint) {
+            setScenes((prev) =>
+              prev.map((s) =>
+                s.id === selectedId ? { ...s, openingHint: json.data!.openingHint! } : s
+              )
+            )
+          }
+        } else {
+          setSceneSituation(selectedScene.summary)
+          setChildUnderstanding('')
+        }
+      } catch {
+        setSceneSituation(selectedScene.summary)
+        setChildUnderstanding('')
+      } finally {
+        setBriefLoading(false)
+        setStep('confirm')
+      }
+    })()
   }
 
   function enterRehearsal() {
@@ -410,6 +454,7 @@ export default function RehearsalPage() {
     <OnboardingGuard>
       <HiFiMainShell
         activeTab="rehearsal"
+        showBottomNav={step !== 'active' && step !== 'end'}
         showInput={step === 'active'}
         inputZone={
           <HiFiInputZone
@@ -421,24 +466,57 @@ export default function RehearsalPage() {
       >
         <div className={`simulation-layout${step === 'entry' ? '' : ' hidden'}`} id="simulationEntry">
           <section className="section">
+            <h1 className="page-heading" style={{ marginBottom: 16, lineHeight: 1.25 }}>
+              选个场景
+              <br />
+              练怎么开口
+            </h1>
+
+            <button
+              type="button"
+              className="voice-hero-card"
+              onClick={() => {
+                document.getElementById('rehearsal-dialogue-capture')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            >
+              <span className="voice-hero-eyebrow">真实对话 · 直接开口</span>
+              <span className="voice-hero-title">亲子对话录音与分析</span>
+              <span className="voice-hero-lede">
+                录一段真实对话，转写后获得解读，并可带入情景预演。
+              </span>
+            </button>
+
+            <div className="section-head-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span className="section-label">从对话里提出的痛点</span>
+              <span className="hint-text" style={{ fontSize: 12 }}>
+                高频场景
+              </span>
+            </div>
+
             <div className="scenario-grid" id="scenarioGrid">
               {scenes.map((scene) => (
                 <button
                   key={scene.id}
                   type="button"
-                  className={`scenario-card${selectedId === scene.id ? ' active' : ''}`}
+                  className={`scenario-card scene-card${selectedId === scene.id ? ' active' : ''}`}
                   onClick={() => selectScenario(scene)}
                 >
+                  <div className="scene-meta">
+                    <span className="scene-tag">对话提取</span>
+                    {scene.mentionCountHint ? (
+                      <span className="scene-tag scene-tag--muted">{scene.mentionCountHint}</span>
+                    ) : null}
+                  </div>
                   <span className="scenario-title">{scene.title}</span>
-                  <span className="scenario-desc">{scene.subtitle}</span>
+                  <span className="scenario-desc">{scene.lede || scene.subtitle}</span>
                 </button>
               ))}
             </div>
           </section>
 
           <div className="simulation-start-actions">
-            <button className="primary-button wide-button" type="button" onClick={startSimulation}>
-              开始预演
+            <button className="primary-button wide-button" type="button" onClick={startSimulation} disabled={briefLoading}>
+              {briefLoading ? '正在整理场景…' : '开始预演'}
             </button>
             <p className="boundary-note">
               这里不是预测孩子一定会这样说，而是基于已有记录，帮你提前看见可能的沟通走向。
@@ -448,21 +526,20 @@ export default function RehearsalPage() {
 
         <div className={`simulation-layout${step === 'confirm' ? '' : ' hidden'}`} id="simulationConfirm">
           <section className="section">
+            <button type="button" className="quiet-button" onClick={() => setStep('entry')}>
+              ← 返回选场景
+            </button>
             <h2 className="section-title">这次先按这个场景来练</h2>
-            <div className="profile-block">
-              <h3>场景摘要：</h3>
-              <p id="simulationSummary">{summary}</p>
+            <div className="profile-block brief-card">
+              <h3>情景长什么样</h3>
+              <p id="simulationSummary">{sceneSituation || summary}</p>
             </div>
           </section>
 
           <section className="section">
-            <div className="profile-block">
-              <h3>我会参考这些理解：</h3>
-              <ul>
-                {confirmBullets.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+            <div className="profile-block brief-card">
+              <h3>记忆里对孩子的理解</h3>
+              <p>{childUnderstanding || confirmBullets.join(' ')}</p>
             </div>
           </section>
 
@@ -589,7 +666,9 @@ export default function RehearsalPage() {
           </section>
         </div>
 
-        <RehearsalDialogueCapture />
+        <div id="rehearsal-dialogue-capture">
+          <RehearsalDialogueCapture />
+        </div>
       </HiFiMainShell>
     </OnboardingGuard>
   )

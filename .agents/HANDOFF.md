@@ -23,7 +23,150 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
-## 2026-07-18 17:00 | Cursor | fix-v3-implementation-gaps + dossier v3 工程链
+## 2026-07-20 02:05 | Cursor | 手账内容质量 + 统一刷新 + 预演高保真
+
+**做了什么**
+- 手账质量：`handbook-quality-gate` 共享准入门；六源 `rawEvidence` 修正 + `journal` 源；`rawEvidence/contextSummary` 落库；润色代码验收；`memory-moment-light` 全历史溯源 + `whyIncluded`/`evidenceBody` 分离
+- 统一刷新：`handbook_purge_bad_pages` job + `handbook-refresh-orchestrator`；画像 Tab `daily-refresh` 自动触发；`watermark.handbookRefreshing`
+- 策展：`handbook-preview-curation` Top3 打分；feed-map teaser 去重
+- enriched：`episode_ingest` / `how-to-speak` 写 handbook 候选
+- 预演：`rehearsal-flow-preview.html` → design-reference；`rehearsalSceneHydrator/Brief` SP + `/api/rehearsal/brief`；MP/Web 三屏（选场景→摘要→对话）；对话屏 hideTabBar
+- 测试：`test-handbook-quality-gate` / `test-memory-moment-detail`；pack/admission 扩展
+
+**为什么**
+- 根因是准入层 rawEvidence 取错/不落库、详情 API 混用 whyIncluded 与正文、老用户无自动回填
+
+**验证**
+- `npm run typecheck` ✓；handbook 测试 51/51 ✓
+- 远程 `npm run deploy` ✓；readiness `ready:true`
+- `miniprogram npm run build:weapp` ✓
+- 本地 `npm run build` 因缺 `@next/swc-darwin-arm64` 失败（远程构建正常）
+
+**下一步**
+- 真机验收画像 Tab：触发 refresh 后列表无「收到无意义输入」「交流」等坏页
+- 记忆详情 01/轻解读有实质内容；Weekly Top3 类型多样
+- 用户确认后 commit + push
+
+**风险/冲突**
+- 全量 purge/backfill 有 LLM 成本；orchestrator 已 health 门槛幂等
+- 语音链路未动；预演录音仅 UI 入口
+
+## 2026-07-20 01:45 | Cursor | 手账滚动7天 + 导航拆分 + UI 对齐
+
+**做了什么**
+- 后端：`rolling-window.ts` 滚动7天键/标签；`handbook-pack` 输出 `memoryFeedRecent` + `memoryFeedPreview`（Top3）
+- 小程序：Hero 印章→全历史记忆；WeeklyCard→近7天手账；CTA→`scope=recent`；`useHandbookPack` SWR + `profileTabCache` 24h 缓存
+- `WeeklyHandbookCard` Top3 preview 行；`PortraitTileStrip` tile-cap 12px；insight 卡片 mock 间距/字号
+- Web 同步导航/文案/Top3；memories 页 `scope=all|recent` + Suspense 边界
+- 合成器 empty 文案改「近7天」
+
+**为什么**
+- 用户确认合并计划：手账窗口=从今天往回7天；Hero 与 Weekly 卡职责拆分；子页不闪空
+
+**验证**
+- `npm run typecheck` ✓；`npx tsx scripts/test-handbook-pack.mjs` 20/20 ✓
+- `miniprogram npm run build:weapp` ✓
+- 远程 deploy ✓；readiness `ready:true`
+
+**下一步**
+- 真机验收：Hero→全历史、Weekly→近7天、Top3、子页 SWR 不闪空
+- 用户确认后 commit + push
+
+**风险/冲突**
+- 旧 handbook 快照 `weekRangeLabel` 可能仍是「本周·…」，新合成/empty 才用滚动标签
+- 小程序需本地重新预览 dist
+
+## 2026-07-20 01:30 | Cursor | 时间胶囊去小字 + 批量 memory_write + 继续画像 UI
+
+**做了什么**
+- 删除时间胶囊 L1/L3 的 `periodLabel` 小字（「对比 · 7月13日起 vs …」）；保留 then/now 卡片标签
+- 日常 `memory_write` 改为 **满 10 轮有效对话批量 flush**（`batched-daily-write.ts`）；反证轮立即 flush；登录补 flush 未满批次
+- `getMemoryWriteStatusByTrace`：pending 缓冲中显示「正在整理」
+- 手账卡 CTA「查看手账记忆」文案统一
+
+**为什么**
+- 用户反馈时间胶囊 kicker 冗余丑；问是否可像 deep_mechanism 10 轮里程碑一样统一 memory_write
+- digest_update 已是日桶 1 次；批量 L9 写入可减 job 数 + dossier_patch 频率，turn_events 仍每轮同步保检索
+
+**验证**
+- typecheck ✓；audit-memory-contract ✓；build:weapp ✓
+- deploy rsync 完成；PM2 重启 SSH 密码被拒（需用户侧重跑 deploy）
+
+**下一步**
+- 重跑 `npm run deploy`；真机看时间胶囊卡无绿色小字
+- 日常聊满 10 轮后 psql 应见 `memory_write_batch:*` job
+
+**风险/冲突**
+- 第 1–9 轮 daily_updates 暂不在 L9，靠 turn_events 检索；登录会补 flush
+- 任务反馈/entry 等入口仍 per-event memory_write，未改
+
+## 2026-07-20 01:15 | Cursor | 手账记忆全量 + episode 降噪 + 画像详情 UI + tenant 回填
+
+**做了什么**
+- `buildMemoryFeedAll`：手账记忆列表/hero `memoryCount` 改为全历史准入页（不限本周）；handbook-jobs 快照同步
+- 寒暄不入 episode：`shouldSkipEpisodeIngest`（谢谢/好的/你好等 <12 字）；`daily/stream` gate；契约审计 E6 更新
+- 完成度口径：洞察 hero 优先 hub 整体 `completeness`；卡片详情显示「本卡了解进度」（分项 progress）
+- Impeccable 精修：卡片详情 L3（detail-hero + 折叠 section + 事实引用卡）；记忆详情页同系样式
+- 「本周记忆」→「手账记忆」文案；`POST /api/internal/episode-reingest` + 批量脚本
+- 对用户 tenant 已入队 handbook_backfill + episode_reingest（dry-run：150 轮扫描，40 寒暄跳过，110 入队）
+
+**验证**
+- `npm run typecheck` ✓；`audit-memory-contract` ✓；`miniprogram build:weapp` ✓
+- 远程 deploy ✓；readiness `ready:true`；episode 队列处理中（evidenceEpisodes 362→429+）
+
+**下一步**
+- 等 job worker 跑完 110 条 episode + backfill 后，小程序刷新画像 Tab 看手账记忆条数
+- 本地 `build:weapp` 真机验收 card/memory-detail 新 UI
+
+**风险/冲突**
+- 110 条 episode 重跑有 LLM 成本；勿重复点 batch-rerun
+- 本地 DATABASE_URL 指 localhost，diag 脚本需在服务器或配远程 DB 跑
+
+## 2026-07-20 01:00 | Cursor | 画像手账 UI 精修 + 历史回填
+
+**做了什么**
+- Phase A：`scanHandbookAdmissionCandidatesAllTime` + `admitHandbookCandidatesFromList`（按 occurredAt 写 weekKey）；`handbook_backfill` job + `runHandbookHistoricalBackfill`；`scripts/diag-handbook-admission.mjs` 扩展；`POST /api/internal/handbook-backfill` 入队回填；`scripts/backfill-handbook-pages.mjs` 调 API
+- Phase B：L1/L2 字号 +3（tile-cap 15px / sub 13px / sheet-lead 15px）；`HandbookEmptyState` 空态 + CTA；insight 页 insight-hero + insight-card；card L3 detail-panel + sheet-block；time-capsule compare-bridge；mem-axis 连线；Web 同步 portrait-revamp.css + insight/memories/card 子页
+- 契约：`handbook-pack-trace.md` 明确 journal/普通 turn 不直接进 pages
+
+**为什么**
+- 用户反馈「有对话但手账空」= 新准入层无历史回填 + 本周过滤；UI 未对齐 mock
+
+**验证**
+- `npm run typecheck` ✓；`test-handbook-admission` 13/13；`test-handbook-pack` 18/18；`build:weapp` ✓
+- 远程 deploy ✓ readiness ready:true
+- f_demo 回填入队后 `family_handbook_pages`=124（diag 2026-07-20）
+
+**下一步**
+- 真机：画像 Tab → 本周记忆 / 画像洞察 / 卡片详情验收
+- 用户 tenant 回填：`npx tsx scripts/backfill-handbook-pages.mjs <familyId> <childId>`（需 AUTH_TOKEN）
+- 小程序 `build:weapp` 后开发者工具重编译
+
+**风险/冲突**
+- 回填 job 含 handbookLineEditor 润色，大量候选耗时长，必须异步入队勿 sync API
+- 本地 Mac `next build` 缺 @next/swc-darwin-arm64，以远程 deploy 为准
+
+## 2026-07-20 00:17 | Cursor | 手账策展 + UI sheet 复刻
+
+**做了什么**
+- Phase1：MP 子页 `useHandbookPack`（缓存首屏 + try/finally + 重试）；BFF 读路径不再 sync rebuild / 不读旧 feed 快照
+- Phase2：`family_handbook_pages` 准入层 + 6 源矩阵（排除 raw turn）；`handbookLineEditor` SP + `handbook_page_admit` job；怎么开口写 candidate
+- Phase3：加厚 `weeklyHandbookSynthesizer` / `memoryMomentLight` / `episodeExtractor` 手账衔接
+- Phase4：`profile-handbook-sheet.scss` + MP L2/L3 sheet UI；Web `portrait-revamp.css` + memories 页
+- Phase5：`docs/product/rehearsal-scene-from-dialogue-spec.md`
+- Phase6：`test-handbook-admission.mjs`；`build:weapp`；deploy
+
+**验证**
+- `npm run typecheck` ✓；test-handbook-pack 18/18；test-handbook-admission 13/13；deploy readiness ready:true
+
+**下一步**
+- 真机验收画像 Tab + 子页；触发 daily-refresh 跑 `handbook_page_admit` 回填历史准入页
+- 预演页等 hi-fi 后再建 UI
+
+**风险/冲突**
+- 旧 `family_memory_feed` 快照不再用于读路径；页数改读终身 `family_handbook_pages` 计数（空则 0）
+- 小程序需开发者工具重新编译 dist
+
 
 **做了什么**
 - P0-1：prediction 失败 → markDossierPredictionFailed + task feedback 链式 deep_mechanism_review；shouldReconceptualize 优先 prediction_failed；pipeline 注入 failedPredictions
@@ -40,11 +183,13 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - npm run deploy ✓；readiness ready:true
 
 **下一步**
-- DBA 同步 PG 密码后重跑 Task 0 SQL + audit-deep-modeling-pipeline
-- PORTRAIT_V3=1 真实库双路径验收
+- PORTRAIT_V3=1 双路径真实数据验收（DB 已通：`/home/ubuntu/apps/yujian/.env.local`）
+- Task 0 SQL 结果见 `.trae/documents/portrait-real-data-validation.md`（2026-07-18 更新）
+- 旧 `~/yujian/.env.local` 已标废弃；psql 勿再用该路径
 
 **风险/冲突**
 - 勿动语音链路；PORTRAIT_V3 默认仍 off
+- SSH/psql 必须用 `/home/ubuntu/apps/yujian`，非 `~/yujian`
 
 ## 部署状态
 
@@ -2558,3 +2703,52 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 **风险/冲突**
 - 大量 prompts + dossier 工程 diff 未 commit；勿动语音链路。
 - deploy 已上线 SP registry；PORTRAIT_V3 默认仍 off（portrait-v3-flags）。
+
+## 2026-07-19 23:10 | Cursor | 画像页成长手账改版（MP Tab + BFF 全链）
+
+**做了什么**
+- BFF：`GET /api/profile/handbook-pack`、`POST /api/profile/journal`、`GET /api/profile/memory/[id]`；handbook/memory-feed/time-capsule jobs 接入 daily-refresh
+- `daily-refresh-agent` 产出/保留 `highlightMoments`；hub 返回 `highlightMoments`
+- MP 画像 Tab 改版：MemoryHero + TileStrip + WeeklyHandbookCard；并行拉 hub + handbook-pack
+- 新子页：memories / memory-detail / handbook / time-capsule / moments / insight
+- 契约：`docs/contracts/handbook-pack-trace.md`；read-contract 增 HandbookPack 段
+- 修复 typecheck：journal classification、handbook-store rows、build-run enqueue、followUpPrompts→prompts
+
+**为什么**
+- 用户「全面执行」画像页 hi-fi 改版迁移计划（MP 优先，全链路非 UI-only）
+
+**验证**
+- `npm run typecheck` ✓
+- 远程 `npm run deploy` ✓；`curl readiness` → `ready:true`
+- 本地 `npm run build` 仍因缺 @next/swc-darwin-arm64 失败
+- 小程序需本地 `cd miniprogram && npm run build:weapp` 后真机预览
+
+**下一步**
+- `dailyPortraitRefresh` SP 加厚 L1/L2/L3 + HighlightMoment 输出规范
+- Web `app/family-profile/page.tsx` 对齐改版稿
+- `scripts/test-handbook-pack.mjs` 结构断言
+- 用户确认后 commit + push
+
+**风险/冲突**
+- 未改语音链路；大量 diff 仍未 commit
+- time-capsule 子页目前仅 teaser，完整 then/now 需补 API 或 pack 扩展
+
+## 2026-07-19 23:18 | Cursor | dailyPortraitRefresh SP + Web 改版 + time-capsule 全量
+
+**做了什么**
+- `dailyPortraitRefresh.md`：L1/L2/L3 + `highlightMoments` 输出规范与 JSON 样例
+- Web `/family-profile` 对齐成长手账改版（Hero + TileStrip + HandbookCard + 子页）
+- 新 Web 子路由：memories / handbook / time-capsule / moments / insight / memory/[id]
+- `HandbookPack.timeCapsuleSnapshot` 全量 then/now；MP time-capsule 子页同步
+- `scripts/test-handbook-pack.mjs`（18/18）；`src/lib/profile/hub-profile-cards.ts` 共享组装
+
+**验证**
+- `npm run typecheck` ✓；`npx tsx scripts/test-handbook-pack.mjs` ✓
+- 远程 `npm run deploy` ✓；readiness `ready:true`
+
+**下一步**
+- 小程序本地 `build:weapp` 验收 time-capsule 全量 UI
+- 用户确认后 commit + push
+
+**风险/冲突**
+- Web 子页样式偏 functional，后续可 polish 对齐 mock 像素

@@ -1,0 +1,322 @@
+/* Desktop-first layout & editorial polish — do not edit hifi-app.css (auto-generated) */
+
+:root {
+  --desktop-max: 1280px;
+  --desktop-sidebar: 248px;
+  --desktop-content: min(920px, calc(100vw - var(--desktop-sidebar) - 48px));
+  --desktop-serif: var(--font-serif, "Noto Serif SC"), "Songti SC", "STSong", serif;
+  --desktop-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --desktop-paper: #f5f2e8;
+  --desktop-paper-edge: rgba(73, 91, 45, 0.06);
+}
+
+body.hifi-desktop-body {
+  background:
+    radial-gradient(ellipse 80% 50% at 12% 0%, rgba(157, 204, 117, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 88% 8%, rgba(246, 237, 180, 0.22), transparent 50%),
+    linear-gradient(180deg, #faf8f2 0%, var(--desktop-paper) 100%);
+}
+
+@media (min-width: 900px) {
+  .hifi-app-root.hifi-desktop-app {
+    display: block;
+    min-height: 100dvh;
+    padding: 0;
+    place-items: stretch;
+  }
+
+  .hifi-app-root .app-desktop-grid {
+    display: grid;
+    grid-template-columns: var(--desktop-sidebar) minmax(0, 1fr);
+    min-height: 100dvh;
+    max-width: var(--desktop-max);
+    margin: 0 auto;
+    background: transparent;
+  }
+
+  .hifi-app-root .app-desktop-grid:not(:has(.desktop-nav-rail)) {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: min(960px, 100%);
+  }
+
+  /* —— Sidebar —— */
+  .desktop-nav-rail {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100dvh;
+    padding: 28px 20px 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border-right: 1px solid var(--desktop-paper-edge);
+    background: rgba(255, 255, 252, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .desktop-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .desktop-nav-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    background:
+      radial-gradient(circle at 30% 30%, #b8e08a, transparent 55%),
+      linear-gradient(145deg, #9dcc75, #6f9f56);
+    box-shadow: 0 8px 20px rgba(111, 159, 86, 0.28);
+    flex-shrink: 0;
+  }
+
+  .desktop-nav-kicker {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(111, 159, 86, 0.85);
+    font-weight: 600;
+  }
+
+  .desktop-nav-title {
+    margin: 2px 0 0;
+    font-family: var(--desktop-serif);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink, #202633);
+    line-height: 1.2;
+  }
+
+  .desktop-nav-lede {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--muted, #868b94);
+    max-width: 20ch;
+  }
+
+  .desktop-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .desktop-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    color: var(--ink-soft, #5c616d);
+    background: transparent;
+    text-align: left;
+    transition:
+      background-color 200ms var(--desktop-ease),
+      color 200ms var(--desktop-ease),
+      transform 200ms var(--desktop-ease);
+  }
+
+  .desktop-nav-item:hover:not(.is-active) {
+    background: rgba(157, 204, 117, 0.08);
+    color: var(--ink, #202633);
+  }
+
+  .desktop-nav-item.is-active {
+    color: var(--green-deep, #6f9f56);
+    background: rgba(157, 204, 117, 0.16);
+    font-weight: 600;
+  }
+
+  .desktop-nav-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .desktop-nav-label {
+    font-size: 15px;
+  }
+
+  /* —— Main column —— */
+  .hifi-app-root .app-shell.app-main-column {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background:
+      radial-gradient(circle at 76% 8%, rgba(162, 216, 103, 0.2), transparent 34%),
+      radial-gradient(circle at 8% 18%, rgba(247, 233, 154, 0.28), transparent 32%),
+      rgba(255, 255, 252, 0.92);
+  }
+
+  .hifi-app-root.surface-white .app-shell.app-main-column {
+    background: #fff;
+  }
+
+  .hifi-app-root .app-safe-top {
+    height: 20px;
+    height: max(20px, var(--safe-top));
+  }
+
+  .hifi-app-root .page {
+    padding-inline: clamp(24px, 3vw, 40px);
+    padding-bottom: 32px;
+  }
+
+  .hifi-app-root .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  /* —— Editorial typography —— */
+  .hifi-app-root .hero-title,
+  .hifi-app-root .rehearsal-header h2,
+  .hifi-app-root .profile-heading,
+  .hifi-app-root .section-label {
+    font-family: var(--desktop-serif);
+    letter-spacing: 0.01em;
+  }
+
+  .hifi-app-root .hero-title {
+    font-size: clamp(24px, 2.2vw, 30px);
+    line-height: 1.35;
+    width: min(72%, calc(100% - 140px));
+  }
+
+  .hifi-app-root .hero-copy {
+    width: min(68%, calc(100% - 140px));
+    font-size: 15px;
+  }
+
+  /* —— Content width & rhythm —— */
+  .hifi-app-root .chat-feed,
+  .hifi-app-root .task-list,
+  .hifi-app-root .profile-stream,
+  .hifi-app-root .rehearsal-body {
+    max-width: 760px;
+    margin-inline: auto;
+  }
+
+  .hifi-app-root .hero-card,
+  .hifi-app-root .soft-card,
+  .hifi-app-root .task-card,
+  .hifi-app-root .profile-block,
+  .hifi-app-root .scenario-card {
+    transition:
+      transform 220ms var(--desktop-ease),
+      box-shadow 220ms var(--desktop-ease);
+  }
+
+  .hifi-app-root .hero-card:hover,
+  .hifi-app-root .task-card:hover,
+  .hifi-app-root .profile-block:hover,
+  .hifi-app-root .scenario-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 48px rgba(31, 39, 51, 0.07);
+  }
+
+  .hifi-app-root .input-zone {
+    padding-inline: clamp(24px, 3vw, 40px);
+    padding-bottom: calc(20px + var(--safe-bottom));
+  }
+
+  .hifi-app-root .input-shell {
+    max-width: 760px;
+    margin-inline: auto;
+  }
+
+  .hifi-app-root .mascot {
+    transform: scale(1.05);
+  }
+
+  .hifi-app-root .page.page-entering .hero-card,
+  .hifi-app-root .page.page-entering .section,
+  .hifi-app-root .page.page-entering .task-card,
+  .hifi-app-root .page.page-entering .profile-block {
+    animation: desktop-fade-up 420ms var(--desktop-ease) both;
+  }
+
+  @keyframes desktop-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Profile thinking chips — wider gap on desktop */
+  .hifi-app-root .profile-stream {
+    gap: 12px;
+    max-width: 760px;
+  }
+}
+
+/* —— Login & onboarding (build shell) —— */
+@media (min-width: 900px) {
+  .hifi-build-root {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 32px 24px;
+  }
+
+  .hifi-build-root .app-shell {
+    width: min(100%, 520px);
+    max-width: 520px;
+    height: auto;
+    min-height: min(720px, calc(100dvh - 64px));
+    max-height: calc(100dvh - 64px);
+    border-radius: 28px;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.8) inset,
+      0 24px 64px rgba(31, 39, 51, 0.08);
+    overflow: hidden;
+  }
+
+  .hifi-build-root.login-root .app-shell.startup-gate {
+    width: min(100%, 480px);
+    max-width: 480px;
+    min-height: min(680px, calc(100dvh - 64px));
+    padding-inline: 48px;
+  }
+
+  .hifi-build-root .startup-title,
+  .hifi-build-root .startup-login-title,
+  .hifi-build-root .top-title {
+    font-family: var(--desktop-serif);
+    letter-spacing: 0.01em;
+  }
+
+  .hifi-build-root:not(.login-root) .app-shell {
+    width: min(100%, 640px);
+    max-width: 640px;
+  }
+
+  .hifi-build-root .page {
+    padding-inline: 32px;
+  }
+
+  .hifi-build-root .bottom-actions.hifi-bottom-actions {
+    padding-inline: 32px;
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --desktop-sidebar: 272px;
+  }
+
+  .desktop-nav-rail {
+    padding-inline: 28px 24px;
+  }
+}

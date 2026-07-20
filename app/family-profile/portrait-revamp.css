@@ -1,0 +1,743 @@
+.hifi-app-root .profile-revamp {
+  background:
+    radial-gradient(120% 55% at 8% -8%, rgba(238, 247, 207, 0.9), transparent 52%),
+    radial-gradient(70% 36% at 100% 4%, rgba(246, 237, 180, 0.5), transparent 48%),
+    #fff;
+  margin: -8px -20px 0;
+  padding: 8px 20px 24px;
+  min-height: 100%;
+}
+
+.hifi-app-root .portrait-memory-hero {
+  margin-top: 4px;
+  padding: 16px 14px 14px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 247, 0.78)),
+    linear-gradient(180deg, #eef7cf 0%, #f8f6e5 100%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 28px rgba(111, 159, 86, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hifi-app-root .portrait-memory-hero::after {
+  content: '';
+  position: absolute;
+  right: -24px;
+  top: -36px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: rgba(167, 215, 122, 0.22);
+  pointer-events: none;
+}
+
+.hifi-app-root .hero-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.hifi-app-root .hero-copy-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.hifi-app-root .portrait-eyebrow {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6f9f56;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.hifi-app-root .portrait-hero-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.28;
+  color: #202633;
+  margin: 0;
+}
+
+.hifi-app-root .portrait-hero-copy {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #5c616d;
+}
+
+.hifi-app-root .page-seal {
+  flex: 0 0 auto;
+  width: 96px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+  padding: 0;
+  filter: drop-shadow(0 8px 16px rgba(111, 159, 86, 0.18));
+}
+
+.hifi-app-root .page-seal-stack {
+  position: relative;
+  height: 88px;
+  margin: 0 auto 6px;
+}
+
+.hifi-app-root .page-seal-sheet {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 72px;
+  height: 78px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid rgba(111, 159, 86, 0.18);
+  transform: translateX(-50%);
+}
+
+.hifi-app-root .page-seal-sheet.s1 {
+  transform: translateX(-50%) rotate(-7deg) translateY(4px);
+  background: #f3f7e8;
+  z-index: 1;
+}
+
+.hifi-app-root .page-seal-sheet.s2 {
+  transform: translateX(-50%) rotate(5deg) translateY(2px);
+  background: #fbfaf3;
+  z-index: 2;
+}
+
+.hifi-app-root .page-seal-sheet.s3 {
+  z-index: 3;
+  background: linear-gradient(180deg, #fff 0%, #f8fbf0 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.hifi-app-root .page-seal-num {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 0.95;
+  color: #6f9f56;
+}
+
+.hifi-app-root .page-seal-unit {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5c616d;
+}
+
+.hifi-app-root .page-seal-delta {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(111, 159, 86, 0.14);
+  color: #6f9f56;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.hifi-app-root .hero-stats {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.hifi-app-root .hero-stat {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 14px;
+  padding: 10px 8px;
+  text-align: center;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.hifi-app-root .hero-stat strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.hifi-app-root .hero-stat span {
+  font-size: 11px;
+  color: #868b94;
+}
+
+.hifi-app-root .strip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 20px 0 10px;
+}
+
+.hifi-app-root .strip-head h3 {
+  font-size: 16px;
+  font-weight: 760;
+  margin: 0;
+}
+
+.hifi-app-root .strip-link {
+  border: 0;
+  background: none;
+  font-size: 12px;
+  font-weight: 680;
+  color: #6f9f56;
+  cursor: pointer;
+  padding: 0;
+}
+
+.hifi-app-root .media-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hifi-app-root .portrait-tile {
+  flex: 0 0 132px;
+  height: 168px;
+  border-radius: 18px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border: 1px solid rgba(73, 91, 45, 0.08);
+  box-shadow: 0 6px 18px rgba(31, 39, 51, 0.05);
+  cursor: pointer;
+  scroll-snap-align: start;
+  text-align: left;
+}
+
+.hifi-app-root .portrait-tile.t1 {
+  background: linear-gradient(160deg, #fbfaf0 0%, #f1f8df 48%, #dcecbc 100%);
+}
+
+.hifi-app-root .portrait-tile.t2 {
+  background: linear-gradient(155deg, #f7faef 0%, #eef7cf 50%, #cfe6a8 100%);
+}
+
+.hifi-app-root .portrait-tile.t3 {
+  background: linear-gradient(158deg, #fbf8ef 0%, #f6edb4 52%, #e8d9a0 100%);
+}
+
+.hifi-app-root .portrait-tile.t4 {
+  background: linear-gradient(152deg, #f8faf2 0%, #e8f3d4 48%, #b7d992 100%);
+}
+
+.hifi-app-root .tile-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 10px;
+  font-weight: 740;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #6f9f56;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+}
+
+.hifi-app-root .tile-glass {
+  margin: 0 6px 6px;
+  padding: 9px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.52));
+  border: 1px solid rgba(255, 255, 255, 0.78);
+}
+
+.hifi-app-root .tile-cap {
+  font-size: 15px;
+  font-weight: 740;
+  line-height: 1.35;
+  color: #202633;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.hifi-app-root .tile-sub {
+  font-size: 13px;
+  color: #868b94;
+  margin-top: 4px;
+}
+
+.hifi-app-root .tile-mini-bar {
+  margin-top: 6px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(111, 159, 86, 0.16);
+  overflow: hidden;
+}
+
+.hifi-app-root .tile-mini-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a7d77a, #7fb964);
+  border-radius: inherit;
+}
+
+.hifi-app-root .weekly-handbook {
+  margin-top: 12px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(31, 39, 51, 0.06);
+  border: 1px solid rgba(73, 91, 45, 0.06);
+  cursor: pointer;
+}
+
+.hifi-app-root .handbook-cover {
+  padding: 16px;
+  background: linear-gradient(120deg, rgba(111, 159, 86, 0.12), transparent 60%), #fffef8;
+  border-bottom: 1px dashed rgba(73, 91, 45, 0.12);
+}
+
+.hifi-app-root .handbook-month {
+  font-size: 13px;
+  font-weight: 720;
+  color: #6f9f56;
+  margin: 0 0 4px;
+}
+
+.hifi-app-root .handbook-headline {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.hifi-app-root .handbook-blurb {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #5c616d;
+}
+
+.hifi-app-root .handbook-body {
+  padding: 14px 16px 16px;
+}
+
+.hifi-app-root .hb-preview-list {
+  margin-bottom: 12px;
+}
+
+.hifi-app-root .hb-preview-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 248, 244, 0.95));
+  border: 1px solid rgba(111, 159, 86, 0.12);
+  text-decoration: none;
+  color: inherit;
+}
+
+.hifi-app-root .hb-preview-row:last-child {
+  margin-bottom: 0;
+}
+
+.hifi-app-root .hb-preview-line {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 680;
+  line-height: 1.45;
+  color: #202633;
+}
+
+.hifi-app-root .hb-preview-type {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 720;
+  color: #6f9f56;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(111, 159, 86, 0.1);
+}
+
+.hifi-app-root .handbook-empty-inline-line {
+  display: block;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #5a6170;
+  margin-bottom: 12px;
+}
+
+.hifi-app-root .hb-row {
+  margin-bottom: 14px;
+}
+
+.hifi-app-root .hb-row-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 740;
+  margin-bottom: 6px;
+}
+
+.hifi-app-root .hb-row-text {
+  font-size: 14px;
+  color: #5c616d;
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.hifi-app-root .cta-handbook {
+  width: 100%;
+  height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 760;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(127, 185, 100, 0.28);
+}
+
+.hifi-app-root .years-ago {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(73, 91, 45, 0.06);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(31, 39, 51, 0.05);
+}
+
+.hifi-app-root .years-stamp {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  background: linear-gradient(145deg, #f6edb4, #eef7cf);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #6f9f56;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.hifi-app-root .years-txt {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.hifi-app-root .years-kicker {
+  display: block;
+  font-size: 13px;
+  font-weight: 720;
+  color: #6f9f56;
+  margin-bottom: 4px;
+}
+
+.hifi-app-root .years-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 760;
+  line-height: 1.45;
+  margin-bottom: 4px;
+}
+
+.hifi-app-root .years-sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 14px;
+  color: #5c616d;
+  line-height: 1.55;
+}
+
+.hifi-app-root .profile-revamp .section-label {
+  display: block;
+  margin: 22px 0 8px;
+  color: #6f9f56;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.hifi-app-root .profile-sub-page {
+  padding: 0 20px 32px;
+}
+
+.hifi-app-root .profile-sub-back {
+  display: inline-block;
+  margin: 12px 0;
+  color: #6f9f56;
+  cursor: pointer;
+  border: 0;
+  background: none;
+  font-size: 14px;
+  padding: 0;
+}
+
+/* Sheet styles — aligned with profile-portrait-preview.html */
+.hifi-app-root .sheet-kicker {
+  font-size: 13px;
+  font-weight: 720;
+  color: #6f9f56;
+  margin-bottom: 6px;
+}
+
+.hifi-app-root .sheet-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin: 0 0 10px;
+  color: #202633;
+}
+
+.hifi-app-root .sheet-lead {
+  font-size: 15px;
+  line-height: 1.65;
+  color: #5a6170;
+  margin-bottom: 16px;
+}
+
+.hifi-app-root .sheet-block {
+  background: #f7f8f4;
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.hifi-app-root .mini-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.hifi-app-root .mini-card-title {
+  font-size: 15px;
+  font-weight: 760;
+  margin: 0 0 4px;
+  color: #202633;
+}
+
+.hifi-app-root .mini-card-body {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #5a6170;
+  margin: 0;
+}
+
+.hifi-app-root .mem-row-web {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+  padding-bottom: 14px;
+  cursor: pointer;
+}
+
+.hifi-app-root .mem-card-web {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.hifi-app-root .mem-card-web:hover {
+  background: #f7f8f4;
+}
+
+.hifi-app-root .compare-card-web {
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.hifi-app-root .compare-card-web.then {
+  background: #f7f7f5;
+}
+
+.hifi-app-root .compare-card-web.now {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(241, 248, 223, 0.65));
+  border: 1px solid rgba(111, 159, 86, 0.28);
+}
+
+/* Insight + card detail + empty state (Web) */
+.hifi-app-root .insight-page-wrap {
+  background:
+    radial-gradient(120% 50% at 0% -5%, rgba(238, 247, 207, 0.95), transparent 55%),
+    #fbfaf3;
+  margin: -8px -20px 0;
+  padding: 8px 20px 24px;
+}
+
+.hifi-app-root .insight-hero {
+  margin-bottom: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 247, 0.72)),
+    linear-gradient(180deg, #eef7cf 0%, #f8f6e5 100%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 24px rgba(111, 159, 86, 0.1);
+}
+
+.hifi-app-root .insight-hero h3 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 8px;
+}
+
+.hifi-app-root .progress-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(111, 159, 86, 0.16);
+  overflow: hidden;
+}
+
+.hifi-app-root .progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a7d77a, #7fb964);
+  border-radius: inherit;
+}
+
+.hifi-app-root .insight-card-web {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  border: 1px solid rgba(73, 91, 45, 0.06);
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(73, 91, 45, 0.08);
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.hifi-app-root .insight-card-web .ic-top {
+  padding: 14px;
+  min-height: 72px;
+}
+
+.hifi-app-root .insight-card-web.t1 .ic-top {
+  background: linear-gradient(160deg, #fbfaf0 0%, #f1f8df 48%, #dcecbc 100%);
+}
+
+.hifi-app-root .insight-card-web.t2 .ic-top {
+  background: linear-gradient(155deg, #f7faef 0%, #eef7cf 50%, #cfe6a8 100%);
+}
+
+.hifi-app-root .insight-card-web.t3 .ic-top {
+  background: linear-gradient(158deg, #fbf8ef 0%, #f6edb4 52%, #e8d9a0 100%);
+}
+
+.hifi-app-root .insight-card-web.t4 .ic-top {
+  background: linear-gradient(152deg, #f8faf2 0%, #e8f3d4 48%, #b7d992 100%);
+}
+
+.hifi-app-root .detail-panel-web {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 247, 0.8)),
+    linear-gradient(180deg, #eef7cf 0%, #fffef8 100%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+  padding: 18px 16px;
+  box-shadow: 0 10px 24px rgba(111, 159, 86, 0.08);
+  margin-bottom: 12px;
+}
+
+.hifi-app-root .handbook-empty-web {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.hifi-app-root .handbook-empty-art {
+  position: relative;
+  width: 80px;
+  height: 70px;
+  margin: 0 auto 16px;
+}
+
+.hifi-app-root .handbook-empty-sheet {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 60px;
+  height: 66px;
+  border-radius: 8px;
+  border: 1px solid rgba(111, 159, 86, 0.18);
+  transform: translateX(-50%);
+}
+
+.hifi-app-root .handbook-empty-sheet.s1 {
+  transform: translateX(-50%) rotate(-8deg) translateY(4px);
+  background: #f3f7e8;
+  z-index: 1;
+}
+
+.hifi-app-root .handbook-empty-sheet.s2 {
+  transform: translateX(-50%) rotate(6deg) translateY(2px);
+  background: #fbfaf3;
+  z-index: 2;
+}
+
+.hifi-app-root .handbook-empty-sheet.s3 {
+  z-index: 3;
+  background: linear-gradient(180deg, #fff 0%, #f8fbf0 100%);
+  box-shadow: 0 4px 12px rgba(111, 159, 86, 0.12);
+}
+
+.hifi-app-root .sheet-cta {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #a7d77a, #7fb964);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 760;
+  border: 0;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.hifi-app-root .compare-bridge-web {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.hifi-app-root .compare-bridge-web span {
+  font-size: 11px;
+  font-weight: 760;
+  color: #6f9f56;
+  background: #fbfaf3;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(111, 159, 86, 0.22);
+}

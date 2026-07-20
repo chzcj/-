@@ -91,6 +91,9 @@ export default function RehearsalPage() {
   const [rehearsalTraceId, setRehearsalTraceId] = useState<string | undefined>()
   const [sourceAnalysisId, setSourceAnalysisId] = useState<string | undefined>()
   const [lastDialogueAnalysisId, setLastDialogueAnalysisId] = useState<string | null>(null)
+  const [sceneSituation, setSceneSituation] = useState('')
+  const [childUnderstanding, setChildUnderstanding] = useState('')
+  const [briefLoading, setBriefLoading] = useState(false)
 
   const selectedScene = scenes.find((s) => s.id === selectedId) || scenes[0] || REHEARSAL_SCENES[0]
 
@@ -170,7 +173,10 @@ export default function RehearsalPage() {
         if (!patch) return base
         return {
           ...base,
-          subtitle: patch.subtitle || base.subtitle,
+          title: patch.title || base.title,
+          subtitle: patch.lede || patch.subtitle || base.subtitle,
+          lede: patch.lede || patch.subtitle || base.subtitle,
+          mentionCountHint: patch.mentionCountHint,
           summary: patch.summary || base.summary,
           openingHint: patch.openingHint || base.openingHint,
         }
@@ -230,6 +236,14 @@ export default function RehearsalPage() {
     sourceAnalysisId,
   ])
 
+  useEffect(() => {
+    if (step === 'active' || step === 'end') {
+      void Taro.hideTabBar({ animation: true })
+    } else {
+      void Taro.showTabBar({ animation: true })
+    }
+  }, [step])
+
   const selectScenario = (sceneId: string) => {
     const scene = scenes.find((s) => s.id === sceneId)
     if (!scene) return
@@ -238,9 +252,37 @@ export default function RehearsalPage() {
     setSummary(scene.summary)
   }
 
-  const startSimulation = () => {
+  const startSimulation = async () => {
+    setBriefLoading(true)
     setSummary(selectedScene.summary)
-    setStep('confirm')
+    try {
+      const res = await apiRequest<{
+        sceneSituation?: string
+        childUnderstanding?: string
+        openingHint?: string
+      }>('/api/rehearsal/brief', {
+        method: 'POST',
+        body: { sceneId: selectedId },
+      })
+      if (res.ok) {
+        setSceneSituation(res.data.sceneSituation || selectedScene.summary)
+        setChildUnderstanding(res.data.childUnderstanding || '')
+        if (res.data.openingHint) {
+          setScenes((prev) =>
+            prev.map((s) => (s.id === selectedId ? { ...s, openingHint: res.data.openingHint! } : s))
+          )
+        }
+      } else {
+        setSceneSituation(selectedScene.summary)
+        setChildUnderstanding('')
+      }
+    } catch {
+      setSceneSituation(selectedScene.summary)
+      setChildUnderstanding('')
+    } finally {
+      setBriefLoading(false)
+      setStep('confirm')
+    }
   }
 
   const enterRehearsal = () => {
@@ -484,6 +526,7 @@ export default function RehearsalPage() {
   return (
     <HiFiMainShell
       disableEntering
+      withTabBar={step !== 'active' && step !== 'end'}
       showInput={step === 'active'}
       inputZone={
         <HiFiInputZone
@@ -503,21 +546,48 @@ export default function RehearsalPage() {
           enhanced
           showScrollbar={false}
         >
-          <Text className='hero-title page-heading'>选个场景，练怎么开口</Text>
+          <Text className='hero-title page-heading'>选个场景{'\n'}练怎么开口</Text>
+
+          <View
+            className='voice-hero'
+            onClick={() => void Taro.navigateTo({ url: '/pages/rehearsal/dialogue/index' })}
+          >
+            <View className='voice-hero-top'>
+              <View className='voice-hero-copy'>
+                <Text className='voice-eyebrow'>真实对话 · 直接开口</Text>
+                <Text className='voice-hero-title'>亲子对话录音与分析</Text>
+                <Text className='voice-hero-lede muted'>
+                  录一段真实对话，转写后获得解读，并可带入情景预演。
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View className='section-head-row'>
+            <Text className='section-label'>从对话里提出的痛点</Text>
+            <Text className='section-head-meta muted'>高频场景</Text>
+          </View>
+
           <View className='scenario-grid'>
             {scenes.map((scene) => (
               <View
                 key={scene.id}
-                className={`scenario-card${selectedId === scene.id ? ' active' : ''}`}
+                className={`scenario-card scene-card${selectedId === scene.id ? ' active' : ''}`}
                 onClick={() => selectScenario(scene.id)}
               >
+                <View className='scene-meta'>
+                  <Text className='scene-tag'>对话提取</Text>
+                  {scene.mentionCountHint ? (
+                    <Text className='scene-tag scene-tag--muted'>{scene.mentionCountHint}</Text>
+                  ) : null}
+                </View>
                 <Text className='scenario-title'>{scene.title}</Text>
-                <Text className='scenario-desc muted'>{scene.subtitle}</Text>
+                <Text className='scenario-desc muted'>{scene.lede || scene.subtitle}</Text>
               </View>
             ))}
           </View>
-          <Text className='pill primary wide-pill' onClick={startSimulation}>
-            开始预演
+          <Text className='pill primary wide-pill' onClick={() => void startSimulation()}>
+            {briefLoading ? '正在整理场景…' : '开始预演'}
           </Text>
 
           {lastDialogueAnalysisId ? (
@@ -535,13 +605,11 @@ export default function RehearsalPage() {
           ) : null}
 
           <View
-            className='dialogue-entry-card'
+            className='dialogue-entry-card dialogue-entry-card--compact'
             onClick={() => void Taro.navigateTo({ url: '/pages/rehearsal/dialogue/index' })}
           >
-            <Text className='dialogue-entry-title'>亲子对话录音与分析</Text>
-            <Text className='dialogue-entry-desc muted'>
-              录一段真实对话，转写后获得解读，并可带入情景预演
-            </Text>
+            <Text className='dialogue-entry-title'>进入对话录音</Text>
+            <Text className='dialogue-entry-desc muted'>已有录音分析可带入场景</Text>
           </View>
 
           <Text className='boundary-note muted'>
@@ -557,17 +625,15 @@ export default function RehearsalPage() {
             ← 返回选场景
           </Text>
           <Text className='section-label'>这次先按这个场景来练</Text>
-          <View className='hifi-card'>
-            <Text className='section-label'>场景摘要</Text>
-            <Text>{summary}</Text>
+          <View className='hifi-card brief-card'>
+            <Text className='section-label'>情景长什么样</Text>
+            <Text className='brief-body'>{sceneSituation || summary}</Text>
           </View>
-          <View className='hifi-card'>
-            <Text className='section-label'>我会参考这些理解</Text>
-            {confirmBullets.map((item) => (
-              <Text key={item} className='bullet-item'>
-                · {item}
-              </Text>
-            ))}
+          <View className='hifi-card brief-card'>
+            <Text className='section-label'>记忆里对孩子的理解</Text>
+            <Text className='brief-body'>
+              {childUnderstanding || confirmBullets.join(' ')}
+            </Text>
           </View>
           <Text className='pill primary wide-pill' onClick={enterRehearsal}>
             进入预演

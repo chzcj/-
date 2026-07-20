@@ -1,0 +1,124 @@
+.portrait-tile-strip {
+  margin-top: 4px;
+}
+
+.strip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 20px 0 10px;
+}
+
+.strip-title {
+  font-size: 16px;
+  font-weight: 760;
+  color: #202633;
+}
+
+.strip-link {
+  font-size: 12px;
+  font-weight: 680;
+  color: #6f9f56;
+}
+
+.media-strip {
+  white-space: nowrap;
+  padding: 4px 2px 8px;
+}
+
+.portrait-tile {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 132px;
+  height: 168px;
+  margin-right: 10px;
+  border-radius: 18px;
+  position: relative;
+  overflow: hidden;
+  vertical-align: top;
+  border: 1px solid rgba(73, 91, 45, 0.08);
+  box-shadow: 0 6px 18px rgba(31, 39, 51, 0.05);
+}
+
+.portrait-tile:active {
+  opacity: 0.94;
+}
+
+.portrait-tile.t1 {
+  background: linear-gradient(160deg, #fbfaf0 0%, #f1f8df 48%, #dcecbc 100%);
+}
+
+.portrait-tile.t2 {
+  background: linear-gradient(155deg, #f7faef 0%, #eef7cf 50%, #cfe6a8 100%);
+}
+
+.portrait-tile.t3 {
+  background: linear-gradient(158deg, #fbf8ef 0%, #f6edb4 52%, #e8d9a0 100%);
+}
+
+.portrait-tile.t4 {
+  background: linear-gradient(152deg, #f8faf2 0%, #e8f3d4 48%, #b7d992 100%);
+}
+
+.tile-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  font-size: 10px;
+  font-weight: 740;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #6f9f56;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile-glass {
+  position: relative;
+  z-index: 1;
+  margin: 0 6px 6px;
+  padding: 9px 9px 8px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.52));
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.tile-cap {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 740;
+  line-height: 1.35;
+  color: #202633;
+  white-space: normal;
+}
+
+.tile-sub {
+  display: block;
+  font-size: 10px;
+  font-weight: 650;
+  margin-top: 4px;
+  color: #9ca0a8;
+}
+
+.tile-mini-bar {
+  margin-top: 6px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(111, 159, 86, 0.16);
+  overflow: hidden;
+}
+
+.tile-mini-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a7d77a, #7fb964);
+}

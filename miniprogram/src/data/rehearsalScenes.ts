@@ -2,6 +2,8 @@ export type RehearsalScene = {
   id: string
   title: string
   subtitle: string
+  lede?: string
+  mentionCountHint?: string
   summary: string
   placeholder: string
   seed: string
