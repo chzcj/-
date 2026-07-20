@@ -23,6 +23,15 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-20 03:15 | Cursor | 已 push：分步记忆/手账/画像/Top5（7373064）
+
+**做了什么**
+- commit `7373064` + push `origin/master`（34 files，不含并行 onboarding/prose/design_library 未提交改动）
+
+**下一步**
+- 真机验收预演 Top5 频次与手账 02
+- Phase5 像素等新 mock；工作区仍有 onboarding 等 WIP 未进本 commit
+
 ## 2026-07-20 03:10 | Cursor | 续：预演 Top5 痛点排序接 API（不改像素）
 
 **本卷只改 / 不改**
