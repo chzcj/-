@@ -34,16 +34,25 @@ import type {
   EcosystemLayer,
   EntryEvidencePack,
   EntryName,
+  EvidenceRef,
   EvidenceStrength,
   FamilyInteractionChain,
   FamilyInteractionCycle,
   HypothesisWeight,
+  MechanismEdge,
+  MechanismSceneActivation,
   MechanismType,
   ParentNarrativePattern,
   PendingHypothesis,
 } from '@/types/database'
 import type { StructuralTension } from '@/types/deep-model-digest'
 import { THEORY_CARDS, theoryCardsSystemAppendix } from '@/lib/server/memory/deep-mechanism/theory-cards'
+import {
+  gateDossier,
+  gateMechanismMatrix,
+  hasRetryableViolations,
+  formatViolationsForRetry,
+} from '@/lib/server/harness/background-post-gate'
 import { isPortraitV3Enabled } from '@/lib/server/memory/dossier/portrait-v3-flags'
 import { shouldReconceptualize } from '@/lib/server/memory/dossier/should-reconceptualize'
 import { getFailedPredictions } from '@/lib/server/memory/dossier/prediction-failure'
@@ -55,6 +64,10 @@ import {
   type ClassifiedFact,
   type TheoryMatchHandoff,
 } from '@/lib/server/memory/deep-mechanism/handoff-store'
+import { linkAtomsToMechanisms } from '@/lib/server/memory/deep-mechanism/atom-mechanism-links'
+
+/** post-gate 用：合法理论卡 ID 集（防 LLM 伪造卡 ID 污染下游） */
+const VALID_THEORY_CARD_IDS: ReadonlySet<string> = new Set(THEORY_CARDS.map((c) => c.id))
 
 const ENTRY_NAMES: EntryName[] = [
   'learning_homework',
@@ -185,6 +198,10 @@ interface RawMechanism {
   missingEvidence?: unknown
   possibleAlternativeExplanations?: unknown
   shouldPromoteToDiagnosis?: boolean
+  /** v4.1：场景×角色激活 */
+  sceneActivations?: unknown
+  /** v4.1：机制间关系（SP 以 target 机制名引用） */
+  relatedMechanisms?: unknown
 }
 
 interface RawHypothesis {
@@ -221,10 +238,64 @@ function normEntryNames(v: unknown): EntryName[] {
   return got.filter((x): x is EntryName => (ENTRY_NAMES as string[]).includes(x)) as EntryName[]
 }
 
+const VALID_EDGE_RELATIONS = new Set(['competesWith', 'reinforces', 'upstreamOf', 'explainsSameBehavior', 'contradicts'])
+
+/** v4.1：解析场景×角色激活（strength 钳制 0-1，无 scene 丢弃） */
+function normSceneActivations(v: unknown): MechanismSceneActivation[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const out = v
+    .map((item): MechanismSceneActivation | null => {
+      if (!item || typeof item !== 'object') return null
+      const o = item as Record<string, unknown>
+      const scene = str(o.scene)
+      if (!scene) return null
+      const strength = typeof o.strength === 'number' && Number.isFinite(o.strength)
+        ? Math.max(0, Math.min(1, o.strength))
+        : undefined
+      return {
+        scene,
+        presentRoles: arr(o.presentRoles).slice(0, 4),
+        strength,
+        note: str(o.note) || undefined,
+      }
+    })
+    .filter((x): x is MechanismSceneActivation => Boolean(x))
+    .slice(0, 6)
+  return out.length > 0 ? out : undefined
+}
+
+/** v4.1：解析机制关系（SP 用 target 机制名引用；无效 relation 丢弃） */
+function normMechanismEdges(v: unknown, ownName: string): MechanismEdge[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const out = v
+    .map((item): MechanismEdge | null => {
+      if (!item || typeof item !== 'object') return null
+      const o = item as Record<string, unknown>
+      const target = str(o.target) || str(o.toMechanismId)
+      const relation = str(o.relation)
+      if (!target || target === ownName || !VALID_EDGE_RELATIONS.has(relation)) return null
+      const weight = typeof o.weight === 'number' && Number.isFinite(o.weight)
+        ? Math.max(0, Math.min(1, o.weight))
+        : 0.5
+      return {
+        fromMechanismId: ownName,
+        toMechanismId: target,
+        relation: relation as MechanismEdge['relation'],
+        weight,
+        evidenceRefs: [],
+        sceneNote: str(o.note) || undefined,
+      }
+    })
+    .filter((x): x is MechanismEdge => Boolean(x))
+    .slice(0, 4)
+  return out.length > 0 ? out : undefined
+}
+
 function normMechanism(m: RawMechanism): CandidateMechanism {
   const strength = normStrength(m.overallStrength)
+  const mechanismName = str(m.mechanismName, '未命名机制')
   return {
-    mechanismName: str(m.mechanismName, '未命名机制'),
+    mechanismName,
     mechanismType: strengthToType(strength),
     description: str(m.description),
     supportedByEntries: normEntryNames(m.supportedByEntries),
@@ -240,6 +311,8 @@ function normMechanism(m: RawMechanism): CandidateMechanism {
     shouldPromoteToDiagnosis: m.shouldPromoteToDiagnosis === true,
     ecosystemLayer: normEcosystemLayer(m.ecosystemLayer),
     theoryCardId: str(m.theoryCardId) || undefined,
+    sceneActivations: normSceneActivations(m.sceneActivations),
+    relatedMechanismIds: normMechanismEdges(m.relatedMechanisms, mechanismName),
   }
 }
 
@@ -526,18 +599,50 @@ export async function runDeepMechanismReview(
     : []
 
   if (usePortrait) {
+    const portraitTask = '综合全量证据产出 FamilyUnderstandingDossier（schema v2）；理论仅作内部透镜。'
+    const portraitSuffix = {
+      systemSuffix: `理论卡库（20×9 rich fields，作内部判断透镜；输出理论隐身）：\n${JSON.stringify(THEORY_CARDS, null, 2)}\n\n${theoryCardsSystemAppendix()}`,
+    }
+    const portraitPayload = { ...sharedContext, ecosystemMap, theoryMatches, previousDossier, failedPredictions }
     try {
       portraitOut = await callDeepAgentJson<PortraitSynthesizeOutput>(
         'portraitSynthesizer',
-        '综合全量证据产出 FamilyUnderstandingDossier（schema v2）；理论仅作内部透镜。',
-        { ...sharedContext, ecosystemMap, theoryMatches, previousDossier, failedPredictions },
+        portraitTask,
+        portraitPayload,
         12288,
-        {
-          systemSuffix: `理论卡库（15×9 rich fields，作内部判断透镜；输出理论隐身）：\n${JSON.stringify(THEORY_CARDS, null, 2)}\n\n${theoryCardsSystemAppendix()}`,
-        },
+        portraitSuffix,
       )
     } catch (error) {
       console.warn('[deep-mechanism] portraitSynthesizer 失败，回退 mechanismSynthesizer:', error)
+    }
+    // v4 post-gate：dossier 落库前校验。结构性违规（理论泄漏/无竞争假设/不可证伪）带反馈重试一次；
+    // 置信虚高由代码直接钳制。重试仍违规则钳制后落库（降级优于空转）。
+    if (portraitOut?.dossier?.workingHypothesis?.text) {
+      let gate = gateDossier(portraitOut.dossier)
+      if (hasRetryableViolations(gate.violations)) {
+        console.warn(
+          `[deep-mechanism] portrait post-gate 违规，带反馈重试: ${gate.violations.filter((v) => v.retryable).map((v) => v.code).join(',')}`
+        )
+        try {
+          const retried = await callDeepAgentJson<PortraitSynthesizeOutput>(
+            'portraitSynthesizer',
+            `${portraitTask}\n\n${formatViolationsForRetry(gate.violations)}`,
+            portraitPayload,
+            12288,
+            portraitSuffix,
+          )
+          if (retried?.dossier?.workingHypothesis?.text) {
+            portraitOut = retried
+            gate = gateDossier(retried.dossier)
+          }
+        } catch (error) {
+          console.warn('[deep-mechanism] portrait post-gate 重试失败，钳制后落库:', error)
+        }
+      }
+      if (gate.violations.length > 0) {
+        console.warn(`[deep-mechanism] portrait post-gate: ${gate.violations.map((v) => v.code).join(',')}`)
+      }
+      portraitOut = { ...portraitOut, dossier: gate.fixed }
     }
     if (portraitOut?.dossier?.workingHypothesis?.text) {
       const version = (previousDossier?.version || 0) + 1
@@ -557,15 +662,42 @@ export async function runDeepMechanismReview(
   }
 
   if (!portraitOut?.dossier?.workingHypothesis?.text) {
+    const synthesisTask = '综合理论匹配与全量证据，产出多域深度机制矩阵（目标10–20条）。'
+    const synthesisPayload = { ...sharedContext, ecosystemMap, theoryMatches }
     try {
       ai = await callDeepAgentJson<MechanismSynthesizeOutput>(
         'mechanismSynthesizer',
-        '综合理论匹配与全量证据，产出多域深度机制矩阵（目标10–20条）。',
-        { ...sharedContext, ecosystemMap, theoryMatches },
+        synthesisTask,
+        synthesisPayload,
         12288,
       )
     } catch (error) {
       console.warn('[deep-mechanism] 多域综合失败，尝试 legacy 回退:', error)
+    }
+
+    // v4 post-gate：中间变量机制名（拖延机制/逃避机制…）是结构性违规，带反馈重试一次；
+    // 其余违规（虚高强度/伪造卡ID/空壳）由落库前统一钳制，不在此消耗重试额度。
+    if (ai?.candidateMechanismMatrix?.length) {
+      const pre = gateMechanismMatrix(
+        ai.candidateMechanismMatrix.map((m) => normMechanism(m)),
+        VALID_THEORY_CARD_IDS
+      )
+      if (hasRetryableViolations(pre.violations)) {
+        console.warn(
+          `[deep-mechanism] 机制矩阵 post-gate 违规，带反馈重试: ${pre.violations.filter((v) => v.retryable).map((v) => v.code).join(',')}`
+        )
+        try {
+          const retried = await callDeepAgentJson<MechanismSynthesizeOutput>(
+            'mechanismSynthesizer',
+            `${synthesisTask}\n\n${formatViolationsForRetry(pre.violations)}`,
+            synthesisPayload,
+            12288,
+          )
+          if (retried?.candidateMechanismMatrix?.length) ai = retried
+        } catch (error) {
+          console.warn('[deep-mechanism] 机制矩阵 post-gate 重试失败，钳制后落库:', error)
+        }
+      }
     }
 
     if (!ai?.candidateMechanismMatrix?.length) {
@@ -631,6 +763,43 @@ export async function runDeepMechanismReview(
   }
   for (const p of packs) coverage[p.entryName] = 'sufficient'
 
+  // v4 post-gate：落库前统一钳制（零证据丢弃 / 三源规则封顶 high / 空壳降级 / 伪造卡ID清除）。
+  // 全部机制被丢弃时保留原矩阵落库并告警——空网络对下游的伤害大于降级数据。
+  const normalizedMatrix = ai.candidateMechanismMatrix.map((m) => normMechanism(m))
+  const matrixGate = gateMechanismMatrix(normalizedMatrix, VALID_THEORY_CARD_IDS)
+  if (matrixGate.violations.length > 0) {
+    console.warn(`[deep-mechanism] 机制矩阵 post-gate: ${matrixGate.violations.map((v) => v.code).join(',')}`)
+  }
+  const gatedMatrix = matrixGate.fixed.length > 0 ? matrixGate.fixed : normalizedMatrix
+
+  // v4.1：机制→证据确定性回填。theoryMatcher 已产出 matchedFactIds，
+  // 按 theoryCardId 把事实引用写回机制 evidenceRefs，让「激活机制→取其证据」
+  // 可结构化执行（零 LLM 成本；LLM 未给 evidenceRefs 时才回填，不覆盖）。
+  const factById = new Map(flatFacts.map((f) => [f.factId, f]))
+  const matchedFactIdsByCard = new Map<string, string[]>()
+  for (const tm of theoryMatches) {
+    if (!tm.theoryCardId) continue
+    matchedFactIdsByCard.set(tm.theoryCardId, [
+      ...(matchedFactIdsByCard.get(tm.theoryCardId) || []),
+      ...tm.matchedFactIds,
+    ])
+  }
+  for (const m of gatedMatrix) {
+    if (m.evidenceRefs?.length || !m.theoryCardId) continue
+    const refs: EvidenceRef[] = [...new Set(matchedFactIdsByCard.get(m.theoryCardId) || [])]
+      .map((fid) => factById.get(fid))
+      .filter((f): f is NonNullable<typeof f> => Boolean(f))
+      .slice(0, 6)
+      .map((f) => ({
+        evidenceId: f.factId,
+        weight: 0.6,
+        quote: f.text.slice(0, 120),
+        source: 'entry_evidence' as const,
+        epistemicStatus: 'reported' as const,
+      }))
+    if (refs.length > 0) m.evidenceRefs = refs
+  }
+
   const network: CrossEntryEvidenceNetwork = {
     networkId: existingNetwork?.networkId || createId('net'),
     familyId: tenant.familyId,
@@ -638,12 +807,19 @@ export async function runDeepMechanismReview(
     maturityLevel: maturity.level,
     inputCoverage: coverage,
     crossEntryEvidenceMap: existingNetwork?.crossEntryEvidenceMap || [],
-    candidateMechanismMatrix: ai.candidateMechanismMatrix.map((m) => normMechanism(m)),
+    candidateMechanismMatrix: gatedMatrix,
     mechanismLayerSource: 'deep_mechanism',
     createdAt: existingNetwork?.createdAt || now,
     updatedAt: now,
   }
   await saveEvidenceNetwork(network, tenant)
+
+  // v4.1：atom→机制反向索引（异步，失败不阻断；机制集每轮全量替换）
+  void linkAtomsToMechanisms(network.candidateMechanismMatrix, tenant)
+    .then((count) => {
+      if (count > 0) console.info(`[deep-mechanism] atom→机制反向索引写回 ${count} 条`)
+    })
+    .catch((err) => console.warn('[deep-mechanism] atom→机制链接构建失败（不影响主流程）:', err))
 
   // familyPatterns 是前台厚包的独立消费字段。深度机制已经产出完整亲子链时，
   // 把链显式固化为 cycle；无完整链不写，避免空 Agent 结果覆盖已有有效模式。

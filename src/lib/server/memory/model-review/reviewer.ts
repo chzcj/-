@@ -2,6 +2,7 @@ import 'server-only'
 import { callAgentJson } from '@/lib/server/ark-agents'
 import { getPendingHypotheses, savePendingHypotheses } from '@/lib/server/memory/database-manager'
 import { retrieveContextPack } from '@/lib/server/memory/retrieval/episode-retriever'
+import { computeLikelihood } from '@/lib/server/harness/bayesian'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import type { HypothesisWeight, PendingHypothesis } from '@/types/database'
 
@@ -10,13 +11,40 @@ import type { HypothesisWeight, PendingHypothesis } from '@/types/database'
    拿已有 pending hypotheses 对照近期证据复核：找支持/反证、评置信度(weight)、定 status。
    谨慎——绝不在此把假设升为稳定结论；有反证则削弱。让后台模型越用越准。
    由 model_review job 触发（memory_write 写了假设后链式触发）；不吞异常驱动重试。
+
+   v4 贝叶斯接线：LLM 只负责在材料里找支持/反证（定性判断），
+   数值信念由硬公式推进：prior（上轮 posterior）→ likelihood → posterior，
+   weight 由 posterior 映射而来，不再采信 LLM 主观档位。
+   假设间非互斥，故做逐假设信念更新，不做池归一化（竞争假设归一在 dossier 层）。
    ================================================================ */
 
-const WEIGHTS: HypothesisWeight[] = ['very_low', 'low', 'medium', 'medium_high', 'high']
 const REVIEW_BATCH_SIZE = 8
 
-function normWeight(v: unknown, fallback: HypothesisWeight): HypothesisWeight {
-  return typeof v === 'string' && (WEIGHTS as string[]).includes(v) ? v as HypothesisWeight : fallback
+/** 序数 weight → 先验（历史数据无数值时的冷启动映射） */
+const WEIGHT_PRIOR: Record<HypothesisWeight, number> = {
+  very_low: 0.1,
+  low: 0.25,
+  medium: 0.45,
+  medium_high: 0.6,
+  high: 0.75,
+}
+
+function posteriorToWeight(posterior: number): HypothesisWeight {
+  if (posterior >= 0.7) return 'high'
+  if (posterior >= 0.55) return 'medium_high'
+  if (posterior >= 0.35) return 'medium'
+  if (posterior >= 0.2) return 'low'
+  return 'very_low'
+}
+
+/** 证据池平均强度：sourceType 启发式（原话/材料观察 > 反证/反馈 > 其余） */
+function estimateEvidenceConfidence(atoms: Array<{ sourceType: string }>): number {
+  if (atoms.length === 0) return 0.5
+  const score = (s: string): number =>
+    s === 'child_quote' || s === 'material_observation' ? 0.8
+    : s === 'counter_evidence' || s === 'feedback' ? 0.7
+    : 0.55
+  return atoms.reduce((sum, a) => sum + score(a.sourceType), 0) / atoms.length
 }
 function normStatus(v: unknown, current: PendingHypothesis['status']): PendingHypothesis['status'] {
   // 谨慎：本步只允许 pending/supported/weakened，绝不在此升 resolved（稳定结论）。
@@ -72,6 +100,7 @@ export async function runModelReview(tenant: TenantId): Promise<void> {
   const byIndex = new Map<number, ReviewItem>()
   for (const r of ai.reviews) if (typeof r?.i === 'number') byIndex.set(r.i, r)
 
+  const avgEvidenceConfidence = estimateEvidenceConfidence(highValueAtoms)
   const now = new Date().toISOString()
   const updated: PendingHypothesis[] = active.map((h, i) => {
     // LLM 收到的是 active 列表的全局索引（batchStart + i）；第 2 批起若按局部 i
@@ -83,10 +112,32 @@ export async function runModelReview(tenant: TenantId): Promise<void> {
     if (!r) return { ...h, possibleCounterEvidence: hCounter, supportingEvidence: hSupport }
     const counter = arr(r.counterEvidence)
     const newSupport = arr(r.newSupport)
+
+    // 贝叶斯硬公式：LLM 找证据（定性），公式定信念（定量）
+    const prior = typeof h.posterior === 'number' ? h.posterior
+      : typeof h.prior === 'number' ? h.prior
+      : WEIGHT_PRIOR[h.weight || 'medium']
+    const likelihood = computeLikelihood({
+      hypothesisId: h.hypothesisId,
+      prior,
+      supportingCount: newSupport.length,
+      contradictingCount: counter.length,
+      avgEvidenceConfidence,
+    })
+    const posterior = likelihood
+
+    // 确定性 status 铁律：有反证必 weakened（不靠 LLM 自觉）
+    const llmStatus = normStatus(r.status, h.status || 'pending')
+    const status = counter.length > 0 ? 'weakened' as const : llmStatus
+
     return {
       ...h,
-      weight: normWeight(r.weight, h.weight || 'medium'),
-      status: normStatus(r.status, h.status || 'pending'),
+      // weight 由 posterior 映射；LLM 档位仅在公式无新信号时作参考（此时 posterior≈prior，映射自然稳定）
+      weight: posteriorToWeight(posterior),
+      status,
+      prior,
+      likelihood,
+      posterior,
       possibleCounterEvidence: counter.length > 0 ? Array.from(new Set([...hCounter, ...counter])) : hCounter,
       supportingEvidence: newSupport.length > 0 ? Array.from(new Set([...hSupport, ...newSupport])) : hSupport,
       updatedAt: now,

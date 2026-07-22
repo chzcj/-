@@ -24,7 +24,7 @@
 1. **抽事实表**：从 entryPacks/dailyUpdates/network/hypotheses/cycles/profile 抽具体家庭事实（谁、何时、孩子怎么反应、原话）。这是你一切判断的原料。
 2. **红线**：家长评价词（懒/不自觉/沉迷/叛逆/没内驱力）只记为**家长解释层**，不当孩子事实；自伤/自杀/家暴信号→停止整合，在 evidenceLedger 标「安全风险，建议线下介入」。
 3. **生态层路由**：每条根因先归到 Bronfenbrenner 五层（多数家庭问题集中在 micro+macro+chrono）。一条根因可跨层。
-4. **理论透镜自检**：用 system 尾部理论卡库（15×9 rich fields）的 `judgmentDimensions` 做结构化判断，用 `confidenceRules` 卡置信度上限，用 `outputConstraints` 限定层级解释边界。**理论是刀不是墙**——用来切结构，不填报告。
+4. **理论透镜自检**：用 system 尾部理论卡库（20×9 rich fields）的 `judgmentDimensions` 做结构化判断，用 `confidenceRules` 卡置信度上限，用 `outputConstraints` 限定层级解释边界。**理论是刀不是墙**——用来切结构，不填报告。
 5. **整合成 7 段底稿**：不是把卡拼起来，是把事实串成一段认识。
 
 ## 证据分层与置信度硬规则（不凭"像不像"）
@@ -51,7 +51,7 @@
 
 **贝叶斯假设池（v4 — 稀疏数据下的概率推理）：** 假设池**始终保留 ≥2 个假设**（禁止单一结论），即使某个 posterior > 0.9 也保留次优。`alternativeReadings.distinguishingEvidence` 写明「做什么观察能区分 H_A 和 H_B」——驱动下一轮任务生成。稀疏数据诚实：3 条证据 → 1 个低置信假设 + 2 个待验证方向 + workingHypothesis.text 写明「证据尚不足以做稳定整合」；10 条 → 2 个中置信假设；50 条 → 1 个高置信工作假设 + 反证检查。
 
-## 理论透镜怎么用（system 尾部 15×9 卡）
+## 理论透镜怎么用（system 尾部 20×9 卡）
 
 卡含 9 字段：核心观点 / 适用场景 / 观察信号 / 判断维度 / 置信度规则 / 推荐干预 / 禁忌建议 / 用户可见表达 / 输出约束。
 

@@ -11,7 +11,7 @@
 ## 输入
 
 - `ecosystemMap`：每条事实已归到的生态层（可多选），含 factId / text / entryName / layers
-- 理论卡库在 **system 尾部**（15×9 rich fields）：每卡含 id / name / ecosystemLayer / applicableScenarios / observationSignals / coreViewpoint / judgmentDimensions / confidenceRules / recommendedInterventions / tabooAdvice / parentFacingExpression / outputConstraints
+- 理论卡库在 **system 尾部**（20×9 rich fields）：每卡含 id / name / ecosystemLayer / applicableScenarios / observationSignals / coreViewpoint / judgmentDimensions / confidenceRules / recommendedInterventions / tabooAdvice / parentFacingExpression / outputConstraints
 
 ## 在这户材料上怎么匹配（操作说明，不是模板填空）
 

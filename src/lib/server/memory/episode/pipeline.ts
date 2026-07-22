@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { callAgentJson } from '@/lib/server/ark-agents'
 import { embedText, embedTexts, isEmbeddingEnabled } from '@/lib/server/memory/embedding'
 import { upsertEpisodes, upsertAtoms, deleteAtomsByEpisode, type EpisodeRow, type AtomRow } from '@/lib/server/db'
+import { clampAtomConfidence, enforceHighValueEligibility } from '@/lib/server/harness/confidence-clamp'
 
 /* ================================================================
    Episode Pipeline — 后台把家长本轮输入抽取为
@@ -111,7 +112,8 @@ export async function ingestEpisodeStrict(text: string, ctx: IngestContext = {})
   const atoms = Array.isArray(extracted.atoms)
     ? extracted.atoms.filter(a => a?.content?.trim())
     : []
-  const highValueFlags = atoms.map(isHighValueAtom)
+  // 认识论门槛先于向量化：inferred/hypothesized 不算高价值，也不进向量检索池
+  const highValueFlags = atoms.map(a => enforceHighValueEligibility(isHighValueAtom(a), a.epistemicStatus))
   const toEmbed = atoms.filter((_, i) => highValueFlags[i]).map(a => a.content.trim())
   const hvVectors = toEmbed.length > 0 ? await embedTexts(toEmbed) : []
 
@@ -135,7 +137,8 @@ export async function ingestEpisodeStrict(text: string, ctx: IngestContext = {})
       factRole: a.factRole,
       ecologicalLayer: a.ecologicalLayer,
       businessTime: a.businessTime,
-      confidence: a.confidence,
+      // 硬公式钳制：tier × 认识论双上限，覆盖 LLM 主观打分
+      confidence: clampAtomConfidence(a),
     }
   })
 

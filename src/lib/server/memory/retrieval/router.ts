@@ -28,7 +28,8 @@ import { humanizeBuiltJudgment } from '@/lib/server/daily/profile-sanitize'
 import { formatMatchedMechanismCards } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { getFrontendReadSliceLimits } from '@/lib/server/daily/frontend-read-pack'
 import { getLatestDossier } from '@/lib/server/memory/deep-modeling/digest-store'
-import { flattenDossierSlice, sliceForDaily } from '@/lib/server/memory/dossier/dossier-slicer'
+import { flattenDossierSlice } from '@/lib/server/memory/dossier/dossier-slicer'
+import { sliceForDailySemantic } from '@/lib/server/memory/dossier/dossier-semantic-slicer'
 import { isPortraitV3Enabled } from '@/lib/server/memory/dossier/portrait-v3-flags'
 
 /* ================================================================
@@ -142,10 +143,21 @@ export async function buildDailyDialogueRetrievalPacket(
   if (pack) {
     const episodeTexts = pack.episodes.map(e => e.summary)
     // v4：高价值 atom 独立通道，不再打平混进 supportingEvidence（保留 sourceType 让 SP 能区分）
-    const highValueAtomTexts = pack.episodes
-      .flatMap(e => e.atoms.filter(a => a.isHighValue).map(a => a.content))
-      .concat(pack.extraHighValueAtoms.map(a => a.content))
-    domainAtomFacts = [...new Set(highValueAtomTexts)].slice(0, 40)
+    const highValueAtoms = pack.episodes
+      .flatMap(e => e.atoms.filter(a => a.isHighValue).map(a => ({ content: a.content, supportedMechanismNames: a.supportedMechanismNames })))
+      .concat(pack.extraHighValueAtoms.map(a => ({ content: a.content, supportedMechanismNames: a.supportedMechanismNames })))
+    // v4.1 反向索引消费：支撑当前主机制（矩阵前 3 条）的 atom 排到通道前列——
+    // 前台 SP 要求「引用 1-2 条锚点」时，优先读到与被激活机制同源的证据。
+    const topMechanismNames = new Set(
+      (network?.candidateMechanismMatrix || []).slice(0, 3).map(m => m.mechanismName)
+    )
+    const supportsTopMechanism = (a: { supportedMechanismNames?: string[] }): boolean =>
+      Boolean(a.supportedMechanismNames?.some(n => topMechanismNames.has(n)))
+    const orderedAtomTexts = [
+      ...highValueAtoms.filter(supportsTopMechanism).map(a => a.content),
+      ...highValueAtoms.filter(a => !supportsTopMechanism(a)).map(a => a.content),
+    ]
+    domainAtomFacts = [...new Set(orderedAtomTexts)].slice(0, 40)
     recentEvents = episodeTexts.length > 0 ? episodeTexts : allEvents.slice(-20)
     // supportingEvidence 只保留 episode summary，atom 走 domainAtomFacts 独立通道
     supportingEvidence = [...new Set(episodeTexts.slice(0, 8))]
@@ -246,8 +258,9 @@ export async function buildDailyDialogueRetrievalPacket(
     .slice(0, 3) as string[]
 
   const dossier = isPortraitV3Enabled() ? await getLatestDossier(tenant).catch(() => null) : null
+  // v4.1：语义激活切片——query 与 dossier 组件按 embedding 相关度选取（回退正则）
   const dossierSliceLines = dossier
-    ? flattenDossierSlice(sliceForDaily(query || '', dossier))
+    ? flattenDossierSlice(await sliceForDailySemantic(query || '', dossier, tenant))
     : []
   const matchedMechanisms = formatMatchedMechanismCards(network?.candidateMechanismMatrix)
 

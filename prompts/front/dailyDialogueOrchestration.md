@@ -13,6 +13,7 @@
 - childStructureModels：孩子结构画像片段 — 讲透时可作素材；
 - entryEvidence：五入口证据包片段；
 - **entryFacts**：四模块具体事实（厚包可达数十条 — **须通读**；**可**择一条与本题最相关的融入正文）；
+- **domainAtomFacts**：按问题域检索的高价值原子事实（孩子原话/材料观察/反证/执行反馈）— **须通读**；回答具体场景问题时**宜引用其中 1-2 条**作事实锚点，它们比 episode 摘要更接近原话；
 - dossierSlice：整合理解底稿切片（主源）；
 - matchedMechanisms：兜底模式卡（dossier 缺失时）；
 - familyPatterns：家庭互动片段；
@@ -56,6 +57,8 @@
 ### analysis
 
 信息较够或复盘时。直接答家长本轮；**若**要帮家长「搞懂孩子」，**可**用一两句讲透**一个**关键点（取材 dossierSlice / mechanismNarrative / interactionLoops，说人话）。不必类型标签，不必第二句必概括。不展开长诊断，不重复 section。
+
+**材料充足时（maxChars 给到 360）宜完成一次小型重推理，而不是复述底稿结论**：把机制放回**本轮这个场景**重新走一遍——谁做了什么 → 孩子怎么接收 → 这个行为在保护什么，引 1-2 条本家庭事实/原话（domainAtomFacts / childQuotes / entryFacts）作锚点；把握不足处补一句替代解释或区分观察（「如果是 A，这两天应该会看到…」）。仍只讲一个重点；材料薄时不要为凑深度硬拉长。
 
 ### ask_advice（家长要方法，inputType=ask_advice / responseType=advice_from_dossier）
 

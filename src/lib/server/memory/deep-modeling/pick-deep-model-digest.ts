@@ -92,9 +92,18 @@ export function deepModelDigestHasContent(pack: DeepModelDigestPack): boolean {
   )
 }
 
+const EDGE_RELATION_LABEL: Record<string, string> = {
+  competesWith: '与其竞争解释',
+  reinforces: '互相强化',
+  upstreamOf: '是其上游',
+  explainsSameBehavior: '解释同一行为',
+  contradicts: '相互矛盾',
+}
+
 /**
  * 将机制矩阵格式化为家长向人话卡（仍是 string，供 matchedMechanisms）。
- * 厚包：名+描述+依据+保护功能；薄包：仅机制名。
+ * 厚包：名+描述+依据+保护功能+场景激活+机制关系；薄包：仅机制名。
+ * 依据优先取 evidenceRefs 原文引用（v4.1 确定性回填），回退 supportingEvidence。
  * 禁止输出理论卡 ID；描述里若仅有空标签则退回短名。
  */
 export function formatMatchedMechanismCards(
@@ -109,12 +118,29 @@ export function formatMatchedMechanismCards(
     if (!thick) return name
 
     const desc = (m.description || '').trim()
-    const evidence = (m.supportingEvidence || []).filter(Boolean).slice(0, 2)
+    const evidence = (m.evidenceRefs || []).map((r) => r.quote).filter(Boolean).slice(0, 2)
+    const fallbackEvidence = (m.supportingEvidence || []).filter(Boolean).slice(0, 2)
     const protect = (m.possibleProtectiveFunction || '').trim()
+    const scenes = (m.sceneActivations || [])
+      .filter((s) => s.scene?.trim())
+      .slice(0, 2)
+      .map((s) => {
+        const roles = s.presentRoles?.length ? `${s.presentRoles.join('/')}在场` : ''
+        const strength = typeof s.strength === 'number' ? `强度${s.strength.toFixed(1)}` : ''
+        const meta = [roles, strength].filter(Boolean).join('，')
+        return meta ? `${s.scene}（${meta}）` : s.scene
+      })
+    const edges = (m.relatedMechanismIds || [])
+      .slice(0, 2)
+      .map((e) => `与「${e.toMechanismId}」${EDGE_RELATION_LABEL[e.relation] || e.relation}`)
+
     const parts = [name]
     if (desc && desc !== name) parts.push(desc)
-    if (evidence.length) parts.push(`依据：${evidence.join('；')}`)
+    const ev = evidence.length > 0 ? evidence : fallbackEvidence
+    if (ev.length) parts.push(`依据：${ev.join('；')}`)
     if (protect) parts.push(`可能在保护：${protect}`)
+    if (scenes.length) parts.push(`激活场景：${scenes.join('；')}`)
+    if (edges.length) parts.push(`机制关系：${edges.join('；')}`)
     return parts.join('。')
   })
 }

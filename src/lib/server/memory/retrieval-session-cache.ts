@@ -4,6 +4,10 @@ import type { DailyDialogueRetrievalPacket } from '@/types/database'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import { getMergedParentInputHistory } from '@/lib/server/memory/database-manager'
 import { embedText, isEmbeddingEnabled } from '@/lib/server/memory/embedding'
+import { getLatestDossier } from '@/lib/server/memory/deep-modeling/digest-store'
+import { flattenDossierSlice } from '@/lib/server/memory/dossier/dossier-slicer'
+import { sliceForDailySemantic } from '@/lib/server/memory/dossier/dossier-semantic-slicer'
+import { isPortraitV3Enabled } from '@/lib/server/memory/dossier/portrait-v3-flags'
 
 const TTL_MS = 30 * 60 * 1000
 /** 主题漂移阈值：cos sim < 此值则判定话题切换，失效 cache */
@@ -103,7 +107,7 @@ export async function canReuseCache(
   }
 }
 
-/** 同线程后续轮：复用缓存结构，仅刷新最近家长输入 */
+/** 同线程后续轮：复用缓存结构，仅刷新最近家长输入 + 按新 query 重切 dossierSlice */
 export async function mergeIncrementalRetrievalPacket(
   cached: DailyDialogueRetrievalPacket,
   userText: string,
@@ -115,9 +119,24 @@ export async function mergeIncrementalRetrievalPacket(
     ...inputHistory.map((h) => h.text).filter(Boolean).slice(-5),
   ].filter((v, i, arr) => arr.indexOf(v) === i)
 
+  // v4.1：话题小漂移（cos ≥0.6 但问题变了）时，机制激活不能沿用上一问的切片。
+  // sliceForDailySemantic 是纯读操作，重切成本 ≈ 一次 embedText。失败保留缓存切片。
+  let dossierSlice = cached.dossierSlice
+  if (isPortraitV3Enabled()) {
+    try {
+      const dossier = await getLatestDossier(tenant)
+      if (dossier) {
+        dossierSlice = flattenDossierSlice(await sliceForDailySemantic(userText, dossier, tenant))
+      }
+    } catch {
+      // 保留缓存切片
+    }
+  }
+
   return {
     ...cached,
     recentRelatedEvents,
+    dossierSlice,
     recommendedHandling: { ...cached.recommendedHandling },
   }
 }

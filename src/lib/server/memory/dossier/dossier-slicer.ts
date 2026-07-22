@@ -22,10 +22,20 @@ function firstSentence(text: string): string {
   return (m?.[0] || t.slice(0, 120)).trim()
 }
 
-function factorLine(f: { label: string; confidence?: number; evidenceSummary?: string }): string {
+export function factorLine(f: { label: string; confidence?: number; evidenceSummary?: string }): string {
   const conf = typeof f.confidence === 'number' ? `（把握约 ${Math.round(f.confidence * 100)}%）` : ''
   const ev = f.evidenceSummary ? ` — ${f.evidenceSummary}` : ''
   return `${f.label}${conf}${ev}`.trim()
+}
+
+/** 置信度最高的一条备择解释——日常对话也下发，防止主假设成为所有回答的引力中心 */
+export function topAlternativeReading(dossier: FamilyUnderstandingDossier): string[] | undefined {
+  const alts = (dossier.alternativeReadings || [])
+    .filter((a) => a.hypothesis?.trim())
+    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+  if (alts.length === 0) return undefined
+  const top = alts[0]
+  return [`${top.hypothesis}（${Math.round((top.confidence || 0) * 100)}%）`]
 }
 
 export function sliceForDaily(query: string, dossier: FamilyUnderstandingDossier | null | undefined): DossierSlice {
@@ -34,6 +44,7 @@ export function sliceForDaily(query: string, dossier: FamilyUnderstandingDossier
   const base: DossierSlice = {
     workingHypothesis: dossier.workingHypothesis.text,
     integratedSynthesisLead: firstSentence(dossier.integratedSynthesis || ''),
+    alternativeReadings: topAlternativeReading(dossier),
   }
 
   if (/怎么办|怎么弄|有什么办法|建议/.test(q)) {

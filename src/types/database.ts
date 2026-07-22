@@ -129,6 +129,16 @@ export interface MechanismEdge {
   sceneNote?: string
 }
 
+/** v4.1：机制的场景×角色激活——同一机制在不同场景/不同在场者组合下强度不同 */
+export interface MechanismSceneActivation {
+  scene: string
+  /** 该场景在场的家庭角色（妈妈/爸爸/祖辈/独处…） */
+  presentRoles?: string[]
+  /** 0-1，该场景下机制的激活强度 */
+  strength?: number
+  note?: string
+}
+
 export interface FamilyAgentPersona {
   familyId: string
   parentTraits: {
@@ -343,6 +353,8 @@ export interface CandidateMechanism {
   applicableScope: string
   /** v4：从 dossier 层下放到 mechanism 层的场景配比 */
   sceneReadings?: import('./family-understanding-dossier').DossierSceneReading[]
+  /** v4.1：场景×角色激活（谁在场、强度多少）——支撑按场景/角色检索与预测验证 */
+  sceneActivations?: MechanismSceneActivation[]
   /** v4：机制间关系边（competesWith / reinforces / upstreamOf / 等） */
   relatedMechanismIds?: MechanismEdge[]
   missingEvidence: string[]

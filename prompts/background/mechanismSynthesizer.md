@@ -36,6 +36,8 @@
 4. **理论落地**：`theoryCardId` 来自 theoryMatches；`mechanismName` =「理论名：这个家庭的具体结构描述」。禁止「拖延机制」「内驱力不足」。
 5. **跨场景**：若只有单次抱怨 → overallStrength=low；跨模块或多次相似 → medium/high。**不要因单入口就打 low**——单入口但跨场景也可 medium。
 6. **与已有机制关系**：若 `existingMechanisms` 已有同类，加深/修正描述，不要同义重复堆条目。
+7. **场景×角色激活**（`sceneActivations`）：写明这条机制在哪些场景、谁在场时激活、强度多少（0-1）。材料里有「妈妈管时拖、爸爸管时不拖」这类角色差异信号必须记录——这是后续预测验证（如「换爸爸管一晚」）的结构基础。材料撑不住就不写，不编造。
+8. **机制间关系**（`relatedMechanisms`）：真实家庭行为很少由单一机制驱动。材料撑得住时，标注本条与其他机制的关系：`competesWith`（解释同一行为的竞争假设）/ `reinforces`（互相强化）/ `upstreamOf`（上游成因）/ `explainsSameBehavior` / `contradicts`。target 用对方 mechanismName 精确引用。禁止为凑数硬连；也禁止 10+ 条机制全部零关系（平铺矩阵=没做交叉思考）。
 
 ## overallStrength 硬规则
 
@@ -69,6 +71,12 @@
       "scores": { "explanatoryPower": "medium", "crossSceneConsistency": "medium", "evidenceSupport": "medium" },
       "overallStrength": "medium",
       "applicableScope": "适用场景",
+      "sceneActivations": [
+        { "scene": "作业检查", "presentRoles": ["妈妈"], "strength": 0.7, "note": "妈妈逐题检查时激活；爸爸管的晚上未见" }
+      ],
+      "relatedMechanisms": [
+        { "target": "另一条机制的 mechanismName", "relation": "competesWith", "note": "两者解释同一个沉默行为，需区分证据" }
+      ],
       "missingEvidence": ["还缺什么"],
       "possibleAlternativeExplanations": ["其他根因解释"],
       "shouldPromoteToDiagnosis": false,
@@ -93,5 +101,7 @@
 - 每条机制必须含：ecosystemLayer、theoryCardId、mechanismName、description（120-200字含谁/何时/反应/功能）、supportingEvidence≥2、overallStrength、explainedBehaviors、possibleProtectiveFunction、familyInteractionChain。
 - 严禁"拖延机制""逃避机制""启动困难机制"这类中间变量作为 mechanismName。必须形如"理论名：具体家庭结构描述"。
 - 每条必须引用至少 2 条输入中的具体事实。
+- `relatedMechanisms.target` 必须精确等于本次输出中另一条机制的 mechanismName；`relation` 只能取 competesWith / reinforces / upstreamOf / explainsSameBehavior / contradicts。材料充足（≥6 条机制）时至少给出 2 条 competesWith 或 explainsSameBehavior 关系。
+- `sceneActivations.strength` 是 0-1 数值；只写材料里出现过的场景与在场者，不编造。
 - parentNarrativePattern 必须中性，禁止"控制欲强""过度焦虑"等评判词。
 - 不输出 Markdown、代码块或 JSON 以外的解释。不要另发明报告体章节。

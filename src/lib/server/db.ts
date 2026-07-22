@@ -261,6 +261,7 @@ async function ensureVectorSchema(): Promise<boolean> {
             ecological_layer TEXT,
             business_time TIMESTAMPTZ,
             confidence NUMERIC(3,2),
+            supported_mechanism_names TEXT[] NOT NULL DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
           );
           CREATE INDEX IF NOT EXISTS idx_episodes_embedding
@@ -297,6 +298,9 @@ async function ensureVectorSchema(): Promise<boolean> {
             END IF;
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fact_atoms' AND column_name='confidence') THEN
               ALTER TABLE fact_atoms ADD COLUMN confidence NUMERIC(3,2);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fact_atoms' AND column_name='supported_mechanism_names') THEN
+              ALTER TABLE fact_atoms ADD COLUMN supported_mechanism_names TEXT[] NOT NULL DEFAULT '{}';
             END IF;
           END $$;
         `);
@@ -497,6 +501,8 @@ export interface FactAtomRecord {
   ecologicalLayer?: string;
   businessTime?: string;
   confidence?: number;
+  /** v4.1 反向索引：该 atom 支撑哪些机制（deep_mechanism_review 后按语义相似度写回） */
+  supportedMechanismNames?: string[];
 }
 
 // 删除某 Episode 的全部 Atom（Episode 重抽取时先删后插，避免重试留孤儿/重复）。
@@ -616,8 +622,10 @@ export async function getAtomsByEpisodeIds(
   const result = await pool.query<{
     atom_id: string; episode_id: string; content: string;
     source_type: string; fact_type: string | null; is_high_value: boolean; evidence_strength: string;
+    supported_mechanism_names: string[] | null;
   }>(
-    `SELECT atom_id, episode_id, content, source_type, fact_type, is_high_value, evidence_strength
+    `SELECT atom_id, episode_id, content, source_type, fact_type, is_high_value, evidence_strength,
+            supported_mechanism_names
      FROM fact_atoms
      WHERE episode_id = ANY($1::text[]) AND family_id = $2 AND child_id = $3`,
     [episodeIds, familyId, childId]
@@ -625,8 +633,36 @@ export async function getAtomsByEpisodeIds(
   return result.rows.map(row => ({
     atomId: row.atom_id, episodeId: row.episode_id, content: row.content,
     sourceType: row.source_type, factType: row.fact_type || undefined,
-    isHighValue: row.is_high_value, evidenceStrength: row.evidence_strength
+    isHighValue: row.is_high_value, evidenceStrength: row.evidence_strength,
+    supportedMechanismNames: row.supported_mechanism_names?.length ? row.supported_mechanism_names : undefined
   }));
+}
+
+/**
+ * v4.1 反向索引写回：整族替换该家庭 atom 的机制链接（deep_mechanism_review 每轮全量刷新，
+ * 机制集变化时旧链接自动失效）。链接量小（≤8 机制 × 6 atom），逐行更新即可。
+ */
+export async function replaceAtomMechanismLinks(
+  links: Array<{ atomId: string; mechanismNames: string[] }>,
+  familyId = 'f_demo',
+  childId = 'c_demo'
+): Promise<void> {
+  if (!(await ensureVectorSchema())) return;
+  const pool = getPool();
+  if (!pool) return;
+  await pool.query(
+    `UPDATE fact_atoms SET supported_mechanism_names = '{}'
+     WHERE family_id = $1 AND child_id = $2 AND supported_mechanism_names <> '{}'`,
+    [familyId, childId]
+  );
+  for (const link of links) {
+    if (!link.mechanismNames.length) continue;
+    await pool.query(
+      `UPDATE fact_atoms SET supported_mechanism_names = $1
+       WHERE atom_id = $2 AND family_id = $3 AND child_id = $4`,
+      [link.mechanismNames, link.atomId, familyId, childId]
+    );
+  }
 }
 
 export interface VectorSearchOpts {
@@ -695,6 +731,7 @@ export interface AtomHit {
   factType?: string;
   evidenceStrength: string;
   distance: number;
+  supportedMechanismNames?: string[];
 }
 
 export async function searchHighValueAtoms(
@@ -708,8 +745,10 @@ export async function searchHighValueAtoms(
   const result = await pool.query<{
     atom_id: string; episode_id: string; content: string; source_type: string;
     fact_type: string | null; evidence_strength: string; distance: number;
+    supported_mechanism_names: string[] | null;
   }>(
     `SELECT atom_id, episode_id, content, source_type, fact_type, evidence_strength,
+            supported_mechanism_names,
             embedding <=> $1::vector AS distance
      FROM fact_atoms
      WHERE family_id = $2 AND child_id = $3 AND is_high_value = TRUE AND embedding IS NOT NULL
@@ -720,7 +759,8 @@ export async function searchHighValueAtoms(
   return result.rows.map(row => ({
     atomId: row.atom_id, episodeId: row.episode_id, content: row.content,
     sourceType: row.source_type, factType: row.fact_type || undefined,
-    evidenceStrength: row.evidence_strength, distance: Number(row.distance)
+    evidenceStrength: row.evidence_strength, distance: Number(row.distance),
+    supportedMechanismNames: row.supported_mechanism_names?.length ? row.supported_mechanism_names : undefined
   }));
 }
 

@@ -5,6 +5,7 @@ import { getMergedParentInputHistory } from '@/lib/server/memory/database-manage
 import { upsertAtoms, type AtomRow } from '@/lib/server/db'
 import { embedTexts } from '@/lib/server/memory/embedding'
 import { createId } from '@/lib/storage/storageIds'
+import { clampAtomConfidence, enforceHighValueEligibility } from '@/lib/server/harness/confidence-clamp'
 import type { TenantId } from '@/lib/server/memory/tenant'
 
 interface CuratedAtom {
@@ -51,22 +52,27 @@ export async function runAtomCuration(tenant: TenantId): Promise<number> {
   if (!validAtoms.length) return 0
 
   const embeddings = await embedTexts(validAtoms.map(a => a.content))
-  const rows: AtomRow[] = validAtoms.map((a, i) => ({
-    atomId: createId('cur'),
-    episodeId: `curation_${Date.now()}`,
-    familyId: tenant.familyId,
-    childId: tenant.childId,
-    content: a.content,
-    sourceType: a.sourceType || 'parent_explicit',
-    factType: a.factType || 'behavior',
-    isHighValue: true,
-    evidenceStrength: 'high',
-    embedding: embeddings[i],
-    epistemicStatus: a.epistemicStatus || 'derived',
-    evidenceTier: a.evidenceTier || 'cross_scene',
-    factRole: a.factRole,
-    confidence: a.confidence || 0.7,
-  }))
+  const rows: AtomRow[] = validAtoms.map((a, i) => {
+    const epistemicStatus = a.epistemicStatus || 'derived'
+    const evidenceTier = a.evidenceTier || 'cross_scene'
+    return {
+      atomId: createId('cur'),
+      episodeId: `curation_${Date.now()}`,
+      familyId: tenant.familyId,
+      childId: tenant.childId,
+      content: a.content,
+      sourceType: a.sourceType || 'parent_explicit',
+      factType: a.factType || 'behavior',
+      isHighValue: enforceHighValueEligibility(true, epistemicStatus),
+      evidenceStrength: 'high',
+      embedding: embeddings[i],
+      epistemicStatus,
+      evidenceTier,
+      factRole: a.factRole,
+      // 硬公式钳制：tier × 认识论双上限，覆盖 LLM 主观打分
+      confidence: clampAtomConfidence({ confidence: a.confidence, epistemicStatus, evidenceTier }),
+    }
+  })
 
   await upsertAtoms(rows)
   console.info(`[atom_curation] 家庭 ${tenant.familyId} 精选 ${rows.length} 条高质量情境化 atom`)

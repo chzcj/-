@@ -1,6 +1,6 @@
 import type { EcosystemLayer } from '@/types/database'
 
-/** Rich theory card — 报告 15×9 字段对齐；MVP 8 张先行完整填充 */
+/** Rich theory card — 20×9 字段（v4 全量补齐） */
 export type TheoryCardRich = {
   coreViewpoint?: string
   judgmentDimensions?: string[]
@@ -23,17 +23,7 @@ export type TheoryCard = {
 const RICH_APPENDIX_NOTE =
   '（附录卡：判断时自检适用场景与观察信号，置信度上限 medium，禁止单独作为前台主解释）'
 
-function legacyCard(
-  id: string,
-  name: string,
-  ecosystemLayer: EcosystemLayer,
-  applicableScenarios: string[],
-  observationSignals: string[]
-): TheoryCard {
-  return { id, name, ecosystemLayer, applicableScenarios, observationSignals }
-}
-
-/** 20 张理论卡（MVP 8 张 rich；其余保持原名 + 附录降级） */
+/** 20 张理论卡（v4：全部 rich 9 字段） */
 export const THEORY_CARDS: TheoryCard[] = [
   {
     id: 'behavioral_vs_psychological_control',
@@ -105,7 +95,15 @@ export const THEORY_CARDS: TheoryCard[] = [
     ecosystemLayer: 'micro',
     applicableScenarios: ['沟通断裂', '规则混乱', '情绪无人回应'],
     observationSignals: ['能否一起解决问题', '情感回应', '角色分工'],
-    rich: { coreViewpoint: '家庭在问题解决、情感回应、角色清晰上的功能影响孩子调节。', outputConstraints: 'micro' },
+    rich: {
+      coreViewpoint: '家庭在问题解决、情感回应、角色清晰上的功能影响孩子调节。',
+      judgmentDimensions: ['problem_solving', 'affective_responsiveness', 'role_allocation'],
+      confidenceRules: '须有一次完整问题处理过程（谁提出/如何商量/结果）或稳定缺失的多场景证据；单次失败不得定 low functioning。',
+      recommendedInterventions: ['挑一件小事完整走一遍「一起解决」', '给情绪先回应再处理事'],
+      tabooAdvice: ['给家庭贴「功能失调」标签'],
+      parentFacingExpression: '不是你们不关心，可能是家里还没有一条「事情怎么一起办」的顺路。',
+      outputConstraints: 'micro',
+    },
   },
   {
     id: 'family_communication',
@@ -113,7 +111,15 @@ export const THEORY_CARDS: TheoryCard[] = [
     ecosystemLayer: 'micro',
     applicableScenarios: ['指责讨好', '超理智讲道理', '打岔回避'],
     observationSignals: ['沟通姿态', '是否对事对人', '孩子是否被听见'],
-    rich: { coreViewpoint: '指责、讨好、超理智、打岔四种姿态会阻断孩子被听见感。', outputConstraints: 'micro' },
+    rich: {
+      coreViewpoint: '指责、讨好、超理智、打岔四种姿态会阻断孩子被听见感。',
+      judgmentDimensions: ['stance_pattern', 'person_vs_issue', 'child_feels_heard'],
+      confidenceRules: '须有对话原话或可还原的对话片段才可判断姿态；家长自述「我都好好说了」不算证据。',
+      recommendedInterventions: ['把「你怎么又」换成「这次哪一步卡住了」', '孩子说完前不接话'],
+      tabooAdvice: ['给家长贴「指责型」标签'],
+      parentFacingExpression: '你说的道理他可能都懂，他没接住的是「先被说错」的那一下。',
+      outputConstraints: 'micro；须对话证据。',
+    },
   },
   {
     id: 'emotion_socialization',
@@ -121,7 +127,15 @@ export const THEORY_CARDS: TheoryCard[] = [
     ecosystemLayer: 'micro',
     applicableScenarios: ['情绪被否定', '哭被骂', '只许高兴'],
     observationSignals: ['情绪回应模式', '惩罚或缩小情绪', '情绪命名能力'],
-    rich: { coreViewpoint: '情绪被否定会让孩子学会隐藏或放大情绪表达。', outputConstraints: 'micro' },
+    rich: {
+      coreViewpoint: '情绪被否定会让孩子学会隐藏或放大情绪表达。',
+      judgmentDimensions: ['emotion_response_style', 'dismissing_vs_coaching', 'emotion_vocabulary'],
+      confidenceRules: '须有情绪事件的回应片段（孩子哭/怒时家长第一反应）为证；「他从不跟我说」本身可能就是结果而非起点。',
+      recommendedInterventions: ['情绪先命名再讲道理', '允许难受存在五分钟'],
+      tabooAdvice: ['要求孩子「控制情绪」作为第一步'],
+      parentFacingExpression: '他不说，可能不是没话，是之前几次说了之后更难受。',
+      outputConstraints: 'micro；须情绪回应证据。',
+    },
   },
   {
     id: 'self_determination',
@@ -139,7 +153,22 @@ export const THEORY_CARDS: TheoryCard[] = [
       outputConstraints: 'micro',
     },
   },
-  legacyCard('family_systems', '家庭系统理论', 'meso', ['三角关系', '边界纠缠', '孩子站队'], ['夫妻冲突转嫁', '祖辈越级', '边界清晰与否']),
+  {
+    id: 'family_systems',
+    name: '家庭系统理论',
+    ecosystemLayer: 'meso',
+    applicableScenarios: ['三角关系', '边界纠缠', '孩子站队'],
+    observationSignals: ['夫妻冲突转嫁', '祖辈越级', '边界清晰与否'],
+    rich: {
+      coreViewpoint: '孩子的症状常是家庭系统失衡的调节器：夫妻张力未解时，孩子可能被拉入三角（站队/传话/用问题转移焦点）。',
+      judgmentDimensions: ['triangulation_present', 'subsystem_boundary', 'conflict_detour_via_child'],
+      confidenceRules: '高误判卡：须较完整关系图 + ≥2 个冲突场景（谁拉谁、孩子如何被卷入）才可 high；单方抱怨配偶不参与 → medium 上限；防把文化性亲密误读为纠缠。',
+      recommendedInterventions: ['夫妻分歧不当着孩子处理', '把孩子从传话/评理位置上撤下来'],
+      tabooAdvice: ['归咎某一方「有问题」', '要求孩子理解大人难处'],
+      parentFacingExpression: '孩子夹在你们中间时，他的「问题」有时是在替家里降温。',
+      outputConstraints: 'meso；须关系图证据，不得仅凭单方叙述定三角。',
+    },
+  },
   {
     id: 'coparenting',
     name: '共同养育理论',
@@ -156,7 +185,22 @@ export const THEORY_CARDS: TheoryCard[] = [
       outputConstraints: 'meso',
     },
   },
-  legacyCard('family_boundaries', '家庭边界理论', 'meso', ['父母化', '代际越界', '角色错位'], ['孩子是否承担调节责任', '代际边界', '角色是否清晰']),
+  {
+    id: 'family_boundaries',
+    name: '家庭边界理论',
+    ecosystemLayer: 'meso',
+    applicableScenarios: ['父母化', '代际越界', '角色错位'],
+    observationSignals: ['孩子是否承担调节责任', '代际边界', '角色是否清晰'],
+    rich: {
+      coreViewpoint: '代际边界错位——孩子承担父母的情绪调节/仲裁职责，或父母全面接管孩子领地——会让孩子过载，或没有空间长出自主。',
+      judgmentDimensions: ['parentification', 'intergenerational_intrusion', 'role_clarity'],
+      confidenceRules: '高误判卡：须较完整关系图 + ≥2 个体现角色错位的具体场景才可 high；「孩子很懂事」单证据 → low；防把文化性亲密误读为越界。',
+      recommendedInterventions: ['把大人议题移出孩子的知情范围', '归还孩子领地内的小决定权'],
+      tabooAdvice: ['给家庭贴「纠缠」标签', '一刀切要求「分清界限」'],
+      parentFacingExpression: '他小小年纪就在照看大人的情绪，那份重量可能正从别处漏出来。',
+      outputConstraints: 'meso；须角色错位场景证据。',
+    },
+  },
   {
     id: 'home_school_partnership',
     name: '家校合作与家长参与',
@@ -173,11 +217,86 @@ export const THEORY_CARDS: TheoryCard[] = [
       outputConstraints: 'meso；外系统不可替代个体证据。',
     },
   },
-  legacyCard('abc_x_stress', '双ABC-X家庭压力模型', 'exo', ['经济压力', '父母易怒', '资源不足'], ['外部压力', '父母情绪变化', '夫妻冲突增多']),
-  legacyCard('social_capital', '社会资本理论', 'exo', ['社区支持弱', '隔代照料', '外部资源少'], ['家庭外支持网', '学校参与', '亲子关系质量']),
-  legacyCard('sociocultural_scaffolding', '社会文化发展与脚手架', 'exo', ['代劳作业', '超前要求', '辅导越界'], ['最近发展区', '脚手架还是代劳', '任务难度匹配']),
-  legacyCard('dual_filial_piety', '双元孝道模型', 'macro', ['为你好', '孝顺义务', '听话与体面'], ['权威服从脚本', '感恩互惠', '家族名誉压力']),
-  legacyCard('ecological_systems', '生态系统理论', 'macro', ['升学文化', '社会期待', '比较竞争'], ['文化脚本', '环境压力层', '跨系统影响']),
+  {
+    id: 'abc_x_stress',
+    name: '双ABC-X家庭压力模型',
+    ecosystemLayer: 'exo',
+    applicableScenarios: ['经济压力', '父母易怒', '资源不足'],
+    observationSignals: ['外部压力', '父母情绪变化', '夫妻冲突增多'],
+    rich: {
+      coreViewpoint: '压力事件(A)×家庭资源(B)×家庭对事件的解读(C)共同决定是否滚成危机(X)；压力累积叠加旧账时，家庭对孩子的容错骤降。',
+      judgmentDimensions: ['stressor_pileup', 'resource_adequacy', 'family_appraisal'],
+      confidenceRules: '须指认具体压力源（裁员/生病/搬家/二胎）及其时间线与家庭反应变化才可 high；仅「最近脾气差」→ low。',
+      recommendedInterventions: ['先减家长负荷再谈管教方式', '把外部压力对孩子显性化说明'],
+      tabooAdvice: ['把压力期的严厉解读为教养风格定型'],
+      parentFacingExpression: '家里最近扛的事多，孩子接住的火气可能不全是他招来的。',
+      outputConstraints: 'exo；只能做情境解释，不能替代亲子互动的个体证据。',
+    },
+  },
+  {
+    id: 'social_capital',
+    name: '社会资本理论',
+    ecosystemLayer: 'exo',
+    applicableScenarios: ['社区支持弱', '隔代照料', '外部资源少'],
+    observationSignals: ['家庭外支持网', '学校参与', '亲子关系质量'],
+    rich: {
+      coreViewpoint: '家庭可动用的支持网（亲属/学校/社区）质量决定育儿余量；支持人数≠支持可用，关键看需要时能否真正接住。',
+      judgmentDimensions: ['support_availability', 'support_usability', 'parent_school_closure'],
+      confidenceRules: '须有具体求助事件为证（找了谁/结果如何）；仅凭居住结构（如与祖辈同住）不得推断支持质量。',
+      recommendedInterventions: ['盘点一个真能搭手的具体节点', '把孤军奋战的环节显性化'],
+      tabooAdvice: ['把隔代照料默认为资源或默认为干扰'],
+      parentFacingExpression: '很多事你一个人扛着，孩子感受到的紧，可能有一部分来自这里。',
+      outputConstraints: 'exo；情境层解释。',
+    },
+  },
+  {
+    id: 'sociocultural_scaffolding',
+    name: '社会文化发展与脚手架',
+    ecosystemLayer: 'exo',
+    applicableScenarios: ['代劳作业', '超前要求', '辅导越界'],
+    observationSignals: ['最近发展区', '脚手架还是代劳', '任务难度匹配'],
+    rich: {
+      coreViewpoint: '有效辅导发生在孩子踮脚够得着的区间：给略高于现有水平的支持并逐步撤除；代劳与超前要求都不产生能力，只产生依赖或挫败。',
+      judgmentDimensions: ['zpd_match', 'scaffold_vs_takeover', 'gradual_release'],
+      confidenceRules: '须有具体辅导片段（谁做了哪一步/孩子卡在哪）才可判断；仅「陪写作业」不足以启动本卡。',
+      recommendedInterventions: ['从代劳退到提示', '把任务切到孩子踮脚够得着的一档'],
+      tabooAdvice: ['一刀切「让他自己来」', '把辅导密度当投入证明'],
+      parentFacingExpression: '题是会了，但会的过程如果都是你的，他下次还是不敢自己开始。',
+      outputConstraints: 'exo；须辅导过程证据。',
+    },
+  },
+  {
+    id: 'dual_filial_piety',
+    name: '双元孝道模型',
+    ecosystemLayer: 'macro',
+    applicableScenarios: ['为你好', '孝顺义务', '听话与体面'],
+    observationSignals: ['权威服从脚本', '感恩互惠', '家族名誉压力'],
+    rich: {
+      coreViewpoint: '孝道有互惠（恩情回应）与权威（服从义务）两条脚本；权威脚本高压时「听话」变成关系货币，孩子用阳奉阴违或沉默保全双方体面。',
+      judgmentDimensions: ['authoritarian_script', 'reciprocal_script', 'face_pressure'],
+      confidenceRules: '文化价值类高误判卡：须有具体话语为据（「我们为你付出多少」「不听话对得起谁」），禁止仅因中国家庭背景启动；无话语证据 → low。',
+      recommendedInterventions: ['把「为你好」翻译成可商量的具体事', '给不同意留一个不失礼的出口'],
+      tabooAdvice: ['批判家长价值观', '把孝道本身病理化'],
+      parentFacingExpression: '他不是不领情，可能是「必须领情」这件事让他喘不过气。',
+      outputConstraints: 'macro；须话语证据，只能做价值情境解释。',
+    },
+  },
+  {
+    id: 'ecological_systems',
+    name: '生态系统理论',
+    ecosystemLayer: 'macro',
+    applicableScenarios: ['升学文化', '社会期待', '比较竞争'],
+    observationSignals: ['文化脚本', '环境压力层', '跨系统影响'],
+    rich: {
+      coreViewpoint: '升学竞争、比较文化等宏观脚本经由家长焦虑传导进日常互动；孩子对抗的常不是家长本人，而是家长身后的评价体系。',
+      judgmentDimensions: ['cultural_script_transmission', 'comparison_pressure', 'cross_layer_pathway'],
+      confidenceRules: '文化价值类高误判卡：须指认具体传导路径（如群里晒排名→当晚加练）才可 medium+；泛泛「内卷」「大环境」不得作为机制证据。',
+      recommendedInterventions: ['切断一条具体的焦虑传导链', '在家里留一块不被比较的领地'],
+      tabooAdvice: ['用大环境为一切互动问题开脱'],
+      parentFacingExpression: '有些压力不是你给的，但可能正借你的嘴传到他耳朵里。',
+      outputConstraints: 'macro；只能情境解释，不能替代个体证据。',
+    },
+  },
   {
     id: 'stage_environment_fit',
     name: '阶段-环境匹配理论',
@@ -234,7 +353,9 @@ export function theoryCardsForLayer(layer: EcosystemLayer): TheoryCard[] {
 }
 
 export function theoryCardsSystemAppendix(): string {
-  const appendix = THEORY_CARDS.filter((c) => !c.rich?.coreViewpoint)
+  const degraded = THEORY_CARDS.filter((c) => !c.rich?.coreViewpoint)
+  if (degraded.length === 0) return ''
+  const appendix = degraded
     .map((c) => `- ${c.name}（${c.id}）${RICH_APPENDIX_NOTE}`)
     .join('\n')
   return `## 附录理论卡（降级自检）\n${appendix}`

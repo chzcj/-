@@ -9,9 +9,26 @@ import { pickTurnRelevantSnippets } from '@/lib/server/daily/turn-relevant-snipp
 
 export type ProseMode = 'analysis' | 'light'
 
-const PROSE_MAX: Record<ProseMode, number> = {
-  analysis: 200,
+/**
+ * v4.1 重推理深度：analysis 预算按材料厚度分档——
+ * 有 dossier 切片/机制叙述/原子事实撑住时给 360 字（讲透机制在本场景怎么运作），
+ * 材料薄时 240 字（防止高预算邀请空话）。light 不变。
+ */
+const PROSE_MAX = {
+  analysisDeep: 360,
+  analysisBase: 240,
   light: 100,
+} as const
+
+/** 本轮是否有足以支撑深推理的材料（dossier 主源 / digest 机制叙述 / ≥2 条原子事实） */
+export function hasDeepMaterial(
+  ctx: OrchestrationOutput['retrievedContext'],
+  digest?: DeepModelDigestPack
+): boolean {
+  if ((ctx.dossierSlice || []).length > 0) return true
+  if (digest?.mechanismNarrative?.trim()) return true
+  if ((ctx.domainAtomFacts || []).length >= 2) return true
+  return false
 }
 
 const UNDERSTAND_HINT =
@@ -81,8 +98,9 @@ export function resolveProseMode(output: OrchestrationOutput, userText = ''): Pr
   return resolveProseRouting(output, userText).mode
 }
 
-export function proseCharLimit(mode: ProseMode): number {
-  return PROSE_MAX[mode]
+export function proseCharLimit(mode: ProseMode, deepMaterial = false): number {
+  if (mode === 'light') return PROSE_MAX.light
+  return deepMaterial ? PROSE_MAX.analysisDeep : PROSE_MAX.analysisBase
 }
 
 const PACK_FIELD_GUIDE: Record<string, string> = {
@@ -170,7 +188,7 @@ export function buildDailyProsePayload(
     proseMode: mode,
     proseModeReason: reason,
     proseModeNote: 'proseMode/maxChars 是字数预算建议；以本轮一个重点实际需要为准，但不得超过 maxChars',
-    maxChars: proseCharLimit(mode),
+    maxChars: proseCharLimit(mode, hasDeepMaterial(ctx, digest)),
     inputType: output.inputType,
     maturityLevel: output.contextMaturityLevel,
     relationshipType: rel.type,
@@ -182,7 +200,8 @@ export function buildDailyProsePayload(
 
 export function buildDailyProseTask(output: OrchestrationOutput, userText = ''): string {
   const mode = resolveProseMode(output, userText)
-  const max = proseCharLimit(mode)
+  const deep = hasDeepMaterial(output.retrievedContext)
+  const max = proseCharLimit(mode, deep)
 
   const lines = [
     '你正在生成交流页「正文 prose」——老教师读过 pack 与 digest 后，当面答家长**这一轮**的问题；抓一个重点讲清楚，不必讲全、不必套固定结构。',
@@ -197,7 +216,9 @@ export function buildDailyProseTask(output: OrchestrationOutput, userText = ''):
 
   if (mode === 'analysis') {
     lines.push(
-      '【建议】分析轮：直接答本题；若材料够，可用一两句讲透一个关键点（人话、无术语）；不必类型标签、不必面面俱到。'
+      deep
+        ? '【建议】分析轮（材料充足）：直接答本题，把一个重点**讲透**——机制在这个场景里怎么运作（谁做了什么→孩子怎么接收→行为在保护什么），引 1-2 条本家庭事实/原话作锚点；把握不足处给一句替代解释或区分观察（「如果是 A，应该会看到…」）。仍只讲一个重点，人话、无术语。'
+        : '【建议】分析轮：直接答本题；若材料够，可用一两句讲透一个关键点（人话、无术语）；不必类型标签、不必面面俱到。'
     )
   } else if (output.inputType === 'ask_advice') {
     lines.push('【建议】要方法：不宜只追问；可给一个小步或方向，细节留给 section。')
@@ -220,7 +241,9 @@ export type ClampProseMeta = {
 }
 
 export function clampProse(text: string, mode: ProseMode, meta?: ClampProseMeta): string {
-  const max = proseCharLimit(mode)
+  // 安全网按该 mode 的最大档钳制：真实预算（薄 240/厚 360）由任务指令约束 LLM，
+  // 硬截断只兜底严重超长，避免薄材料轮把合规的 250 字砍出残句。
+  const max = proseCharLimit(mode, true)
   const trimmed = text.trim()
   if (trimmed.length <= max) return trimmed
 

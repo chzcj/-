@@ -18,6 +18,8 @@ export interface ContextPackAtom {
   content: string
   sourceType: string
   isHighValue: boolean
+  /** v4.1 反向索引：该 atom 支撑的机制名 */
+  supportedMechanismNames?: string[]
 }
 
 export interface ContextPackEpisode {
@@ -30,7 +32,7 @@ export interface ContextPackEpisode {
 
 export interface ContextPack {
   episodes: ContextPackEpisode[]
-  extraHighValueAtoms: Array<{ content: string; sourceType: string }>
+  extraHighValueAtoms: Array<{ content: string; sourceType: string; supportedMechanismNames?: string[] }>
 }
 
 const TAU = Math.max(1, Number(process.env.RETRIEVAL_TIME_TAU || 30))
@@ -91,7 +93,8 @@ export async function retrieveContextPack(query: string, opts: RetrieveOpts = {}
     atoms: (atomsByEpisode.get(r.h.episodeId) || []).map(a => ({
       content: a.content,
       sourceType: a.sourceType,
-      isHighValue: a.isHighValue
+      isHighValue: a.isHighValue,
+      supportedMechanismNames: a.supportedMechanismNames
     })),
     score: r.score
   }))
@@ -102,7 +105,11 @@ export async function retrieveContextPack(query: string, opts: RetrieveOpts = {}
     childId: opts.childId,
     topK: DEFAULT_HIGH_VALUE_ATOM_TOP_K
   })) || []
-  const extraHighValueAtoms = hvAtoms.map(a => ({ content: a.content, sourceType: a.sourceType }))
+  const extraHighValueAtoms = hvAtoms.map(a => ({
+    content: a.content,
+    sourceType: a.sourceType,
+    supportedMechanismNames: a.supportedMechanismNames
+  }))
 
   return { episodes, extraHighValueAtoms }
 }
