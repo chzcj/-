@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>育见 · 沟通预演 mock 选版</title>
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font-body); color: var(--foreground); background: var(--background); min-height: 100vh; }
+    .gallery { max-width: 1200px; margin: 0 auto; padding: var(--space-5); display: grid; gap: var(--space-5); }
+    .gallery-header h1 { margin: 0 0 8px; font: var(--type-h1); letter-spacing: -0.02em; }
+    .gallery-header p { margin: 0; font: var(--type-body); color: var(--muted); max-width: 58ch; line-height: 1.65; }
+    .level-block { display: grid; gap: var(--space-3); }
+    .level-block h2 { margin: 0; font: var(--type-h3); display: flex; align-items: center; gap: 10px; }
+    .level-tag {
+      display: inline-flex; min-height: 28px; padding: 0 10px; border-radius: var(--radius-full);
+      font: var(--type-caption); background: var(--color-primary-container); color: var(--color-on-primary-container);
+    }
+    .variant-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); }
+    .variant-card {
+      display: grid; gap: var(--space-2); padding: var(--space-4);
+      border-radius: 22px; background: linear-gradient(180deg, rgba(255,255,255,.86) 0%, var(--surface) 100%);
+      border: 1px solid rgba(255,255,255,.72); box-shadow: var(--shadow-1);
+    }
+    .variant-card h3 { margin: 0; font: var(--type-body); font-weight: 650; }
+    .variant-card p { margin: 0; font: var(--type-caption); color: var(--muted); line-height: 1.55; }
+    .open-btn {
+      display: inline-flex; align-items: center; justify-content: center; min-height: 40px;
+      padding: 0 16px; border-radius: var(--radius-full); border: none; cursor: pointer;
+      font: var(--type-caption); font-weight: 620; text-decoration: none;
+      background: linear-gradient(180deg, var(--yujian-primary-500) 0%, var(--color-primary) 100%);
+      color: var(--color-on-primary); box-shadow: var(--shadow-1); width: fit-content;
+    }
+    .note { padding: var(--space-4); border-radius: 18px; background: var(--surface-container); border: 1px solid var(--color-border); }
+    .note strong { display: block; margin-bottom: 6px; font: var(--type-caption); }
+    .note span { font: var(--type-caption); color: var(--muted); line-height: 1.55; }
+  </style>
+</head>
+<body>
+  <div class="gallery">
+    <header class="gallery-header">
+      <h1>沟通预演 · 一 / 二 / 三级 mock</h1>
+      <p>沿 Gentle Growth 设计库做的静态样机，对齐现有 <code>/rehearsal</code> Tab、<code>dialogue</code> 录音页、<code>dialogue-result</code> 分析页。内容以「写作业前怎么开口」场景为主，方便你横向对比再落 Web/小程序。</p>
+    </header>
+
+    <section class="level-block">
+      <h2><span class="level-tag">一级</span> 预演 Tab · <code>/pages/rehearsal/index</code></h2>
+      <div class="variant-grid">
+        <article class="variant-card">
+          <h3>A · 场景卡片网格</h3>
+          <p>最接近现状：三场景卡片 + 开始预演 + 录音入口。低风险、信息密度中。</p>
+          <a class="open-btn" href="l1-a-entry.html" target="_blank" rel="noopener">打开 A</a>
+        </article>
+        <article class="variant-card">
+          <h3>B · Chip + Hero</h3>
+          <p>顶部横向 chip 选场景，下方大 hero 卡展示当前场景摘要；更聚焦单场景。</p>
+          <a class="open-btn" href="l1-b-entry.html" target="_blank" rel="noopener">打开 B</a>
+        </article>
+        <article class="variant-card">
+          <h3>C · 确认进入</h3>
+          <p>选场景后的 confirm 步：场景摘要 + 参考要点 + 「进入预演」。</p>
+          <a class="open-btn" href="l1-c-confirm.html" target="_blank" rel="noopener">打开 C</a>
+        </article>
+        <article class="variant-card">
+          <h3>D · 预演进行中</h3>
+          <p>SecondMe 气泡流 + 家长输入 dock；模拟 active 态。</p>
+          <a class="open-btn" href="l1-d-active.html" target="_blank" rel="noopener">打开 D</a>
+        </article>
+        <article class="variant-card">
+          <h3>E · 预演结束</h3>
+          <p>洞察总结 + 孩子触发点 + 今晚试说法 + 保存/试一次 CTA。</p>
+          <a class="open-btn" href="l1-e-end.html" target="_blank" rel="noopener">打开 E</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="level-block">
+      <h2><span class="level-tag">二级</span> 亲子对话录音 · <code>/pages/rehearsal/dialogue</code></h2>
+      <div class="variant-grid">
+        <article class="variant-card">
+          <h3>A · 待录音</h3>
+          <p>DeepPageHeader + 说明 + 0:00 计时区 + 开始录音。</p>
+          <a class="open-btn" href="l2-a-idle.html" target="_blank" rel="noopener">打开 A</a>
+        </article>
+        <article class="variant-card">
+          <h3>B · 录音中</h3>
+          <p>波形动画 + 计时 + 结束录音（暖色主按钮）。</p>
+          <a class="open-btn" href="l2-b-recording.html" target="_blank" rel="noopener">打开 B</a>
+        </article>
+        <article class="variant-card">
+          <h3>C · 转写分析中</h3>
+          <p>Loader + 「正在转写并分析」处理态。</p>
+          <a class="open-btn" href="l2-c-uploading.html" target="_blank" rel="noopener">打开 C</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="level-block">
+      <h2><span class="level-tag">三级 · v2</span> 对话分析 · 探索稿（含读法 / 分条讲清）</h2>
+      <p style="margin:0 0 12px;font:var(--type-caption);color:var(--muted);line-height:1.6;max-width:62ch">
+        早期探索：V2-A/B/C 高密度；V2-D 混合分条讲清。定稿请看下方 <strong>v2 定稿向 E/F/G</strong>。
+      </p>
+      <div class="variant-grid">
+        <article class="variant-card">
+          <h3>V2-A · 画像×原话交织</h3>
+          <p>含「读法」行 · 偏花。</p>
+          <a class="open-btn" href="l3-v2-a-fusion.html" target="_blank" rel="noopener">打开 V2-A</a>
+        </article>
+        <article class="variant-card">
+          <h3>V2-B · dossier 驱动</h3>
+          <p>时刻卡 + ↔ 画像。</p>
+          <a class="open-btn" href="l3-v2-b-dossier.html" target="_blank" rel="noopener">打开 V2-B</a>
+        </article>
+        <article class="variant-card">
+          <h3>V2-C · 场景分段</h3>
+          <p>固定 3 段样例。</p>
+          <a class="open-btn" href="l3-v2-c-scene-map.html" target="_blank" rel="noopener">打开 V2-C</a>
+        </article>
+        <article class="variant-card">
+          <h3>V2-D · 混合（分条讲清）</h3>
+          <p>dossier + 4 段 + 讲清分条。</p>
+          <a class="open-btn" href="l3-v2-d-hybrid.html" target="_blank" rel="noopener">打开 V2-D</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="level-block">
+      <h2><span class="level-tag">三级 · v2 定稿向</span> 一段讲清 · 无读法 · 今晚可试加长 ★</h2>
+      <p style="margin:0 0 12px;font:var(--type-caption);color:var(--muted);line-height:1.6;max-width:62ch">
+        2026-07-21 定稿：<strong>V2-F 步骤</strong>（dossier + 讲清 + 旧版节奏地图 + 第1/2步今晚可试 + 完整一轮示范）。E/G 为备选排版。
+      </p>
+      <div class="variant-grid">
+        <article class="variant-card">
+          <h3>V2-E · 稳</h3>
+          <p>讲清一段 + 今晚可试两段正文（进门前 / 若顶回）+ 分角色示范台词 5 行。最平实、信息稍多但不花。</p>
+          <a class="open-btn" href="l3-v2-e-steady.html" target="_blank" rel="noopener">打开 V2-E</a>
+        </article>
+        <article class="variant-card" style="border-color:var(--color-primary);box-shadow:0 0 0 1px var(--color-primary-container)">
+          <h3>V2-F · 步骤 ★ 定稿</h3>
+          <p>讲清 + 旧版节奏地图 + 今晚可试拆成第 1 步 / 第 2 步卡片；示范开口标注「完整一轮」+ 场景说明。照着做感最强。</p>
+          <a class="open-btn" href="l3-v2-f-steps.html" target="_blank" rel="noopener">打开 V2-F</a>
+        </article>
+        <article class="variant-card">
+          <h3>V2-G · 对照</h3>
+          <p>今晚可试「少说 / 可以换」对照；示范开口先旧开场 vs 新开场，再接 3 行脚本。换口感知最强。</p>
+          <a class="open-btn" href="l3-v2-g-contrast.html" target="_blank" rel="noopener">打开 V2-G</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="level-block">
+      <h2><span class="level-tag">三级 · v1</span> 对话分析 · 旧版低密度</h2>
+      <div class="variant-grid">
+        <article class="variant-card">
+          <h3>A · 洞察优先</h3>
+          <p>概览 → 育见解读卡 → 今晚可试 → 示范对话 → 原文时间线。</p>
+          <a class="open-btn" href="l3-a-insight.html" target="_blank" rel="noopener">打开 A</a>
+        </article>
+        <article class="variant-card">
+          <h3>B · 时间线优先</h3>
+          <p>原文气泡置顶。</p>
+          <a class="open-btn" href="l3-b-timeline.html" target="_blank" rel="noopener">打开 B</a>
+        </article>
+        <article class="variant-card">
+          <h3>C · 编辑型简报</h3>
+          <p>大标题 + link-row 分区。</p>
+          <a class="open-btn" href="l3-c-editorial.html" target="_blank" rel="noopener">打开 C</a>
+        </article>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>怎么看</strong>
+      <span>点击各「打开」在新标签页加载手机壳 mock（Lucide 图标需联网）。路径：<code>.design_library/yujian-gentle-growth/ui_kits/rehearsal-mocks/</code> · 本地可直接 <code>open index.html</code></span>
+    </div>
+  </div>
+</body>
+</html>

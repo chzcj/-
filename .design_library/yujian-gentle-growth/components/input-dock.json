@@ -1,0 +1,82 @@
+{
+  "slug": "input-dock",
+  "schemaVersion": 2,
+  "name": "Input Dock",
+  "category": "inputs",
+  "sourceKind": "from-scratch",
+  "confidence": "high",
+  "variantCount": 3,
+  "semanticTypeCandidates": [
+    {
+      "type": "conversation-input",
+      "evidence": "交流和预演依赖底部输入壳"
+    },
+    {
+      "type": "voice-first-input",
+      "evidence": "默认按住说话，文字是辅助模式"
+    }
+  ],
+  "variantDimensions": [
+    {
+      "name": "mode",
+      "values": [
+        "voice",
+        "text",
+        "recording"
+      ]
+    }
+  ],
+  "representativeVariants": [
+    {
+      "name": "语音模式",
+      "whySelected": "默认入口",
+      "traits": {
+        "mode": "voice",
+        "layout": "floating"
+      },
+      "childrenDigest": "大录音按钮+轻提示"
+    },
+    {
+      "name": "文字模式",
+      "whySelected": "补充输入场景",
+      "traits": {
+        "mode": "text",
+        "layout": "floating"
+      },
+      "childrenDigest": "文本框+发送按钮"
+    },
+    {
+      "name": "录音中",
+      "whySelected": "体现即时反馈",
+      "traits": {
+        "mode": "recording",
+        "layout": "expanded"
+      },
+      "childrenDigest": "字幕条或状态条"
+    }
+  ],
+  "anatomy": [
+    "dock-shell",
+    "input-area",
+    "action-button",
+    "status-banner"
+  ],
+  "structurePatterns": [
+    "floating bottom dock",
+    "voice-first dual-mode control"
+  ],
+  "usageHints": {
+    "priorityHint": "high",
+    "placement": "交流页底部",
+    "safeArea": true,
+    "tone": "soft-glass utility",
+    "motion": "录音与聚焦状态只用短时辉光和轻缩放"
+  },
+  "doNotInvent": [
+    "不要桌面聊天框感",
+    "不要重描边",
+    "不要冷色高亮"
+  ],
+  "unknowns": [],
+  "keyInsightSeed": "输入区像一块被轻光托住的操作浮板，语音按钮是温柔主角"
+}

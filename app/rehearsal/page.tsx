@@ -8,6 +8,7 @@ import {
   SimulationParentBubble,
   SimulationSecondMeBubble,
   SimulationSystemHintBubble,
+  SimulationThinkingBubble,
 } from '@/components/rehearsal/SimulationSecondMeBubble'
 import type { RehearsalAnalyzeData } from '@/components/rehearsal/RehearsalOutput'
 import { parseRehearsalStreamEvent } from '@/types/rehearsal-stream'
@@ -16,10 +17,19 @@ import {
   type RehearsalScene,
 } from '@/data/rehearsalScenes'
 import { getLatestProfile } from '@/lib/storage/profileStorage'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 import { saveTaskFromRehearsal } from '@/lib/storage/taskStorage'
 import { RehearsalDialogueCapture } from '@/components/rehearsal/RehearsalDialogueCapture'
-import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
+import { RehearsalEndPanel } from '@/components/rehearsal/RehearsalEndPanel'
 import type { InputMode } from '@/types/childos'
+import {
+  readLastDialogueAnalysisId,
+  readRehearsalScenesCache,
+  writeLastDialogueAnalysisId,
+  writeRehearsalScenesCache,
+} from '@/lib/rehearsal-scenes-cache'
+import { pickRehearsalTaskTitle } from '@yujian/contracts/rehearsal-end'
+import { useRouter } from 'next/navigation'
 
 type SimulationStep = 'entry' | 'confirm' | 'active' | 'end'
 
@@ -43,7 +53,7 @@ function mapAnalyzeToSecondMe(data: RehearsalAnalyzeData) {
     data.possibleChildReaction?.immediateReaction?.trim() ||
     '……（孩子暂时没有接话）'
 
-  const hintTitle = '他可能是这样听到的'
+  const hintTitle = '他可能是这样想的'
   const hintText =
     data.childLikelyHearing ||
     data.possibleChildReaction?.innerReaction ||
@@ -63,6 +73,7 @@ function mapAnalyzeToSecondMe(data: RehearsalAnalyzeData) {
 }
 
 export default function RehearsalPage() {
+  const router = useRouter()
   const [step, setStep] = useState<SimulationStep>('entry')
   const [scenes, setScenes] = useState<RehearsalScene[]>(REHEARSAL_SCENES)
   const [scenesLoading, setScenesLoading] = useState(true)
@@ -83,6 +94,7 @@ export default function RehearsalPage() {
   const [sceneSituation, setSceneSituation] = useState('')
   const [childUnderstanding, setChildUnderstanding] = useState('')
   const [briefLoading, setBriefLoading] = useState(false)
+  const [lastDialogueAnalysisId, setLastDialogueAnalysisId] = useState<string | null>(null)
   const feedEndRef = useRef<HTMLDivElement>(null)
 
   const selectedScene: RehearsalScene =
@@ -101,8 +113,14 @@ export default function RehearsalPage() {
   }
 
   useEffect(() => {
+    const cached = readRehearsalScenesCache()
+    if (cached) {
+      setScenes(cached.scenes)
+      setRankedFromDialogue(cached.rankedFromDialogue)
+      setScenesLoading(false)
+    }
     void (async () => {
-      setScenesLoading(true)
+      if (!cached) setScenesLoading(true)
       try {
         const res = await fetch('/api/rehearsal/scenes')
         const json = (await res.json()) as {
@@ -110,7 +128,7 @@ export default function RehearsalPage() {
           data?: { scenes?: RehearsalScene[]; rankedFromDialogue?: boolean }
         }
         if (!json.ok || !json.data?.scenes?.length) {
-          setRankedFromDialogue(false)
+          if (!cached) setRankedFromDialogue(false)
           return
         }
         setRankedFromDialogue(Boolean(json.data.rankedFromDialogue))
@@ -131,11 +149,31 @@ export default function RehearsalPage() {
           } satisfies RehearsalScene
         })
         setScenes(next)
+        writeRehearsalScenesCache(next, Boolean(json.data.rankedFromDialogue))
       } catch {
         /* keep static */
       } finally {
         setScenesLoading(false)
       }
+    })()
+  }, [])
+
+  useEffect(() => {
+    let lastId = readLastDialogueAnalysisId()
+    void (async () => {
+      if (!lastId) {
+        try {
+          const res = await fetch('/api/rehearsal/dialogue-analyze/latest', { credentials: 'include' })
+          const json = await res.json()
+          if (json.ok && json.data?.analysisId?.startsWith('da_')) {
+            lastId = json.data.analysisId
+            writeLastDialogueAnalysisId(json.data.analysisId)
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      setLastDialogueAnalysisId(lastId)
     })()
   }, [])
 
@@ -184,53 +222,64 @@ export default function RehearsalPage() {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [feed, loading, step])
 
-  function selectScenario(scene: RehearsalScene) {
+  function openSceneBrief(sceneId: string) {
+    if (briefLoading) return
+    const scene = scenes.find((s) => s.id === sceneId)
+    if (!scene) return
     setSelectedId(scene.id)
     setSceneTitle(scene.title)
     setSummary(scene.summary)
-  }
-
-  function startSimulation() {
     void (async () => {
       setBriefLoading(true)
-      setSummary(selectedScene.summary)
       try {
         const res = await fetch('/api/rehearsal/brief', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ sceneId: selectedId }),
+          body: JSON.stringify({ sceneId: scene.id }),
         })
         const json = (await res.json()) as {
           ok?: boolean
           data?: {
             sceneSituation?: string
             childUnderstanding?: string
+            understandingBullets?: string[]
             openingHint?: string
           }
         }
         if (json.ok && json.data) {
-          setSceneSituation(json.data.sceneSituation || selectedScene.summary)
-          setChildUnderstanding(json.data.childUnderstanding || '')
+          const bullets = (json.data.understandingBullets || [])
+            .map((b) => String(b || '').trim())
+            .filter((b) => b.length > 4)
+          setSceneSituation(json.data.sceneSituation || scene.summary)
+          setChildUnderstanding(
+            bullets.length >= 2
+              ? bullets.join('\n')
+              : json.data.childUnderstanding || ''
+          )
           if (json.data.openingHint) {
             setScenes((prev) =>
               prev.map((s) =>
-                s.id === selectedId ? { ...s, openingHint: json.data!.openingHint! } : s
+                s.id === scene.id ? { ...s, openingHint: json.data!.openingHint! } : s
               )
             )
           }
         } else {
-          setSceneSituation(selectedScene.summary)
+          setSceneSituation(scene.summary)
           setChildUnderstanding('')
         }
       } catch {
-        setSceneSituation(selectedScene.summary)
+        setSceneSituation(scene.summary)
         setChildUnderstanding('')
       } finally {
         setBriefLoading(false)
         setStep('confirm')
       }
     })()
+  }
+
+  function startSimulation() {
+    openSceneBrief(selectedId)
   }
 
   function enterRehearsal() {
@@ -246,7 +295,7 @@ export default function RehearsalPage() {
       {
         type: 'child',
         childText: scene.openingChild || '你别催我行不行，我又不是不写。',
-        hintTitle: scene.openingHintTitle || '他可能是这样听到的',
+        hintTitle: scene.openingHintTitle || '他可能是这样想的',
         hintText:
           scene.openingHint ||
           '他现在不一定是在认真回答“什么时候写”，更像是在把你推开。',
@@ -443,14 +492,14 @@ export default function RehearsalPage() {
   }
 
   function saveDirection() {
-    const title = endData?.taskTitle || endData?.saferVersion || endData?.suggestedWording
-    if (!title?.trim()) return
+    const title = pickRehearsalTaskTitle(endData)
+    if (!title.trim()) return
     void saveTaskFromRehearsal(title.trim(), '预演方向', rehearsalTraceId)
     setTaskSaved(true)
   }
 
   function tryTonight() {
-    const title = endData?.taskTitle || endData?.saferVersion || endData?.suggestedWording || summary
+    const title = pickRehearsalTaskTitle(endData, summary)
     void saveTaskFromRehearsal(title.trim(), '沟通预演', rehearsalTraceId)
     setTonightSaved(true)
   }
@@ -467,6 +516,12 @@ export default function RehearsalPage() {
         '他对“被站在旁边盯着”比较敏感。',
         '他不一定是不想写，更可能是对“开始之后会被催、被检查、被评价”有防御。',
       ]
+
+  const insightBullets = parseInsightBullets(childUnderstanding, confirmBullets)
+  const briefSubLine = selectedScene.mentionCountHint
+    ? `${sceneTitle} · ${selectedScene.mentionCountHint}`
+    : sceneTitle
+  const childDisplayName = getChildDisplayName()
 
   return (
     <OnboardingGuard>
@@ -512,17 +567,12 @@ export default function RehearsalPage() {
             </div>
 
             <div className="scenario-grid" id="scenarioGrid">
-              {scenesLoading ? (
-                <p className="hint-text" style={{ padding: '12px 4px' }}>
-                  正在根据交流整理痛点场景…
-                </p>
-              ) : (
-                scenes.map((scene) => (
+              {scenes.map((scene) => (
                 <button
                   key={scene.id}
                   type="button"
                   className={`scenario-card scene-card${selectedId === scene.id ? ' active' : ''}`}
-                  onClick={() => selectScenario(scene)}
+                  onClick={() => openSceneBrief(scene.id)}
                 >
                   <div className="scene-meta">
                     {scene.mentionCountHint ? (
@@ -536,8 +586,12 @@ export default function RehearsalPage() {
                   <span className="scenario-title">{scene.title}</span>
                   <span className="scenario-desc">{scene.lede || scene.subtitle}</span>
                 </button>
-                ))
-              )}
+              ))}
+              {scenesLoading && scenes.length <= REHEARSAL_SCENES.length ? (
+                <p className="hint-text" style={{ padding: '12px 4px' }}>
+                  正在刷新场景排序…
+                </p>
+              ) : null}
             </div>
           </section>
 
@@ -545,6 +599,22 @@ export default function RehearsalPage() {
             <button className="primary-button wide-button" type="button" onClick={startSimulation} disabled={briefLoading}>
               {briefLoading ? '正在整理场景…' : '开始预演'}
             </button>
+            {lastDialogueAnalysisId ? (
+              <button
+                type="button"
+                className="dialogue-resume-card"
+                onClick={() =>
+                  router.push(
+                    `/rehearsal/dialogue-result?id=${encodeURIComponent(lastDialogueAnalysisId)}`
+                  )
+                }
+              >
+                <span className="dialogue-resume-card__title">查看上次对话分析</span>
+                <span className="dialogue-resume-card__desc">
+                  录音转写与解读已保存，可继续带入情景预演
+                </span>
+              </button>
+            ) : null}
             <p className="boundary-note">
               这里不是预测孩子一定会这样说，而是基于已有记录，帮你提前看见可能的沟通走向。
             </p>
@@ -552,59 +622,59 @@ export default function RehearsalPage() {
         </div>
 
         <div className={`simulation-layout${step === 'confirm' ? '' : ' hidden'}`} id="simulationConfirm">
-          <section className="section">
-            <button type="button" className="quiet-button" onClick={() => setStep('entry')}>
+          <section className="section rehearsal-brief-layout">
+            <button type="button" className="nav-back" onClick={() => setStep('entry')}>
               ← 返回选场景
             </button>
-            <h2 className="section-title">这次先按这个场景来练</h2>
-            <div className="profile-block brief-card">
-              <h3>情景长什么样</h3>
-              <p id="simulationSummary">{sceneSituation || summary}</p>
-            </div>
-          </section>
+            <p className="brief-lede">这次先按这个痛点场景来练</p>
+            <p className="brief-sub">{briefSubLine}</p>
 
-          <section className="section">
-            <div className="profile-block brief-card">
-              <h3>记忆里对孩子的理解</h3>
-              <p>{childUnderstanding || confirmBullets.join(' ')}</p>
-            </div>
-          </section>
+            <article className="info-card">
+              <p className="card-eyebrow">这个场景长什么样</p>
+              <h3 className="info-card-title">场景摘要</h3>
+              <p className="info-card-body" id="simulationSummary">
+                {sceneSituation || summary}
+              </p>
+            </article>
 
-          <section className="section">
+            <article className="info-card">
+              <p className="card-eyebrow">系统记忆 · 此场景下的孩子</p>
+              <h3 className="info-card-title">我会参考这些理解</h3>
+              <ul className="insight-list">
+                {insightBullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
+              </ul>
+            </article>
+
             <button className="primary-button wide-button" type="button" onClick={enterRehearsal}>
               进入预演
             </button>
           </section>
         </div>
 
-        <div className={`simulation-layout${step === 'active' ? '' : ' hidden'}`} id="simulationActive">
+        <div className={`simulation-layout rehearsal-dialogue-layout${step === 'active' ? '' : ' hidden'}`} id="simulationActive">
           <section className="section">
             <div className="rehearsal-header">
-              <h2 id="rehearsalTitle">沟通预演｜{sceneTitle}</h2>
-              <p id="rehearsalStatus">{statusText}</p>
+              <button type="button" className="nav-back nav-back--ink" onClick={() => setStep('confirm')}>
+                ← 返回场景
+              </button>
+              <header className="dialogue-head">
+                <h2 className="dialogue-title">和{childDisplayName}预演</h2>
+                <p className="dialogue-sub">{sceneTitle}</p>
+              </header>
             </div>
           </section>
 
           <section className="section">
-            <h2 className="section-title">预演对话</h2>
-            <div className="simulation-feed" id="simulationFeed">
+            <div className="rehearsal-chat-thread simulation-feed" id="simulationFeed">
               {feed.map((item, index) => {
                 if (item.type === 'parent') return <SimulationParentBubble key={index} text={item.text} />
                 if (item.type === 'system_hint') {
                   return <SimulationSystemHintBubble key={index} text={item.text} />
                 }
                 if (item.type === 'thinking') {
-                  return (
-                    <div key={index} className="message-row ai">
-                      <div className="bubble thinking-bubble">
-                        <span className="thinking-dots" aria-hidden="true">
-                          <i />
-                          <i />
-                          <i />
-                        </span>
-                      </div>
-                    </div>
-                  )
+                  return <SimulationThinkingBubble key={index} />
                 }
                 return (
                   <SimulationSecondMeBubble
@@ -647,50 +717,14 @@ export default function RehearsalPage() {
         </div>
 
         <div className={`simulation-layout${step === 'end' ? '' : ' hidden'}`} id="simulationEnd">
-          <section className="section">
-            <h2 className="section-title">这次预演里，我看到的重点</h2>
-            <AuthorityInsightCard
-              title="预演总结"
-              body={
-                endData?.closingAdvice ||
-                endData?.whyThisIsSafer ||
-                '先减少「被站在旁边看着」的感觉，再谈开始。'
-              }
-            />
-            <div className="profile-block">
-              <h3>孩子最容易被触发的是</h3>
-              <p>
-                {endData?.childLikelyHearing ||
-                  endData?.riskPoints?.[0] ||
-                  '当你解释“我是怕你拖到很晚”，或者说“你每次都拖”时，孩子容易听成：你还是在盯他、评价他。'}
-              </p>
-            </div>
-            <div className="profile-block">
-              <h3>今晚可以试的说法</h3>
-              <p>
-                {endData?.saferVersion ||
-                  endData?.suggestedWording ||
-                  '今晚如果又卡在作业开始前，可以先让孩子自己选第一项，你暂时离开十分钟。'}
-              </p>
-            </div>
-            <div className="profile-block">
-              <h3>4. 这次还不能直接进入档案的内容</h3>
-              <p>
-                预演里的孩子反应只是模拟，不等于真实证据。只有你今晚真的试了，并反馈孩子实际怎么反应，才会更新档案。
-              </p>
-            </div>
-            <div className="end-actions">
-              <button type="button" className="secondary-button" onClick={saveDirection} disabled={taskSaved}>
-                {taskSaved ? '已保存' : '保存这个方向'}
-              </button>
-              <button type="button" className="primary-button" onClick={tryTonight} disabled={tonightSaved}>
-                {tonightSaved ? '已加入今晚任务' : '今晚试一次'}
-              </button>
-              <button type="button" className="secondary-button" onClick={restartSimulation}>
-                重新练一遍
-              </button>
-            </div>
-          </section>
+          <RehearsalEndPanel
+            endData={endData}
+            taskSaved={taskSaved}
+            tonightSaved={tonightSaved}
+            onSaveDirection={saveDirection}
+            onTryTonight={tryTonight}
+            onRestart={restartSimulation}
+          />
         </div>
 
         <div id="rehearsal-dialogue-capture">
@@ -705,4 +739,20 @@ function truncate(text: string, max = 72) {
   const value = text.trim()
   if (value.length <= max) return value
   return `${value.slice(0, max).trim()}…`
+}
+
+function parseInsightBullets(text: string, fallback: string[]): string[] {
+  const trimmed = text.trim()
+  if (!trimmed) return fallback
+  const lines = trimmed
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-•·\d.)]+\s*/, '').trim())
+    .filter((line) => line.length > 4)
+  if (lines.length >= 2) return lines.slice(0, 5)
+  const parts = trimmed
+    .split(/[；;]/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 8)
+  if (parts.length >= 2) return parts.slice(0, 5)
+  return [trimmed]
 }

@@ -1,0 +1,64 @@
+{
+  "components": [
+    {
+      "slug": "button",
+      "name": "Primary Button",
+      "category": "actions",
+      "sourceKind": "from-scratch",
+      "confidence": "high",
+      "variantCount": 3,
+      "priorityHint": "high",
+      "keyInsightSeed": "像被温柔点亮的一步，带一点轻盈回弹而不是催促感"
+    },
+    {
+      "slug": "card",
+      "name": "Paper Card",
+      "category": "surfaces",
+      "sourceKind": "from-scratch",
+      "confidence": "high",
+      "variantCount": 3,
+      "priorityHint": "high",
+      "keyInsightSeed": "纸感白卡升级为轻玻璃纸片，靠高光边和柔雾阴影显得更精致"
+    },
+    {
+      "slug": "bottom-nav",
+      "name": "Bottom Navigation",
+      "category": "navigation",
+      "sourceKind": "from-scratch",
+      "confidence": "high",
+      "variantCount": 2,
+      "priorityHint": "high",
+      "keyInsightSeed": "底部导航像柔和悬浮在页面上的引导带，激活态更细腻而不跳"
+    },
+    {
+      "slug": "input-dock",
+      "name": "Input Dock",
+      "category": "inputs",
+      "sourceKind": "from-scratch",
+      "confidence": "high",
+      "variantCount": 3,
+      "priorityHint": "high",
+      "keyInsightSeed": "输入区像一块被轻光托住的操作浮板，语音按钮是温柔主角"
+    },
+    {
+      "slug": "chip",
+      "name": "Chip",
+      "category": "micro-components",
+      "sourceKind": "from-scratch",
+      "confidence": "high",
+      "variantCount": 3,
+      "priorityHint": "medium",
+      "keyInsightSeed": "标签应该像柔和光点一样提示状态，而不是硬切换控件"
+    },
+    {
+      "slug": "insight-card",
+      "name": "Insight Card",
+      "category": "content-patterns",
+      "sourceKind": "from-scratch",
+      "confidence": "medium",
+      "variantCount": 2,
+      "priorityHint": "medium",
+      "keyInsightSeed": "洞察卡用更精致的层次和微动线索承接理解感，而不是报告感"
+    }
+  ]
+}

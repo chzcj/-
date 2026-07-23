@@ -1,0 +1,92 @@
+{
+  "slug": "button",
+  "schemaVersion": 2,
+  "name": "Primary Button",
+  "category": "actions",
+  "sourceKind": "from-scratch",
+  "confidence": "high",
+  "variantCount": 3,
+  "semanticTypeCandidates": [
+    {
+      "type": "primary-action",
+      "evidence": "首屏与 onboarding 底部 CTA 使用大尺寸圆角主按钮"
+    },
+    {
+      "type": "secondary-action",
+      "evidence": "次级操作保留纸感浅底按钮"
+    }
+  ],
+  "variantDimensions": [
+    {
+      "name": "tone",
+      "values": [
+        "primary",
+        "secondary",
+        "ghost"
+      ]
+    },
+    {
+      "name": "size",
+      "values": [
+        "md",
+        "lg"
+      ]
+    }
+  ],
+  "representativeVariants": [
+    {
+      "name": "开始",
+      "whySelected": "对应首屏核心转化",
+      "traits": {
+        "tone": "primary",
+        "size": "lg",
+        "shape": "pill"
+      },
+      "childrenDigest": "单行高权重中文按钮文案"
+    },
+    {
+      "name": "继续",
+      "whySelected": "对应说明页推进动作",
+      "traits": {
+        "tone": "primary",
+        "size": "lg",
+        "shape": "pill"
+      },
+      "childrenDigest": "按钮文案居中"
+    },
+    {
+      "name": "次级按钮",
+      "whySelected": "承接非主线选择",
+      "traits": {
+        "tone": "secondary",
+        "size": "md",
+        "shape": "rounded"
+      },
+      "childrenDigest": "纸感底+绿色字"
+    }
+  ],
+  "anatomy": [
+    "container",
+    "label",
+    "focus-ring"
+  ],
+  "structurePatterns": [
+    "full-width bottom CTA",
+    "single emphasis action per screen"
+  ],
+  "usageHints": {
+    "priorityHint": "high",
+    "placement": "底部固定操作区或卡片尾部",
+    "density": "low",
+    "motion": "轻微上浮 + 0.98 按压缩放，适配小程序短时过渡"
+  },
+  "doNotInvent": [
+    "不要多色渐变 CTA",
+    "不要方角",
+    "不要高饱和警示感",
+    "不要霓虹蓝紫渐变",
+    "不要玻璃过透明导致文字发飘"
+  ],
+  "unknowns": [],
+  "keyInsightSeed": "像被温柔点亮的一步，带一点轻盈回弹而不是催促感"
+}

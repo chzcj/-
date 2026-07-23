@@ -1,0 +1,596 @@
+/* L3 v2 · 高密度对话分析 mock（画像 × 精选原话，非全量转写） */
+
+.da-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.da-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  font: var(--type-caption);
+  font-weight: 620;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-on-surface-variant);
+}
+
+.da-meta-pill--accent {
+  background: var(--color-primary-container);
+  border-color: rgba(111, 159, 86, 0.2);
+  color: var(--color-on-primary-container);
+}
+
+.da-verdict {
+  margin: 0;
+  font: var(--type-lead);
+  line-height: 1.52;
+  letter-spacing: -0.015em;
+  color: var(--color-on-surface);
+}
+
+.da-verdict-sub {
+  margin: 8px 0 0;
+  font: var(--type-caption);
+  line-height: 1.55;
+  color: var(--color-muted-foreground);
+}
+
+/* —— 画像融合卡 —— */
+.da-fusion-card {
+  padding: 14px 15px;
+  border-radius: 20px;
+  background: linear-gradient(165deg, var(--yujian-accent-100) 0%, rgba(255, 255, 255, 0.88) 48%, var(--color-surface) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-1);
+}
+
+.da-fusion-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.da-fusion-title {
+  margin: 0;
+  font: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-primary);
+}
+
+.da-fusion-count {
+  font: var(--type-caption);
+  color: var(--color-muted-foreground);
+}
+
+.da-fusion-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.da-fusion-item {
+  padding-left: 0;
+  font: var(--type-caption);
+  line-height: 1.55;
+  color: var(--color-on-surface);
+}
+
+.da-fusion-item strong {
+  font-weight: 650;
+  color: var(--color-on-surface);
+}
+
+.da-fusion-quote {
+  display: block;
+  margin-top: 3px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(111, 159, 86, 0.35);
+  color: var(--color-on-surface-variant);
+  font-style: normal;
+}
+
+/* —— 画像 dossier 条 —— */
+.da-dossier-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.da-dossier-cell {
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--color-border);
+}
+
+.da-dossier-label {
+  display: block;
+  margin-bottom: 4px;
+  font: var(--type-caption);
+  font-weight: 650;
+  color: var(--color-primary);
+}
+
+.da-dossier-body {
+  margin: 0;
+  font: var(--type-caption);
+  line-height: 1.45;
+  color: var(--color-on-surface-variant);
+}
+
+/* —— 10 条高光原话（紧凑列表） —— */
+.da-highlights-section {
+  display: grid;
+  gap: 8px;
+}
+
+.da-highlights-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.da-highlights-title {
+  margin: 0;
+  font: var(--type-body);
+  font-weight: 650;
+}
+
+.da-highlights-note {
+  font: var(--type-caption);
+  color: var(--color-muted-foreground);
+}
+
+.da-highlight-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 7px;
+}
+
+.da-highlight-row {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.da-highlight-row.is-hot {
+  border-color: rgba(210, 116, 69, 0.35);
+  background: linear-gradient(180deg, var(--color-warning-container) 0%, var(--color-surface) 100%);
+}
+
+.da-highlight-row.is-profile-hit {
+  border-color: rgba(111, 159, 86, 0.38);
+  background: linear-gradient(180deg, var(--yujian-accent-100) 0%, var(--color-surface) 100%);
+}
+
+.da-highlight-idx {
+  font: var(--type-caption);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted-foreground);
+  padding-top: 2px;
+}
+
+.da-highlight-main {
+  min-width: 0;
+}
+
+.da-highlight-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.da-speaker {
+  display: inline-flex;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.da-speaker--child {
+  background: #eaf3e3;
+  color: var(--color-primary);
+}
+
+.da-speaker--parent {
+  background: #e8ecf1;
+  color: #4a5563;
+}
+
+.da-profile-tag {
+  display: inline-flex;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 650;
+  background: rgba(111, 159, 86, 0.12);
+  color: var(--color-primary);
+}
+
+.da-trigger-tag {
+  display: inline-flex;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 650;
+  background: rgba(210, 116, 69, 0.12);
+  color: var(--color-warning);
+}
+
+.da-highlight-quote {
+  margin: 0;
+  font: var(--type-caption);
+  line-height: 1.48;
+  color: var(--color-on-surface);
+}
+
+.da-highlight-read {
+  margin: 4px 0 0;
+  font: var(--type-caption);
+  line-height: 1.45;
+  color: var(--color-muted-foreground);
+}
+
+.da-highlight-read em {
+  font-style: normal;
+  font-weight: 650;
+  color: var(--color-on-surface-variant);
+}
+
+/* —— 阶段分区（V2-C） —— */
+.da-phase-block {
+  padding: 12px 13px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--color-border);
+}
+
+.da-phase-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.da-phase-title {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--color-on-surface);
+  letter-spacing: -0.01em;
+}
+
+.da-rhythm-map-lede {
+  margin: 0 0 12px;
+  font: var(--type-caption);
+  line-height: 1.55;
+  color: var(--color-muted-foreground);
+}
+
+.da-phase-profile {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--color-primary-container);
+  font: var(--type-caption);
+  line-height: 1.48;
+  color: var(--color-on-primary-container);
+}
+
+.da-phase-quotes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.da-phase-quote {
+  font: var(--type-caption);
+  line-height: 1.45;
+  color: var(--color-on-surface-variant);
+}
+
+.da-phase-quote strong {
+  color: var(--color-on-surface);
+  font-weight: 600;
+}
+
+/* —— 综合解读条 —— */
+.da-synthesis {
+  padding: 13px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, var(--color-surface-container-low) 100%);
+  border: 1px solid var(--color-outline-variant);
+}
+
+.da-synthesis-title {
+  margin: 0 0 8px;
+  font: var(--type-caption);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.da-synthesis-body {
+  margin: 0;
+  font: var(--type-caption);
+  line-height: 1.58;
+  color: var(--color-on-surface);
+}
+
+.da-synthesis-body + .da-synthesis-body {
+  margin-top: 8px;
+}
+
+.da-try-inline {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(111, 159, 86, 0.22);
+  font: var(--type-caption);
+  line-height: 1.5;
+  color: var(--color-on-surface-variant);
+}
+
+.da-try-inline strong {
+  color: var(--color-warning);
+  font-weight: 650;
+}
+
+/* —— V2-B 时刻卡 —— */
+.da-moment-card {
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.da-moment-card.is-peak {
+  border-color: rgba(210, 116, 69, 0.4);
+  box-shadow: 0 0 0 1px rgba(210, 116, 69, 0.08);
+}
+
+.da-moment-grid {
+  display: grid;
+  gap: 7px;
+}
+
+/* —— V2-D 混合：讲清分条 + 自适应分段说明 —— */
+.da-synthesis-bullets {
+  margin: 0;
+  padding: 0 0 0 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.da-synthesis-bullets li {
+  font: var(--type-caption);
+  line-height: 1.58;
+  color: var(--color-on-surface);
+}
+
+.da-synthesis-bullets li strong {
+  font-weight: 650;
+  color: var(--color-on-surface);
+}
+
+.da-segment-note {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(32, 38, 51, 0.03);
+  border: 1px dashed rgba(111, 159, 86, 0.28);
+  font: var(--type-caption);
+  line-height: 1.52;
+  color: var(--color-muted-foreground);
+}
+
+.da-segment-note strong {
+  color: var(--color-primary);
+  font-weight: 650;
+}
+
+.da-phase-block.is-thin {
+  opacity: 0.92;
+  border-style: dashed;
+}
+
+.da-phase-block.is-thin .da-phase-quotes {
+  gap: 4px;
+}
+
+/* —— V2-E/F/G · 今晚可试 & 示范开口（可读加长版） —— */
+.da-action-block {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--color-warning-container) 0%, rgba(255, 255, 255, 0.78) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+}
+
+.da-action-block__badge {
+  display: inline-flex;
+  min-height: 26px;
+  padding: 0 10px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-full);
+  font: var(--type-caption);
+  font-weight: 650;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-warning);
+}
+
+.da-action-block__lead {
+  margin: 0 0 10px;
+  font: var(--type-caption);
+  line-height: 1.55;
+  color: var(--color-on-surface-variant);
+}
+
+.da-action-block__body {
+  margin: 0;
+  font: var(--type-body);
+  line-height: 1.58;
+  color: var(--color-on-surface);
+}
+
+.da-action-block__body + .da-action-block__body {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(210, 116, 69, 0.22);
+}
+
+.da-step-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.da-step-item {
+  padding: 11px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.da-step-label {
+  display: block;
+  margin-bottom: 5px;
+  font: var(--type-caption);
+  font-weight: 700;
+  color: var(--color-warning);
+}
+
+.da-step-text {
+  margin: 0;
+  font: var(--type-caption);
+  line-height: 1.58;
+  color: var(--color-on-surface);
+}
+
+.da-avoid-try {
+  display: grid;
+  gap: 8px;
+}
+
+.da-avoid-try-row {
+  padding: 11px 12px;
+  border-radius: 14px;
+  font: var(--type-caption);
+  line-height: 1.55;
+}
+
+.da-avoid-try-row.is-avoid {
+  background: rgba(32, 38, 51, 0.04);
+  color: var(--color-muted-foreground);
+}
+
+.da-avoid-try-row.is-try {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(111, 159, 86, 0.22);
+  color: var(--color-on-surface);
+}
+
+.da-avoid-try-row strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 650;
+}
+
+.da-sample-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--color-border);
+}
+
+.da-sample-card__title {
+  margin: 0 0 6px;
+  font: var(--type-body);
+  font-weight: 650;
+  color: var(--color-on-surface);
+}
+
+.da-sample-card__scene {
+  margin: 0 0 12px;
+  font: var(--type-caption);
+  line-height: 1.5;
+  color: var(--color-muted-foreground);
+}
+
+.da-sample-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.da-sample-line {
+  font: var(--type-caption);
+  line-height: 1.52;
+  color: var(--color-on-surface);
+}
+
+.da-sample-line .role {
+  font-weight: 650;
+  color: var(--color-primary);
+  margin-right: 4px;
+}
+
+.da-sample-line .role.is-parent {
+  color: #5a6472;
+}
+
+.da-sample-compare {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.da-sample-compare-row {
+  padding: 10px 11px;
+  border-radius: 12px;
+  font: var(--type-caption);
+  line-height: 1.5;
+}
+
+.da-sample-compare-row.is-old {
+  background: rgba(32, 38, 51, 0.04);
+  color: var(--color-muted-foreground);
+}
+
+.da-sample-compare-row.is-new {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.da-sample-compare-row strong {
+  font-weight: 650;
+}

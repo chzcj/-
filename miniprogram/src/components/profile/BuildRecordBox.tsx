@@ -14,8 +14,9 @@ type BuildRecordBoxProps = {
   placeholder: string
   disabled?: boolean
   metaLeft?: string
-  prompt?: string
   showCharHint?: boolean
+  /** 用于字数提示的字数（追问页传「本模块已累计+本轮草稿」） */
+  charHintCount?: number
   showMeta?: boolean
   onChange: (value: string) => void
   onVoiceText?: (text: string) => void
@@ -28,15 +29,16 @@ export function BuildRecordBox({
   placeholder,
   disabled,
   metaLeft = '说清楚就行，后面会帮你整理。',
-  prompt,
   showCharHint = true,
+  charHintCount,
   showMeta = true,
   onChange,
   onVoiceText,
 }: BuildRecordBoxProps) {
   const voice = useTencentAsrInput()
   const charCount = value.trim().length
-  const charHint = getEntryCaptureCharHint(charCount)
+  const hintCount = charHintCount ?? charCount
+  const charHint = getEntryCaptureCharHint(hintCount)
   const valueRef = useRef(value)
   const cursorRef = useRef(value.length)
   const touchStartAtRef = useRef(0)
@@ -184,7 +186,6 @@ export function BuildRecordBox({
       {showCharHint && charHint ? (
         <Text className='hint-text'>{charHint}</Text>
       ) : null}
-      {prompt ? <View className='light-prompt active'><Text>{prompt}</Text></View> : null}
 
       <View className={`recording-strip${holdActive ? ' active' : ''}`}>
         <View className='recording-card'>
@@ -194,7 +195,7 @@ export function BuildRecordBox({
             ))}
           </View>
           <Text className='recording-text'>{holdActive ? '正在记录' : '准备记录'}</Text>
-          <Text className='cancel-hint'>{voice.liveTranscript || '不用停下来整理，顺着讲就好'}</Text>
+          <Text className='cancel-hint'>{voice.liveTranscript || '按住约 1 分钟；原话、时间点都可以讲'}</Text>
         </View>
       </View>
 

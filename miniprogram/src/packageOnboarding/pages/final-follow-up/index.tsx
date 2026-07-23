@@ -46,8 +46,13 @@ export default function FinalFollowUpPage() {
       return
     }
 
-    // 冻结四模块输入并在服务端启动 durable build run；基础资料页期间后台继续整理。
-    void startServerProfileBuildRun()
+    // 冻结四模块输入并在服务端启动 durable build run；失败则留在本页，避免 basic 误判「后台在跑」。
+    const buildStarted = await startServerProfileBuildRun()
+    if (!buildStarted.ok) {
+      setError(buildStarted.message || '画像整理未能启动，请重试')
+      Taro.showToast({ title: '画像整理未能启动', icon: 'none' })
+      return
+    }
     await mpGoReplace('/packageOnboarding/pages/basic/index')
   }
 

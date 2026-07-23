@@ -75,6 +75,7 @@ export type DailyTurnBffResult = {
 async function generateDailyProse(
   output: OrchestrationOutput,
   userText: string,
+  digestPack: Awaited<ReturnType<typeof ensureDigestPack>>,
   onDelta?: (delta: string) => void
 ): Promise<string> {
   if (output.relationshipToExistingModel.type === 'safety') {
@@ -83,12 +84,11 @@ async function generateDailyProse(
     return safetyText
   }
 
-  const prosePayload = buildDailyProsePayload(output, userText)
-  const task = buildDailyProseTask(output)
+  const prosePayload = buildDailyProsePayload(output, userText, { deepModelDigest: digestPack })
+  const task = buildDailyProseTask(output, userText)
 
   return requireTextStream(combinedProseSystem(), task, prosePayload, onDelta, {
     maxTokens: 1024,
-    // 前台表达层关闭隐式思考（安全轮 prose 同样受益）；FRONT_AI_THINKING=on 回滚
     disableThinking: frontAiThinkingDisabled(),
   })
 }
@@ -145,7 +145,8 @@ export async function runDailyTurnBff(args: {
   const linkedAreas = deriveLinkedAreas(userText)
   const cards = isSafety ? {} : buildDailyCards(output, userText)
 
-  const proseMode = resolveProseMode(output)
+  const proseMode = resolveProseMode(output, userText)
+  const clampMeta = { traceId, familyId: args.tenant.familyId }
   const skeletons = isSafety ? [] : composeDailySections(output, cards, userText)
   let llmSectionCopyUsed = false
   let taskTitleFromSections: string | undefined
@@ -163,8 +164,8 @@ export async function runDailyTurnBff(args: {
   const ACTIONS_PAUSE_MS = 0
 
   if (isSafety) {
-    finalText = await generateDailyProse(output, userText, args.onDelta)
-    finalText = clampProse(finalText, proseMode)
+    finalText = await generateDailyProse(output, userText, digestPack, args.onDelta)
+    finalText = clampProse(finalText, proseMode, clampMeta)
   } else {
     // 合并 prose + visible section 为一次 LLM 调用（streamProseAndSections）。
     // 收益：消除 prose 与 section 两次并发请求在 provider 侧排队等待（实测 prose 完成后
@@ -196,6 +197,7 @@ export async function runDailyTurnBff(args: {
       visibleAfterPolicy,
       {
         deepModelDigest: digestPack,
+        clampMeta,
         onProseDelta: (delta) => {
           if (tProseFirst === null) tProseFirst = Date.now()
           args.onDelta?.(delta)
@@ -228,7 +230,7 @@ export async function runDailyTurnBff(args: {
   let sections = isSafety ? [] : [...visibleFilled, ...hiddenSkeletons]
   if (!isSafety && sections.length) {
     finalText = dedupeProseFromSections(finalText, sections)
-    finalText = clampProse(finalText, proseMode)
+    finalText = clampProse(finalText, proseMode, clampMeta)
     args.onSectionsComplete?.(sections)
     args.onSections?.(sections)
   }

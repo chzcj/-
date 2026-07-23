@@ -1,0 +1,249 @@
+@import '../../styles/onboarding-info.tokens.scss';
+@import '../../styles/tokens.scss';
+
+.onboarding-info-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: $onboarding-green-deep;
+  background: $onboarding-green-soft;
+}
+
+.onboarding-lede {
+  margin-bottom: 18px;
+  line-height: 1.68;
+}
+
+.onboarding-brand-word {
+  display: block;
+  font-size: 34px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: $ink;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-lede-rest {
+  display: block;
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 1.68;
+  font-weight: 400;
+  color: $ink-soft;
+}
+
+.onboarding-paragraph {
+  display: block;
+  margin: 0 0 18px;
+  font-size: 15px;
+  line-height: 1.68;
+  font-weight: 400;
+  color: $ink-soft;
+}
+
+.onboarding-paragraph--accent {
+  font-weight: 500;
+  color: $onboarding-green-deep;
+  margin-bottom: 20px;
+}
+
+.onboarding-paragraph--lead {
+  margin-bottom: 16px;
+  line-height: 1.58;
+}
+
+.onboarding-closing {
+  display: block;
+  margin: 0;
+  padding-top: 4px;
+  font-size: 16px;
+  line-height: 1.62;
+  font-weight: 600;
+  color: $ink;
+  text-align: center;
+}
+
+.onboarding-section-break {
+  height: 1px;
+  margin: $onboarding-section-break-margin;
+  background: $onboarding-section-line;
+}
+
+.onboarding-title {
+  display: block;
+  margin: 0 0 22px;
+  font-size: 28px;
+  line-height: 1.34;
+  font-weight: 700;
+  color: $ink;
+  letter-spacing: -0.02em;
+  white-space: pre-line;
+}
+
+.onboarding-tip {
+  margin: 18px 0 16px;
+  padding: 16px 16px 18px;
+  border-radius: 18px;
+  background: $onboarding-green-soft;
+  box-sizing: border-box;
+}
+
+.onboarding-tip-title {
+  display: block;
+  margin: 0 0 12px;
+  padding-bottom: 12px;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 700;
+  color: $onboarding-green-deep;
+  border-bottom: 1px solid rgba(111, 159, 86, 0.14);
+}
+
+.onboarding-tip-copy {
+  display: block;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.68;
+  font-weight: 400;
+  color: $ink-soft;
+}
+
+.onboarding-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.onboarding-example {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0;
+  padding: 14px 16px 12px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.onboarding-example-body {
+  display: flex;
+  align-items: flex-start;
+}
+
+.onboarding-example-mark {
+  flex-shrink: 0;
+  margin-right: 4px;
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 700;
+  background: transparent;
+}
+
+.onboarding-example-copy {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.62;
+  font-weight: 400;
+  color: #59606d;
+}
+
+.onboarding-example-meta {
+  display: block;
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 400;
+  color: $muted;
+  text-align: right;
+}
+
+.onboarding-example--gentle {
+  background: $onboarding-tone-gentle-bg;
+  border-color: $onboarding-tone-gentle-border;
+
+  .onboarding-example-mark {
+    color: $onboarding-tone-gentle-mark;
+  }
+}
+
+.onboarding-example--vent {
+  background: $onboarding-tone-vent-bg;
+  border-color: $onboarding-tone-vent-border;
+
+  .onboarding-example-mark {
+    color: $onboarding-tone-vent-mark;
+  }
+}
+
+.onboarding-example--rational {
+  background: $onboarding-tone-rational-bg;
+  border-color: $onboarding-tone-rational-border;
+
+  .onboarding-example-mark {
+    color: $onboarding-tone-rational-mark;
+  }
+}
+
+.onboarding-example--humorous {
+  background: $onboarding-tone-humorous-bg;
+  border-color: $onboarding-tone-humorous-border;
+
+  .onboarding-example-mark {
+    color: $onboarding-tone-humorous-mark;
+  }
+}
+
+.onboarding-example--reflective {
+  background: $onboarding-tone-reflective-bg;
+  border-color: $onboarding-tone-reflective-border;
+
+  .onboarding-example-mark {
+    color: $onboarding-tone-reflective-mark;
+  }
+}
+
+.onboarding-story-invite {
+  margin: 18px 0 0;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: $onboarding-story-invite-bg;
+  border: 1px solid $onboarding-story-invite-border;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.onboarding-story-invite-ellipsis {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 16px;
+  line-height: 1;
+  color: $onboarding-green-deep;
+  letter-spacing: 0.12em;
+}
+
+.onboarding-story-invite-copy {
+  display: block;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 600;
+  color: $onboarding-green-deep;
+}
+
+.onboarding-sendoff {
+  display: block;
+  margin: 24px 0 0;
+  font-size: 15px;
+  line-height: 1.68;
+  font-weight: 500;
+  color: $ink;
+  text-align: center;
+}

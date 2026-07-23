@@ -1,0 +1,32 @@
+{
+  "reportVersion": 1,
+  "task": "refine-library",
+  "library": "yujian-gentle-growth",
+  "writtenFiles": [
+    "SKILL.md",
+    "library-consumption.json"
+  ],
+  "artifactsReportPath": ".agent-reports/refine-skill.json",
+  "primaryAlignment": {
+    "source": "colors_and_type.css",
+    "primaryToken": "--yujian-primary-700",
+    "primaryHex": "#6f9f56",
+    "accentToken": "--yujian-primary-500",
+    "accentHex": "#9dcc75"
+  },
+  "updates": [
+    "Essentials 改为更精致、更轻动感、适配 mobile-app / 小程序的表述。",
+    "新增 motion tokens 的消费说明，覆盖按压、浮动、切换三类交互。",
+    "新增 glass/glow 语义层级说明，并明确不依赖 backdrop-filter。",
+    "保留 6 个核心组件，并更新为更精致、更轻盈的描述。"
+  ],
+  "coreComponents": [
+    "button",
+    "card",
+    "bottom-nav",
+    "input-dock",
+    "chip",
+    "insight-card"
+  ],
+  "warnings": []
+}

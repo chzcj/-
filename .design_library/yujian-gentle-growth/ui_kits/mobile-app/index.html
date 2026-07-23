@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>育见 Gentle Growth UI Kit</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <link rel="stylesheet" href="../../components.css">
+  <style>
+    :root{--uikit-phone-w:412px}
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--background);color:var(--foreground);font-family:var(--font-body)}
+    body{min-height:100vh}
+    a,button{font:inherit}
+    .uikit-shell{width:100%;max-width:1184px;margin:0 auto;overflow:hidden;display:grid;grid-template-columns:236px minmax(0,1fr);gap:var(--space-5);padding:var(--space-5)}
+    .uikit-sidebar,.uikit-main,.uikit-toolbar{min-width:0}
+    .uikit-sidebar{overflow:hidden;max-width:100%;display:grid;gap:var(--space-4);align-content:start}
+    [data-component]{min-width:0;max-width:100%;overflow:hidden}
+    .uikit-toolbar{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
+    .uikit-responsive-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4)}
+    .uikit-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+    .uikit-truncate{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .uikit-nowrap{white-space:nowrap;flex-shrink:0}
+    .uikit-action-cell{display:flex;align-items:center;gap:8px;min-width:0;max-width:160px;overflow:hidden}
+    .uikit-action{min-width:0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .showcase-panel{display:grid;gap:var(--space-4);padding:var(--space-5);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.86) 0%,var(--surface) 100%);border:1px solid rgba(255,255,255,.7);box-shadow:var(--shadow-1)}
+    .showcase-title{margin:0;font:var(--type-h2);word-break:keep-all;overflow-wrap:break-word;text-wrap:balance}
+    .showcase-copy{margin:0;font:var(--type-body);color:var(--muted);max-width:26ch}
+    .showcase-note{display:grid;gap:var(--space-2);padding:var(--space-3);border-radius:18px;background:linear-gradient(180deg,var(--surface-container) 0%,rgba(255,255,255,.78) 100%);border:1px solid rgba(255,255,255,.72)}
+    .showcase-note strong{font:var(--type-caption);color:var(--foreground)}
+    .showcase-note span{font:var(--type-caption);color:var(--muted);line-height:var(--line-height-caption)}
+    .stage-tab{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 var(--space-3);border-radius:999px;border:1px solid rgba(93,108,77,.10);background:rgba(255,255,255,.72);color:var(--foreground);text-decoration:none;transition:background-color var(--motion-duration-fast) var(--motion-ease-standard),transform var(--motion-duration-fast) var(--motion-ease-standard),border-color var(--motion-duration-fast) var(--motion-ease-standard),box-shadow var(--motion-duration-fast) var(--motion-ease-standard)}
+    .stage-tab:hover{background:var(--surface);transform:translateY(-1px);box-shadow:var(--shadow-1)}
+    .stage-tab.is-active{background:var(--color-primary-container);color:var(--color-on-primary-container);border-color:rgba(255,255,255,.72);box-shadow:inset 0 1px 0 rgba(255,255,255,.36)}
+    .badge-row{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+    .entry-badge{display:flex;align-items:center;gap:var(--space-2);min-width:0;padding:var(--space-2) var(--space-3);border-radius:18px;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.72);color:var(--foreground);text-decoration:none;transition:background-color var(--motion-duration-fast) var(--motion-ease-standard),transform var(--motion-duration-fast) var(--motion-ease-standard),box-shadow var(--motion-duration-fast) var(--motion-ease-standard)}
+    .entry-badge:hover{background:var(--surface);transform:translateY(-1px);box-shadow:var(--shadow-1)}
+    .entry-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;color:var(--color-primary);flex-shrink:0}
+    .entry-copy{min-width:0;display:grid;gap:2px}
+    .entry-copy small{font:var(--type-caption);color:var(--muted)}
+    .entry-copy strong{font:var(--type-body);line-height:1.2;color:var(--foreground)}
+    .uikit-main{display:grid;gap:var(--space-4);align-content:start}
+    .phone-stage{display:grid;justify-items:center;gap:var(--space-4);padding:var(--space-5);border-radius:28px;background:linear-gradient(180deg,var(--surface-container-low) 0%,var(--surface-container) 100%);border:1px solid rgba(255,255,255,.7);box-shadow:var(--shadow-1)}
+    .phone-frame{width:var(--uikit-phone-w);height:780px;border-radius:42px;border:7px solid #2b3129;overflow:hidden;position:relative;box-shadow:0 28px 56px -28px rgba(32,38,51,.28),0 12px 20px 0 rgba(32,38,51,.12);background:var(--background)}
+    .phone-inner{height:100%;border-radius:inherit;background:var(--background);display:flex;flex-direction:column}
+    .status-bar{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4) var(--space-2);font:var(--type-caption);color:var(--foreground);font-variant-numeric:tabular-nums}
+    .status-side{display:flex;align-items:center;gap:var(--space-2)}
+    .status-side span,.status-side i{display:inline-flex;align-items:center;justify-content:center}
+    .phone-screen{flex:1;min-height:0;display:flex;flex-direction:column;animation:screen-enter var(--motion-duration-slow) var(--motion-ease-standard)}
+    .screen-top{display:grid;gap:var(--space-2);padding:0 var(--space-4) var(--space-3)}
+    .screen-heading{margin:0;font:var(--type-h2);word-break:keep-all;overflow-wrap:break-word;text-wrap:balance}
+    .screen-text{margin:0;font:var(--type-caption);color:var(--muted);line-height:var(--line-height-caption)}
+    .screen-scroll{flex:1;min-height:0;overflow:auto;padding:0 var(--space-4) var(--space-4);display:grid;align-content:start;gap:var(--space-3)}
+    .screen-stack{display:grid;gap:var(--space-3)}
+    .button-row{display:flex;gap:var(--space-2)}
+    .button-row .button{flex:1 1 0;min-width:0}
+    .footer-area{display:grid;gap:var(--space-2);padding:0 var(--space-4) var(--space-3)}
+    .nav-wrap{padding:var(--space-2);border-radius:var(--radius-lg);background:linear-gradient(180deg,rgba(255,255,255,.78) 0%,var(--surface-container-low) 100%);border:1px solid rgba(255,255,255,.74);box-shadow:var(--shadow-1)}
+    .home-indicator{width:136px;height:5px;border-radius:var(--radius-full);background:var(--outline-variant);margin:0 auto}
+    .coverage-panel{display:grid;gap:var(--space-2);padding:var(--space-4);border-radius:22px;background:rgba(255,255,255,.84);border:1px solid rgba(255,255,255,.72);box-shadow:var(--shadow-1)}
+    .coverage-title{margin:0;font:var(--type-h4);word-break:keep-all;overflow-wrap:break-word}
+    .coverage-row{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-2) 0;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums}
+    .coverage-row:last-child{border-bottom:none}
+    .coverage-pill{display:inline-flex;align-items:center;justify-content:center;min-height:24px;padding:0 var(--space-2);border-radius:var(--radius-md);background:var(--surface-container);font:var(--type-caption);color:var(--muted)}
+    .coverage-icon{width:28px;height:28px;border:none;border-radius:var(--radius-full);display:inline-flex;align-items:center;justify-content:center;background:var(--surface-container);color:var(--foreground)}
+    .icon-md,.icon-sm{display:inline-flex;align-items:center;justify-content:center}
+    .icon-md svg{width:20px;height:20px;stroke-width:1.8}
+    .icon-sm svg{width:16px;height:16px;stroke-width:1.8}
+    @keyframes screen-enter{from{opacity:0;transform:translateY(var(--motion-float-distance))}to{opacity:1;transform:translateY(0)}}
+    @media (max-width: 900px){.uikit-shell{grid-template-columns:minmax(0,1fr)}.uikit-responsive-grid{grid-template-columns:minmax(0,1fr)}}
+    @media (max-width: 640px){.uikit-toolbar{flex-direction:column;align-items:stretch}.uikit-responsive-grid{grid-template-columns:minmax(0,1fr)}.uikit-shell{padding:var(--space-4)}.showcase-panel,.phone-stage{padding:var(--space-4)}.phone-frame{width:100%;max-width:412px;height:760px}.button-row{flex-direction:column}}
+    @media (prefers-reduced-motion: reduce){*{animation-duration:.01ms;transition-duration:.01ms;scroll-behavior:auto}}
+    @media (hover: none){.stage-tab,.entry-badge{transition:none}}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useEffect, useMemo, useState } = React;
+
+    const navItems = [
+      { id: "welcome", label: "首页", icon: "home" },
+      { id: "chat", label: "交流", icon: "messages-square" },
+      { id: "insight", label: "洞察", icon: "sparkle" },
+      { id: "profile", label: "我的", icon: "user-round" }
+    ];
+
+    const coverageRows = [
+      { key: "welcome", text: "开场用奶油纸感先安顿情绪" },
+      { key: "chat", text: "交流页保留语音优先与录音反馈" },
+      { key: "insight", text: "洞察页把解释整理成一句可继续的话" },
+      { key: "profile", text: "个人页把今晚的话轻轻留到明天" }
+    ];
+
+    function StatusBar() {
+      return (
+        <div className="status-bar">
+          <span className="uikit-nowrap">9:41</span>
+          <div className="status-side">
+            <span className="icon-sm"><i data-lucide="signal" style={{width:"16px",height:"16px",display:"inline-block"}}></i></span>
+            <span className="icon-sm"><i data-lucide="wifi" style={{width:"16px",height:"16px",display:"inline-block"}}></i></span>
+            <span className="icon-sm"><i data-lucide="battery-full" style={{width:"16px",height:"16px",display:"inline-block"}}></i></span>
+          </div>
+        </div>
+      );
+    }
+
+    function BottomNav({ activeScreen, onNavigate }) {
+      return (
+        <div className="nav-wrap">
+          <nav className="nav nav--airy" aria-label="底部导航" data-component="bottom-nav">
+            <a className={activeScreen === "welcome" ? "tab is-active" : "tab"} href="#" aria-current={activeScreen === "welcome" ? "page" : undefined} onClick={(event) => { event.preventDefault(); onNavigate("welcome"); }}>
+              <i data-lucide="home" className="tab__icon" style={{width:"24px",height:"24px",display:"inline-block"}}></i>
+              <span className="tab__label uikit-truncate">首页</span>
+            </a>
+            <a className={activeScreen === "chat" ? "tab is-active" : "tab"} href="#" aria-current={activeScreen === "chat" ? "page" : undefined} onClick={(event) => { event.preventDefault(); onNavigate("chat"); }}>
+              <i data-lucide="messages-square" className="tab__icon" style={{width:"24px",height:"24px",display:"inline-block"}}></i>
+              <span className="tab__label uikit-truncate">交流</span>
+            </a>
+            <a className={activeScreen === "insight" ? "tab is-active" : "tab"} href="#" aria-current={activeScreen === "insight" ? "page" : undefined} onClick={(event) => { event.preventDefault(); onNavigate("insight"); }}>
+              <i data-lucide="sparkle" className="tab__icon" style={{width:"24px",height:"24px",display:"inline-block"}}></i>
+              <span className="tab__label uikit-truncate">洞察</span>
+            </a>
+            <a className={activeScreen === "profile" ? "tab is-active" : "tab"} href="#" aria-current={activeScreen === "profile" ? "page" : undefined} onClick={(event) => { event.preventDefault(); onNavigate("profile"); }}>
+              <i data-lucide="user-round" className="tab__icon" style={{width:"24px",height:"24px",display:"inline-block"}}></i>
+              <span className="tab__label uikit-truncate">我的</span>
+            </a>
+          </nav>
+        </div>
+      );
+    }
+
+    function WelcomeScreen({ onNext }) {
+      return (
+        <div className="phone-screen">
+          <div className="screen-top">
+            <h1 className="screen-heading">先安稳</h1>
+            <p className="screen-text">你好，欢迎来到育见。先从今晚最容易想起的一刻开始。</p>
+          </div>
+          <div className="screen-scroll">
+            <div className="screen-stack">
+              <article className="pcard pcard--hero" data-component="card">
+                <div className="pcard__inner">
+                  <div className="pcard__top">
+                    <span className="pcard__eyebrow">开始前说明</span>
+                    <span className="pcard__tag">先说晚饭</span>
+                  </div>
+                  <h2 className="pcard__title">先安稳</h2>
+                  <p className="pcard__body">今晚回家后，孩子把书包放下就进了房间。先说你最想理解的那一刻，不急着判断。</p>
+                  <div className="pcard__note">
+                    <strong>今晚先做</strong>
+                    <span className="uikit-truncate">先描述发生了什么，再说你当时心里最明显的感受。</span>
+                  </div>
+                </div>
+              </article>
+
+              <div className="scene" data-component="chip">
+                <span className="chip chip--soft">放学后</span>
+                <span className="chip chip--outline">饭桌上</span>
+                <span className="chip chip--status"><span className="chip__dot" aria-hidden="true"></span>已记住</span>
+              </div>
+
+              <article className="pcard pcard--tip" data-component="card">
+                <div className="pcard__inner">
+                  <div className="pcard__top">
+                    <span className="pcard__badge">轻一点</span>
+                  </div>
+                  <h3 className="pcard__tip-title">慢一点</h3>
+                  <p className="pcard__tip-text">今晚先不追问原因，只收集真实片段。孩子更容易把话说出来。</p>
+                </div>
+              </article>
+
+              <div className="button-row">
+                <button className="button secondary md" type="button" disabled data-component="button">稍后</button>
+                <button className="button primary lg" type="button" data-component="button" onClick={onNext}>开始</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function ChatScreen({ onNext }) {
+      return (
+        <div className="phone-screen">
+          <div className="screen-top">
+            <h1 className="screen-heading">说今天</h1>
+            <p className="screen-text">先接住情绪，再把话说短一点。这里的动作应该像被轻轻托住。</p>
+          </div>
+          <div className="screen-scroll">
+            <div className="screen-stack">
+              <article className="pcard" data-component="card">
+                <div className="pcard__inner">
+                  <div className="pcard__top">
+                    <span className="pcard__eyebrow">先接住</span>
+                    <span className="pcard__tag">在听</span>
+                  </div>
+                  <div className="pcard__section">
+                    <h2 className="pcard__section-title">先听</h2>
+                    <p className="pcard__body">你可以先说“我看见你今天有点累，想自己待一会儿也没关系”。</p>
+                  </div>
+                  <div className="pcard__section">
+                    <h3 className="pcard__section-title">再问</h3>
+                    <p className="pcard__body">等孩子点头或抬头时，再慢慢问“今天哪一刻最不舒服”。</p>
+                  </div>
+                  <div className="pcard__callout">
+                    <p>一句话就够，先把安全感放回来。</p>
+                  </div>
+                </div>
+              </article>
+
+              <div className="dock recording" data-component="input-dock">
+                <div className="dock-top">
+                  <span className="scene-chip">先说晚饭</span>
+                  <span className="mode-chip">语音</span>
+                </div>
+                <div className="status-banner">
+                  <span className="pulse-dot" aria-hidden="true"></span>
+                  <div className="status-text">
+                    <span className="status-title">正在记录</span>
+                    <span className="status-copy uikit-truncate">今天一进门就说想自己待一会儿。</span>
+                  </div>
+                </div>
+                <div className="recording-body">
+                  <button className="hold-button is-live" type="button">
+                    <span className="button-dot" aria-hidden="true"></span>
+                    <span className="uikit-nowrap">按住说</span>
+                  </button>
+                  <div className="transcript-panel uikit-truncate">我先没有追问，只说“你先缓一缓”。</div>
+                </div>
+              </div>
+
+              <article className="insight insight--authority" data-component="insight-card">
+                <div className="insight__rail">
+                  <span className="insight__eyebrow"><span className="insight__trace"></span>交流建议</span>
+                  <div className="insight__meta">
+                    <span className="insight__pill insight__pill--accent">先接住</span>
+                    <span className="insight__pill">可继续</span>
+                  </div>
+                </div>
+                <div className="insight__title-wrap">
+                  <span className="insight__kicker">今晚观察</span>
+                  <h3 className="insight__title">先接住</h3>
+                </div>
+                <div className="insight__body">
+                  <p>孩子刚回到家时，先被看见，比被追问更容易开口。</p>
+                  <div className="insight__quiet">
+                    <p>先把“怎么了”改成“我在这里”，压力会低很多。</p>
+                  </div>
+                </div>
+                <p className="insight__note">这张洞察卡更像解释，不是评测结果。</p>
+              </article>
+
+              <div className="button-row">
+                <button className="button secondary md" type="button" disabled data-component="button">草稿</button>
+                <button className="button primary lg" type="button" data-component="button" onClick={onNext}>继续</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function InsightScreen({ saved, onSave }) {
+      return (
+        <div className="phone-screen">
+          <div className="screen-top">
+            <h1 className="screen-heading">看洞察</h1>
+            <p className="screen-text">把今晚的感受整理成可继续的下一步，轻一点，也更清楚一点。</p>
+          </div>
+          <div className="screen-scroll">
+            <div className="screen-stack">
+              <article className="insight insight--authority" data-component="insight-card">
+                <div className="insight__rail">
+                  <span className="insight__eyebrow"><span className="insight__trace"></span>关系变化</span>
+                  <div className="insight__meta">
+                    <span className="insight__pill insight__pill--accent">有回应</span>
+                    <span className="insight__pill">可继续</span>
+                  </div>
+                </div>
+                <div className="insight__title-wrap">
+                  <span className="insight__kicker">今晚看见</span>
+                  <h3 className="insight__title">家长先慢下来</h3>
+                </div>
+                <div className="insight__body">
+                  <p>当提问速度放慢，孩子没有再回“算了”。这说明安全感正在回来。</p>
+                  <div className="insight__quiet">
+                    <p>先稳住陪伴关系，再谈规则，今晚更合适。</p>
+                  </div>
+                </div>
+                <p className="insight__note">重点不是说服孩子，而是把门重新打开。</p>
+              </article>
+
+              <article className="insight insight--tension" data-component="insight-card">
+                <div className="insight__rail">
+                  <span className="insight__eyebrow insight__eyebrow--warning"><span className="insight__trace"></span>今晚重点</span>
+                  <div className="insight__meta">
+                    <span className="insight__pill insight__pill--warning">具体问</span>
+                    <span className="insight__pill">别追问</span>
+                  </div>
+                </div>
+                <div className="insight__title-wrap">
+                  <span className="insight__kicker">下一步</span>
+                  <h3 className="insight__title">先问一件事</h3>
+                </div>
+                <div className="insight__body">
+                  <p>把“为什么这样”换成“今天哪一刻最难受”，更容易听到真实感受。</p>
+                  <div className="insight__quiet">
+                    <p>一晚只推进一步，关系会更稳。</p>
+                  </div>
+                </div>
+                <p className="insight__note">问题越具体，孩子越容易回答。</p>
+              </article>
+
+              <article className="pcard" data-component="card">
+                <div className="pcard__inner">
+                  <div className="pcard__top">
+                    <span className="pcard__eyebrow">今晚一句</span>
+                    <span className="pcard__tag">可继续</span>
+                  </div>
+                  <div className="pcard__section">
+                    <h2 className="pcard__section-title">留一句</h2>
+                    <p className="pcard__body">“如果你愿意，我想听听你今天最累的是哪一刻。”</p>
+                  </div>
+                  <div className="pcard__callout">
+                    <p>{saved ? "这句话已经留下，明天也能继续用。" : "先把这句话留好，明天也能轻轻接着说。"}</p>
+                  </div>
+                </div>
+              </article>
+
+              <div className="button-row">
+                <button className="button secondary md" type="button" disabled data-component="button">稍后</button>
+                <button className="button primary lg" type="button" data-component="button" onClick={onSave}>保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function ProfileScreen({ saved, onBack }) {
+      return (
+        <div className="phone-screen">
+          <div className="screen-top">
+            <h1 className="screen-heading">留一句</h1>
+            <p className="screen-text">把今天能用的话，轻轻放进明天。这里的反馈要短，也要安心。</p>
+          </div>
+          <div className="screen-scroll">
+            <div className="screen-stack">
+              <article className="pcard" data-component="card">
+                <div className="pcard__inner">
+                  <div className="pcard__top">
+                    <span className="pcard__eyebrow">我的话</span>
+                    <span className="chip chip--status" data-component="chip"><span className="chip__dot" aria-hidden="true"></span>{saved ? "已保存" : "待确认"}</span>
+                  </div>
+                  <div className="pcard__section">
+                    <h2 className="pcard__section-title">明晚开口</h2>
+                    <p className="pcard__body">如果你愿意，我想听听你今天最累的是哪一刻。</p>
+                  </div>
+                  <div className="pcard__section">
+                    <h3 className="pcard__section-title">提醒自己</h3>
+                    <p className="pcard__body">能继续开口，比一次说对更重要。</p>
+                  </div>
+                </div>
+              </article>
+
+              <div className="dock" data-component="input-dock">
+                <div className="dock-top">
+                  <span className="scene-chip">留一句</span>
+                  <span className="mode-chip">文字</span>
+                </div>
+                <div className="voice-stack">
+                  <div className="text-field">
+                    <span className="text-copy uikit-truncate">如果你愿意，我想听听你今天最累的是哪一刻。</span>
+                    <button className="send-button" type="button">发送</button>
+                  </div>
+                  <div className="meta-line">
+                    <span className="uikit-truncate">先留一句，再等孩子决定什么时候回应。</span>
+                    <span className="uikit-nowrap">00:18</span>
+                  </div>
+                </div>
+              </div>
+
+              <article className="pcard pcard--tip" data-component="card">
+                <div className="pcard__inner">
+                  <div className="pcard__top">
+                    <span className="pcard__badge">别求快</span>
+                  </div>
+                  <h3 className="pcard__tip-title">继续陪</h3>
+                  <p className="pcard__tip-text">这套界面的动感只提醒“这里可点”，不会催促家长立刻完成很多动作。</p>
+                </div>
+              </article>
+
+              <div className="button-row">
+                <button className="button secondary md" type="button" disabled data-component="button">今晚先放</button>
+                <button className="button primary lg" type="button" data-component="button" onClick={onBack}>回看</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [activeScreen, setActiveScreen] = useState("welcome");
+      const [saved, setSaved] = useState(false);
+
+      useEffect(() => {
+        if (window.lucide && typeof window.lucide.createIcons === "function") {
+          window.lucide.createIcons();
+        }
+      }, [activeScreen, saved]);
+
+      const screenMeta = useMemo(() => ({
+        welcome: {
+          title: "先安稳",
+          note: "纸感卡面、浅透明层与单一主 CTA，让开场更像被接住。",
+          status: "已覆盖"
+        },
+        chat: {
+          title: "说今天",
+          note: "输入区保留语音优先、状态脉冲与轻缩放反馈，但不过度炫技。",
+          status: "已覆盖"
+        },
+        insight: {
+          title: "看洞察",
+          note: "洞察卡更细腻，更像解释与陪伴，而不是冷静报告。",
+          status: saved ? "已保存" : "待保存"
+        },
+        profile: {
+          title: "留一句",
+          note: "同样的黄绿主轴延续到个人页，让“留下来”这件事更安静。",
+          status: saved ? "已落页" : "待落页"
+        }
+      }), [saved]);
+
+      const current = screenMeta[activeScreen];
+
+      return (
+        <div className="uikit-shell" data-layout-guard="uikit-v1">
+          <aside className="uikit-sidebar">
+            <section className="showcase-panel">
+              <h2 className="showcase-title">温柔落地</h2>
+              <p className="showcase-copy">这不是组件平铺，而是一段完整的小程序式家长旅程：先安稳，再交流，再看洞察，最后把一句话留下来。</p>
+
+              <div className="uikit-toolbar" aria-label="视图切换">
+                <a className={activeScreen === "welcome" ? "stage-tab is-active" : "stage-tab"} href="#" onClick={(event) => { event.preventDefault(); setActiveScreen("welcome"); }}>先安稳</a>
+                <a className={activeScreen === "chat" ? "stage-tab is-active" : "stage-tab"} href="#" onClick={(event) => { event.preventDefault(); setActiveScreen("chat"); }}>说今天</a>
+                <a className={activeScreen === "insight" ? "stage-tab is-active" : "stage-tab"} href="#" onClick={(event) => { event.preventDefault(); setActiveScreen("insight"); }}>看洞察</a>
+                <a className={activeScreen === "profile" ? "stage-tab is-active" : "stage-tab"} href="#" onClick={(event) => { event.preventDefault(); setActiveScreen("profile"); }}>留一句</a>
+              </div>
+
+              <div className="uikit-responsive-grid">
+                <div className="showcase-note">
+                  <strong>主色回正</strong>
+                  <span>主情绪回到 hi-fi 黄绿主轴，暖金只做陪衬，不再抢主视觉。</span>
+                </div>
+                <div className="showcase-note">
+                  <strong>轻动感</strong>
+                  <span>按压、切屏、录音脉冲都被收窄到短时、低压、小程序可映射。</span>
+                </div>
+              </div>
+
+              <div className="badge-row">
+                <a className="entry-badge" href="#" aria-label="家长入口">
+                  <span className="entry-icon icon-md"><i data-lucide="smartphone" style={{width:"20px",height:"20px",display:"inline-block"}}></i></span>
+                  <span className="entry-copy">
+                    <small>家长入口</small>
+                    <strong className="uikit-truncate">预约体验</strong>
+                  </span>
+                </a>
+                <a className="entry-badge" href="#" aria-label="陪伴方式">
+                  <span className="entry-icon icon-md"><i data-lucide="heart-handshake" style={{width:"20px",height:"20px",display:"inline-block"}}></i></span>
+                  <span className="entry-copy">
+                    <small>陪伴方式</small>
+                    <strong className="uikit-truncate">获取清单</strong>
+                  </span>
+                </a>
+              </div>
+            </section>
+
+            <section className="showcase-panel">
+              <h3 className="showcase-title">{current.title}</h3>
+              <p className="showcase-copy">{current.note}</p>
+            </section>
+          </aside>
+
+          <main className="uikit-main">
+            <section className="phone-stage">
+              <div className="phone-frame">
+                <div className="phone-inner">
+                  <StatusBar />
+                  {activeScreen === "welcome" && <WelcomeScreen onNext={() => setActiveScreen("chat")} />}
+                  {activeScreen === "chat" && <ChatScreen onNext={() => setActiveScreen("insight")} />}
+                  {activeScreen === "insight" && <InsightScreen saved={saved} onSave={() => { setSaved(true); setActiveScreen("profile"); }} />}
+                  {activeScreen === "profile" && <ProfileScreen saved={saved} onBack={() => setActiveScreen("welcome")} />}
+                  <div className="footer-area">
+                    <BottomNav activeScreen={activeScreen} onNavigate={setActiveScreen} />
+                    <div className="home-indicator" aria-hidden="true"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="coverage-panel">
+              <h3 className="coverage-title">覆盖范围</h3>
+              <div className="uikit-table-wrap">
+                <div>
+                  {coverageRows.map((row) => (
+                    <div className="coverage-row" key={row.key}>
+                      <span className="uikit-truncate">{row.text}</span>
+                      <div className="uikit-action-cell">
+                        <span className="coverage-pill uikit-action">{screenMeta[row.key].status}</span>
+                        <button className="coverage-icon" type="button" aria-label={`查看${screenMeta[row.key].title}`} onClick={() => setActiveScreen(row.key)}>
+                          <i data-lucide="chevron-right" style={{width:"16px",height:"16px",display:"inline-block"}}></i>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

@@ -297,28 +297,8 @@
   line-height: 1.55;
 }
 
-.hifi-build-root .prompt-switch-wrap {
-  margin-top: 12px;
-}
-
-.hifi-build-root .prompt-switch-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 10px 16px;
-  border-radius: $radius-pill;
-  border: 1px solid rgba(111, 159, 86, 0.38);
-  background: rgba(241, 248, 223, 0.55);
-  box-sizing: border-box;
-}
-
-.hifi-build-root .prompt-switch-btn-text {
-  color: $green-deep;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
+.hifi-build-root .capture-directive {
+  margin-bottom: 12px;
 }
 
 .hifi-build-root .text-link {
@@ -329,22 +309,6 @@
   font-size: $text-small;
   font-weight: 650;
   text-align: center;
-}
-
-.hifi-build-root .light-prompt {
-  display: none;
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: $radius-control;
-  color: $green-deep;
-  background: $green-soft;
-  font-size: 14px;
-  line-height: 1.62;
-  font-weight: 650;
-}
-
-.hifi-build-root .light-prompt.active {
-  display: block;
 }
 
 .hifi-build-root .recording-strip {

@@ -1,0 +1,55 @@
+@import '../../styles/tokens.scss';
+
+.capture-directive-lead {
+  display: block;
+  margin-bottom: 12px;
+  color: $ink;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.capture-directive-points {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.capture-directive-point-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.capture-directive-bullet {
+  flex-shrink: 0;
+  color: $green-deep;
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.capture-directive-point {
+  flex: 1;
+  min-width: 0;
+  color: $ink;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.capture-directive-volume {
+  display: block;
+  margin-top: 12px;
+  color: $green-deep;
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+.capture-directive-hint {
+  display: block;
+  margin-top: 12px;
+  color: $ink-soft;
+  font-size: 13px;
+  line-height: 1.5;
+}

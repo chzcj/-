@@ -255,6 +255,12 @@ async function ensureVectorSchema(): Promise<boolean> {
             is_high_value BOOLEAN NOT NULL DEFAULT FALSE,
             evidence_strength TEXT NOT NULL DEFAULT 'medium',
             embedding vector(1024),
+            epistemic_status TEXT NOT NULL DEFAULT 'reported',
+            evidence_tier TEXT,
+            fact_role TEXT,
+            ecological_layer TEXT,
+            business_time TIMESTAMPTZ,
+            confidence NUMERIC(3,2),
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
           );
           CREATE INDEX IF NOT EXISTS idx_episodes_embedding
@@ -337,6 +343,12 @@ export interface AtomRow {
   isHighValue: boolean;
   evidenceStrength?: string;
   embedding: number[] | null;
+  epistemicStatus?: 'observed' | 'reported' | 'derived' | 'inferred' | 'hypothesized' | 'expert_confirmed';
+  evidenceTier?: 'behavior' | 'verbatim' | 'repeated' | 'cross_scene' | 'outcome_checked';
+  factRole?: 'presenting' | 'trigger' | 'response' | 'counter' | 'context';
+  ecologicalLayer?: 'micro' | 'meso' | 'exo' | 'macro' | 'chrono';
+  businessTime?: string;
+  confidence?: number;
 }
 
 export async function upsertAtoms(rows: AtomRow[]): Promise<number | undefined> {
@@ -344,27 +356,34 @@ export async function upsertAtoms(rows: AtomRow[]): Promise<number | undefined> 
   if (!(await ensureVectorSchema())) return undefined;
   const pool = getPool();
   if (!pool) return undefined;
-  // 多行 INSERT（每块一条），收敛原逐行 N+1。每行 10 列，分块 200 行。
+  // 多行 INSERT（每块一条），收敛原逐行 N+1。每行 16 值，分块 200 行。
   for (const batch of chunkArray(rows, 200)) {
     const values: unknown[] = [];
     const placeholders = batch.map((r, i) => {
-      const b = i * 10;
+      const b = i * 16;
       values.push(
         r.atomId, r.episodeId, r.familyId || 'f_demo', r.childId || 'c_demo',
         r.content, r.sourceType, r.factType || null, r.isHighValue,
-        r.evidenceStrength || 'medium', toVectorLiteral(r.embedding)
+        r.evidenceStrength || 'medium', toVectorLiteral(r.embedding),
+        r.epistemicStatus || 'reported', r.evidenceTier || null, r.factRole || null,
+        r.ecologicalLayer || null, r.businessTime || null,
+        r.confidence !== undefined ? r.confidence : null
       );
-      return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10}::vector)`;
+      return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10}::vector,$${b + 11},$${b + 12},$${b + 13},$${b + 14},$${b + 15},$${b + 16})`;
     });
     await pool.query(
       `INSERT INTO fact_atoms
          (atom_id, episode_id, family_id, child_id, content, source_type, fact_type,
-          is_high_value, evidence_strength, embedding)
+          is_high_value, evidence_strength, embedding,
+          epistemic_status, evidence_tier, fact_role, ecological_layer, business_time, confidence)
        VALUES ${placeholders.join(', ')}
        ON CONFLICT (atom_id) DO UPDATE SET
          content=EXCLUDED.content, source_type=EXCLUDED.source_type, fact_type=EXCLUDED.fact_type,
          is_high_value=EXCLUDED.is_high_value, evidence_strength=EXCLUDED.evidence_strength,
-         embedding=EXCLUDED.embedding`,
+         embedding=EXCLUDED.embedding,
+         epistemic_status=EXCLUDED.epistemic_status, evidence_tier=EXCLUDED.evidence_tier,
+         fact_role=EXCLUDED.fact_role, ecological_layer=EXCLUDED.ecological_layer,
+         business_time=EXCLUDED.business_time, confidence=EXCLUDED.confidence`,
       values
     );
   }
@@ -448,6 +467,12 @@ export interface FactAtomRecord {
   factType?: string;
   isHighValue: boolean;
   evidenceStrength: string;
+  epistemicStatus?: string;
+  evidenceTier?: string;
+  factRole?: string;
+  ecologicalLayer?: string;
+  businessTime?: string;
+  confidence?: number;
 }
 
 // 删除某 Episode 的全部 Atom（Episode 重抽取时先删后插，避免重试留孤儿/重复）。
@@ -1488,6 +1513,82 @@ export async function loadDialogueAnalysis(
             sample_dialogue, segments, rehearsal_seed, error_message, created_at, updated_at
      FROM dialogue_analyses WHERE analysis_id = $1`,
     [analysisId]
+  )
+  const r = result.rows[0]
+  if (!r) return undefined
+  return {
+    analysisId: r.analysis_id,
+    familyId: r.family_id,
+    childId: r.child_id,
+    status: r.status,
+    summary: r.summary || '',
+    analysis: r.analysis || '',
+    tryTonight: r.try_tonight || '',
+    sampleDialogue: r.sample_dialogue || '',
+    segments: Array.isArray(r.segments) ? r.segments : [],
+    rehearsalSeed: r.rehearsal_seed && typeof r.rehearsal_seed === 'object' ? r.rehearsal_seed : {},
+    errorMessage: r.error_message || '',
+    createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : undefined,
+    updatedAt: r.updated_at instanceof Date ? r.updated_at.toISOString() : undefined,
+  }
+}
+
+/** 列出可重跑的 done 记录（默认缺 rehearsal_seed.v2） */
+export async function listDialogueAnalysesForTenant(
+  familyId: string,
+  childId: string,
+  opts: { limit?: number; onlyMissingV2?: boolean } = {}
+): Promise<DialogueAnalysisRecord[]> {
+  const pool = getPool()
+  if (!pool) return []
+  await ensureDbSchema()
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200)
+  const onlyMissingV2 = opts.onlyMissingV2 !== false
+  const v2Filter = onlyMissingV2
+    ? ` AND (rehearsal_seed->'v2' IS NULL OR jsonb_typeof(rehearsal_seed->'v2') = 'null')`
+    : ''
+  const result = await pool.query(
+    `SELECT analysis_id, family_id, child_id, status, summary, analysis, try_tonight,
+            sample_dialogue, segments, rehearsal_seed, error_message, created_at, updated_at
+     FROM dialogue_analyses
+     WHERE family_id = $1 AND child_id = $2 AND status = 'done'${v2Filter}
+     ORDER BY created_at DESC
+     LIMIT $3`,
+    [familyId, childId, limit]
+  )
+  return result.rows.map((r) => ({
+    analysisId: r.analysis_id,
+    familyId: r.family_id,
+    childId: r.child_id,
+    status: r.status,
+    summary: r.summary || '',
+    analysis: r.analysis || '',
+    tryTonight: r.try_tonight || '',
+    sampleDialogue: r.sample_dialogue || '',
+    segments: Array.isArray(r.segments) ? r.segments : [],
+    rehearsalSeed:
+      r.rehearsal_seed && typeof r.rehearsal_seed === 'object' ? r.rehearsal_seed : {},
+    errorMessage: r.error_message || '',
+    createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : undefined,
+    updatedAt: r.updated_at instanceof Date ? r.updated_at.toISOString() : undefined,
+  }))
+}
+
+export async function loadLatestDialogueAnalysis(
+  familyId: string,
+  childId: string
+): Promise<DialogueAnalysisRecord | undefined> {
+  const pool = getPool()
+  if (!pool) return undefined
+  await ensureDbSchema()
+  const result = await pool.query(
+    `SELECT analysis_id, family_id, child_id, status, summary, analysis, try_tonight,
+            sample_dialogue, segments, rehearsal_seed, error_message, created_at, updated_at
+     FROM dialogue_analyses
+     WHERE family_id = $1 AND child_id = $2 AND status = 'done'
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [familyId, childId]
   )
   const r = result.rows[0]
   if (!r) return undefined

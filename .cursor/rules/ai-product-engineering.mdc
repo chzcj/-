@@ -1,20 +1,159 @@
 ---
-description: Enforce full-lifecycle contracts for AI, BFF, memory, and job changes
+description: 全局强制：前端×Agent×BFF 全链路契约（生产者/接收者/字段/空转/四层对齐）
 alwaysApply: true
 ---
-# AI Product Engineering
+# 前端 × Agent × BFF 全链路契约（全局）
 
-For changes involving frontend AI flows, BFF/API, memory, agents, LLM runtime, or async jobs, work from:
-`Frontend → BFF/API → Backend → Database → Job → Agent → LLM → UI render`.
+**一句话**：只要改动会碰到「家长输入 → BFF/Agent → 持久化 → 再渲染到 UI」，就不能只改前端样式；必须先画清 **谁生产、谁消费、字段去哪、有没有空转、四层契约是否对齐**。
 
-Before editing, state the user flow, current state transitions, contracts, persistence, jobs, agents, and UI outcome. Identify producer → storage → consumer for every added or changed field. Do not add fields that have no reader or let `undefined` / free-text agent handoffs silently propagate.
+电路：`Frontend → BFF/API → Backend → DB → Job → Agent → LLM → UI render`  
+收工步骤（7 步 + 模板）：[fullchain-contract-check.mdc](./fullchain-contract-check.mdc) · [FULLCHAIN-SELF-CHECK.md](../docs/contracts/FULLCHAIN-SELF-CHECK.md)  
+读包真源：[read-contract.md](../docs/contracts/read-contract.md) · BFF 三段：[bff-three-phase-overview.md](../.trae/documents/bff-three-phase-overview.md)
 
-- Define explicit state owner, storage, transitions, triggers, and recovery for complex flows.
-- Long-running work must be job-backed with ID, status, result/error, retry, timeout, idempotency, and refresh recovery.
-- Keep business code behind the agent runtime / LLM gateway; specify prompt version, input/output schema, token budget, timeout, retry, validation, and streaming behavior.
-- Make retrieval, routing, and safety decisions deterministic in code when correctness depends on them. Do not rely on an LLM choosing to search, refresh, persist, or preserve evidence.
-- Trace a request through requestId/traceId, tenant, job ID, agent/prompt, storage writes, and UI consumption.
-- For agent or job changes, prevent empty output from overwriting existing valid state and make no-op outcomes observable.
-- For frontend AI interactions, verify idle/loading/streaming/success/error, disabled/loading/retry behavior, duplicate submit, refresh recovery, iPhone 13 layout, keyboard, and scroll behavior.
+---
 
-Every completed change requires: typecheck/build, product-flow verification, and contract/state/job consistency checks. Stop and ask when business rules, agent schema, migration risk, or async behavior is unclear.
+## 1. 触发范围（任一即触发，不得当纯 UI）
+
+- 前端改 **请求体 / 响应解析 / 流式 NDJSON 事件**
+- 前端改 **展示字段** 且数据来自 Agent/BFF（prose、section、card、画像）
+- 改 **BFF / route / server-ws**（如 `/api/daily/stream`、`/api/profile/*`）
+- 改 **prompt / registry / 读包组装**（`prompts/`、`frontend-read-pack`、`prose-context`）
+- 改 **Job / 记忆写回**（turn_events、digest、dossier、task）
+- 改 **共享契约**（`packages/contracts`、`docs/contracts/*`）
+- Web 与小程序 **同一 API 不同解析**（一端多读/少读字段）
+
+**不触发**：纯样式/导航；纯本地 storage 且不调 API、不改字段语义。
+
+---
+
+## 2. 开工前：链路画布（先想后写，禁止先改 TSX）
+
+改代码前写清（可贴 HANDOFF / PR）：
+
+1. **用户动作**：谁、哪屏、输入/点击什么  
+2. **同步路径**：HTTP / WS / SSE，是否流式  
+3. **异步路径**：是否有 Job、写哪层 memory  
+4. **Agent 落点**：段① 规则 / 段② 厚包 / 段③ LLM / 后台 Job（见 §5）  
+5. **UI 终态**：idle → loading → streaming → success/error；刷新/重进能否恢复  
+
+---
+
+## 3. 每个字段必答六问 + 空转判定
+
+对 **每个新增或变更字段** 填 trace 表（改前/改后）：
+
+| 字段 | Producer | 形态/约束 | Storage | Consumer | UI 可见？ | 判定 |
+
+### Producer / Consumer
+
+- **Producer**：谁写、何时写、是否 LLM 生成（是则须 schema + fallback）  
+- **Consumer**：谁读、用来干什么；**须点名文件/函数**，禁止写「前端会用」  
+- **Storage**：ephemeral / turn_events / profile / digest / 仅客户端 storage  
+
+### 空转 / 断裂 / 泄漏（P0 概念）
+
+| 判定 | 含义 |
+|------|------|
+| **有效** | 有 producer + consumer + 明确用途 |
+| **写空转** | 写了，全链路无 consumer |
+| **读空转** | 读了，不影响 UI / 路由 / 持久化任一 |
+| **展示空转** | UI 有坑位，Agent/BFF 长期不产出或恒 placeholder |
+| **断裂** | UI/前端期待有值，无 write 路径 |
+| **幽灵** | 契约/类型有，实现从未赋值 |
+| **泄漏** | 内部字段进 NDJSON 或家长可见 UI |
+
+**禁止**：无 reader 的字段；`undefined` / 自由文本在 Agent 间无 schema handoff；「将来可能用到」的字段（同 PR 须有 consumer）。
+
+---
+
+## 4. 四层逻辑契约对齐（L1–L4 须一致）
+
+```
+L1 产品语义   PRODUCT.md / 模块目的 / 家长是否该看到
+L2 接口契约   packages/contracts + docs/contracts/*.md
+L3 实现       BFF / route / services / prompts / Job
+L4 渲染       Web app/* + miniprogram 页面/组件
+```
+
+对齐检查：
+
+- **请求**：前端 POST = route 解析 = 入库 = Agent 读包  
+- **响应**：BFF 输出 = NDJSON = 前端 reducer = MP 解析  
+- **Prompt**：SP 输出结构 = BFF clamp/解析 = UI 分区（标题数、条数、字数）  
+- **状态**：Job status / pending 与 UI loading、重试、刷新一致  
+- **跨端**：Web + MP 读同一 contract；动一端须动 `packages/contracts`  
+
+**UI 与 Agent 是同一件事**：布局装不下 → 改 UI 结构 **或** 改 SP 切分/字段；禁止只改样式导致截断、孤行、流式区塌陷。
+
+小程序 UI 模式 A/B/C 见 [miniprogram-community-skills.mdc](./miniprogram-community-skills.mdc) §UI 修改协议。
+
+---
+
+## 5. BFF 三段 + Job（改动须定位）
+
+| 段 | LLM | 典型 | 改动影响 |
+|----|-----|------|----------|
+| 段① 规则编排 | 无 | pipeline、section-composer | 结构不经 LLM |
+| 段② 厚包组装 | 无 | router、frontend-read-pack、prose-context | **Agent 输入** |
+| 段③ LLM 表达 | 有 | daily-turn-bff、registry SP | **家长可见文案** |
+| Job 链 | 异步 | memory pipeline | **下一轮读包** |
+
+段③ 改文案形态 → 回溯段② 是否供够字段；段① 改路由 → 看段③ UI 是否仍匹配 section 类型。
+
+---
+
+## 6. Agent 红线
+
+**前台（家长可见）**：只读 FrontendReadSchema + 约定 digest；prose 元字段不进 UI；经 clamp/安全后进 NDJSON。  
+**后台（记忆/画像）**：读 BackendReadSchema；写回须能在 **下一轮 read-pack** 被读到，否则 Job 空转。
+
+- 空 Agent 输出 **不得覆盖** 已有有效状态（observable no-op）  
+- 检索 / 路由 / 安全：**能 deterministic 的不要交给 LLM**  
+- 指定 prompt 版本、I/O schema、token 预算、timeout、retry、流式行为  
+
+---
+
+## 7. 前端附加验证（触达 Agent/BFF 时）
+
+状态机 idle/loading/streaming/error/empty · 幂等（重复提交、断线重连） · 流式首 token/中断/完成一致性 · 硬刷新与 reLaunch 恢复 · 空态文案与契约一致 · 错误不泄漏内部字段 · 最长/typical 字数不撑破布局（含 MP rpx） · label 与 API 字段语义一致。
+
+---
+
+## 8. 收工门禁（P0 任一条 Fail = 未完成）
+
+1. 变更字段无 producer 或无 consumer  
+2. 空转 / 泄漏 / 断裂 / 幽灵  
+3. 内部字段进 NDJSON 或家长 UI（对照 `BACKEND_ONLY_CONTEXT_FIELDS`）  
+4. `prompts/` 与 `registry.generated.ts` 不同步（须 `npm run pretypecheck`）  
+5. 空输出覆盖有效状态  
+6. `packages/contracts` 与 BFF/前端解析不一致  
+7. `npm run audit:fullchain` 失败  
+
+**必跑**：[fullchain-contract-check.mdc](./fullchain-contract-check.mdc) 收工 7 步 + Step 7 报告；无 trace 表与一行结论 = 未完成。
+
+**结论句模板**：「字段 X 由 A 生产，B 消费，落库 C，家长 D 可见/不可见；无空转；L1–L4 已对齐。」
+
+---
+
+## 9. 禁止
+
+- 未读 Agent/BFF 输出字段就改气泡/卡片/列表  
+- 有用户完整稿仍按旧 Agent 布局自作主张  
+- 只改 SCSS 导致长文截断却不改结构或 SP  
+- 擅自大改 prompt/contract 不说明对家长可见文案的影响  
+- 先改代码再补 producer→consumer  
+- Web/MP 只改一端解析却不更共享 contract  
+
+---
+
+## 10. 最短记忆
+
+```
+动前端且碰 Agent/BFF？
+  → 画链路 → 每字段六问 → 标空转/泄漏/断裂
+  → 对齐 L1–L4 → 定位段①②③或 Job
+  → audit:fullchain + trace 表 + 结论句
+  → 无报告不算完
+```
+
+Every completed change: typecheck/build + product-flow verification + contract/state/job checks. Stop and ask when business rules, agent schema, migration, or async behavior is unclear.

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>预演 L1-A · 场景卡片网格</title>
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <link rel="stylesheet" href="../../components.css" />
+  <link rel="stylesheet" href="../profile-mocks/shared-profile-mock.css" />
+  <link rel="stylesheet" href="shared-rehearsal-mock.css" />
+</head>
+<body>
+  <a class="variant-badge" href="index.html">← 选版</a>
+  <div class="phone-stage">
+    <div class="phone-frame">
+      <div class="phone-inner">
+        <div class="status-bar"><span>9:41</span><span>L1-A 入口</span></div>
+        <div class="phone-screen">
+          <div class="screen-top">
+            <p class="profile-hero-kicker">沟通预演</p>
+            <h1 class="screen-heading">先练一遍，再开口</h1>
+            <p class="screen-meta">选一个贴近今晚的场景，和 SecondMe 模拟孩子反应</p>
+          </div>
+          <div class="screen-scroll">
+            <div class="scenario-grid">
+              <button type="button" class="scenario-card is-active">
+                <p class="scenario-title">写作业前怎么开口</p>
+                <p class="scenario-desc">他拖着不开始，你一催就容易吵起来。</p>
+              </button>
+              <button type="button" class="scenario-card">
+                <p class="scenario-title">刚吵完怎么修复</p>
+                <p class="scenario-desc">刚才说重了，想重新开口，但怕越说越糟。</p>
+              </button>
+              <button type="button" class="scenario-card">
+                <p class="scenario-title">手机规则怎么谈</p>
+                <p class="scenario-desc">一提手机就炸，想谈规则，又不想变成争吵。</p>
+              </button>
+            </div>
+            <button type="button" class="mock-cta">开始预演</button>
+            <a class="dialogue-entry" href="l2-a-idle.html">
+              <span class="dialogue-entry__title">亲子对话录音与分析</span>
+              <span class="dialogue-entry__desc">录一段真实对话，转写后解读，再带入情景预演</span>
+            </a>
+            <a class="dialogue-entry dialogue-entry--resume" href="l3-a-insight.html">
+              <span class="dialogue-entry__title">查看上次对话分析</span>
+              <span class="dialogue-entry__desc">录音转写与解读已保存，可继续带入情景预演</span>
+            </a>
+          </div>
+        </div>
+        <div class="footer-area">
+          <div class="nav-wrap">
+            <nav class="nav nav--airy" aria-label="底部导航">
+              <a class="tab" href="#"><img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/messages-square.svg" width="24" height="24" alt=""><span class="tab__label">交流</span></a>
+              <a class="tab" href="#"><img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/list-todo.svg" width="24" height="24" alt=""><span class="tab__label">任务</span></a>
+              <a class="tab is-active" href="#" aria-current="page"><img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/sparkles.svg" width="24" height="24" alt=""><span class="tab__label">预演</span></a>
+              <a class="tab" href="#"><img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/user-round.svg" width="24" height="24" alt=""><span class="tab__label">画像</span></a>
+            </nav>
+          </div>
+          <div class="home-indicator" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

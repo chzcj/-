@@ -161,6 +161,7 @@ export async function GET(request: Request) {
     thinkingChips: uiSnapshot?.thinkingChips,
     portraitCards,
     highlights: uiSnapshot?.highlights || [],
+    highlightMoments: uiSnapshot?.highlightMoments || [],
     refreshedAt: uiSnapshot?.refreshedAt || null,
     presentationWatermark,
   })

@@ -1,6 +1,6 @@
 import { View, Text, Input, Picker, Textarea } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
@@ -38,6 +38,8 @@ const PROVINCES = [
   '香港特别行政区', '澳门特别行政区', '台湾省',
 ] as const
 
+const RELATION_CHIPS = ['妈妈', '爸爸', '奶奶', '爷爷', '外婆', '外公'] as const
+
 type ServerBasic = {
   nickname?: string
   grade?: string
@@ -66,6 +68,16 @@ function applyBasicFields(
   if (basic.helpGoal?.trim()) setters.setHelpGoal(basic.helpGoal.trim())
 }
 
+function buildStatusCopy(run: ProfileBuildRunState | null): string {
+  if (run?.status === 'succeeded') {
+    return '画像已经整理好了。补完下面几项，就可以去看首版 Second Me。'
+  }
+  if (run?.status === 'running' && run.label?.trim()) {
+    return `${run.label} 您先填写，我们会在后台继续整理。`
+  }
+  return '这几项会帮助后面的交流、任务和预演更贴近你家；不会改动刚才四段讲述里的理解。'
+}
+
 export default function OnboardingBasic() {
   useSafeShareAppMessage({ title: '育见 - 帮家长看见孩子' })
   const stored = loadChildBasicInfo()
@@ -80,6 +92,8 @@ export default function OnboardingBasic() {
 
   const gradeIndex = Math.max(0, GRADES.findIndex((g) => g === grade))
   const provinceIndex = Math.max(0, PROVINCES.findIndex((p) => p === province))
+
+  const heroCopy = useMemo(() => buildStatusCopy(buildRun), [buildRun])
 
   useEffect(() => subscribeProfileBuildRun(setBuildRun), [])
 
@@ -117,7 +131,7 @@ export default function OnboardingBasic() {
 
   const next = async () => {
     if (!childName.trim() || !grade.trim() || !province.trim() || !caregiverRelation.trim() || !companionTime.trim() || !helpGoal.trim()) {
-      Taro.showToast({ title: '请把基础资料填写完整', icon: 'none' })
+      Taro.showToast({ title: '还有几项没填完', icon: 'none' })
       return
     }
     setSaving(true)
@@ -157,105 +171,129 @@ export default function OnboardingBasic() {
 
   return (
     <HiFiBuildShell
-      topTitle='补充孩子资料'
-      stepLabel='画像准备中'
+      topTitle='补充日常资料'
+      stepLabel='最后一步'
       progress={96}
-      actions={[{ label: saving ? '保存中…' : '保存并查看画像', onClick: () => void next(), disabled: saving }]}
+      actions={[{ label: saving ? '保存中…' : '完成，去看画像', onClick: () => void next(), disabled: saving }]}
     >
       <HiFiBuildHero
-        title='再补几条资料，让后续陪伴更贴近'
-        copy={
-          buildRun?.status === 'succeeded'
-            ? '画像已经准备好。填写完成后就可以直接查看。'
-            : buildRun?.status === 'running'
-              ? buildRun.label
-              : '资料会用于后续交流、任务、预演和成长轨迹，不改变正在整理的首版画像。'
-        }
+        kicker='四段讲述已完成'
+        title='再回答几个日常小问题'
+        copy={heroCopy}
+        compact
+        mascot={false}
       />
 
       <View className='basic-form'>
-        <Text className='basic-section-title'>姓名与年级</Text>
-        <View className='basic-field-card'>
-          <Text className='basic-field-label'>孩子昵称</Text>
-          <Input
-            className='basic-field-input'
-            type='text'
-            placeholder='例如：小树（仅用于产品内称呼）'
-            placeholderClass='basic-field-placeholder'
-            value={childName}
-            maxlength={20}
-            onInput={(e) => setChildName(e.detail.value)}
-          />
-        </View>
-        <View className='basic-field-row'>
-          <View className='basic-field-card basic-field-card--half'>
-            <Text className='basic-field-label'>年级</Text>
-            <Picker
-              mode='selector'
-              range={[...GRADES]}
-              value={gradeIndex >= 0 ? gradeIndex : 0}
-              onChange={(e) => setGrade(GRADES[Number(e.detail.value)] || '')}
-            >
-              <View className='basic-picker-value'>
-                <Text className={grade ? 'basic-picker-text' : 'basic-field-placeholder'}>
-                  {grade || '请选择'}
-                </Text>
+        <View className='basic-section'>
+          <Text className='basic-section-lead'>关于孩子</Text>
+          <Text className='basic-section-hint'>称呼和年级会让后面的建议更有分寸。</Text>
+          <View className='basic-group-card'>
+            <View className='basic-field-block'>
+              <Text className='basic-field-label'>平时怎么称呼 TA？</Text>
+              <Input
+                className='basic-field-input'
+                type='text'
+                placeholder='例如：小树'
+                placeholderClass='basic-field-placeholder'
+                value={childName}
+                maxlength={20}
+                onInput={(e) => setChildName(e.detail.value)}
+              />
+            </View>
+            <View className='basic-field-divider' />
+            <View className='basic-field-row'>
+              <View className='basic-field-block basic-field-block--half'>
+                <Text className='basic-field-label'>年级</Text>
+                <Picker
+                  mode='selector'
+                  range={[...GRADES]}
+                  value={gradeIndex >= 0 ? gradeIndex : 0}
+                  onChange={(e) => setGrade(GRADES[Number(e.detail.value)] || '')}
+                >
+                  <View className='basic-picker-value'>
+                    <Text className={grade ? 'basic-picker-text' : 'basic-field-placeholder'}>
+                      {grade || '请选择'}
+                    </Text>
+                    <Text className='basic-picker-chevron' aria-hidden>›</Text>
+                  </View>
+                </Picker>
               </View>
-            </Picker>
-          </View>
-          <View className='basic-field-card basic-field-card--half'>
-            <Text className='basic-field-label'>所在省份</Text>
-            <Picker
-              mode='selector'
-              range={[...PROVINCES]}
-              value={provinceIndex >= 0 ? provinceIndex : 0}
-              onChange={(e) => setProvince(PROVINCES[Number(e.detail.value)] || '')}
-            >
-              <View className='basic-picker-value'>
-                <Text className={province ? 'basic-picker-text' : 'basic-field-placeholder'}>
-                  {province || '请选择'}
-                </Text>
+              <View className='basic-field-divider basic-field-divider--vertical' />
+              <View className='basic-field-block basic-field-block--half'>
+                <Text className='basic-field-label'>所在省份</Text>
+                <Picker
+                  mode='selector'
+                  range={[...PROVINCES]}
+                  value={provinceIndex >= 0 ? provinceIndex : 0}
+                  onChange={(e) => setProvince(PROVINCES[Number(e.detail.value)] || '')}
+                >
+                  <View className='basic-picker-value'>
+                    <Text className={province ? 'basic-picker-text basic-picker-text--clamp' : 'basic-field-placeholder'}>
+                      {province || '请选择'}
+                    </Text>
+                    <Text className='basic-picker-chevron' aria-hidden>›</Text>
+                  </View>
+                </Picker>
               </View>
-            </Picker>
+            </View>
           </View>
         </View>
 
-        <Text className='basic-section-title'>家庭关系</Text>
-        <View className='basic-field-card'>
-          <Text className='basic-field-label'>您和孩子的关系</Text>
-          <Input
-            className='basic-field-input'
-            type='text'
-            placeholder='例如：妈妈、爸爸、奶奶'
-            placeholderClass='basic-field-placeholder'
-            value={caregiverRelation}
-            maxlength={40}
-            onInput={(e) => setCaregiverRelation(e.detail.value)}
-          />
-        </View>
-        <View className='basic-field-card'>
-          <Text className='basic-field-label'>平时陪孩子的时间</Text>
-          <Textarea
-            className='basic-field-textarea'
-            placeholder='例如：工作日晚上 1 小时，周末上午一起出门'
-            placeholderClass='basic-field-placeholder'
-            value={companionTime}
-            maxlength={200}
-            autoHeight
-            onInput={(e) => setCompanionTime(e.detail.value)}
-          />
-        </View>
-        <View className='basic-field-card'>
-          <Text className='basic-field-label'>希望育见怎么帮到孩子</Text>
-          <Textarea
-            className='basic-field-textarea'
-            placeholder='例如：少吼、作业开始前不那么僵、更懂他为什么抵触'
-            placeholderClass='basic-field-placeholder'
-            value={helpGoal}
-            maxlength={500}
-            autoHeight
-            onInput={(e) => setHelpGoal(e.detail.value)}
-          />
+        <View className='basic-section'>
+          <Text className='basic-section-lead'>关于您</Text>
+          <Text className='basic-section-hint'>方便理解您平时怎么陪、最希望改变什么。</Text>
+          <View className='basic-group-card'>
+            <View className='basic-field-block'>
+              <Text className='basic-field-label'>您和孩子的关系</Text>
+              <View className='basic-relation-chips'>
+                {RELATION_CHIPS.map((chip) => (
+                  <View
+                    key={chip}
+                    className={`basic-relation-chip${caregiverRelation === chip ? ' is-active' : ''}`}
+                    onClick={() => setCaregiverRelation(chip)}
+                  >
+                    <Text>{chip}</Text>
+                  </View>
+                ))}
+              </View>
+              <Input
+                className='basic-field-input basic-field-input--relation'
+                type='text'
+                placeholder='也可以自己填写，例如：姑姑'
+                placeholderClass='basic-field-placeholder'
+                value={caregiverRelation}
+                maxlength={40}
+                onInput={(e) => setCaregiverRelation(e.detail.value)}
+              />
+            </View>
+            <View className='basic-field-divider' />
+            <View className='basic-field-block'>
+              <Text className='basic-field-label'>平时大概怎么陪孩子？</Text>
+              <Textarea
+                className='basic-field-textarea'
+                placeholder='例如：工作日晚上聊一会儿，周末上午一起出门'
+                placeholderClass='basic-field-placeholder'
+                value={companionTime}
+                maxlength={200}
+                autoHeight
+                onInput={(e) => setCompanionTime(e.detail.value)}
+              />
+            </View>
+            <View className='basic-field-divider' />
+            <View className='basic-field-block'>
+              <Text className='basic-field-label'>最希望育见帮您什么？</Text>
+              <Textarea
+                className='basic-field-textarea'
+                placeholder='例如：作业前少僵、更懂他为什么抵触、吵完怎么修复'
+                placeholderClass='basic-field-placeholder'
+                value={helpGoal}
+                maxlength={500}
+                autoHeight
+                onInput={(e) => setHelpGoal(e.detail.value)}
+              />
+            </View>
+          </View>
         </View>
       </View>
     </HiFiBuildShell>

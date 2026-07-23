@@ -1,0 +1,17 @@
+{
+  "writtenFiles": [
+    "ui_kits/mobile-app/index.html",
+    "ui_kits/mobile-app/quality-report.json"
+  ],
+  "stats": {
+    "screensGenerated": 4,
+    "componentsUsed": 6,
+    "previewClassReuseRate": 0.94
+  },
+  "fixes": [
+    "removed-local-sidebar-css-var",
+    "added-interactiveStatesRendered",
+    "added-primaryActionPerScreen"
+  ],
+  "warnings": []
+}

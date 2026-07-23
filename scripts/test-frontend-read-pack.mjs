@@ -100,6 +100,8 @@ const payload = buildDailyProsePayload(
   '孩子写作业拖延怎么办'
 )
 assert(isFrontendReadPackShape(payload.retrievalPack), 'payload.retrievalPack 形状合法')
+assert(typeof payload.packStats === 'object', 'payload 含 packStats')
+assert(payload.writingRules?.singleFocusSuggested === true, 'writingRules 建议单重点')
 const leaks = assertNoBackendOnlyKeys(payload.retrievalPack)
 assert(leaks.length === 0, `无泄漏键 (leaks=${leaks.join(',')})`)
 for (const forbidden of BACKEND_ONLY_CONTEXT_FIELDS) {
@@ -114,8 +116,19 @@ import { dirname, join } from 'node:path'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const proseSrc = readFileSync(join(root, 'src/lib/server/daily/prose-context.ts'), 'utf8')
 assert(proseSrc.includes('pickFrontendReadPack'), 'prose-context 导入 pickFrontendReadPack')
+assert(proseSrc.includes('mustReadFullPack'), 'prose-context 要求通读完整 pack')
+assert(proseSrc.includes('packStats'), 'prose-context 注入 packStats')
+assert(proseSrc.includes('singleFocusSuggested'), 'prose-context 建议单重点')
+assert(proseSrc.includes('turnRelevantSnippetsAreEntryHintOnly'), 'snippets 仅为切入提示')
 assert(!/retrievalPack\s*=\s*\{[^}]*relevantChildStructureModel/.test(proseSrc),
   'prose-context 不再内联 RetrievedContext 字段名')
+
+// 5b. turnRelevantSnippets 预筛
+console.log('\n5b. turnRelevantSnippets 预筛')
+import { pickTurnRelevantSnippets } from '../src/lib/server/daily/turn-relevant-snippets.ts'
+const snippets = pickTurnRelevantSnippets('孩子考试考差了很沮丧', pack)
+assert(snippets.length >= 1, 'turnRelevantSnippets 非空')
+assert(snippets.length <= 5, 'turnRelevantSnippets 上限 5')
 
 // 6. digest pack + 机制人话卡
 console.log('\n6. digest / mechanism cards')

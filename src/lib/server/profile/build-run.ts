@@ -294,6 +294,7 @@ export async function startProfileBuildRun(
     `profile_build_run:${tenant.familyId}:${tenant.childId}:${snapshot.inputVersion}`,
     run.runId
   )
+  console.info(`[profile/build-run] enqueued runId=${run.runId}`)
   return run
 }
 
@@ -485,12 +486,35 @@ export async function executeProfileBuildRun(
 }
 
 export async function getProfileBuildRunView(tenant: TenantId) {
-  const [run, built] = await Promise.all([
+  const { superviseOnboardingPipeline } = await import('@/lib/server/onboarding/pipeline-supervisor')
+  const [run, built, pipeline] = await Promise.all([
     getLatestProfileBuildRun(tenant),
     getLatestBuiltProfileSnapshot(tenant).catch(() => null),
+    superviseOnboardingPipeline(tenant).catch((err) => {
+      console.warn('[build-run] pipeline supervise failed:', err)
+      return undefined
+    }),
   ])
   return {
     run: run ? toPublicBuildRun(run) : null,
     firstVisibleSnapshotReady: Boolean(built?.coreJudgment?.trim()),
+    pipelineHealthy: pipeline?.healthy,
+    pipelineGaps: pipeline?.gaps,
+    pipelineAudit: pipeline
+      ? {
+          healthy: pipeline.healthy,
+          workerAlive: pipeline.workerAlive,
+          gaps: pipeline.gaps,
+          modules: pipeline.modules.map((m) => ({
+            entryType: m.entryType,
+            packReady: m.packReady,
+            evidenceJobStatus: m.evidenceJobStatus,
+          })),
+          buildRunStatus: pipeline.buildRunStatus,
+          builtSnapshotReady: pipeline.builtSnapshotReady,
+          reconciledAt: pipeline.reconciledAt,
+          replayedFailedJobs: pipeline.replayedFailedJobs,
+        }
+      : undefined,
   }
 }

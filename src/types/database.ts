@@ -85,6 +85,72 @@ export type DailyMemoryImpact = 'increase_strength' | 'decrease_strength' | 'nar
 export type ChildProfileStatus = 'stable' | 'stage_judgment' | 'pending'
 
 /* ================================================================
+   v4 基础类型：证据引用 / 三角化事实 / 机制关系边 / 家庭 Agent persona
+   ================================================================ */
+export type EvidenceSource = 'child_quote' | 'parent_statement' | 'behavior_observation' | 'entry_evidence' | 'transcript'
+
+export type EpistemicStatus = 'observed' | 'reported' | 'derived' | 'inferred' | 'hypothesized' | 'expert_confirmed'
+
+export interface EvidenceRef {
+  /** 指向 fact_atoms.atom_id 或 evidence_episodes.episode_id */
+  evidenceId: string
+  /** 0-1，该证据对当前判断的贡献 */
+  weight: number
+  /** 原话片段（人类可读） */
+  quote: string
+  source: EvidenceSource
+  /** 业务观察时间（非写入时间） */
+  observedAt?: string
+  epistemicStatus: EpistemicStatus
+}
+
+export interface TriangulatedFact {
+  factId: string
+  content: string
+  sources: EvidenceSource[]
+  sourceCount: number
+  /** 来源独立性 0-1（不同时间/不同观察者/不同模态更独立） */
+  independenceScore: number
+  /** 硬公式：单源≤0.5 / 双源 0.6-0.7 / 三源≥0.8 / 四源≥0.95 */
+  confidence: number
+  evidenceRefs: EvidenceRef[]
+}
+
+export type MechanismRelationType = 'competesWith' | 'reinforces' | 'upstreamOf' | 'explainsSameBehavior' | 'contradicts'
+
+export interface MechanismEdge {
+  fromMechanismId: string
+  toMechanismId: string
+  relation: MechanismRelationType
+  /** 0-1，关系强度 */
+  weight: number
+  evidenceRefs: EvidenceRef[]
+  /** 在哪个场景下成立 */
+  sceneNote?: string
+}
+
+export interface FamilyAgentPersona {
+  familyId: string
+  parentTraits: {
+    anxietyLevel: number
+    controlTendency: number
+    reflectivity: number
+  }
+  childTraits: {
+    ageStage: string
+    temperament: string
+  }
+  familyClimate: {
+    conflictFrequency: number
+    supportLevel: number
+  }
+  toneCalibration: 'gentle' | 'direct' | 'analytical'
+  questionStrategy: 'probe_feeling' | 'probe_behavior' | 'probe_context'
+  updatedAt: string
+  version: number
+}
+
+/* ================================================================
    L1: RawMaterial Layer
    ================================================================ */
 export interface RawMaterial {
@@ -265,12 +331,20 @@ export interface CandidateMechanism {
   description: string
   supportedByEntries: EntryName[]
   supportingEvidence: string[]
+  /** v4：EvidenceRef id 化引用，替代 supportingEvidence 的 string[] */
+  evidenceRefs?: EvidenceRef[]
   explainedBehaviors: string[]
   possibleProtectiveFunction: string
   familyInteractionChain: FamilyInteractionChain
   scores: MechanismScore
   overallStrength: EvidenceStrength
+  /** v4：0-1 数值置信度，替代 overallStrength 三档 */
+  overallStrengthScore?: number
   applicableScope: string
+  /** v4：从 dossier 层下放到 mechanism 层的场景配比 */
+  sceneReadings?: import('./family-understanding-dossier').DossierSceneReading[]
+  /** v4：机制间关系边（competesWith / reinforces / upstreamOf / 等） */
+  relatedMechanismIds?: MechanismEdge[]
   missingEvidence: string[]
   possibleAlternativeExplanations: string[]
   shouldPromoteToDiagnosis: boolean
@@ -344,10 +418,22 @@ export interface PendingHypothesis {
   hypothesis: string
   triggerSource: string
   supportingEvidence: string[]
+  /** v4：EvidenceRef id 化引用，替代 supportingEvidence 的 string[] */
+  supportingEvidenceRefs?: EvidenceRef[]
   missingEvidence: string[]
   verificationQuestions: string[]
   possibleCounterEvidence: string[]
+  /** v4：反证证据 id 化引用 */
+  contradictingEvidenceRefs?: EvidenceRef[]
   weight: HypothesisWeight
+  /** v4：贝叶斯先验概率 0-1 */
+  prior?: number
+  /** v4：似然 0-1 */
+  likelihood?: number
+  /** v4：后验 = prior × likelihood / Σ */
+  posterior?: number
+  /** v4：需什么证据区分此假设与竞争假设 */
+  distinguishingEvidence?: string
   applicableScenes: string[]
   status: 'pending' | 'supported' | 'weakened' | 'resolved' | 'dismissed'
   retrievalTags: string[]
@@ -412,6 +498,8 @@ export interface DailyInteractionUpdate {
   timestamp: string
   createdAt: string
   sourceEventId?: string  // traceId：贯穿 userMessage→memory write→episode→job 的可追溯链路
+  /** journal = 家长随笔（画像手账 feed） */
+  sourceKind?: 'journal' | 'daily'
 }
 
 /* ================================================================
@@ -660,6 +748,8 @@ export interface RetrievedContext {
   entryFacts: string[]
   /** 家长原话片段（近期输入） */
   parentVerbatimSnippets?: string[]
+  /** v4：按问题域检索的原子事实独立通道（保留 sourceType，不打平混进 supportingEvidence） */
+  domainAtomFacts?: string[]
 }
 
 /* ================================================================

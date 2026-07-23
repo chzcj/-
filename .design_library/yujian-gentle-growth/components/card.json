@@ -1,0 +1,93 @@
+{
+  "slug": "card",
+  "schemaVersion": 2,
+  "name": "Paper Card",
+  "category": "surfaces",
+  "sourceKind": "from-scratch",
+  "confidence": "high",
+  "variantCount": 3,
+  "semanticTypeCandidates": [
+    {
+      "type": "content-surface",
+      "evidence": "页面主体承载大段说明与结构化信息"
+    },
+    {
+      "type": "hero-card",
+      "evidence": "卡片承担首屏叙事和局部引导"
+    }
+  ],
+  "variantDimensions": [
+    {
+      "name": "role",
+      "values": [
+        "hero",
+        "content",
+        "tip"
+      ]
+    },
+    {
+      "name": "elevation",
+      "values": [
+        "soft",
+        "floating"
+      ]
+    }
+  ],
+  "representativeVariants": [
+    {
+      "name": "说明卡",
+      "whySelected": "对应 onboarding 说明页主容器",
+      "traits": {
+        "role": "hero",
+        "elevation": "floating",
+        "radius": "xl"
+      },
+      "childrenDigest": "标题、正文、提示块组合"
+    },
+    {
+      "name": "内容卡",
+      "whySelected": "适合画像与分析承载",
+      "traits": {
+        "role": "content",
+        "elevation": "soft",
+        "radius": "xl"
+      },
+      "childrenDigest": "分段文本与小标题"
+    },
+    {
+      "name": "提示卡",
+      "whySelected": "用于浅绿色局部强调",
+      "traits": {
+        "role": "tip",
+        "elevation": "soft",
+        "radius": "lg"
+      },
+      "childrenDigest": "短标题+辅助说明"
+    }
+  ],
+  "anatomy": [
+    "container",
+    "title",
+    "body",
+    "supporting-slot"
+  ],
+  "structurePatterns": [
+    "single-column reading surface",
+    "soft inset emphasis block"
+  ],
+  "usageHints": {
+    "priorityHint": "high",
+    "placement": "页面主阅读区",
+    "density": "comfortable",
+    "tone": "paper-glass hybrid"
+  },
+  "doNotInvent": [
+    "不要叠太多子卡",
+    "不要锐利阴影",
+    "不要冷白背景",
+    "不要依赖 backdrop-filter",
+    "不要做成重度拟物玻璃"
+  ],
+  "unknowns": [],
+  "keyInsightSeed": "纸感白卡升级为轻玻璃纸片，靠高光边和柔雾阴影显得更精致"
+}

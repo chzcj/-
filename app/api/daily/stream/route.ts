@@ -1,12 +1,12 @@
 import { runDailyTurnBff } from '@/lib/server/daily/daily-turn-bff'
 import { buildThinkingChips } from '@/lib/server/daily/thinking-chips'
-import { buildMemoryWritePlan } from '@/lib/server/memory/pipeline'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { saveTurnEvent } from '@/lib/server/memory/database-manager'
 import { buildTurnEvent } from '@/lib/server/orchestration/pipeline'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
+import { shouldSkipEpisodeIngest } from '@/lib/server/memory/episode/ingest-gate'
 import { verifyAppApi, authError } from '@/lib/server/auth-guard'
 import { fail } from '@/lib/api-response'
 import { DailyLlmRequiredError } from '@/lib/server/daily/llm-required'
@@ -128,32 +128,27 @@ export async function POST(request: Request) {
           const isShortGreeting = isLight && text.length < 12
           const shouldWriteL1 = !result.isSafety && relType !== 'insufficient' && !isShortGreeting
           if (shouldWriteL1) {
-            const writePlan = buildMemoryWritePlan({
+            const dailyUpdate = createDailyUpdate(
+              text,
+              relType,
+              result.output.retrievedContext.matchedMechanisms,
               tenant,
-              dailyUpdates: [createDailyUpdate(
-                text,
-                relType,
-                result.output.retrievedContext.matchedMechanisms,
-                tenant,
-                traceId
-              )],
-              rationale: {
-                whyUpdate: '日常对话调度完成',
-                whyNotPromoteSomeItems: isLight ? '轻回应，不升级为长期判断' : '',
-                riskOfOvergeneralization: '',
-                nextVerificationNeed: result.output.routingDecision.needFollowup ? result.output.routingDecision.followupQuestion : ''
-              }
-            })
-            void enqueueJob('memory_write', { plan: writePlan, tenant }, `memory_write:${traceId}`, traceId)
+              traceId
+            )
+            const forceFlush = relType === 'counter_evidence'
+            void import('@/lib/server/memory/write/batched-daily-write')
+              .then(({ stageDailyUpdateForMemoryWrite }) =>
+                stageDailyUpdateForMemoryWrite(tenant, dailyUpdate, traceId, { forceFlush })
+              )
+              .catch((err) => console.warn('[daily/stream] batched memory_write 暂存失败:', err))
             // S2：有效交流轮计数；每 10 轮独立入队 deep_mechanism（与日桶正交）
             void import('@/lib/server/memory/deep-mechanism/note-effective-turn')
               .then(({ noteEffectiveFamilyTurn }) => noteEffectiveFamilyTurn(tenant, 'daily', traceId))
               .catch(() => {})
           }
 
-          // 每个有效交流轮都异步沉淀为 Episode/Atom。前台回复已完成，写入绝不阻塞首字；
-          // 以确定性 episodeId 去重，重发或重试不会制造重复的向量证据。
-          if (shouldWriteL1) {
+          // Episode：有效轮且非寒暄短句（谢谢/好的/你好 <12 字不入库）
+          if (shouldWriteL1 && !shouldSkipEpisodeIngest(text)) {
             const episodeCtx = { familyId: tenant.familyId, childId: tenant.childId, sourceEventId: traceId }
             const episodeId = deriveEpisodeId(text, episodeCtx)
             void enqueueJob('episode_ingest', {

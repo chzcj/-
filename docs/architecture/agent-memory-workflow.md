@@ -418,11 +418,15 @@ flowchart TB
 ## 10. 验证与审计
 
 ```bash
-npm run test:contracts          # 流式 + FrontendReadSchema
+npm run audit:fullchain       # 推荐：test:contracts + audit-prompt-registry
+npm run test:contracts        # 流式 + FrontendReadSchema + memory-contract
+node scripts/audit-prompt-registry.mjs
 node scripts/audit-memory-contract.mjs
 node scripts/test-retrieval-packet.mjs
 npm run audit:memory            # 可选：线上 DB 召回探测
 ```
+
+收工清单：[docs/contracts/FULLCHAIN-SELF-CHECK.md](../docs/contracts/FULLCHAIN-SELF-CHECK.md)
 
 ---
 

@@ -6,6 +6,7 @@ import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { useTapFileRecorder } from '@/hooks/useTapFileRecorder'
 import { getSessionToken } from '@/services/api'
 import { API_BASE_URL } from '@/config/env'
+import { writeLastDialogueAnalysisId } from '@/lib/rehearsalScenesCache'
 import './index.scss'
 
 function formatMs(ms: number) {
@@ -139,6 +140,11 @@ export default function DialogueRecordPage() {
         return
       }
       const analysisId = body.data?.analysisId
+      if (!analysisId?.startsWith('da_')) {
+        setError('分析结果无效，请重试。')
+        setPhase('idle')
+        return
+      }
       if (body.data?.status === 'skipped') {
         setPhase('idle')
         Taro.showToast({ title: '已跳过分析', icon: 'none' })
@@ -152,7 +158,7 @@ export default function DialogueRecordPage() {
         return
       }
       try {
-        Taro.setStorageSync('childos_last_dialogue_analysis_id', analysisId)
+        writeLastDialogueAnalysisId(analysisId)
         if (body.data?.rehearsalSeed) {
           Taro.setStorageSync('childos_rehearsal_dialogue_context', body.data.rehearsalSeed)
         }

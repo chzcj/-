@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>L3-V2-B · 画像 dossier 驱动</title>
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <link rel="stylesheet" href="../../components.css" />
+  <link rel="stylesheet" href="../profile-mocks/shared-profile-mock.css" />
+  <link rel="stylesheet" href="shared-rehearsal-mock.css" />
+  <link rel="stylesheet" href="shared-dialogue-analysis-v2.css" />
+</head>
+<body>
+  <a class="variant-badge" href="index.html">← 选版</a>
+  <div class="phone-stage">
+    <div class="phone-frame">
+      <div class="phone-inner">
+        <div class="status-bar"><span>9:41</span><span>V2-B dossier</span></div>
+        <div class="phone-screen">
+          <header class="deep-header">
+            <button type="button" class="deep-header__btn" aria-label="返回">
+              <img src="https://unpkg.com/lucide-static@latest/icons/arrow-left.svg" width="18" height="18" alt="">
+            </button>
+            <h1 class="deep-header__title">对话分析</h1>
+            <button type="button" class="deep-header__btn" aria-label="关闭">
+              <img src="https://unpkg.com/lucide-static@latest/icons/x.svg" width="18" height="18" alt="">
+            </button>
+          </header>
+          <div class="result-scroll">
+            <p class="overview-kicker">系统记忆 · 此场景下的孩子</p>
+            <p class="da-verdict">这段 8 分钟对话，主要是在<strong>验证</strong>画像里已有的 4 条理解——不是新结论，而是「又发生了一次」。</p>
+
+            <div class="da-dossier-strip">
+              <div class="da-dossier-cell">
+                <span class="da-dossier-label">启动前防御</span>
+                <p class="da-dossier-body">进作业前要先把节奏稳住；被催会立刻顶回。</p>
+              </div>
+              <div class="da-dossier-cell">
+                <span class="da-dossier-label">转换困难</span>
+                <p class="da-dossier-body">答应后仍拖延；手机/游戏是过渡缓冲。</p>
+              </div>
+              <div class="da-dossier-cell">
+                <span class="da-dossier-label">催促→控制</span>
+                <p class="da-dossier-body">解释「为你好」也被听成盯着、算时间。</p>
+              </div>
+              <div class="da-dossier-cell">
+                <span class="da-dossier-label">怕检查后改</span>
+                <p class="da-dossier-body">「写完给你看」会抬高启动门槛。</p>
+              </div>
+            </div>
+
+            <div class="da-highlights-head" style="margin-top:4px">
+              <h2 class="da-highlights-title">对话里怎么体现 · 10 个时刻</h2>
+              <span class="da-highlights-note">每句 ↔ 一条画像</span>
+            </div>
+
+            <div class="da-moment-grid">
+              <article class="da-moment-card is-peak">
+                <div class="da-highlight-top">
+                  <span class="da-speaker da-speaker--child">孩子</span>
+                  <span class="da-trigger-tag">峰值 #1</span>
+                  <span class="da-profile-tag">启动前防御</span>
+                </div>
+                <p class="da-highlight-quote">「你别催我行不行，我又不是不写。」</p>
+                <p class="da-highlight-read">↔ 画像：守节奏 · 短句切断「被盯着」预期</p>
+              </article>
+              <article class="da-moment-card">
+                <div class="da-highlight-top"><span class="da-speaker da-speaker--parent">家长</span><span class="da-profile-tag">催促→控制</span></div>
+                <p class="da-highlight-quote">「都七点半了，你怎么还不开始写？」</p>
+                <p class="da-highlight-read">↔ 画像：时间压力一开口，后面连锁顶回</p>
+              </article>
+              <article class="da-moment-card">
+                <div class="da-highlight-top"><span class="da-speaker da-speaker--child">孩子</span><span class="da-profile-tag">转换困难</span></div>
+                <p class="da-highlight-quote">「等我打完这局就开始，就一局。」</p>
+                <p class="da-highlight-read">↔ 画像：口头答应 + 实际延后 · 手机作缓冲</p>
+              </article>
+              <article class="da-moment-card">
+                <div class="da-highlight-top"><span class="da-speaker da-speaker--parent">家长</span><span class="da-profile-tag">催促→控制</span></div>
+                <p class="da-highlight-quote">「我是怕你拖到很晚，明天又起不来。」</p>
+                <p class="da-highlight-read">↔ 画像：解释越完整，越像站在旁边算进度</p>
+              </article>
+              <article class="da-moment-card">
+                <div class="da-highlight-top"><span class="da-speaker da-speaker--child">孩子</span></div>
+                <p class="da-highlight-quote">「知道了知道了，烦死了。」</p>
+                <p class="da-highlight-read">↔ 画像：敷衍收口 · 说了但没进入状态</p>
+              </article>
+              <article class="da-moment-card is-peak">
+                <div class="da-highlight-top"><span class="da-speaker da-speaker--parent">家长</span><span class="da-trigger-tag">峰值 #2</span></div>
+                <p class="da-highlight-quote">「你每次都这样，说了也不动。」</p>
+                <p class="da-highlight-read">↔ 画像：单次拖延被升级成「你总是」→ 防御拉满</p>
+              </article>
+              <article class="da-moment-card">
+                <div class="da-highlight-top"><span class="da-speaker da-speaker--child">孩子</span><span class="da-profile-tag">启动前防御</span></div>
+                <p class="da-highlight-quote">「那你别站我旁边，站远点。」</p>
+                <p class="da-highlight-read">↔ 画像：要物理距离 = 启动时不被看见</p>
+              </article>
+              <article class="da-moment-card">
+                <div class="da-highlight-top"><span class="da-speaker da-speaker--parent">家长</span><span class="da-profile-tag">怕检查后改</span></div>
+                <p class="da-highlight-quote">「写完拿来给我看看，我帮你检查一下。」</p>
+                <p class="da-highlight-read">↔ 画像：好意触发「写了也会被改」联想</p>
+              </article>
+              <article class="da-moment-card is-peak">
+                <div class="da-highlight-top"><span class="da-speaker da-speaker--child">孩子</span><span class="da-trigger-tag">峰值 #3</span></div>
+                <p class="da-highlight-quote">「看了又要说我写得烂，我不给你看。」</p>
+                <p class="da-highlight-read">↔ 画像：直接说出「检查=被否定」</p>
+              </article>
+              <article class="da-moment-card">
+                <div class="da-highlight-top"><span class="da-speaker da-speaker--parent">家长</span></div>
+                <p class="da-highlight-quote">「那你自己定，十分钟后我再来问。」</p>
+                <p class="da-highlight-read">↔ 松动点：语气回落 · 孩子只回「哦」未启动</p>
+              </article>
+            </div>
+
+            <article class="da-synthesis">
+              <h3 class="da-synthesis-title">育见解读 · 高密度版</h3>
+              <p class="da-synthesis-body">若把整段对话压成一条链：<strong>时间压力 → 顶回 → 解释加码 → 「你总是」→ 检查威胁 → 彻底关门</strong>。画像里 4 条理解在本段全部有原话锚点；缺的不是更多信息，而是启动前先把「检查感」降下来。</p>
+              <p class="da-synthesis-body">全量 47 句未展示。以上 10 句已覆盖 3 次冲突峰值 + 1 次松动尝试，足够决定「今晚怎么开口 differently」。</p>
+              <p class="da-try-inline"><strong>今晚可试：</strong>「今天最难的是哪一题？」——不问进度、不预承诺检查；十分钟后只问要不要一起看那一题。</p>
+            </article>
+
+            <div class="result-actions">
+              <button type="button" class="mock-cta">用这次对话去情景预演</button>
+              <button type="button" class="mock-cta mock-cta--secondary">返回预演</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

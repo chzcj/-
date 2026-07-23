@@ -23,6 +23,245 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-23 06:00 | Trae | 统一深度改造执行（阶段 A-E 全部落地）
+
+**做了什么**
+- 按 `unified-deep-refactor-spec.md` 总纲执行阶段 A-E，全部通过 typecheck + lint
+
+**阶段 A · 字段层改造（效果瓶颈，已落地）**
+- `src/lib/server/db.ts`：fact_atoms 表加 6 列（epistemic_status/evidence_tier/fact_role/ecological_layer/business_time/confidence）+ AtomRow 加字段 + FactAtomRecord 加字段 + upsertAtoms SQL 改 16 值/行
+- `src/lib/server/memory/episode/pipeline.ts`：ExtractedAtom 补 epistemicStatus/businessTime/confidence + 构造 AtomRow 时补映射（修复"抽取时有写库时丢"）+ fallback atom 补 epistemicStatus
+- `src/types/database.ts`：新增 EvidenceRef / TriangulatedFact / MechanismEdge / FamilyAgentPersona 类型 + CandidateMechanism 加 sceneReadings/relatedMechanismIds/evidenceRefs/overallStrengthScore + PendingHypothesis 加 prior/likelihood/posterior/distinguishingEvidence/supportingEvidenceRefs/contradictingEvidenceRefs + RetrievedContext 加 domainAtomFacts
+- `src/types/family-understanding-dossier.ts`：DossierPrediction 加 confidence + evidenceRefs（import EvidenceRef）
+
+**阶段 B · SP 加厚 harness 段（6 个 SP，已落地）**
+- `prompts/background/episodeExtractor.md`：加 epistemicStatus（observed/reported/derived/inferred/hypothesized）+ businessTime + confidence 硬公式 + Worked Example 补标
+- `prompts/core/parentFacingStyle.md`：加 §十八-§二十五（事实锚定决策树 / 替代解释 / 把握度标尺 / 认识论隔离 / edge case / 反套模板 / 非归罪语言 / persona 适配）
+- `prompts/background/portraitSynthesizer.md`：加认识论隔离段 / φ_r 消息函数段 / 贝叶斯更新段 / 防塌缩段 / EvidenceRef 硬规则段
+- `prompts/front/dailyDialogueOrchestration.md`：加 §8 v4 harness 纪律引用
+- `prompts/front/parentFacingCopy.md`：加 v4 harness 纪律段
+- `prompts/core/secondMeCollaboratorIdentity.md`：加 §C3 认识论隔离 + §C4 非归因
+
+**阶段 C · post-gate harness 校验（已落地）**
+- 新建 `src/lib/server/harness/post-gate.ts`：validateProseOrThrow（禁用词/认识论越界/空壳/虚高置信）+ validateSectionCopyOrThrow（段落完整性/禁用词）
+- `src/lib/server/daily/llm-required.ts`：requireTextStream 接 validateProseOrThrow（prose 路径）
+- `src/lib/server/daily/parent-facing-copy.ts`：fillDailySectionCopy 的 requireFastJson 接 validate: validateSectionCopyOrThrow（section 路径，自动重试）
+
+**阶段 E · 前台消费修复（已落地）**
+- `src/lib/server/daily/parent-facing-copy.ts` L107-118：dossierSlice 非空时不再丢弃 retrievalPack，保留 entryFacts(5)/childQuotes(3)/parentVerbatimSnippets(3)/matchedMechanisms(3)
+- `app/api/daily/how-to-speak/route.ts` L103-121：packetToRetrievedContext 补 dossierSlice（之前漏传 → how-to-speak 链路 dossierSlice 恒空）
+
+**阶段 D · 契约修过时 + 补缺失（已落地）**
+- `docs/contracts/memory-write.md`：修 PR-B3 过时（memory_write 不再链式 deep_mechanism）+ 补 episode_ingest→deep_mechanism + 补 dossier_patch 链
+- `docs/contracts/read-contract.md`：厚包上限 8 处同步代码值（12→24 等）+ 补 domainAtomFacts v4 行
+- 新建 `docs/contracts/dossier-schema.md`：dossier 10 段 schema + 子类型 + v4 约束 + 切片规则
+- 新建 `docs/contracts/atom-episode-schema.md`：fact_atoms 16 列 + epistemic_status 传播权限 + confidence 硬公式 + is_high_value 判定
+
+**验证**
+- `npm run typecheck`：exit 0 无错误（54 prompt rebuild + tsc --noEmit 全通过）
+- `npm run lint`：exit 0 仅 4 个预存 react-hooks 警告（非本次引入）
+
+**下一步（待用户决策）**
+- 阶段 F（成本优化）：写入批量（episode_ingest 不每轮）+ 读取双引擎（domainAtomFacts 独立通道）+ cache 落地
+- 阶段 G（v4 深度画像）：5 视角头并行 + 三角验证 confidence 硬公式 + 机制关系图 + 贝叶斯假设池 + persona 生成/更新
+- 服务器：开 PORTRAIT_V3=1 让 dossier 开始生成（L0-1，仍待做）
+- fact_atoms 表迁移：生产环境需跑 ALTER TABLE 加 6 列（CREATE TABLE IF NOT EXISTS 不会自动加列到已存在的表）
+
+**风险/冲突**
+- fact_atoms 表在生产已有数据，ALTER TABLE 加 6 列需手动跑（CREATE TABLE IF NOT EXISTS 对已存在表无操作）
+- post-gate 初期可能拦截率较高（LLM 尚未适应 v4 harness），需观察日志调阈值
+- episodeExtractor SP 要求 LLM 产出 epistemicStatus/confidence，旧 LLM 产出可能不带 → 默认 'reported' 兜底
+- Cursor 若在改预演链（V2-F），rehearsal 相关文件需先 sync:gitee
+
+## 2026-07-23 04:20 | Trae | 统一深度改造总纲（前后台 Agent + SP + 契约 + 字段）
+
+**做了什么**
+- 汇总近 10 轮 5 份文档结论（dossier-v3 审计 / product-memory-architecture / deep-portrait-v4 / gnn-family-reasoning-theory / sparse-data-harness-thick-sp）
+- 三轮审计：契约文档（11 份）+ 类型定义（字段缺口）+ SP 厚度
+- 产出权威总纲 `.trae/documents/unified-deep-refactor-spec.md`（11 Part + 附录），凌驾前 5 份文档
+- 核心产出：
+  - 全链路最短板地图（理论→SP→类型→DB→契约→前台，6 环薄点实证）
+  - 字段层改造：atom 补 5 列（epistemic_status/evidence_tier/fact_role/business_time/confidence）+ EvidenceRef 正式类型 + TriangulatedFact + CandidateMechanism 升级（sceneReadings/边/EvidenceRef[]）+ BayesianHypothesis + FamilyAgentPersona + RetrievedContext 加 domainAtomFacts
+  - SP 层改造：前后台术语统一表（8 术语）+ 6 个 SP 加厚 harness 段（parentFacingStyle 241→500+ / portraitSynthesizer 221→500+ / episodeExtractor 补认识论产出 / 等）
+  - 契约层改造：修 2 过时（memory-write PR-B3 / read-contract 厚包上限 8 处）+ 补 4 缺失（dossier-schema / atom-episode-schema / jobs-contract / RetrievedContext 13 字段）
+  - harness 层：post-gate 确定性校验（6 项：引用率/替代解释/把握度/禁用词/套模板/认识论），失败重产或降级
+  - 全链路一致性校验矩阵（9 字段 × 6 层对账）
+  - 7 阶段落地顺序（A DB+类型 → B SP → C post-gate → D 契约 → E 前台 → F 链路 → G v4）
+
+**为什么**
+- 用户指出三个巨大问题：① 数据永远稀疏 ② 木桶效应（最短板决定整体）③ 自生成 Agent+harness+厚 SP
+- 用户要求统一总结近 10 轮结论，对前后台 Agent + 所有 SP + 契约 + 字段做深度改造重构
+- 系统工程论铁律：理论厚但 SP 薄 / 字段不匹配 / 契约过时，任何一环薄都让整体失效
+
+**验证**
+- 契约审计：read-contract 11 键与代码一致，但 8 处厚包上限过时；memory-write 仍写 memory_write→deep_mechanism（PR-B3 已移除）；dossier/atom 无契约；11 个 job 无契约
+- 类型审计：fact_atoms 缺 5 列；evidenceTier/factRole 在 ExtractedAtom 有但 pipeline.ts L113-128 构造 AtomRow 时丢；EvidenceRef/TriangulatedFact/FamilyAgentPersona 全无类型；CandidateMechanism.supportingEvidence 是 string[] 非 EvidenceRef[]
+- SP 审计：现有 SP 已不薄（parentFacingStyle 241 行 ~60% 硬规则 / portraitSynthesizer 221 行 ~80%），但缺 post-gate 校验/认识论隔离/稀疏数据诚实/反套模板段
+
+**下一步（待用户决策执行阶段）**
+- 阶段 A（1-2 天，效果瓶颈）：fact_atoms 加 5 列 + pipeline 补映射 + EvidenceRef/TriangulatedFact/FamilyAgentPersona 类型 + 机制/假设升级 —— 适合 Cursor
+- 阶段 B（3-5 天）：6 个 SP 加厚 harness 段 + 前后台术语统一 —— 适合 Trae
+- 阶段 C（2-3 天）：post-gate.ts 6 项校验 + 调用接入 —— 适合 Cursor
+- 阶段 D（2-3 天，可与 B/C 并行）：修契约 + 补 4 份新契约 —— 适合 Trae
+- 阶段 E（1-2 天）：hidden 不丢 pack + how-to-speak 补 dossierSlice —— 适合 Cursor
+- 阶段 F（1-2 周，成本优化）：写入批量 + 读取双引擎 + cache 落地 —— 后做
+- 阶段 G（2-4 周）：深度画像 v4（多头/三角验证/贝叶斯假设池/persona）—— Trae
+
+**风险/冲突**
+- 阶段 A 改 fact_atoms 表结构，需迁移脚本（已有家庭数据少，风险低）
+- 阶段 B 改 6 个 SP，影响所有前台输出，需逐 SP 验证
+- 阶段 C post-gate 校验失败率初期可能高（LLM 不适应），需调阈值
+- 全链路一致性矩阵（Part 8）是防最短板的核心工具，每阶段必须对账
+- 详细文件索引见总纲附录
+
+## 2026-07-22 01:50 | Trae | 产品记忆架构总纲（refined）+ 三轮代码实证
+
+**做了什么**
+- 听用户口述产品愿景（原话批量存→批量拆→双引擎前台→全功能绑记忆→prompt cache 放大）
+- 三轮并行 Task 子代理实证代码：写入链 / 读取链 / prompt cache
+- 产出 `.trae/documents/product-memory-architecture.md`（产品架构总纲，凌驾于 dossier-v3 审计之上）
+  - 两条铁律：① 后台深度机制持续更新不模板化（sceneReading+权重+反证）② 前台 Agent 事实锚定不硬套（query 域 atom 网络 + 底稿）
+  - 现状对照（实证后修正）：
+    - 写入链：memory_write 已是 10 轮批量（符合愿景），但 **episode_ingest 仍每轮深拆**（真低效点）
+    - 读取链：atom 被打平丢 sourceType 混进 supportingEvidence，**无独立通道**；检索 query 只用 userText 未拼接 section/近轮/行为信号
+    - prompt cache：dossierSlice 排第 4 且每轮变 → 破坏前缀；retrieval-session-cache.ts **是 dead code**；legacy monolith 不注入 THEORY_CARDS
+  - 新发现断点（之前审计未覆盖）：
+    - L0-6：how-to-speak route `packetToRetrievedContext` 漏 dossierSlice 字段 → 该链路 dossierSlice 恒空
+    - dossierSlice 键序排位破坏 cache 前缀
+    - retrieval-session-cache.ts 全仓库无调用点
+  - 改造方案 5 层：L0 工程 P0 / L1 写入批量 / L2 读取双引擎 / L3 cache 落地 / L4 机制演进 / L5 全功能闭环
+
+**为什么**
+- 用户明确：之前 Trae 只查"接上了没"，没理解"应该长什么样"
+- 用户核心痛点：AI 瞎猜 = 前台靠死画像硬套 + 后台机制模板化；要的是双引擎（后台底稿 + 前台事实分析）
+- 用户提醒：数据库测试语料有垃圾，勿强行参考现网统计反推产品对错
+
+**验证**
+- 3 个 Task 子代理交叉验证行号：route.ts L151-158 / router.ts L140-158 / frontend-read-pack.ts L11-23 / retrieval-session-cache.ts 全文件无调用 / how-to-speak route L103-137
+- 与 dossier-v3 审计一致：PORTRAIT_V3 未开是 L0-1，本文档在其上加 L0-6
+
+**下一步（待用户决策）**
+- Layer 0（立即）：开 PORTRAIT_V3 + 修 6 个 P0 断点（含新 L0-6 how-to-speak）—— 适合 Cursor
+- Layer 1（1 周）：写入链批量改造（episode_ingest 不再每轮）—— 适合 Cursor
+- Layer 2（1-2 周）：读取链双引擎（domainAtomFacts 独立通道 + query 拼接 + SP 事实锚定）—— 适合 Trae
+- Layer 3（1 周）：prompt cache 落地（键序重排 + session cache 接线带漂移检测）—— 适合 Trae
+
+**风险/冲突**
+- Layer 1 改 route.ts + episode pipeline，影响每轮对话流，需充分测试反证轮 flush
+- Layer 2 改 FrontendReadSchema（加第 12 键 domainAtomFacts），需同步 read-contract.md 和 test-frontend-read-pack.mjs
+- Layer 2 改 SP（parentFacingStyle/parentFacingCopy/dailyDialogueOrchestration）加事实锚定硬规则，影响所有前台输出
+- Cursor 正在改预演链（V2-F/L4 结束页），Layer 0 的 L0-4 改 rehearsal/index.tsx 需先 sync:gitee
+- 详细文件索引见产品架构总纲附录
+
+## 2026-07-22 00:30 | Trae | dossier v3 全链路审查 + 改进方案
+
+**做了什么**
+- 登服务器实测（`81.70.228.8` → `/home/ubuntu/apps/yujian/`）：查 `PORTRAIT_V3`、`deep_model_digest.dossier`、Job 历史、数据最多家庭的 digest/mechanism/portraitCards
+- 8 个 Task 子代理并行深审 3 条链路：产出链（dossier 生成）/ 更新链（shouldReconceptualize + dossierPatcher）/ 消费链（前台 SP 读 dossier 颗粒度）
+- 产出权威报告：`.trae/documents/dossier-v3-fullchain-audit-and-improvement-plan.md`（581 行）
+  - 服务器实测铁证：`PORTRAIT_V3` **未设** → dossier v3 从未跑过；34 家庭 dossier 全 null；177 次 deep_mechanism_review 全走旧路径；8 次 dossier_patch 全是空操作
+  - 三链路断点：产出 5 / 更新 4 / 消费 3
+  - 三层改进方案：L1（5 个 P0，1-2 天）/ L2（4 个 P1，1-2 周）/ L3（4 个 P2，1-2 月）
+  - 链路精简图 + 验证 SQL
+
+**为什么**
+- 用户痛点（原话）："AI 对于家长可能输入什么，我怎么做整理这一步都是在瞎猜的。它没有真正依靠我们怎么样实现，就是它，它是都是一步一步分块儿来的，它没有整体思维，也没有一个对用户的精准把握"
+- 核心根因：`PORTRAIT_V3` 没开 → dossier v3 整合性画像从未生成 → 前台 AI 只能靠扁平碎片拼凑理解 → "瞎猜"
+
+**验证**
+- 服务器 psql 查询证实 34 家庭 `deep_model_digest.dossier` 全 null
+- mechanismNarrative 336 字（含原话+因果链）→ AI 在产出，只是 dossier 整合框架被关在 flag 后面
+- 8 个 Task 子代理交叉验证断点行号
+
+**下一步（待用户决策）**
+- L1-1（最高杠杆最低风险）：服务器 `.env.local` 加 `PORTRAIT_V3=1` + 重启 PM2 → dossier 立刻开始生成 → 前台能读整合性画像
+- L1-2 ~ L1-5（5 个 P0 断点）：parent-facing-copy.ts hidden payload / daily handoff / rehearsal end / onboarding result Hero — 适合 Cursor 接手
+- L2 / L3：见报告；L2 涉及 SP 改写和 schema 改造，建议 Trae 负责
+
+**风险/冲突**
+- 改 `.env.local` 前需征得用户同意（生产环境配置）
+- `src/lib/server/memory/dossier/portrait-v3-flags.ts` 是 flag 入口，未授权勿改
+- L1-4 改 `miniprogram/src/pages/rehearsal/index.tsx`，注意 Cursor 正在改预演链（V2-F / L4 结束页），避免冲突
+- 详细文件索引见报告附录
+
+## 2026-07-21 23:30 | Cursor | 全链路记忆利用率审计（audit-only）
+
+**做了什么**
+- Phase 0 生产基线复测：PORTRAIT_V3 仍关；dossier 0/34；Job 历史对齐 07-19
+- Phase 1 脚本矩阵全跑 + 新增 `npm run audit:memory-utilization`
+- Prose replay 2 样本（f_demo，生产 rubric 13+/18）
+- 报告：`.trae/documents/memory-utilization-audit-report-20260721.md`
+
+**验证**
+- audit:memory-contract 19/19 · frontend-read-pack 38/38 · test:contracts pass
+- 18 断点：open 12 / partial 3 / fixed 1（预演 end）/ obsolete 2
+
+**下一步**
+- 整改卷 P0：hidden payload + Hero + PORTRAIT_V3（需用户授权 flag）
+- 补 package.json `audit:fullchain` 别名（可选）
+
+**风险/冲突**
+- 本轮仅审计，未改产品代码；xiaoyin corpus 因 DEMO_DISABLED 未跑通
+
+## 2026-07-21 23:12 | Cursor | 预演续：旧对话分析 batch 重跑 v2
+
+**做了什么**
+- `listDialogueAnalysesForTenant`（缺 `rehearsal_seed.v2` 筛选）
+- `runDialogueBatchReanalyze` + `POST /api/internal/dialogue-reanalyze`
+- CLI：`npm run batch:dialogue-reanalyze`（`--dry-run` / `--limit=N` / `--all`）
+- 契约文档补 batch 说明
+
+**验证**
+- typecheck ✓ / build ✓ / deploy ready:true ✓
+
+**下一步**
+- 确认 dry-run 条数后去掉 `--dry-run` 正式升级 demo 旧记录
+- MP build:weapp 真机验收
+
+**风险/冲突**
+- 有 LLM 成本；勿重复全量跑
+
+## 2026-07-21 22:30 | Cursor | 预演续：L4 结束页 l1-e + handbook 链 smoke
+
+**做了什么**
+- L4 结束页对齐 mock `l1-e-end`：「预演完成」kicker + insight 卡 + 3× profile-block（MP/Web）
+- 共享 `packages/contracts/rehearsal-end.ts`（`getRehearsalEndCopy` / `pickRehearsalTaskTitle`）
+- Web `RehearsalEndPanel`；移除家长可见 UI 中的机制/证据内部字段
+- `scripts/test-rehearsal-handbook-chain.mjs`（7 pass）
+- 补 Web `hifi-app.css`：brief / V2-F / L4 样式（上轮未落盘部分一并补）
+
+**验证**
+- typecheck ✓ / build ✓ / handbook-chain smoke 7/7 ✓ / deploy ready:true
+
+**下一步**
+- MP build:weapp 真机验收 L4 结束三按钮 + 对话分析 V2-F
+- 旧 dialogue_analyses 重分析（可选 batch）
+
+## 2026-07-21 22:16 | Cursor | 预演卷0–6：V2-F 对话分析 + 缓存 + 契约
+
+**做了什么**
+- 卷0：场景列表 90s SWR 缓存（MP/Web）；`GET /api/rehearsal/dialogue-analyze/latest`；`da_` id 校验；Web resume 卡 → `/rehearsal/dialogue-result`
+- 卷2：`dialogueAnalysisV2` SP + `runDialogueAnalysis`；`rehearsal_seed.v2`；brief `understandingBullets[3]`；`docs/contracts/rehearsal-flow-contract.md`
+- 卷5：MP/Web dialogue-result **V2-F**（dossier + 讲清 + 节奏地图 + 第1/2步 + 完整一轮）；旧记录 BFF 适配
+- 卷1：L1 重进不再空屏（缓存先展示 + 后台刷新）
+
+**为什么**
+- 用户定稿 L3-V2-F 并要求全面执行预演迁移主线
+
+**验证**
+- Web `npm run typecheck` ✓ / `npm run build` ✓
+- MP `npm run typecheck` ✓
+- deploy `ready:true`（2026-07-21 14:16 UTC）
+
+**下一步**
+- 小程序 `cd miniprogram && npm run build:weapp` 真机验收 dialogue-result + resume 卡
+- 旧 `dialogue_analyses` 无 v2 需重录或 POST 重分析才出完整节奏地图
+- 卷3 L4 结束页 mock 像素、handbook 闭环验收脚本仍 open
+
+**风险/冲突**
+- 语音链路未动；新分析依赖 `dialogueAnalysisV2` LLM 产出质量
+- 未 commit（用户未要求）
+
 ## 2026-07-20 03:25 | Cursor | 验收缝补丁：Top3 原话判定 + Web debounce + 预演去假标签
 
 **本卷只改 / 不改**

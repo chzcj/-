@@ -1,9 +1,8 @@
 @import '../../../styles/tokens.scss';
-
-$onboarding-info-bg: linear-gradient(135deg, #fff9e1 0%, #eef7cf 45%, #e8f5e9 100%);
+@import '../../../styles/onboarding-info.tokens.scss';
 
 page {
-  background: $onboarding-info-bg;
+  background: $onboarding-page-bg;
 }
 
 .onboarding-info-root {
@@ -14,7 +13,7 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: $onboarding-info-bg;
+  background: $onboarding-page-bg;
 }
 
 .onboarding-info-bg {
@@ -25,7 +24,7 @@ page {
   bottom: 0;
   z-index: 0;
   pointer-events: none;
-  background: $onboarding-info-bg;
+  background: $onboarding-page-bg;
 }
 
 .onboarding-info-body {
@@ -40,127 +39,47 @@ page {
   box-sizing: border-box;
 }
 
-.onboarding-info-dots {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding-top: 12px;
-  flex-shrink: 0;
-}
-
-.onboarding-info-dot {
-  width: 20px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(79, 83, 76, 0.22);
-}
-
-.onboarding-info-dot.is-active {
-  background: $green-deep;
+.onboarding-info-scroll-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin-top: 8px;
 }
 
 .onboarding-info-scroll {
-  flex: 1;
-  min-height: 0;
-  margin-top: 12px;
+  height: 100%;
   overflow-y: auto;
 }
 
 .onboarding-info-card {
-  border-radius: 36px;
-  padding: 30px 24px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: $shadow-card;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: $onboarding-card-radius;
+  padding: $onboarding-card-padding;
+  background: #fff;
+  box-shadow: $onboarding-card-shadow;
   box-sizing: border-box;
-}
-
-.onboarding-info-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  margin-bottom: 20px;
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 600;
-  color: $green-deep;
-  background: $green-soft;
-}
-
-.onboarding-info-title {
-  display: block;
-  margin-bottom: 20px;
-  font-size: 26px;
-  line-height: 1.35;
-  font-weight: 700;
-  color: $ink;
-}
-
-.onboarding-info-paragraph {
-  display: block;
-  margin-bottom: 20px;
-  font-size: 16px;
-  line-height: 1.62;
-  font-weight: 400;
-  color: $ink-soft;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.onboarding-info-em {
-  font-weight: 600;
-  color: $green-deep;
-}
-
-.onboarding-info-tip {
-  margin: 20px 0;
-  padding: 16px;
-  border-radius: 16px;
-  background: $green-soft;
-  box-sizing: border-box;
-}
-
-.onboarding-info-tip-title {
-  display: block;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  font-size: 15px;
-  line-height: 1.55;
-  font-weight: 700;
-  color: $green-deep;
-  border-bottom: 1px solid rgba(111, 159, 86, 0.12);
-}
-
-.onboarding-info-tip-copy {
-  display: block;
-  font-size: 15px;
-  line-height: 1.62;
-  font-weight: 400;
-  color: $ink-soft;
 }
 
 .onboarding-info-cta {
   flex-shrink: 0;
   width: 100%;
-  height: 56px;
-  line-height: 56px;
-  margin-top: 20px;
-  border-radius: 28px;
+  height: $onboarding-cta-height;
+  line-height: $onboarding-cta-height;
+  margin-top: 18px;
+  border-radius: 27px;
   font-size: 17px;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #a7d77a, #7fb964);
+  background: $onboarding-green;
   border: none;
-  box-shadow: 0 12px 24px rgba(125, 176, 86, 0.22);
+  box-shadow: $onboarding-cta-shadow;
+
+  &::after {
+    border: none;
+  }
 }
 
 @media (max-width: 360px) {
   .onboarding-info-card {
-    padding: 24px 20px;
+    padding: 24px 20px 26px;
   }
 }

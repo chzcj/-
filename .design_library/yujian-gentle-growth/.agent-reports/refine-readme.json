@@ -1,0 +1,14 @@
+{
+  "writtenFiles": [
+    "README.md"
+  ],
+  "warnings": [
+    "本次版本以小程序可落地为优先，玻璃感与动感都做了能力收敛",
+    "README 已明确主色重新对齐 hi-fi 黄绿系，不再以金棕为视觉中心",
+    "README 已明确小程序与 Web 的视觉能力不同，系统优先保证可实现和一致性"
+  ],
+  "stats": {
+    "componentsDocumented": 6,
+    "outputFileCount": 2
+  }
+}

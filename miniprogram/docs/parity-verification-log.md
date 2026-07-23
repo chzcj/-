@@ -10,7 +10,7 @@
 | 任务 | /tasks | pages/tasks | pass | pass | — |
 | 预演 | /rehearsal | pages/rehearsal | pass | pass | checkpoint P2 |
 | 画像 | /family-profile | pages/profile | pass | audit | 卡片详情 shell P1 |
-| 引导 intro | /profile/build/intro | packageOnboarding/intro | pass | audit | — |
+| 引导 intro | /profile/build/intro | packageOnboarding/intro | pass | audit | 2026-07-19 单页 OnboardingInfoShell；CTA 54px 登记 P1 |
 | build capture | /profile/build/homework | capture?entryType=homework | pass | audit | 字重 P1 |
 | build follow-up | …/follow-up | follow-up | pass | audit | — |
 | build summary | …/summary | summary | pass | audit | — |
@@ -153,3 +153,26 @@
 - DailyAiMessage sectionsComplete 门控 end-actions
 - ProfileEditModals / basic 年级 Picker
 - tasks 空态 CTA、rehearsal chat-feed 底 padding
+
+## 2026-07-19 — Onboarding 信息页 HTML → TSX（intro 单页）
+
+**范围**：`OnboardingInfoShell` 重构、intro 合并 guide、案例卡、token 文件
+
+### P0 代码对齐
+
+| 验收点 | 结果 |
+|--------|------|
+| 单页长滚动 + 固定底 CTA | pass（flex scroll-wrap + cta flex-shrink:0） |
+| 16px 主卡圆角 | pass（`$onboarding-card-radius`） |
+| 180deg cream 渐变背景 | pass |
+| 无第二 badge / 无案例左色条 | pass |
+| login → intro → 开始 → hub + introSeen | pass |
+| guide 旧路由 redirect | pass |
+
+### 构建
+
+- `npm run build:weapp` 成功（2026-07-19）
+
+### 待真机
+
+- iPhone 13 @390 与 Desktop HTML 右栏并排截图（段间距、案例卡、CTA 距底）

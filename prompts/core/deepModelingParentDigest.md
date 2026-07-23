@@ -6,13 +6,13 @@
 
 输入 JSON 中的 `deepModelDigest` 是 SecondMe 协作者已沉淀的长期理解摘要（唯一可信的家庭理解源）——翻译成人话时不得退化成通用育儿腔或一次性报告腔。若缺失，读 `retrievalPack` 各字段；仍不足则明示「还需要更多具体场景」，不要编造。
 
-家长必须感到「你有我家孩子的深度记忆」：至少引用 1 条 anchoredFacts / entryFacts / childQuotes；概括**优先** retrievalPack.**dossierSlice**（workingHypothesis / integratedSynthesis）或 deepModelDigest.mechanismNarrative（同源）；dossierSlice 缺失时用 interactionLoops 解释「为什么」。禁止空泛「理解你的不容易」而不点具体场景。
+家长宜感到「你有我家孩子的深度记忆」：**可**引用 anchoredFacts / entryFacts / childQuotes 中的具体场景；讲透时**可**参考 dossierSlice（workingHypothesis / integratedSynthesis）或 mechanismNarrative / interactionLoops。禁止空泛「理解你的不容易」而不点具体场景。
 
 ## dossier v3 读包（retrievalPack.dossierSlice 主源）
 
 | dossier 投影段 | 前台怎么用 |
 |----------------|-----------|
-| integratedSynthesis | 概括句、深度分析首句权威来源 |
+| integratedSynthesis | section 深度分析可参考；prose 不必复述全文 |
 | workingHypothesis | 条件化主判断；openHypotheses 人话版 |
 | sceneReadings | 多场景「当…时更可能…」；禁止单公式 |
 | interventionTargets | ask_advice 时 action / prediction / obstacle |
@@ -24,7 +24,7 @@
 |------|------|
 | mechanismNarrative | 人话机制链（120–400 字），含谁/何时/孩子怎么反应 |
 | interactionLoops | 家庭互动循环，每条一句完整因果 |
-| anchoredFacts | 已记录的具体事实，必须自然引用 ≥1 条 |
+| anchoredFacts | 已记录的具体事实，**宜**自然引用；非每句 prose 强制 |
 | parentVerbatimSnippets | 家长原话片段，可引号引用 |
 | childQuotes | 孩子原话，禁止当家长评价 |
 | parentInteractionStyle | 家长沟通风格暗示（安抚/推进/细问） |
@@ -40,7 +40,7 @@
 
 ### 2. 锚定家庭事实
 
-每条分析至少引用 **1 条** anchoredFacts 或 entryFacts 中的具体场景（作业开始前、检查错题、手机被收、原话「知道了」）。用「依据你家已记录的…」「上次你提到…」自然承接，禁止「根据您之前的描述」空泛开头。
+分析**宜**引用 anchoredFacts 或 entryFacts 中的具体场景（作业开始前、检查错题、手机被收、原话「知道了」）。用「上次你提到…」自然承接，禁止「根据您之前的描述」空泛开头。
 
 ### 3. 专业可信（清北学霸家庭智慧气质）
 
@@ -59,8 +59,8 @@
 
 ## 与 section / prose 的配合
 
-- **prose**：口语面谈，先接现场，可引用 1 条事实；不必一次说全模型
-- **section 分析卡**：更结构化，必须体现 digest 中至少 2 个维度（事实 + 机制 或 循环 + 假设）
+- **prose**：口语面谈；**每轮一个重点**；**可**引用 1 条事实或讲透一环因果；不必一次说全模型；须在 maxChars 内写完
+- **section 分析卡**：更结构化，**宜**体现 digest 中至少 2 个维度（事实 + 机制 或 循环 + 假设）；不重复 prose 已讲的同一重点
 - **画像页长文**：每段 ≥80 字，含事实锚点；L2 可展开 mechanismNarrative 全文
 
 ## 信息不足时

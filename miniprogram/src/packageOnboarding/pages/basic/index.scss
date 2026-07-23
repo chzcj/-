@@ -3,43 +3,79 @@
 .hifi-build-root .basic-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 22px;
+  margin-bottom: 12px;
 }
 
-.hifi-build-root .basic-section-title {
+.hifi-build-root .basic-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hifi-build-root .basic-section-lead {
   display: block;
-  margin: 8px 0 2px;
   color: $ink;
   font-size: $text-title;
-  font-weight: 780;
+  font-weight: 760;
+  line-height: 1.35;
 }
 
-.hifi-build-root .basic-field-card {
+.hifi-build-root .basic-section-hint {
+  display: block;
+  margin-bottom: 4px;
+  color: $ink-soft;
+  font-size: $text-small;
+  line-height: $text-small-lh;
+}
+
+.hifi-build-root .basic-group-card {
   background: $card;
   border-radius: $radius-row;
-  padding: 13px 14px;
-  border: 1px solid rgba(111, 159, 86, 0.1);
+  padding: 4px 0;
+  border: 1px solid rgba(111, 159, 86, 0.12);
   box-shadow: $shadow-soft;
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.hifi-build-root .basic-field-block {
+  padding: 14px 16px;
+  box-sizing: border-box;
+}
+
+.hifi-build-root .basic-field-block--half {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 12px;
 }
 
 .hifi-build-root .basic-field-row {
   display: flex;
-  gap: 10px;
+  align-items: stretch;
 }
 
-.hifi-build-root .basic-field-card--half {
-  flex: 1;
-  min-width: 0;
+.hifi-build-root .basic-field-divider {
+  height: 1px;
+  margin: 0 16px;
+  background: rgba(73, 91, 45, 0.08);
+}
+
+.hifi-build-root .basic-field-divider--vertical {
+  width: 1px;
+  height: auto;
+  min-height: 56px;
+  margin: 12px 0;
+  align-self: stretch;
+  flex-shrink: 0;
 }
 
 .hifi-build-root .basic-field-label {
   display: block;
-  margin-bottom: 8px;
-  color: $muted;
+  margin-bottom: 10px;
+  color: $ink-soft;
   font-size: $text-small;
-  font-weight: 720;
+  font-weight: 680;
   line-height: $text-small-lh;
 }
 
@@ -52,6 +88,11 @@
   line-height: $text-body-lh;
 }
 
+.hifi-build-root .basic-field-input--relation {
+  margin-top: 4px;
+  min-height: 40px;
+}
+
 .hifi-build-root .basic-field-placeholder {
   color: $muted;
   font-size: $text-body;
@@ -60,20 +101,69 @@
 .hifi-build-root .basic-picker-value {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   min-height: 44px;
 }
 
 .hifi-build-root .basic-picker-text {
+  flex: 1;
+  min-width: 0;
   color: $ink;
   font-size: $text-body;
   line-height: $text-body-lh;
+}
+
+.hifi-build-root .basic-picker-text--clamp {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hifi-build-root .basic-picker-chevron {
+  flex-shrink: 0;
+  color: $muted;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 400;
+}
+
+.hifi-build-root .basic-relation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.hifi-build-root .basic-relation-chip {
+  padding: 8px 14px;
+  border-radius: $radius-pill;
+  background: rgba(255, 255, 247, 0.9);
+  border: 1px solid rgba(73, 91, 45, 0.1);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.hifi-build-root .basic-relation-chip Text {
+  color: $ink-soft;
+  font-size: $text-small;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.hifi-build-root .basic-relation-chip.is-active {
+  background: rgba(238, 247, 207, 0.75);
+  border-color: rgba(111, 159, 86, 0.35);
+}
+
+.hifi-build-root .basic-relation-chip.is-active Text {
+  color: $green-deep;
 }
 
 .hifi-build-root .basic-field-textarea {
   display: block;
   width: 100%;
-  min-height: 72px;
+  min-height: 80px;
   color: $ink;
   font-size: $text-body;
-  line-height: $text-body-lh;
+  line-height: 1.65;
 }

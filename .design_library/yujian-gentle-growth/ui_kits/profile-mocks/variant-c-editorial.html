@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>画像 mock C · 编辑型首屏</title>
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <link rel="stylesheet" href="../../components.css" />
+  <link rel="stylesheet" href="shared-profile-mock.css" />
+  <style>
+    .variant-badge{position:fixed;top:12px;right:12px;z-index:9;padding:6px 12px;border-radius:999px;background:rgba(32,38,51,.82);color:#fff;font:var(--type-caption)}
+    .editorial-hero{padding:var(--space-4);border-radius:24px;background:linear-gradient(165deg,rgba(255,255,255,.92) 0%,var(--surface-container) 55%,var(--yujian-primary-100) 100%);border:1px solid rgba(255,255,255,.76);box-shadow:var(--shadow-2);display:grid;gap:14px}
+    .editorial-hero h2{margin:0;font:var(--type-h1);line-height:1.24;letter-spacing:-.03em;color:var(--color-on-surface)}
+  </style>
+</head>
+<body>
+  <a class="variant-badge" href="index.html">← 选版</a>
+  <div class="phone-stage">
+    <div class="phone-frame">
+      <div class="phone-inner">
+        <div class="status-bar"><span>9:41</span><span>育见 mock C</span></div>
+        <div class="phone-screen">
+          <div class="screen-top">
+            <p class="profile-hero-kicker">画像 · 编辑简报</p>
+            <h1 class="screen-heading">小宇</h1>
+            <p class="screen-meta">今天 14:32 · 一屏读懂，再点细看</p>
+          </div>
+          <div class="screen-scroll">
+            <section class="editorial-hero">
+              <span class="chip chip--soft">核心理解</span>
+              <h2>怕的不是作业，是作业后面的那一刀检查</h2>
+              <p class="editorial-lede">在你家，「拖延」更像一道缓冲——把「会不会又被加码」往后推半小时。理解这一点，比催他快写更重要。</p>
+              <blockquote class="editorial-quote">「我知道要做，但一坐下就想到你会进来看。」——孩子原话片段</blockquote>
+            </section>
+
+            <article class="insight insight--tension" style="animation:none">
+              <div class="insight__rail">
+                <span class="insight__eyebrow insight__eyebrow--warning"><span class="insight__trace"></span>家里常重复</span>
+              </div>
+              <h2 class="insight__title">催 → 顶 → 关门 → 各做各的</h2>
+              <div class="insight__body"><p>张力冒头时，常常不是谁更强，而是谁先绷紧了。</p></div>
+            </article>
+
+            <p class="section-label">继续往下看</p>
+            <a class="link-row" href="#"><div><div class="link-row__title">当前关注点</div><div class="link-row__sub">晚饭后催作业 · 关门前的顶嘴</div></div><span class="link-row__chev">▸</span></a>
+            <a class="link-row" href="#"><div><div class="link-row__title">有效策略</div><div class="link-row__sub">先问最难的一题 · 任务反馈验证</div></div><span class="link-row__chev">▸</span></a>
+            <a class="link-row" href="#"><div><div class="link-row__title">行为模式</div><div class="link-row__sub">启动前沉默 · 检查段回避</div></div><span class="link-row__chev">▸</span></a>
+            <a class="link-row" href="#"><div><div class="link-row__title">写作业机制</div><div class="link-row__sub">待确认 1 条 · 继续交流会修正</div></div><span class="link-row__chev">▸</span></a>
+
+            <article class="pcard pcard--tip" style="width:100%;max-width:none">
+              <div class="pcard__inner">
+                <span class="pcard__badge">最近变化</span>
+                <p class="pcard__tip-text">两次提到「做完还被加码」——这不是偶发，是模式在重复。</p>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div class="footer-area">
+          <div class="nav-wrap">
+            <nav class="nav nav--airy" aria-label="底部导航">
+              <a class="tab" href="#"><img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/messages-square.svg" width="24" height="24" alt=""><span class="tab__label">交流</span></a>
+              <a class="tab" href="#"><img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/list-todo.svg" width="24" height="24" alt=""><span class="tab__label">任务</span></a>
+              <a class="tab" href="#"><img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/sparkles.svg" width="24" height="24" alt=""><span class="tab__label">预演</span></a>
+              <a class="tab is-active" href="#" aria-current="page"><img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/user-round.svg" width="24" height="24" alt=""><span class="tab__label">画像</span></a>
+            </nav>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -13,6 +13,12 @@ export default defineAppConfig({
     'pages/profile/deep/index',
     'pages/profile/evidence/index',
     'pages/profile/verify/index',
+    'pages/profile/memories/index',
+    'pages/profile/memory-detail/index',
+    'pages/profile/handbook/index',
+    'pages/profile/time-capsule/index',
+    'pages/profile/moments/index',
+    'pages/profile/insight/index',
   ],
   subPackages: [
     {

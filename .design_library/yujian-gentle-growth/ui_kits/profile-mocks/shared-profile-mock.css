@@ -1,0 +1,120 @@
+/* 画像页 mock 共用：手机壳 + 页内结构（不依赖 backdrop-filter） */
+:root { --mock-phone-w: 390px; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; font-family: var(--font-body); color: var(--foreground); background: var(--background); }
+
+.phone-stage { display: grid; justify-items: center; padding: var(--space-4); }
+.phone-frame {
+  width: var(--mock-phone-w);
+  height: 844px;
+  border-radius: 42px;
+  border: 7px solid #2b3129;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 28px 56px -28px rgba(32, 38, 51, 0.28), 0 12px 20px rgba(32, 38, 51, 0.12);
+  background: var(--background);
+}
+.phone-inner { height: 100%; display: flex; flex-direction: column; background: var(--background); }
+.status-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  font: var(--type-caption); color: var(--foreground);
+}
+.screen-scroll {
+  flex: 1; min-height: 0; overflow: auto;
+  padding: 0 var(--space-4) var(--space-3);
+  display: grid; align-content: start; gap: var(--space-3);
+}
+.screen-top { padding: 0 var(--space-4) var(--space-3); display: grid; gap: 6px; }
+.screen-heading { margin: 0; font: var(--type-h2); letter-spacing: -0.02em; }
+.screen-meta { margin: 0; font: var(--type-caption); color: var(--muted); }
+.footer-area { padding: 0 var(--space-2) var(--space-3); }
+.nav-wrap {
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, var(--surface-container-low) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  box-shadow: var(--shadow-1);
+}
+.home-indicator {
+  width: 136px; height: 5px; border-radius: var(--radius-full);
+  background: var(--outline-variant); margin: 8px auto 0;
+}
+
+.profile-hero-kicker { font: var(--type-caption); color: var(--muted); letter-spacing: 0.04em; }
+.profile-refresh { display: inline-flex; align-items: center; gap: 6px; font: var(--type-caption); color: var(--color-primary); }
+.profile-refresh-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary); opacity: 0.7; }
+
+.hub-card {
+  width: 100%; text-align: left; border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-lg); background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-container-low) 100%);
+  box-shadow: var(--shadow-1); padding: var(--space-4); cursor: pointer;
+  transition: transform var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.hub-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }
+.hub-card:active { transform: scale(var(--motion-press-scale)); }
+.hub-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.hub-card__title { margin: 0; font: var(--type-h4); color: var(--color-on-surface); }
+.hub-card__chev { color: var(--color-muted-foreground); font-size: 14px; }
+.hub-card__body { margin: 0; font: var(--type-caption); color: var(--color-on-surface-variant); line-height: 1.55; }
+.hub-card__foot { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hub-card__state {
+  display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px;
+  border-radius: var(--radius-full); font: var(--type-caption);
+  background: var(--color-primary-container); color: var(--color-on-primary-container);
+}
+.hub-card__state--warm { background: var(--color-warning-container); color: var(--color-warning); }
+.hub-card__hint { font: var(--type-caption); color: var(--color-muted-foreground); }
+
+.hub-grid { display: grid; gap: var(--space-3); }
+
+.link-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72); border: 1px solid var(--color-border);
+  text-decoration: none; color: inherit;
+  transition: background var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.link-row:hover { background: var(--color-surface); }
+.link-row__title { font: var(--type-body); font-weight: 600; color: var(--color-on-surface); }
+.link-row__sub { font: var(--type-caption); color: var(--color-muted-foreground); margin-top: 2px; }
+.link-row__chev { color: var(--color-primary); flex-shrink: 0; }
+
+.insight { width: 100%; max-width: none; }
+.insight--compact { padding: 14px; border-radius: 20px; }
+.insight--compact .insight__title { font: var(--type-body); font-weight: 650; }
+
+.topic-rail { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.topic-rail::-webkit-scrollbar { display: none; }
+.topic-chip {
+  flex-shrink: 0; min-height: 36px; padding: 0 14px; border-radius: var(--radius-full);
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  font: var(--type-caption); color: var(--color-muted-foreground); cursor: pointer;
+  transition: all var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.topic-chip.is-active {
+  background: var(--color-primary-container); color: var(--color-on-primary-container);
+  border-color: rgba(255, 255, 255, 0.72); box-shadow: var(--shadow-1);
+}
+
+.editorial-lede {
+  margin: 0; font: var(--type-lead); color: var(--color-on-surface);
+  line-height: 1.62; letter-spacing: -0.01em;
+}
+.editorial-quote {
+  margin: 0; padding: 12px 14px; border-left: 3px solid var(--yujian-accent-400);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: linear-gradient(90deg, var(--yujian-accent-100) 0%, transparent 100%);
+  font: var(--type-body); color: var(--color-on-surface-variant);
+}
+
+.section-label {
+  margin: var(--space-2) 0 0; font: var(--type-caption); letter-spacing: 0.06em;
+  text-transform: none; color: var(--color-muted-foreground);
+}
+
+@keyframes screen-enter {
+  from { opacity: 0; transform: translateY(var(--motion-float-distance)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.phone-screen { flex: 1; min-height: 0; display: flex; flex-direction: column; animation: screen-enter var(--motion-duration-slow) var(--motion-ease-standard); }

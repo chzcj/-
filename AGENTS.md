@@ -25,9 +25,11 @@ npm run sync:gitee
 
 ## 产品与设计
 
+- **全链路契约（全局强制）**：`.cursor/rules/ai-product-engineering.mdc`（alwaysApply）— 前端×Agent×BFF 须 producer/consumer/空转/四层对齐；收工 7 步见 `.cursor/rules/fullchain-contract-check.mdc`
 - 产品边界：[PRODUCT.md](PRODUCT.md)
 - 设计系统：[DESIGN.md](DESIGN.md)（hi-fi 主站；旧紫色 AppShell 已废弃）
 - **技术架构**：[docs/architecture/agent-memory-workflow.md](docs/architecture/agent-memory-workflow.md)（Agent 工作流 · SP · Job · 记忆）
+- **高保真迁移**：[docs/architecture/hifi-ui-migration-playbook.md](docs/architecture/hifi-ui-migration-playbook.md)（HTML/mock→TSX 强制六步法 · L1/L2/L3 · 记忆反推）；Cursor 规则 `.cursor/rules/hifi-ui-migration.mdc`（待建，alwaysApply）
 - UI 像素参考：[design-reference/README.md](design-reference/README.md)
 - 对外合作材料：[docs/outreach/](docs/outreach/)
 - **Impeccable（UI）**：已安装于 `.agents/skills/impeccable/`（Cursor 入口：`.cursor/skills/impeccable`）

@@ -1,7 +1,14 @@
 # BFF · 前端 · 后端 · Agent 工作流契约对齐审计
 
-**日期**：2026-07-11  
+**日期**：2026-07-11（主审计）· **2026-07-18 增补**（prose meta + 收工流程）  
 **范围**：Web hi-fi 四 Tab、微信小程序、Next BFF（59 routes）、Agent 管线
+
+### 2026-07-18 增补
+
+- **Prose payload 元字段**（`packStats` / `proseMode` / `writingRules` / `turnRelevantSnippets` 等）已文档化于 [read-contract.md](./read-contract.md) §Prose Payload；**不进 NDJSON/UI**。
+- **收工流程**：[FULLCHAIN-SELF-CHECK.md](./FULLCHAIN-SELF-CHECK.md) + `.cursor/rules/fullchain-contract-check.mdc`；一键 `npm run audit:fullchain`。
+- **自动化**：2026-07-18 跑通 — test:contracts 91+ 断言 + audit-prompt-registry；无新跨端字段漂移。
+- 详见 [.trae/documents/fullchain-contract-audit-20260718.md](../../.trae/documents/fullchain-contract-audit-20260718.md)。
 
 ---
 
@@ -109,8 +116,10 @@ generating ──POST /api/synthesis──► { synthesis: SynthesisOutput }
 | 路径 | 传输 | 关键字段 |
 |------|------|----------|
 | `POST /api/rehearsal/analyze` | NDJSON 或 JSON fallback | `parentText`, `parentRoundCount`, `fromSpecialFeature` |
-| `POST /api/rehearsal/dialogue-analyze` | JSON | `{ transcript }` → `{ segments, analysis, tryTonight, ... }` |
-| `POST /api/rehearsal/dialogue-transcribe` | multipart | 录音文件 |
+| `POST /api/rehearsal/dialogue-analyze` | JSON | GET `?id=da_*` / POST `{ transcript, analysisId? }` → `{ v2, segments, rehearsalSeed, ... }` |
+| `GET /api/rehearsal/dialogue-analyze/latest` | JSON | 最近 done 分析 |
+| `POST /api/rehearsal/dialogue-transcribe` | multipart | 录音文件 → ASR + dialogueAnalysisV2 |
+| `POST /api/internal/dialogue-reanalyze` | JSON（内部 token） | 批量升级缺 `rehearsal_seed.v2` 的旧记录 |
 
 小程序 `rehearsalAnalyze.ts` 事件类型与 `src/types/rehearsal-stream.ts` **一致**（本地副本）。
 

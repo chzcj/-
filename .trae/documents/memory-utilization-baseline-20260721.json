@@ -1,0 +1,34 @@
+{
+  "auditDate": "2026-07-21T23:20:00+08:00",
+  "environment": "production",
+  "serverPath": "/home/ubuntu/apps/yujian",
+  "flags": {
+    "PORTRAIT_V3": false,
+    "PORTRAIT_V3_note": "grep .env.local 未命中，默认关",
+    "FAMILY_MEMORY_THICK_PACK": "default_on",
+    "CHILDOS_WRITE_DEAD_LAYERS": "default_off"
+  },
+  "dossierCoverage": {
+    "hasDossier": 0,
+    "totalDeepModelDigestLatest": 34,
+    "coveragePct": 0
+  },
+  "predictionsSample": [],
+  "mechanismMatrixSample": [
+    { "familyId": "f_demo", "mechN": 5 },
+    { "familyId": "f_demo", "mechN": 6 },
+    { "familyId": "fam_1781700316491_vwckig", "mechN": 6 }
+  ],
+  "avgMechanismMatrixSize": 5.7,
+  "jobHistory": {
+    "deep_mechanism_review": { "succeeded": 177 },
+    "digest_update": { "succeeded": 1466 },
+    "dossier_patch": { "succeeded": 8, "note": "PORTRAIT_V3 关时多为空操作" }
+  },
+  "topActiveFamilies": [
+    { "familyId": "fam_1780644661390_km36wj", "childId": "child_1780644661390_aeegqa", "turnEvents": 271 },
+    { "familyId": "f_demo", "childId": "c_demo", "turnEvents": 173 },
+    { "familyId": "fam_1783439265597_luqfco", "childId": "child_1783439265597_omvbu6", "turnEvents": 150 }
+  ],
+  "conclusion": "PORTRAIT_V3 仍未开启；34 家庭 deep_model_digest.dossier 覆盖率 0%；机制矩阵 demo 约 5-6 条（较 2026-07-19 文档 2 条有改善）；dossier_patch 8 次成功但无 v2 dossier 落库"
+}

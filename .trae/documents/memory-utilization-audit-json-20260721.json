@@ -1,0 +1,310 @@
+{
+  "auditDate": "2026-07-22T15:23:03.131Z",
+  "tenant": {
+    "familyId": "f_demo",
+    "childId": "c_demo"
+  },
+  "sections": {
+    "hiddenPayloadDiff": {
+      "breakpointOpen": true,
+      "whenDossierSliceNonEmpty": [
+        "dossierSlice",
+        "deepModelDigest",
+        "inputType"
+      ],
+      "whenDossierSliceEmpty": [
+        "buildDailyProsePayload → retrievalPack (11 keys)",
+        "deepModelDigest",
+        "packReadingGuide",
+        "packStats",
+        "writingRules"
+      ],
+      "paradox": "dossier 越厚，hidden section 越丢 entryFacts/childQuotes/parentVerbatimSnippets",
+      "file": "src/lib/server/daily/parent-facing-copy.ts:106-117",
+      "fullPayloadUsesRetrievalPack": false
+    },
+    "contractDrift": {
+      "aligned": [
+        "entryFacts",
+        "dossierSlice"
+      ],
+      "drift": [
+        {
+          "key": "childStructureModels",
+          "doc": 12,
+          "code": 24
+        },
+        {
+          "key": "entryEvidence",
+          "doc": 12,
+          "code": 24
+        },
+        {
+          "key": "familyPatterns",
+          "doc": 10,
+          "code": 20
+        },
+        {
+          "key": "parentUnderstanding",
+          "doc": 12,
+          "code": 24
+        },
+        {
+          "key": "recentEvents",
+          "doc": 12,
+          "code": 24
+        },
+        {
+          "key": "pendingHypotheses",
+          "doc": 10,
+          "code": 20
+        },
+        {
+          "key": "childQuotes",
+          "doc": 16,
+          "code": 32
+        },
+        {
+          "key": "parentVerbatimSnippets",
+          "doc": 16,
+          "code": 32
+        }
+      ],
+      "layerNaming": {
+        "doc": "family_interaction_cycles",
+        "code": "interaction_cycles",
+        "file": "memory_layer_items.layer_name"
+      },
+      "memoryWriteDocDrift": "doc may say daily bucket chains deep_mechanism"
+    },
+    "hubPayloadMatrix": {
+      "hubProduces": [
+        "coreJudgment",
+        "completeness",
+        "supportFocus",
+        "behaviorSummary",
+        "interactionPattern",
+        "effectiveStrategies",
+        "pendingHypotheses",
+        "pendingHypothesesList",
+        "structuralTensions",
+        "hasRealData",
+        "thinkingChips",
+        "portraitCards",
+        "highlights",
+        "highlightMoments",
+        "refreshedAt",
+        "presentationWatermark"
+      ],
+      "mpApplyHubDataConsumes": [
+        "coreJudgment",
+        "completeness",
+        "supportFocus",
+        "behaviorSummary",
+        "interactionPattern",
+        "effectiveStrategies",
+        "pendingHypotheses",
+        "pendingHypothesesList",
+        "structuralTensions",
+        "hasRealData",
+        "thinkingChips",
+        "portraitCards",
+        "highlights",
+        "highlightMoments",
+        "refreshedAt",
+        "presentationWatermark"
+      ],
+      "declaredInTypeButNotApplyHubData": [],
+      "partialConsumption": [
+        "presentationWatermark.uiStale",
+        "presentationWatermark.digestStale",
+        "presentationWatermark.buildRunStatus",
+        "pendingHypothesesList",
+        "highlights",
+        "structuralTensions"
+      ],
+      "file": "miniprogram/src/pages/profile/index.tsx:applyHubData"
+    },
+    "deadWriteMatrix": [
+      {
+        "layer": "deep_mechanism_handoffs",
+        "writer": "src/lib/server/memory/deep-mechanism/handoff-store.ts",
+        "readers": [],
+        "verdict": "audit_only"
+      },
+      {
+        "layer": "handbook_admit_candidates",
+        "writer": "src/lib/server/profile/handbook-candidates-store.ts",
+        "readers": [
+          "handbook-admission.ts",
+          "handbook-enriched-candidate.ts"
+        ],
+        "verdict": "has_reader"
+      },
+      {
+        "layer": "raw_materials / cleaned_facts / retrieval_indexes",
+        "writer": "executeWritePlan (gated)",
+        "readers": [],
+        "verdict": "dead_layer_gated"
+      }
+    ],
+    "spDossierCoverage": {
+      "prompts/front/dailyDialogueOrchestration.md": {
+        "mentionsDossierSlice": true,
+        "v3Segments": []
+      },
+      "prompts/front/dailyPortraitRefresh.md": {
+        "mentionsDossierSlice": false,
+        "v3Segments": [
+          "integratedSynthesis",
+          "workingHypothesis",
+          "sceneReadings",
+          "interventionTargets",
+          "familyStruct"
+        ]
+      },
+      "prompts/front/communicationRehearsal.md": {
+        "mentionsDossierSlice": true,
+        "v3Segments": [
+          "workingHypothesis",
+          "sceneReadings"
+        ]
+      },
+      "prompts/core/deepModelingParentDigest.md": {
+        "mentionsDossierSlice": true,
+        "v3Segments": [
+          "integratedSynthesis",
+          "workingHypothesis",
+          "sceneReadings",
+          "interventionTargets",
+          "familyStruct"
+        ]
+      }
+    },
+    "breakpointDelta": [
+      {
+        "id": 1,
+        "name": "hidden payload 丢 retrievalPack",
+        "status": "open",
+        "file": "parent-facing-copy.ts:106"
+      },
+      {
+        "id": 2,
+        "name": "预演 handoff 空",
+        "status": "partial",
+        "file": "DailyAiMessage.tsx:148",
+        "note": "daily/index 未写；无 retrievalPackDigest"
+      },
+      {
+        "id": 3,
+        "name": "预演 end hardcode",
+        "status": "fixed",
+        "file": "rehearsal/index.tsx:795",
+        "note": "getRehearsalEndCopy(endData)"
+      },
+      {
+        "id": 4,
+        "name": "建档 Hero hardcode",
+        "status": "open",
+        "file": "result/index.tsx:132"
+      },
+      {
+        "id": 5,
+        "name": "enrich tensions 学术 title",
+        "status": "open",
+        "file": "portrait-card-enrich.ts:87"
+      },
+      {
+        "id": 6,
+        "name": "fillDailySectionCopy taskTitle 孤儿",
+        "status": "open",
+        "file": "daily-turn-bff.ts"
+      },
+      {
+        "id": 7,
+        "name": "enrich 静态空话",
+        "status": "open",
+        "file": "portrait-card-enrich.ts:166"
+      },
+      {
+        "id": 8,
+        "name": "主1/次2 禁止词未同步",
+        "status": "open",
+        "file": "parentFacingStyle.md"
+      },
+      {
+        "id": 9,
+        "name": "daily/rehearsal SP 未按 v3 五段",
+        "status": "open",
+        "file": "dailyDialogueOrchestration.md"
+      },
+      {
+        "id": 10,
+        "name": "dailyPortraitRefresh 未显式 parentFacingStyle",
+        "status": "partial",
+        "file": "registry 拼装层可能补"
+      },
+      {
+        "id": 11,
+        "name": "HubPayload 未消费字段",
+        "status": "open",
+        "file": "profile/index.tsx"
+      },
+      {
+        "id": 12,
+        "name": "deep/evidence/verify 读不全",
+        "status": "open",
+        "file": "profile/deep|evidence|verify"
+      },
+      {
+        "id": 13,
+        "name": "daily thinkingChips fallback 通用",
+        "status": "open",
+        "file": "daily/index.tsx"
+      },
+      {
+        "id": 14,
+        "name": "daily 不回传 retrievedContextSnapshot",
+        "status": "open",
+        "file": "dailyStream.ts"
+      },
+      {
+        "id": 15,
+        "name": "THEORY_CARDS 文档 15×9",
+        "status": "open",
+        "file": "theory-cards.ts"
+      },
+      {
+        "id": 16,
+        "name": "profileChipPanels 残留",
+        "status": "obsolete",
+        "note": "2026-07-14 已删"
+      },
+      {
+        "id": 17,
+        "name": "deep_mechanism_handoffs dead write",
+        "status": "partial",
+        "note": "仅 audit 读，非前台"
+      },
+      {
+        "id": 18,
+        "name": "saveEnrichedHandbookCandidate dead write",
+        "status": "obsolete",
+        "note": "→ handbook_admit_candidates 有 reader"
+      }
+    ],
+    "readPackFillRate": {
+      "error": "connect ECONNREFUSED 127.0.0.1:5432"
+    },
+    "toolchainGaps": [
+      {
+        "gap": "npm run audit:fullchain 未在 package.json 定义",
+        "workaround": "npm run test:contracts && node scripts/audit-prompt-registry.mjs"
+      },
+      {
+        "gap": "无 prose 原话锚定自动 scorer",
+        "workaround": "replay-daily-prose.mjs + 人工抽检"
+      }
+    ]
+  }
+}

@@ -3,49 +3,27 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { DeepPageHeader } from '@/components/nav/DeepPageHeader'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
-import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
 import { apiRequest } from '@/services/api'
+import { writeLastDialogueAnalysisId } from '@/lib/rehearsalScenesCache'
+import type { DialogueAnalysisPayload, DialogueAnalysisV2 } from '@yujian/contracts/rehearsal-dialogue'
 import './index.scss'
-
-type Segment = {
-  speaker: string
-  text: string
-  highlight?: boolean
-  highlightReason?: string
-}
-
-type AnalysisPayload = {
-  analysisId: string
-  status: string
-  summary: string
-  analysis: string
-  tryTonight: string
-  sampleDialogue: string
-  segments: Segment[]
-  rehearsalSeed?: Record<string, unknown>
-  errorMessage?: string
-}
-
-function isChildSpeaker(speaker: string) {
-  return speaker === '孩子'
-}
 
 export default function DialogueResultPage() {
   useSafeShareAppMessage({ title: '育见 · 对话分析' })
   const router = useRouter()
   const id = router.params.id || ''
-  const [data, setData] = useState<AnalysisPayload | null>(null)
+  const [data, setData] = useState<DialogueAnalysisPayload | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!id) {
-      setError('缺少分析结果')
+    if (!id.startsWith('da_')) {
+      setError('无效的分析链接')
       setLoading(false)
       return
     }
     void (async () => {
-      const res = await apiRequest<AnalysisPayload>(
+      const res = await apiRequest<DialogueAnalysisPayload>(
         `/api/rehearsal/dialogue-analyze?id=${encodeURIComponent(id)}`
       )
       setLoading(false)
@@ -53,17 +31,8 @@ export default function DialogueResultPage() {
         setError(res.error.message || '加载失败')
         return
       }
-      setData({
-        analysisId: res.data.analysisId,
-        status: res.data.status,
-        summary: res.data.summary,
-        analysis: res.data.analysis,
-        tryTonight: res.data.tryTonight,
-        sampleDialogue: res.data.sampleDialogue,
-        segments: res.data.segments || [],
-        rehearsalSeed: res.data.rehearsalSeed,
-        errorMessage: res.data.errorMessage,
-      })
+      setData(res.data)
+      writeLastDialogueAnalysisId(res.data.analysisId)
     })()
   }, [id])
 
@@ -82,13 +51,11 @@ export default function DialogueResultPage() {
     void Taro.switchTab({ url: '/pages/rehearsal/index' })
   }
 
-  const toggleSpeaker = (index: number) => {
-    if (!data) return
-    const next = data.segments.map((s, i) =>
-      i === index ? { ...s, speaker: s.speaker === '孩子' ? '家长' : '孩子' } : s
-    )
-    setData({ ...data, segments: next })
-  }
+  const v2: DialogueAnalysisV2 | undefined = data?.v2
+  const meta = v2?.meta
+  const phaseCount = meta?.phaseCount ?? v2?.phases.length ?? 0
+  const highlightCount =
+    meta?.totalQuoteCount ?? v2?.phases.reduce((n, p) => n + p.quotes.length, 0) ?? 0
 
   return (
     <View className='dialogue-result-page'>
@@ -143,65 +110,91 @@ export default function DialogueResultPage() {
             </View>
           ) : null}
 
-          {data && data.status === 'done' ? (
-            <View className='dialogue-result-flow'>
-              {data.summary ? (
-                <View className='dialogue-overview'>
-                  <Text className='dialogue-overview-kicker'>本次概览</Text>
-                  <Text className='dialogue-overview-text'>{data.summary}</Text>
+          {data?.status === 'done' && v2 ? (
+            <View className='da-result-flow'>
+              <View className='da-meta-row'>
+                {meta?.sceneLabel ? <Text className='da-meta-pill'>{meta.sceneLabel}</Text> : null}
+                {meta?.durationHint ? <Text className='da-meta-pill'>{meta.durationHint}</Text> : null}
+                {data.summary && !meta?.sceneLabel ? (
+                  <Text className='da-meta-pill'>{data.summary}</Text>
+                ) : null}
+                <Text className='da-meta-pill da-meta-pill--accent'>
+                  {phaseCount} 段 · 精选 {highlightCount} 句
+                </Text>
+              </View>
+
+              <Text className='overview-kicker'>系统记忆 · 此场景下的孩子</Text>
+              <View className='da-dossier-strip'>
+                {v2.dossierCells.map((cell) => (
+                  <View key={cell.label} className='da-dossier-cell'>
+                    <Text className='da-dossier-label'>{cell.label}</Text>
+                    <Text className='da-dossier-body'>{cell.body}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View className='da-synthesis'>
+                <Text className='da-synthesis-title'>讲清</Text>
+                <Text className='da-synthesis-body'>{v2.synthesis}</Text>
+              </View>
+
+              <Text className='da-rhythm-map-lede'>
+                按对话节奏拆成 {phaseCount} 段，每段只留最亮的原话——读起来像「场景地图」，不是流水账转写。
+              </Text>
+
+              {v2.phases.map((phase) => (
+                <View key={phase.title} className='da-phase-block'>
+                  <View className='da-phase-head'>
+                    <Text className='da-phase-title'>{phase.title}</Text>
+                    {phase.quoteCountHint ? (
+                      <Text className='da-meta-pill'>{phase.quoteCountHint}</Text>
+                    ) : null}
+                  </View>
+                  <Text className='da-phase-profile'>{phase.profileMatch}</Text>
+                  <View className='da-phase-quotes'>
+                    {phase.quotes.map((q) => (
+                      <Text key={`${phase.title}-${q.text.slice(0, 8)}`} className='da-phase-quote'>
+                        <Text className='da-quote-speaker'>{q.speaker}：</Text>
+                        「{q.text}」
+                        {q.isPeak ? <Text className='da-trigger-tag'>峰值</Text> : null}
+                      </Text>
+                    ))}
+                  </View>
                 </View>
-              ) : null}
+              ))}
 
-              <AuthorityInsightCard title='育见解读' body={data.analysis} />
+              <View className='da-action-block'>
+                <Text className='da-action-block__badge'>今晚可试</Text>
+                <Text className='da-action-block__lead'>拆成两步，照着做就行：</Text>
+                {v2.tryTonightSteps.map((step) => (
+                  <View key={step.label} className='da-step-item'>
+                    <Text className='da-step-label'>{step.label}</Text>
+                    <Text className='da-step-text'>{step.text}</Text>
+                  </View>
+                ))}
+              </View>
 
-              {data.tryTonight ? (
-                <View className='dialogue-try-tonight'>
-                  <Text className='dialogue-try-tonight-badge'>今晚可试</Text>
-                  <Text className='dialogue-try-tonight-body'>{data.tryTonight}</Text>
-                </View>
-              ) : null}
-
-              {data.sampleDialogue ? (
-                <View className='dialogue-sample'>
-                  <Text className='dialogue-section-title'>示范对话</Text>
-                  <View className='dialogue-sample-script'>
-                    <Text className='dialogue-sample-text'>{data.sampleDialogue}</Text>
+              {v2.sampleLines.length ? (
+                <View className='da-sample-card'>
+                  <Text className='da-sample-card__title'>示范开口 · 完整一轮</Text>
+                  {v2.sampleScene ? (
+                    <Text className='da-sample-card__scene'>{v2.sampleScene}</Text>
+                  ) : null}
+                  <View className='da-sample-lines'>
+                    {v2.sampleLines.map((line, i) => (
+                      <Text key={i} className='da-sample-line'>
+                        <Text
+                          className={`da-sample-role${line.role === '家长' ? ' is-parent' : ''}`}
+                        >
+                          {line.role}
+                        </Text>
+                        {line.stageDirection ? `（${line.stageDirection}）` : ''}
+                        {line.text}
+                      </Text>
+                    ))}
                   </View>
                 </View>
               ) : null}
-
-              <View className='dialogue-timeline'>
-                <View className='dialogue-timeline-head'>
-                  <Text className='dialogue-section-title'>对话原文</Text>
-                  <Text className='dialogue-timeline-hint'>点某段可切换「家长 / 孩子」</Text>
-                </View>
-                <View className='dialogue-timeline-body'>
-                  {data.segments.map((seg, i) => {
-                    const child = isChildSpeaker(seg.speaker)
-                    return (
-                      <View
-                        key={`${i}-${seg.text.slice(0, 8)}`}
-                        className={[
-                          'dialogue-bubble-row',
-                          child ? 'is-child' : 'is-parent',
-                          seg.highlight ? 'is-highlight' : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                        onClick={() => toggleSpeaker(i)}
-                      >
-                        <View className='dialogue-bubble'>
-                          <Text className='dialogue-bubble-speaker'>{seg.speaker}</Text>
-                          <Text className='dialogue-bubble-text'>{seg.text}</Text>
-                          {seg.highlightReason ? (
-                            <Text className='dialogue-bubble-reason'>{seg.highlightReason}</Text>
-                          ) : null}
-                        </View>
-                      </View>
-                    )
-                  })}
-                </View>
-              </View>
 
               <View className='dialogue-result-actions'>
                 <Text className='pill primary block' onClick={goRehearsal}>

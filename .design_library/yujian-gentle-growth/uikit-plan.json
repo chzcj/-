@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "headBoilerplate": "<link rel=\"stylesheet\" href=\"../../colors_and_type.css\">",
+  "corePreviewComponents": [
+    {
+      "slug": "button",
+      "reason": "fixed slot \"button\"; semantic=primary-action:0.75; policy=fixed-slots-first",
+      "evidenceFile": "components/button.json",
+      "priority": 1,
+      "slot": "button"
+    },
+    {
+      "slug": "bottom-nav",
+      "reason": "fixed slot \"navigation\"; semantic=tab-navigation:0.75; policy=fixed-slots-first",
+      "evidenceFile": "components/bottom-nav.json",
+      "priority": 2,
+      "slot": "navigation"
+    },
+    {
+      "slug": "card",
+      "reason": "fixed slot \"card\"; semantic=content-surface:0.75; policy=fixed-slots-first",
+      "evidenceFile": "components/card.json",
+      "priority": 3,
+      "slot": "card"
+    },
+    {
+      "slug": "chip",
+      "reason": "fixed slot \"tag\"; semantic=starter-chip:0.75; policy=fixed-slots-first",
+      "evidenceFile": "components/chip.json",
+      "priority": 4,
+      "slot": "tag"
+    },
+    {
+      "slug": "input-dock",
+      "reason": "fallback after fixed slots; semantic=conversation-input:0.75; policy=fixed-slots-first",
+      "evidenceFile": "components/input-dock.json",
+      "priority": 5
+    },
+    {
+      "slug": "insight-card",
+      "reason": "fallback after fixed slots; semantic=authority-explanation:0.75; policy=fixed-slots-first",
+      "evidenceFile": "components/insight-card.json",
+      "priority": 6
+    }
+  ],
+  "supportEvidenceComponents": [],
+  "allowedComponents": [
+    "button",
+    "bottom-nav",
+    "card",
+    "chip",
+    "input-dock",
+    "insight-card"
+  ],
+  "screenBlueprints": [
+    {
+      "name": null,
+      "componentSlugs": [],
+      "role": "primary"
+    },
+    {
+      "name": null,
+      "componentSlugs": [],
+      "role": "secondary"
+    },
+    {
+      "name": null,
+      "componentSlugs": [],
+      "role": "secondary"
+    }
+  ],
+  "productContext": {
+    "kitType": "mobile-app",
+    "productType": "Mobile App",
+    "dominantCopy": [],
+    "pageNames": [],
+    "selectedFrameNames": []
+  },
+  "selectionPolicy": "fixed-slots-first",
+  "slotAssignments": [
+    {
+      "slot": "button",
+      "slug": "button",
+      "reason": "name"
+    },
+    {
+      "slot": "navigation",
+      "slug": "bottom-nav",
+      "reason": "name"
+    },
+    {
+      "slot": "card",
+      "slug": "card",
+      "reason": "name"
+    },
+    {
+      "slot": "tag",
+      "slug": "chip",
+      "reason": "name"
+    }
+  ],
+  "missingFixedSlots": [
+    "menu",
+    "table"
+  ],
+  "fallbackComponents": [
+    "input-dock",
+    "insight-card"
+  ],
+  "needsNarrative": false,
+  "forbiddenInventedComponents": [],
+  "lowConfidence": false,
+  "warnings": [
+    "missing-fixed-slot:menu",
+    "missing-fixed-slot:table"
+  ]
+}

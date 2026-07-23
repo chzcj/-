@@ -4,6 +4,7 @@ globs:
   - miniprogram/**
   - .agents/skills/wechat-devtools/**
   - .agents/skills/miniprogram-dev/**
+  - .agents/skills/wechat-miniprogram-designui/**
 ---
 
 # 社区 Skill / MCP 使用边界（育见）
@@ -15,13 +16,16 @@ globs:
 | wechat-devtools Skill | `.agents/skills/wechat-devtools/` | 开发者工具 SOP：编译、预览、截图、巡检 |
 | wechat-devtools MCP | 根目录 `.mcp.json` | CLI 自动化（需开启服务端口） |
 | miniprogram-dev Skill | `.agents/skills/miniprogram-dev/` | **平台知识库**：rpx、权限、分包、提审 |
+| wechat-miniprogram-designUI | `.agents/skills/wechat-miniprogram-designui/` | **微信官方 UI/UX 规范**：尺寸、热区、TabBar/胶囊、审核红线 |
 
 ## 优先级（冲突时）
 
-1. **最高**：`miniprogram/docs/PORTING.md` + `.cursor/rules/miniprogram-porting.mdc` + `DESIGN.md`
-2. **验收**：`PORTING-SELF-CHECK.md` → 可用 wechat-devtools 截图/巡检辅助，结果写入 `visual-diff.md`
-3. **平台知识**：`miniprogram-dev`（仅查 API/审核/陷阱）
-4. **禁止**：让 `miniprogram-dev` 主导 UI、信息架构、或「从零新建一版小程序」
+1. **最高**：`DESIGN.md` + `miniprogram/docs/DESIGN-TOKENS.md`（育见品牌色与 hi-fi 气质）
+2. **产品同步**：当前小程序页面与功能意图（新页/改版不必死磕 Web 像素）
+3. **平台 UI 规范**：`wechat-miniprogram-designUI`（触控热区、胶囊避让、隐私弹窗、审核禁忌）
+4. **验收**：`PORTING-SELF-CHECK.md` + wechat-devtools 截图 → `visual-diff.md`
+5. **平台知识**：`miniprogram-dev`（API/提审/陷阱）
+6. **禁止**：让 `miniprogram-dev` 或 designUI 的微信绿 `#07C160` 覆盖育见设计；禁止从零新建一版小程序
 
 ## 明确禁止
 
@@ -34,10 +38,52 @@ globs:
 
 ```
 改 miniprogram 某页
-  → 先读 Web 同路由 + PORTING
-  → 写代码（Token / map / diff）
+  → DESIGN-TOKENS + 当前页面产品意图
+  → 写代码；合规/热区/胶囊 → wechat-miniprogram-designUI
   → wechat-devtools：compile → navigate → screenshot
-  → 对照 yujian.yihe.site → 更新 visual-diff / parity log
+  → 更新 visual-diff / web-component-map
 ```
 
-`miniprogram-dev` 仅在问到：合法域名、scope.record、分包、提审材料、rpx 换算、平台 API 差异时使用。
+`miniprogram-dev`：合法域名、scope.record、分包、提审、API 差异。  
+`wechat-miniprogram-designUI`：Modal/Toast 规范、审核红线、导航避让（**不**改育见品牌色）。
+
+---
+
+## UI 修改协议（硬性规定）
+
+改任何小程序页面前，**先想清楚再动手**；UI 与 Agent 输出是同一件事，不是只改样式。
+
+**全局契约**：凡触达 Agent/BFF/契约，须同时遵守 [ai-product-engineering.mdc](../ai-product-engineering.mdc)（producer/consumer/空转/L1–L4 对齐）；收工见 [fullchain-contract-check.mdc](../fullchain-contract-check.mdc)。
+
+### 开工前必读（统一过一遍）
+
+1. **模块目的**：这一屏解决家长什么问题、在链路哪一步。
+2. **数据从哪来**：BFF / 流式 / 本地 storage；读对应 `route.ts`、`packages/contracts`、`prompts/`、页面 `services/*`。
+3. **输出结构**：有哪些字段、类型（prose / list / section / card）、典型字数、是否流式、分几块区域。
+4. **输入结构**：用户说什么、填什么、语音还是文字。
+5. **设计依据**：用户给了哪种材料（见下表），再决定 UI 策略与是否动 Agent。
+
+### 三种输入模式 → 两种做法
+
+| 用户给的材料 | 做法 | Agent / 后端 |
+|-------------|------|----------------|
+| **A. 完整稿**：截图 / 草图 / 明确 UI 想法 | **复刻式落地**：图 → 代码，尽量像素级还原布局、层级、文案占位 | 用户可随后配合改 Agent 输出以匹配 UI；Agent 改动需用户确认或同任务内一并提出 |
+| **B. 无明确稿**：仅参考图、事例、文字描述 | **设计驱动**：用 DESIGN-TOKENS + designUI 规范，按**当前输出字段**设计能装下真实内容的布局 | 以现有 contract / 流式事件为准；若布局装不下再提议改字段 |
+| **C. 模糊想法 + 可能要改输出** | **UI 与 Agent 同工**：先列字段与字数假设 → 改 UI 草案 → **同步**改 prompt / contract / 解析逻辑 | 必须同一轮思考：标题数量、段落上限、列表条数、是否拆 section |
+
+### 强制步骤（未做不得改代码）
+
+```
+1. 读页面 + 组件 + 相关 API/contract/prompt
+2. 写简短「模块说明」：目的 / 字段表 / 区域划分 / 典型字数
+3. 判定模式 A / B / C，向用户确认（若模式不清）
+4. 再改 miniprogram UI；若 C 或 B 装不下 → 并列提出 Agent 改动方案
+5. build:weapp + 真机或 devtools 截图验收
+```
+
+### 禁止
+
+- 未读输出字段就改气泡/卡片/列表样式
+- 有完整用户稿时仍按 Web 或 Agent 旧布局自作主张
+- 只改 SCSS/TSX 却导致长文截断、第二行孤字、流式区高度塌陷而不改结构或 Agent 切分
+- 擅自大改 prompt/contract 而不说明对用户可见文案的影响

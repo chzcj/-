@@ -1,0 +1,9 @@
+{
+  "writtenFiles": [
+    "README.md"
+  ],
+  "warnings": [
+    "部分 token alias 在 css-to-json 投影时产生 unresolved var warning，但 css.json 已成功生成",
+    "Nunito 与 Noto Sans SC 依赖外部字体导入，离线或受限网络环境会回退到 PingFang SC 或本地 sans-serif"
+  ]
+}

@@ -68,6 +68,7 @@ const DEFAULT_PACK: HandbookPack = {
   memoryFeedPreview: [],
   highlightMoments: [],
   timeCapsule: null,
+  timeCapsuleSnapshot: null,
   archiveWeeks: [],
   refreshedAt: '',
   watermark: { handbookStale: true, memoryStale: true, partiallyRefreshing: false },

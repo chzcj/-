@@ -260,7 +260,7 @@
 
 .hifi-app-root .tile-cap {
   font-size: 15.5px; /* +0.5pt 量级 */
-  font-weight: 740;
+  font-weight: 400;
   line-height: 1.38;
   color: #202633;
   display: -webkit-box;

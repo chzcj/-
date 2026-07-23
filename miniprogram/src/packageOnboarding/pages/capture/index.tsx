@@ -1,6 +1,7 @@
 import { View, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { CaptureDirective } from '@/components/onboarding/CaptureDirective'
 import { BuildRecordBox } from '@/components/profile/BuildRecordBox'
 import { HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
@@ -26,7 +27,6 @@ export default function EntryCapturePage() {
   const existingPreview = supplementMode ? getExistingEntryPreview(entryType) : ''
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState('')
-  const [promptIndex, setPromptIndex] = useState(0)
 
   useEffect(() => {
     if (!getSessionToken()) {
@@ -39,10 +39,6 @@ export default function EntryCapturePage() {
     }
   }, [entryType, supplementMode])
 
-  const currentPrompt = useMemo(
-    () => config.prompts[promptIndex % config.prompts.length] || config.prompts[0],
-    [config, promptIndex]
-  )
   const hasText = draft.trim().length >= 2
 
   const handleContinue = async () => {
@@ -116,16 +112,17 @@ export default function EntryCapturePage() {
         </View>
       ) : null}
 
+      <CaptureDirective entryType={entryType} />
+
       <BuildRecordBox
         label='真实情况记录'
-        status='按住说话 1–2 分钟'
+        status='按住说话约 1 分钟 · 建议 300 字以上'
         value={draft}
         placeholder={config.placeholder}
         disabled={loading}
-        prompt={currentPrompt}
         metaLeft=''
         showMeta={false}
-        showCharHint={false}
+        showCharHint
         onChange={setDraft}
       />
 
@@ -134,14 +131,6 @@ export default function EntryCapturePage() {
           <Text className='soft-card-title'>提交没有成功</Text>
           <Text className='soft-card-body'>{apiError}</Text>
           <Text className='hint-text'>可以修改内容后重试，或先保存文字稍后再提交。</Text>
-        </View>
-      ) : null}
-
-      {currentPrompt ? (
-        <View className='prompt-switch-wrap'>
-          <View className='prompt-switch-btn' onClick={() => setPromptIndex((i) => i + 1)}>
-            <Text className='prompt-switch-btn-text'>换一个问题</Text>
-          </View>
         </View>
       ) : null}
     </HiFiBuildShell>

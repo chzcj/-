@@ -96,3 +96,17 @@
 2. **字号**：同名 token；字重 Web 780→MP 700 登记 P1  
 3. **宽度**：比例优先（气泡 72%）  
 4. **无法实现**：写 visual-diff，标 P0/P1/P2
+
+## Onboarding 信息页（intro 单页 · 2026-07-19）
+
+真源：`onboarding-info-compare.html` Impeccable 修正版 → [`onboarding-info.tokens.scss`](../src/styles/onboarding-info.tokens.scss)
+
+| Token | 值 | 说明 |
+|-------|-----|------|
+| page-bg | `#fff8dc → #e8f2dc` 180deg | 与 login/build 同系 |
+| card-radius | 16px | 非 build `$radius-card` 24px |
+| body | 15px / lh 1.68 | 长文可读 |
+| title | 28px / lh 1.34 | 段标题 |
+| brand | 34px / lh 1.2 | 「育见」 |
+| cta | 54px / `#84b76c` | visual-diff P1 vs 全局 44px 按钮 |
+| example tones | gentle/vent/rational… | 仅底色+边框+引号色，无左色条 |

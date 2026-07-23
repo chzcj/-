@@ -30,12 +30,14 @@
 ## job 链（queue.ts runJob）
 
 ```
-memory_write → digest_update(每日桶) + model_review(每日桶,有假设时)
+memory_write → digest_update(每日桶) + model_review(每日桶,有假设时) + dossier_patch(非counter_evidence且有newFacts时,traceId幂等)
+episode_ingest → deep_mechanism_review(15min debounce合并)
 entry_evidence → digest_update + model_review
-forceLoginJobCheck → 重投 failed + digest_update + model_review
-memory_write → deep_mechanism_review(每日桶)
+forceLoginJobCheck → 重投 failed + digest_update + model_review + deep_mechanism_review(每日打开)
 四模块完成 → 立即 deep_mechanism_review（不等桶）
 ```
+
+> **PR-B3 更新**：memory_write 日桶**不再**直接链式 deep_mechanism_review（仅 digest_update）。deep_mechanism_review 的常规触发改由 episode_ingest handler 链式 debounce 入队（15min 合并）。memory_write → dossier_patch 仅在 PORTRAIT_V3=1 时生效。
 
 ## 不写长期记忆的轮次
 

@@ -1,0 +1,72 @@
+{
+  "slug": "bottom-nav",
+  "schemaVersion": 2,
+  "name": "Bottom Navigation",
+  "category": "navigation",
+  "sourceKind": "from-scratch",
+  "confidence": "high",
+  "variantCount": 2,
+  "semanticTypeCandidates": [
+    {
+      "type": "tab-navigation",
+      "evidence": "产品核心是四 Tab 固定心智"
+    },
+    {
+      "type": "safe-area-nav",
+      "evidence": "移动端底部悬浮导航需要适配安全区"
+    }
+  ],
+  "variantDimensions": [
+    {
+      "name": "state",
+      "values": [
+        "default",
+        "active"
+      ]
+    }
+  ],
+  "representativeVariants": [
+    {
+      "name": "交流激活",
+      "whySelected": "主场景是交流页",
+      "traits": {
+        "state": "active",
+        "items": 4
+      },
+      "childrenDigest": "图标+标签+浅绿胶囊底"
+    },
+    {
+      "name": "默认导航",
+      "whySelected": "其他页未激活态",
+      "traits": {
+        "state": "default",
+        "items": 4
+      },
+      "childrenDigest": "等宽分布、轻玻璃感"
+    }
+  ],
+  "anatomy": [
+    "nav-shell",
+    "tab-item",
+    "icon",
+    "label",
+    "active-pill"
+  ],
+  "structurePatterns": [
+    "4-item equal layout",
+    "floating capsule container"
+  ],
+  "usageHints": {
+    "priorityHint": "high",
+    "placement": "页面底部固定",
+    "safeArea": true,
+    "motion": "激活态用轻位移和柔和底色过渡，避免大幅弹跳"
+  },
+  "doNotInvent": [
+    "不要超过四项",
+    "不要强对比深色条",
+    "不要安卓工具栏感"
+  ],
+  "unknowns": [],
+  "keyInsightSeed": "底部导航像柔和悬浮在页面上的引导带，激活态更细腻而不跳"
+}

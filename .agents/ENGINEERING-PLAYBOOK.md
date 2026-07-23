@@ -19,7 +19,8 @@
 
 | 文件 | 一句摘要 | 何时读 |
 |------|---------|--------|
-| [ai-product-engineering.mdc](../.cursor/rules/ai-product-engineering.mdc) | 全链路 Frontend→BFF→DB→Job→Agent→LLM→UI；契约、状态、幂等 | 改 AI 流/BFF/记忆/Job/Agent 时 |
+| [ai-product-engineering.mdc](../.cursor/rules/ai-product-engineering.mdc) | **全局 alwaysApply**：前端×Agent×BFF；producer/consumer/空转/L1–L4；触发范围与禁止项 | 任何触达 Agent/BFF/契约的改动 |
+| [fullchain-contract-check.mdc](../.cursor/rules/fullchain-contract-check.mdc) | Agent/契约收工 7 步 + `npm run audit:fullchain` | 改 SP/BFF/契约/读包时 |
 | [voice-debug-code-first.mdc](../.cursor/rules/voice-debug-code-first.mdc) | 语音排障默认是代码问题；connectSocket 只调一次；不甩锅域名/网络 | 语音相关排障 |
 | [voice-input-locked.mdc](../.cursor/rules/voice-input-locked.mdc) | 语音链路已验收，未授权不能改 | 动语音前必读 |
 | [sp-content-depth.mdc](../.cursor/rules/sp-content-depth.mdc) | SP 不能是便条骨架（2026-07-18 铁律） | 写/改任何 SP 时 |
@@ -76,6 +77,7 @@
 | [docs/architecture/agent-memory-workflow.md](../docs/architecture/agent-memory-workflow.md) | Agent 工作流 · SP · Job · 记忆 | 改 Agent/记忆/Job 时 |
 | [docs/product/deep-modeling.md](../docs/product/deep-modeling.md) | 深度建模产品宪法 | 改深度画像/dossier 时 |
 | [docs/contracts/read-contract.md](../docs/contracts/read-contract.md) | 前后台读取契约 | 改厚包字段时 |
+| [docs/contracts/FULLCHAIN-SELF-CHECK.md](../docs/contracts/FULLCHAIN-SELF-CHECK.md) | Agent/契约/BFF 收工 7 步清单 | 改 SP/BFF/契约收工前 |
 
 ---
 
@@ -102,6 +104,6 @@
 - **语音链路已锁定**：未授权不改（见 [voice-input-locked.mdc](../.cursor/rules/voice-input-locked.mdc) + [postmortem](postmortems/2026-07-14-voice-asr-outage.md)）
 - **SP 不能是便条骨架**：2026-07-18 铁律（见 [sp-content-depth.mdc](../.cursor/rules/sp-content-depth.mdc)）
 - **改完可上线代码必 typecheck/build/deploy**（见 [deploy-after-update.mdc](../.cursor/rules/deploy-after-update.mdc) + [project_rules.md](../.trae/rules/project_rules.md) 收工段）
-- **全链路契约**：Frontend→BFF→DB→Job→Agent→LLM→UI，字段有 reader/owner/lifecycle（见 [ai-product-engineering.mdc](../.cursor/rules/ai-product-engineering.mdc)）
+- **全链路契约**：Frontend→BFF→DB→Job→Agent→LLM→UI，字段有 reader/owner/lifecycle（见 [ai-product-engineering.mdc](../.cursor/rules/ai-product-engineering.mdc)）；收工必跑 [fullchain-contract-check.mdc](../.cursor/rules/fullchain-contract-check.mdc) + `npm run audit:fullchain`
 - **Web→小程序是 Porting 不是重设计**（见 [miniprogram-porting.mdc](../.cursor/rules/miniprogram-porting.mdc)）
 - **不提交 .env.local/密码/令牌**（见 [AGENTS.md](../AGENTS.md) 禁止段）

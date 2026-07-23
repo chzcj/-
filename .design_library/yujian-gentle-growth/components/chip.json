@@ -1,0 +1,79 @@
+{
+  "slug": "chip",
+  "schemaVersion": 2,
+  "name": "Chip",
+  "category": "micro-components",
+  "sourceKind": "from-scratch",
+  "confidence": "high",
+  "variantCount": 3,
+  "semanticTypeCandidates": [
+    {
+      "type": "starter-chip",
+      "evidence": "用于引导家长开始表达"
+    },
+    {
+      "type": "status-chip",
+      "evidence": "用于轻量提示与标签状态"
+    }
+  ],
+  "variantDimensions": [
+    {
+      "name": "tone",
+      "values": [
+        "soft",
+        "outline",
+        "status"
+      ]
+    }
+  ],
+  "representativeVariants": [
+    {
+      "name": "开始前说明",
+      "whySelected": "截图中出现的胶囊标签",
+      "traits": {
+        "tone": "soft",
+        "shape": "pill"
+      },
+      "childrenDigest": "短文案单行标签"
+    },
+    {
+      "name": "已记住",
+      "whySelected": "适合记忆状态提示",
+      "traits": {
+        "tone": "status",
+        "shape": "pill"
+      },
+      "childrenDigest": "状态语义标签"
+    },
+    {
+      "name": "交流",
+      "whySelected": "适合导航或分类",
+      "traits": {
+        "tone": "outline",
+        "shape": "pill"
+      },
+      "childrenDigest": "分类标签"
+    }
+  ],
+  "anatomy": [
+    "chip-shell",
+    "label",
+    "optional-dot"
+  ],
+  "structurePatterns": [
+    "single-line pill",
+    "low-weight secondary emphasis"
+  ],
+  "usageHints": {
+    "priorityHint": "medium",
+    "placement": "标题前、卡片内、导航辅助位",
+    "tone": "soft-highlight"
+  },
+  "doNotInvent": [
+    "不要彩虹标签",
+    "不要过高",
+    "不要强阴影"
+  ],
+  "unknowns": [],
+  "keyInsightSeed": "标签应该像柔和光点一样提示状态，而不是硬切换控件"
+}

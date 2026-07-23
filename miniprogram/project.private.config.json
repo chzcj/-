@@ -1,7 +1,27 @@
 {
   "libVersion": "3.16.2",
   "projectname": "miniprogram",
-  "condition": {},
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "预览 · 基础资料",
+          "pathName": "packageOnboarding/pages/basic/index",
+          "query": ""
+        },
+        {
+          "name": "预览 · 日常交流",
+          "pathName": "pages/daily/index",
+          "query": ""
+        },
+        {
+          "name": "预览 · 预演对话",
+          "pathName": "pages/rehearsal/dialogue/index",
+          "query": ""
+        }
+      ]
+    }
+  },
   "setting": {
     "urlCheck": false,
     "coverView": false,

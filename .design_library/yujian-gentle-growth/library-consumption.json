@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "tokenSource": "css.json",
+  "runtimeStylesheet": "colors_and_type.css",
+  "preferredKit": "ui_kits/mobile-app/index.html",
+  "recommendedReadOrder": [
+    "SKILL.md",
+    "README.md",
+    "css.json",
+    "colors_and_type.css",
+    "components/index.json",
+    "preview/component-{slug}.html",
+    "components/{slug}.json",
+    "ui_kits/mobile-app/index.html"
+  ],
+  "tokenPriorities": {
+    "primaryAxis": [
+      "--yujian-primary-700",
+      "--primary",
+      "--yujian-primary-500",
+      "--accent"
+    ],
+    "surfaceSemantics": [
+      "--background",
+      "--surface",
+      "--glass-surface",
+      "--glass-stroke",
+      "--glow-soft",
+      "--glow-strong"
+    ],
+    "motionSemantics": [
+      "--motion-duration-fast",
+      "--motion-duration-base",
+      "--motion-duration-slow",
+      "--motion-ease-standard",
+      "--motion-ease-emphasized",
+      "--motion-press-scale",
+      "--motion-float-distance"
+    ]
+  },
+  "componentConsumption": {
+    "priorityOrder": [
+      "preview/component-{slug}.html",
+      "components/{slug}.json",
+      "components/_evidence/{slug}.json"
+    ],
+    "notes": [
+      "优先复刻预览 HTML 的层级、密度、圆角与光感细节。",
+      "用 components/{slug}.json 理解意图、变体与适用场景。",
+      "glass/glow 是语义 token，需用描边、透明填充和阴影实现，不依赖 backdrop-filter。",
+      "motion tokens 主要服务小程序可落地的按压、浮动、切换反馈。"
+    ]
+  },
+  "coreComponents": [
+    "button",
+    "card",
+    "bottom-nav",
+    "input-dock",
+    "chip",
+    "insight-card"
+  ],
+  "supportComponents": []
+}

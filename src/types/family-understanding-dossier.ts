@@ -1,5 +1,7 @@
 /** Family Understanding Dossier — schema v2（内部整合底稿，理论隐身） */
 
+import type { EvidenceRef } from './database'
+
 export type DossierFactor = {
   id?: string
   label: string
@@ -31,6 +33,10 @@ export type DossierPrediction = {
   text: string
   /** 默认 unverified；任务反馈/反证链可标 failed */
   status?: DossierPredictionStatus
+  /** v4：0-1 数值置信度，区分高把握预测与低把握预测 */
+  confidence?: number
+  /** v4：预测依据的证据 id 引用，可回溯"依据哪条原话" */
+  evidenceRefs?: EvidenceRef[]
 }
 
 export type DossierInterventionTarget = {

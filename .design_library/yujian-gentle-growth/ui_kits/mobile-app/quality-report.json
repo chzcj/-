@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "screensGenerated": 4,
+  "coreComponentsUsed": [
+    "button",
+    "bottom-nav",
+    "card",
+    "chip",
+    "input-dock",
+    "insight-card"
+  ],
+  "supportComponentsUsed": [],
+  "previewClassReuseRate": 0.94,
+  "hasProductContext": true,
+  "interactiveStatesRendered": [
+    "default",
+    "hover",
+    "focus",
+    "active",
+    "disabled",
+    "selected"
+  ],
+  "primaryActionPerScreen": true,
+  "inventedComponents": [],
+  "renderedFromEvidence": [],
+  "warnings": []
+}

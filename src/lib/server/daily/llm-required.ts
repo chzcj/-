@@ -3,6 +3,7 @@ import 'server-only'
 import type { AgentPromptKey } from '@/lib/server/agent-prompts'
 import { callAgentJson, callAgentTextStream, callParentAgentJson, callParentAgentTextStream, callParentJson, callParentTextStream, callFastJson, callFastTextStream, isFastAIEnabled, isParentAIEnabled } from '@/lib/server/ark-agents'
 import { filterParentFacingText } from '@/lib/server/daily/parent-facing-filter'
+import { validateProseOrThrow } from '@/lib/server/harness/post-gate'
 
 export class DailyLlmRequiredError extends Error {
   readonly code = 'LLM_REQUIRED'
@@ -97,6 +98,7 @@ export async function requireTextStream(
         options
       )
       if (!raw?.trim()) throw new Error('LLM_EMPTY_OUTPUT')
+      validateProseOrThrow(raw)
       return filterParentFacingText(raw.trim())
     } catch (err) {
       lastErr = err

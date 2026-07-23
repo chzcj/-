@@ -1,0 +1,45 @@
+---
+description: Agent/契约/BFF 改动收工必跑全链路自检（producer→storage→consumer）
+alwaysApply: true
+---
+# 全链路契约自检（收工门禁）
+
+与 [ai-product-engineering.mdc](./ai-product-engineering.mdc) 配套：**原则是前者（全局 alwaysApply，含触发范围/六问/空转/L1–L4）**，可执行步骤是本文。
+
+详细清单：[docs/contracts/FULLCHAIN-SELF-CHECK.md](../docs/contracts/FULLCHAIN-SELF-CHECK.md)
+
+## 何时必跑（任一触发）
+
+- 改 `prompts/**/*.md` 或 `registry.generated.ts`
+- 改 `frontend-read-pack` / `prose-context` / `daily-turn-bff` / `retrieval/router` / `parent-facing-copy`
+- 改 `docs/contracts/**` 或 `packages/contracts/**`
+- 改 memory write/read、job queue、dossier/digest/deep-mechanism pipeline
+- 改任何 Agent 的输入/输出 schema 或 BFF payload 字段
+
+## 收工 7 步（不得跳过）
+
+1. **改前 trace**：列出变更字段的 producer → storage → consumer → UI 是否可见（表格）
+2. **读契约真源**：`docs/contracts/read-contract.md` + 相关 `memory-read.md` / `memory-write.md` / `daily-stream-events.md`
+3. **SP 深度 + registry**：对照 `.trae/documents/sp-chain-depth-spec.md`；跑 `npm run pretypecheck`（重建 registry）
+4. **跑门控**：`npm run audit:fullchain`（= test:contracts + audit-prompt-registry）
+5. **域专项**（touch 则跑）：
+   - memory → `npm run audit:memory-contract`
+   - router/retrieval → `node scripts/test-retrieval-packet.mjs`
+   - dossier/digest → `node scripts/audit-deep-modeling-pipeline.mjs`（需 DATABASE_URL）
+6. **更文档**：FrontendReadSchema 变 → 更 `read-contract.md`；跨端变 → 更 `CONTRACT-ALIGNMENT-AUDIT.md`
+7. **出报告**：用 FULLCHAIN-SELF-CHECK Step 7 模板写摘要；**无报告不得声称完成**
+
+## P0 红线（任一项 Fail = 未完成）
+
+- 新增字段无 reader 或无 writer
+- 内部字段泄漏到 NDJSON / 家长可见 UI（`BACKEND_ONLY_CONTEXT_FIELDS`）
+- SP 与 `registry.generated.ts` 不同步
+- `combinedDailyProseSystem` 与 CLI helper 拼接不一致
+- 空 Agent 输出覆盖已有有效状态且无 observable no-op
+- `npm run audit:fullchain` 失败
+
+## 电路速查
+
+段① 规则编排（无 LLM）→ 段② 厚包组装（router + pickFrontendReadPack + buildDailyProsePayload）→ 段③ LLM（registry SP + stream）。详见 `.trae/documents/bff-three-phase-overview.md`。
+
+SP 深度审查附录：`.trae/documents/cursor-sp-review-checklist.md`（Trae 检察官 25 项）。

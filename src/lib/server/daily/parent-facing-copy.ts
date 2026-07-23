@@ -12,6 +12,7 @@ import {
 } from '@/lib/server/daily/parent-facing-filter'
 import { requireFastJson, requireTextStream } from '@/lib/server/daily/llm-required'
 import { frontAiThinkingDisabled } from '@/lib/server/ark-agents'
+import { validateSectionCopyOrThrow } from '@/lib/server/harness/post-gate'
 import {
   buildSectionStreamTask,
   createSectionStreamTracker,
@@ -33,10 +34,24 @@ type SectionCopyResponse = {
   taskTitle?: string
 }
 
-const PROMPT_CACHE_VERSION = 'parent-facing-v6-trim-sp'
+const PROMPT_CACHE_VERSION = 'parent-facing-v7-read-intent'
 
 function stableHash(text: string): string {
   return createHash('sha256').update(text).digest('hex').slice(0, 16)
+}
+
+/** 日常 prose Agent system（与 streamProseAndSections 的 prose 段一致） */
+export function combinedDailyProseSystem(): string {
+  return `${agentPrompts.parentFacingStyle}\n\n---\n\n${agentPrompts.deepModelingParentDigest}\n\n---\n\n${agentPrompts.dailyDialogueOrchestration}`
+}
+
+export function combinedProseSystem(): string {
+  return combinedDailyProseSystem()
+}
+
+/** prose + visible section 合并调用 */
+export function combinedProseAndSectionSystem(): string {
+  return `${combinedDailyProseSystem()}\n\n---\n\n${agentPrompts.parentFacingCopy}`
 }
 
 export function sectionCopySystem(): string {
@@ -93,6 +108,12 @@ export async function fillDailySectionCopy(
     (frontendPack.dossierSlice?.length ?? 0) > 0
       ? {
           dossierSlice: frontendPack.dossierSlice,
+          // v4 修复：dossierSlice 非空时不再丢弃 retrievalPack 事实锚点
+          // 保留关键 atom 子集，让 section SP 能"事实锚定"（§十八）
+          entryFacts: frontendPack.entryFacts?.slice(0, 5) || [],
+          childQuotes: frontendPack.childQuotes?.slice(0, 3) || [],
+          parentVerbatimSnippets: frontendPack.parentVerbatimSnippets?.slice(0, 3) || [],
+          matchedMechanisms: frontendPack.matchedMechanisms?.slice(0, 3) || [],
           deepModelDigest: options?.deepModelDigest,
           userText,
           inputType: output.inputType,
@@ -117,6 +138,8 @@ export async function fillDailySectionCopy(
       // hidden section 也是前台表达层：内容深度来自注入的上下文包，关闭隐式思考
       // 让「深度展开」在正文后数秒内就绪，而不是十几秒。FRONT_AI_THINKING=on 回滚。
       disableThinking: frontAiThinkingDisabled(),
+      // v4 post-gate：段落完整性 + 禁用词校验，失败自动重试
+      validate: validateSectionCopyOrThrow,
     }
   )
 
@@ -197,10 +220,6 @@ function validateSectionCompleteness(raw: SectionCopyResponse): void {
       }
     }
   }
-}
-
-export function combinedProseSystem(): string {
-  return `${agentPrompts.parentFacingStyle}\n\n---\n\n${agentPrompts.dailyDialogueOrchestration}`
 }
 
 export function parentFacingPromptCacheInfo() {

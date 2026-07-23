@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>育见 · 画像页 mock 选版</title>
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font-body); color: var(--foreground); background: var(--background); min-height: 100vh; }
+    .gallery { max-width: 1200px; margin: 0 auto; padding: var(--space-5); display: grid; gap: var(--space-5); }
+    .gallery-header h1 { margin: 0 0 8px; font: var(--type-h1); letter-spacing: -0.02em; }
+    .gallery-header p { margin: 0; font: var(--type-body); color: var(--muted); max-width: 52ch; line-height: 1.65; }
+    .variant-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); }
+    .variant-card {
+      display: grid; gap: var(--space-3); padding: var(--space-4);
+      border-radius: 22px; background: linear-gradient(180deg, rgba(255,255,255,.86) 0%, var(--surface) 100%);
+      border: 1px solid rgba(255,255,255,.72); box-shadow: var(--shadow-1);
+    }
+    .variant-card h2 { margin: 0; font: var(--type-h3); }
+    .variant-card p { margin: 0; font: var(--type-caption); color: var(--muted); line-height: 1.55; }
+    .variant-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag {
+      display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px;
+      border-radius: var(--radius-full); font: var(--type-caption);
+      background: var(--color-primary-container); color: var(--color-on-primary-container);
+    }
+    .tag--warm { background: var(--color-warning-container); color: var(--color-warning); }
+    .open-btn {
+      display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+      padding: 0 18px; border-radius: var(--radius-full); border: none; cursor: pointer;
+      font: var(--type-body); font-weight: 620; text-decoration: none;
+      background: linear-gradient(180deg, var(--yujian-primary-500) 0%, var(--color-primary) 100%);
+      color: var(--color-on-primary); box-shadow: var(--shadow-1);
+      transition: transform var(--motion-duration-fast) var(--motion-ease-emphasized);
+    }
+    .open-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }
+    .open-all { display: flex; flex-wrap: wrap; gap: 10px; margin-top: var(--space-2); }
+    .note { padding: var(--space-4); border-radius: 18px; background: var(--surface-container); border: 1px solid var(--color-border); }
+    .note strong { display: block; margin-bottom: 6px; font: var(--type-caption); }
+    .note span { font: var(--type-caption); color: var(--muted); line-height: 1.55; }
+  </style>
+</head>
+<body>
+  <div class="gallery">
+    <header class="gallery-header">
+      <h1>画像页 · 四版 mock</h1>
+      <p>沿 Gentle Growth 设计库（黄绿主轴、纸感卡、洞察卡、无 backdrop-filter）做的静态样机。内容对齐现有 <code>/family-profile</code> 字段，供你挑方向后再落 Web/小程序。</p>
+    </header>
+
+    <div class="variant-grid">
+      <article class="variant-card">
+        <h2>A · 精致卡片网格</h2>
+        <p>最接近现状「画像数据中心」，但去掉粗进度条，改用「已整理 / 待补全」状态 chip + 更轻的纸感卡。</p>
+        <div class="variant-tags"><span class="tag">低风险</span><span class="tag">信息密度中</span></div>
+        <a class="open-btn" href="variant-a-hub.html" target="_blank" rel="noopener">打开 A</a>
+      </article>
+      <article class="variant-card">
+        <h2>B · 叙事滚动</h2>
+        <p>对齐 NARRATIVE-COMPONENT-SYSTEM：首屏一句核心理解 + 分区洞察卡，拒绝文字墙，适合深度阅读。</p>
+        <div class="variant-tags"><span class="tag">推荐试验</span><span class="tag">信息密度高</span></div>
+        <a class="open-btn" href="variant-b-narrative.html" target="_blank" rel="noopener">打开 B</a>
+      </article>
+      <article class="variant-card">
+        <h2>C · 编辑型首屏</h2>
+        <p>大字号核心判断 + 结构张力洞察 + 轻链接列表；像「读懂孩子的简报」，一屏抓住重点。</p>
+        <div class="variant-tags"><span class="tag">视觉冲击</span><span class="tag">信息密度低</span></div>
+        <a class="open-btn" href="variant-c-editorial.html" target="_blank" rel="noopener">打开 C</a>
+      </article>
+      <article class="variant-card">
+        <h2>D · 主题地图</h2>
+        <p>顶部横向主题 chip 切换，下方展开当前主题的洞察卡；适合 7+ 子模块快速跳转。</p>
+        <div class="variant-tags"><span class="tag">可扩展</span><span class="tag">交互感强</span></div>
+        <a class="open-btn" href="variant-d-atlas.html" target="_blank" rel="noopener">打开 D</a>
+      </article>
+    </div>
+
+    <div class="note">
+      <strong>怎么看</strong>
+      <span>点击「打开 A/B/C/D」会在浏览器新标签页加载手机壳 mock（需联网加载 Lucide 图标 CDN）。本地路径：<code>.design_library/yujian-gentle-growth/ui_kits/profile-mocks/</code></span>
+    </div>
+
+    <div class="open-all">
+      <a class="open-btn" href="variant-a-hub.html" target="_blank">A</a>
+      <a class="open-btn" href="variant-b-narrative.html" target="_blank">B</a>
+      <a class="open-btn" href="variant-c-editorial.html" target="_blank">C</a>
+      <a class="open-btn" href="variant-d-atlas.html" target="_blank">D</a>
+    </div>
+  </div>
+</body>
+</html>

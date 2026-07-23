@@ -15,10 +15,12 @@ import {
 } from '@/components/rehearsal/SimulationBubbles'
 import { REHEARSAL_SCENES, type RehearsalScene, type SimulationStep } from '@/data/rehearsalScenes'
 import { mapAnalyzeToSecondMe, type RehearsalAnalyzeData } from '@/lib/rehearsalStream'
+import { getRehearsalEndCopy, pickRehearsalTaskTitle } from '@yujian/contracts/rehearsal-end'
 import { analyzeRehearsalTurn } from '@/services/rehearsalAnalyze'
 import { apiRequest } from '@/services/api'
 import { fetchCurrentUser } from '@/services/auth'
 import { getLatestProfile } from '@/services/profileStorage'
+import { getChildDisplayName } from '@/services/childStorage'
 import { saveTaskFromRehearsal } from '@/services/taskStorage'
 import {
   clearRehearsalSession,
@@ -27,6 +29,10 @@ import {
   saveRehearsalSession,
   type RehearsalFeedItem,
 } from '@/services/rehearsalSessionStorage'
+import {
+  readRehearsalScenesCache,
+  writeRehearsalScenesCache,
+} from '@/lib/rehearsalScenesCache'
 import { requireOnboardingComplete } from '@/utils/navigation'
 import './index.scss'
 
@@ -58,6 +64,22 @@ function truncate(text: string, max = 72) {
   const value = text.trim()
   if (value.length <= max) return value
   return `${value.slice(0, max).trim()}…`
+}
+
+function parseInsightBullets(text: string, fallback: string[]): string[] {
+  const trimmed = text.trim()
+  if (!trimmed) return fallback
+  const lines = trimmed
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-•·\d.)]+\s*/, '').trim())
+    .filter((line) => line.length > 4)
+  if (lines.length >= 2) return lines.slice(0, 5)
+  const parts = trimmed
+    .split(/[；;]/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 8)
+  if (parts.length >= 2) return parts.slice(0, 5)
+  return [trimmed]
 }
 
 function matchSceneFromText(text: string, pool: RehearsalScene[]): RehearsalScene {
@@ -171,19 +193,24 @@ export default function RehearsalPage() {
   }, [scenes])
 
   useEffect(() => {
+    const cached = readRehearsalScenesCache()
+    if (cached) {
+      setScenes(cached.scenes)
+      setRankedFromDialogue(cached.rankedFromDialogue)
+      setScenesLoading(false)
+    }
     void (async () => {
-      setScenesLoading(true)
+      if (!cached) setScenesLoading(true)
       const res = await apiRequest<{
         scenes?: RehearsalScene[]
         rankedFromDialogue?: boolean
       }>('/api/rehearsal/scenes')
       if (!res.ok || !res.data.scenes?.length) {
-        setScenesLoading(false)
+        if (!cached) setScenesLoading(false)
         setRankedFromDialogue(false)
         return
       }
       setRankedFromDialogue(Boolean(res.data.rankedFromDialogue))
-      // API 已按对话痛点 Top5 排序；不再锁死静态 3 seed
       const next = res.data.scenes!.map((patch) => {
         const base = REHEARSAL_SCENES.find((s) => s.id === patch.id)
         return {
@@ -201,6 +228,7 @@ export default function RehearsalPage() {
         } satisfies RehearsalScene
       })
       setScenes(next)
+      writeRehearsalScenesCache(next, Boolean(res.data.rankedFromDialogue))
       if (next[0] && !next.some((s) => s.id === selectedId)) {
         setSelectedId(next[0].id)
         setSceneTitle(next[0].title)
@@ -221,7 +249,16 @@ export default function RehearsalPage() {
         Taro.showToast({ title: '已恢复上次预演', icon: 'none', duration: 2000 })
       }
     }
-    setLastDialogueAnalysisId(loadLastDialogueAnalysisId())
+    let lastId = loadLastDialogueAnalysisId()
+    if (!lastId) {
+      const latest = await apiRequest<{ analysisId?: string | null }>(
+        '/api/rehearsal/dialogue-analyze/latest'
+      )
+      if (latest.ok && latest.data.analysisId?.startsWith('da_')) {
+        lastId = latest.data.analysisId
+      }
+    }
+    setLastDialogueAnalysisId(lastId)
   })
 
   useEffect(() => {
@@ -269,46 +306,53 @@ export default function RehearsalPage() {
     }
   }, [step])
 
-  const selectScenario = (sceneId: string) => {
+  const openSceneBrief = async (sceneId: string) => {
+    if (briefLoading) return
     const scene = scenes.find((s) => s.id === sceneId)
     if (!scene) return
     setSelectedId(scene.id)
     setSceneTitle(scene.title)
     setSummary(scene.summary)
-  }
-
-  const startSimulation = async () => {
     setBriefLoading(true)
-    setSummary(selectedScene.summary)
     try {
       const res = await apiRequest<{
         sceneSituation?: string
         childUnderstanding?: string
+        understandingBullets?: string[]
         openingHint?: string
       }>('/api/rehearsal/brief', {
         method: 'POST',
-        body: { sceneId: selectedId },
+        data: { sceneId: scene.id },
       })
       if (res.ok) {
-        setSceneSituation(res.data.sceneSituation || selectedScene.summary)
-        setChildUnderstanding(res.data.childUnderstanding || '')
+        const bullets = (res.data.understandingBullets || [])
+          .map((b) => String(b || '').trim())
+          .filter((b) => b.length > 4)
+        setSceneSituation(res.data.sceneSituation || scene.summary)
+        setChildUnderstanding(
+          bullets.length >= 2
+            ? bullets.join('\n')
+            : res.data.childUnderstanding || ''
+        )
         if (res.data.openingHint) {
           setScenes((prev) =>
-            prev.map((s) => (s.id === selectedId ? { ...s, openingHint: res.data.openingHint! } : s))
+            prev.map((s) => (s.id === scene.id ? { ...s, openingHint: res.data.openingHint! } : s))
           )
         }
       } else {
-        setSceneSituation(selectedScene.summary)
+        setSceneSituation(scene.summary)
         setChildUnderstanding('')
       }
     } catch {
-      setSceneSituation(selectedScene.summary)
+      setSceneSituation(scene.summary)
       setChildUnderstanding('')
     } finally {
       setBriefLoading(false)
       setStep('confirm')
     }
   }
+
+  const startSimulation = () => void openSceneBrief(selectedId)
 
   const enterRehearsal = () => {
     let openingHint =
@@ -333,7 +377,7 @@ export default function RehearsalPage() {
       {
         type: 'child',
         childText: selectedScene.openingChild || '你别催我行不行，我又不是不写。',
-        hintTitle: selectedScene.openingHintTitle || '他可能是这样听到的',
+        hintTitle: selectedScene.openingHintTitle || '他可能是这样想的',
         hintText: openingHint,
       },
     ])
@@ -389,7 +433,7 @@ export default function RehearsalPage() {
             {
               type: 'child',
               childText: reactionText,
-              hintTitle: '他可能是这样听到的',
+              hintTitle: '他可能是这样想的',
               hintText: '…',
             },
           ])
@@ -514,8 +558,8 @@ export default function RehearsalPage() {
   }
 
   const saveDirection = async () => {
-    const title = endData?.taskTitle || endData?.saferVersion || endData?.suggestedWording
-    if (!title?.trim()) return
+    const title = pickRehearsalTaskTitle(endData)
+    if (!title.trim()) return
     const ok = await saveTaskFromRehearsal(normalizeTaskTitle(title), '预演方向', rehearsalTraceId)
     if (ok) {
       setTaskSaved(true)
@@ -524,7 +568,7 @@ export default function RehearsalPage() {
   }
 
   const tryTonight = async () => {
-    const title = endData?.taskTitle || endData?.saferVersion || endData?.suggestedWording || summary
+    const title = pickRehearsalTaskTitle(endData, summary)
     const ok = await saveTaskFromRehearsal(normalizeTaskTitle(title), '沟通预演', rehearsalTraceId)
     if (ok) {
       setTonightSaved(true)
@@ -547,6 +591,13 @@ export default function RehearsalPage() {
         '他对「被站在旁边盯着」比较敏感。',
         '他不一定是不想写，更可能是对「开始之后会被催、被检查、被评价」有防御。',
       ]
+
+  const insightBullets = parseInsightBullets(childUnderstanding, confirmBullets)
+  const briefSubLine = selectedScene.mentionCountHint
+    ? `${sceneTitle} · ${selectedScene.mentionCountHint}`
+    : sceneTitle
+  const childDisplayName = getChildDisplayName()
+  const endCopy = getRehearsalEndCopy(endData)
 
   return (
     <HiFiMainShell
@@ -596,17 +647,11 @@ export default function RehearsalPage() {
           </View>
 
           <View className='scenario-grid'>
-            {scenesLoading ? (
-              <Text className='muted' style={{ padding: '12px 4px' }}>
-                正在根据交流整理痛点场景…
-              </Text>
-            ) : null}
-            {!scenesLoading
-              ? scenes.map((scene) => (
+            {scenes.map((scene) => (
               <View
                 key={scene.id}
                 className={`scenario-card scene-card${selectedId === scene.id ? ' active' : ''}`}
-                onClick={() => selectScenario(scene.id)}
+                onClick={() => void openSceneBrief(scene.id)}
               >
                 <View className='scene-meta'>
                   {scene.mentionCountHint ? (
@@ -620,8 +665,10 @@ export default function RehearsalPage() {
                 <Text className='scenario-title'>{scene.title}</Text>
                 <Text className='scenario-desc muted'>{scene.lede || scene.subtitle}</Text>
               </View>
-                ))
-              : null}
+            ))}
+            {scenesLoading && scenes.length <= REHEARSAL_SCENES.length ? (
+              <Text className='muted scene-grid-hint'>正在刷新场景排序…</Text>
+            ) : null}
           </View>
           <Text className='pill primary wide-pill' onClick={() => void startSimulation()}>
             {briefLoading ? '正在整理场景…' : '开始预演'}
@@ -641,14 +688,6 @@ export default function RehearsalPage() {
             </View>
           ) : null}
 
-          <View
-            className='dialogue-entry-card dialogue-entry-card--compact'
-            onClick={() => void Taro.navigateTo({ url: '/pages/rehearsal/dialogue/index' })}
-          >
-            <Text className='dialogue-entry-title'>进入对话录音</Text>
-            <Text className='dialogue-entry-desc muted'>已有录音分析可带入场景</Text>
-          </View>
-
           <Text className='boundary-note muted'>
             这里不是预测孩子一定会这样说，而是基于已有记录，帮你提前看见可能的沟通走向。
           </Text>
@@ -657,37 +696,48 @@ export default function RehearsalPage() {
       ) : null}
 
       {step === 'confirm' ? (
-        <>
-          <Text className='section-label back-link' onClick={() => { clearRehearsalSession(); setStep('entry') }}>
+        <View className='rehearsal-brief-layout'>
+          <Text className='nav-back' onClick={() => { clearRehearsalSession(); setStep('entry') }}>
             ← 返回选场景
           </Text>
-          <Text className='section-label'>这次先按这个场景来练</Text>
-          <View className='hifi-card brief-card'>
-            <Text className='section-label'>情景长什么样</Text>
-            <Text className='brief-body'>{sceneSituation || summary}</Text>
+          <Text className='brief-lede'>这次先按这个痛点场景来练</Text>
+          <Text className='brief-sub muted'>{briefSubLine}</Text>
+
+          <View className='info-card'>
+            <Text className='card-eyebrow'>这个场景长什么样</Text>
+            <Text className='info-card-title'>场景摘要</Text>
+            <Text className='info-card-body'>{sceneSituation || summary}</Text>
           </View>
-          <View className='hifi-card brief-card'>
-            <Text className='section-label'>记忆里对孩子的理解</Text>
-            <Text className='brief-body'>
-              {childUnderstanding || confirmBullets.join(' ')}
-            </Text>
+
+          <View className='info-card'>
+            <Text className='card-eyebrow'>系统记忆 · 此场景下的孩子</Text>
+            <Text className='info-card-title'>我会参考这些理解</Text>
+            <View className='insight-list'>
+              {insightBullets.map((bullet, index) => (
+                <Text key={index} className='insight-list-item'>
+                  {bullet}
+                </Text>
+              ))}
+            </View>
           </View>
+
           <Text className='pill primary wide-pill' onClick={enterRehearsal}>
             进入预演
           </Text>
-        </>
+        </View>
       ) : null}
 
       {step === 'active' ? (
-        <View className='rehearsal-active-layout'>
+        <View className='rehearsal-active-layout rehearsal-dialogue-layout'>
           <View className='rehearsal-header'>
-            <Text className='section-label back-link' onClick={() => setStep('confirm')}>
+            <Text className='nav-back nav-back--ink' onClick={() => setStep('confirm')}>
               ← 返回场景
             </Text>
-            <Text className='hero-title page-heading'>沟通预演｜{sceneTitle}</Text>
-            <Text className='muted'>{statusText}</Text>
+            <View className='dialogue-head'>
+              <Text className='dialogue-title'>和{childDisplayName}预演</Text>
+              <Text className='dialogue-sub muted'>{sceneTitle}</Text>
+            </View>
           </View>
-          <Text className='section-label'>预演对话</Text>
           <View className='rehearsal-scroll-wrap'>
             <ScrollView
               id='rehearsal-chat-scroll'
@@ -697,7 +747,7 @@ export default function RehearsalPage() {
               enhanced
               showScrollbar={false}
             >
-              <View className='chat-feed'>
+              <View className='rehearsal-chat-thread'>
                 {feed.map((item, i) => {
                   if (item.type === 'parent') return <SimulationParentBubble key={i} text={item.text} />
                   if (item.type === 'system_hint') return <SimulationSystemHintBubble key={i} text={item.text} />
@@ -743,68 +793,46 @@ export default function RehearsalPage() {
       ) : null}
 
       {step === 'end' ? (
-        <>
-          <Text className='section-label'>这次预演里，我看到的重点</Text>
-          <View className='hifi-card insight-card'>
-            <Text className='section-label'>预演总结</Text>
-            <Text>
-              {endData?.closingAdvice ||
-                endData?.whyThisIsSafer ||
-                '先减少「被站在旁边看着」的感觉，再谈开始。'}
-            </Text>
-          </View>
-          <View className='hifi-card result-block'>
-            <Text className='section-label'>孩子最容易被触发的是</Text>
-            <Text>
-              {endData?.childLikelyHearing ||
-                endData?.riskPoints?.[0] ||
-                '当你解释「我是怕你拖到很晚」，或者说「你每次都拖」时，孩子容易听成：你还是在盯他、评价他。'}
-            </Text>
-          </View>
-          <View className='hifi-card result-block'>
-            <Text className='section-label'>今晚可以试的说法</Text>
-            <Text>
-              {endData?.saferVersion ||
-                endData?.suggestedWording ||
-                '今晚如果又卡在作业开始前，可以先让孩子自己选第一项，你暂时离开十分钟。'}
-            </Text>
-          </View>
-          {endData?.avoidPhrases?.length ? (
-            <View className='hifi-card result-block'>
-              <Text className='section-label'>建议避免的说法</Text>
-              <Text>{endData.avoidPhrases.slice(0, 3).join('；')}</Text>
+        <ScrollView scrollY className='rehearsal-end-scroll' enhanced showScrollbar={false}>
+          <View className='rehearsal-end-layout'>
+            <View className='rehearsal-end-hero'>
+              <Text className='profile-hero-kicker'>预演完成</Text>
+              <Text className='rehearsal-end-heading'>这次预演里，我看到的重点</Text>
             </View>
-          ) : null}
-          {endData?.likelyTriggeredMechanisms?.length ? (
-            <View className='hifi-card result-block'>
-              <Text className='section-label'>这句话容易触发的机制</Text>
-              <Text>{endData.likelyTriggeredMechanisms.slice(0, 3).join('；')}</Text>
+
+            <View className='rehearsal-end-insight'>
+              <Text className='rehearsal-end-insight-title'>预演总结</Text>
+              <Text className='rehearsal-end-insight-body'>{endCopy.summary}</Text>
             </View>
-          ) : null}
-          {endData?.usedProfileEvidence?.length ? (
-            <View className='hifi-card result-block'>
-              <Text className='section-label'>这次分析用到的孩子画像依据</Text>
-              <Text>{endData.usedProfileEvidence.slice(0, 3).join('；')}</Text>
+
+            <View className='profile-block'>
+              <Text className='profile-block-title'>孩子最容易被触发的是</Text>
+              <Text className='profile-block-body'>{endCopy.trigger}</Text>
             </View>
-          ) : null}
-          <View className='hifi-card result-block'>
-            <Text className='section-label'>这次还不能直接进入档案的内容</Text>
-            <Text>
-              预演里的孩子反应只是模拟，不等于真实证据。只有你今晚真的试了，并反馈孩子实际怎么反应，才会更新档案。
-            </Text>
+
+            <View className='profile-block'>
+              <Text className='profile-block-title'>今晚可以试的说法</Text>
+              <Text className='profile-block-body'>{endCopy.tryTonight}</Text>
+            </View>
+
+            <View className='profile-block'>
+              <Text className='profile-block-title'>还不能直接进入档案的内容</Text>
+              <Text className='profile-block-body'>{endCopy.archiveNote}</Text>
+            </View>
+
+            <View className='end-actions rehearsal-end-actions'>
+              <Text className={`pill${taskSaved ? ' disabled' : ''}`} onClick={() => void saveDirection()}>
+                {taskSaved ? '已保存' : '保存这个方向'}
+              </Text>
+              <Text className={`pill primary${tonightSaved ? ' disabled' : ''}`} onClick={() => void tryTonight()}>
+                {tonightSaved ? '已加入今晚任务' : '今晚试一次'}
+              </Text>
+              <Text className='pill' onClick={restartSimulation}>
+                重新练一遍
+              </Text>
+            </View>
           </View>
-          <View className='end-actions'>
-            <Text className={`pill${taskSaved ? ' disabled' : ''}`} onClick={() => void saveDirection()}>
-              {taskSaved ? '已保存' : '保存这个方向'}
-            </Text>
-            <Text className={`pill primary${tonightSaved ? ' disabled' : ''}`} onClick={() => void tryTonight()}>
-              {tonightSaved ? '已加入今晚任务' : '今晚试一次'}
-            </Text>
-            <Text className='pill' onClick={restartSimulation}>
-              重新练一遍
-            </Text>
-          </View>
-        </>
+        </ScrollView>
       ) : null}
     </HiFiMainShell>
   )

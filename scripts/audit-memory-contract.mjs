@@ -76,7 +76,7 @@ console.log('audit:memory-contract — 记忆读写契约审计')
     'E4 entry_evidence 必须链式 enqueue model_review')
 }
 
-// E5 选择性 L1 gate
+// E5 选择性 L1 gate + 批量 memory_write（满 10 轮或反证 flush）
 {
   const src = read('app/api/daily/stream/route.ts')
   assert(/isLight\s*=\s*frontResponseType\s*===\s*['"]light_response['"]/.test(src),
@@ -85,13 +85,19 @@ console.log('audit:memory-contract — 记忆读写契约审计')
     'E5 stream 必须对短寒暄跳过 L1 写入')
   assert(/shouldWriteL1\s*=\s*[^;]*!isShortGreeting/.test(src),
     'E5 shouldWriteL1 必须排除 isShortGreeting')
+  assert(/stageDailyUpdateForMemoryWrite/.test(src),
+    'E5 stream 必须使用 batched stageDailyUpdateForMemoryWrite')
 }
 
-// E6 每个有效 daily 都进入幂等 Episode 队列
+// E6 有效 daily 入 Episode 队列，寒暄短句跳过
 {
   const src = read('app/api/daily/stream/route.ts')
-  assert(/if\s*\(shouldWriteL1\)/.test(src) && /enqueueJob\(['"]episode_ingest['"]/.test(src),
-    'E6 stream 必须在有效 daily 轮 enqueue episode_ingest')
+  assert(/shouldSkipEpisodeIngest/.test(src), 'E6 stream 必须使用 shouldSkipEpisodeIngest')
+  assert(
+    /if\s*\(shouldWriteL1\s*&&\s*!shouldSkipEpisodeIngest/.test(src) &&
+      /enqueueJob\(['"]episode_ingest['"]/.test(src),
+    'E6 stream 必须在有效轮且非寒暄时 enqueue episode_ingest'
+  )
   const episodeIdx = src.indexOf("enqueueJob('episode_ingest'")
   const preceding = src.slice(Math.max(0, episodeIdx - 400), episodeIdx)
   assert(preceding.includes('episodeId') && preceding.includes('shouldWriteL1'),

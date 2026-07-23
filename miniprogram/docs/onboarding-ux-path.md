@@ -2,13 +2,19 @@
 
 每页：Web 设计意图 → 小程序实现 → 一致性
 
-## intro — 建立信任、降低门槛
+## intro — 建立信任、降低门槛（单页 · 2026-07-19）
 
-| 意图 | Web UI+文案 | 小程序 | 一致 |
-|------|-------------|--------|------|
-| 信任 | 黄绿暖色 hero、「先认识你们家」、非问卷语气 | `intro/index.tsx` HiFiBuildHero | 是 |
-| 降压 | 单按钮「开始」、说明与网页版同步 | 同左 | 是 |
-| 路径 | 进入 basic，不一次问四模块 | navigateTo basic | 是 |
+login → **intro 单页**（致家长的一封信 + 开始前说明 + 案例预览）→ hub。原 guide 页已合并并重定向。
+
+| 意图 | 设计 | 小程序 | 一致 |
+|------|------|--------|------|
+| 信任 | 黄绿 cream 渐变、16px 主卡、致家长一封信 | `OnboardingInfoShell` + `OnboardingLetterBlock` | 是 |
+| 价值预览 | 3 条家长原声案例（无左色条） | `OnboardingExampleCard` ×3 | 是 |
+| 用法说明 | 语音 tip + 四模块预告 | `OnboardingGuideBlock` | 是 |
+| 降压 | 底部固定单一「开始」 | `markIntroSeen` → hub | 是 |
+| 路径 | 不再 intro→guide 两步 | guide 路由 redirect → intro | 是 |
+
+真源：`onboarding-info-compare.html` Impeccable 修正版 · `miniprogram/src/data/onboardingInfoContent.ts`
 
 ## basic — 轻量信息采集
 

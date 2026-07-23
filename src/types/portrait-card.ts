@@ -99,3 +99,26 @@ export function portraitCardLead(card: PortraitCardContent | string | undefined)
   const normalized = normalizePortraitCard(card)
   return normalized?.lead || normalized?.summary || ''
 }
+
+export function truncateText(text: string, max = 160): string {
+  const value = text.trim()
+  if (value.length <= max) return value
+  return `${value.slice(0, max).trim()}…`
+}
+
+export function cardSummary(
+  card: PortraitCardContent | string | undefined,
+  fallback: string
+): string {
+  const fromPortrait = portraitCardSummary(card)
+  if (fromPortrait) return fromPortrait
+  const fb = fallback.trim()
+  return fb ? truncateSummary(fb, 56) : ''
+}
+
+export function hasCardContent(
+  card: PortraitCardContent | string | undefined,
+  fallback = ''
+): boolean {
+  return Boolean(portraitCardSummary(card) || fallback.trim())
+}

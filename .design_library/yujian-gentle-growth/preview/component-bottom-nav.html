@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bottom Navigation</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+body{margin:0;padding:12px;background:var(--color-surface);font-family:var(--font-body);color:var(--color-on-surface);box-sizing:border-box}
+*,*::before,*::after{box-sizing:inherit}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.label{font-size:10px;color:var(--color-muted-foreground);min-width:80px;max-width:100px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.divider{border:none;border-top:1px solid var(--color-border);margin:4px 0 10px}
+.phone{width:100%;max-width:390px;min-height:148px;padding:var(--space-5) var(--space-4) calc(var(--space-5) + var(--space-4));border-radius:var(--radius-lg);background:linear-gradient(180deg,var(--color-background) 0%,var(--color-surface-container-low) 100%);display:flex;align-items:flex-end;box-shadow:var(--shadow-1)}
+.nav{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-2);padding:var(--space-2);border:1px solid var(--color-glass-stroke);border-radius:var(--radius-lg);background:var(--color-glass-surface);box-shadow:var(--shadow-2);backdrop-filter:blur(0)}
+.nav--airy{background:var(--color-surface-container-low);box-shadow:var(--shadow-1)}
+.tab{min-height:68px;border-radius:calc(var(--radius-md) + 2px);padding:var(--space-2) var(--space-2) var(--space-3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--color-muted-foreground);text-decoration:none;transition:transform var(--motion-duration-base) var(--motion-ease-emphasized),background-color var(--motion-duration-fast) var(--motion-ease-standard),box-shadow var(--motion-duration-base) var(--motion-ease-standard),color var(--motion-duration-fast) var(--motion-ease-standard);transform:translateY(0);flex-shrink:0}
+.tab:hover{background:var(--interactive-hover);color:var(--color-on-surface)}
+.tab:active{transform:translateY(1px) scale(var(--motion-press-scale));background:var(--interactive-press)}
+.tab__icon{width:32px;height:32px;padding:6px;border-radius:var(--radius-full);display:block;object-fit:contain;background:transparent;transition:background-color var(--motion-duration-fast) var(--motion-ease-standard),transform var(--motion-duration-base) var(--motion-ease-emphasized);flex-shrink:0}
+.tab__label{font-size:var(--font-size-caption);line-height:1;font-weight:600;letter-spacing:.01em;white-space:nowrap}
+.tab.is-active{color:var(--color-primary);background:var(--color-primary-container);box-shadow:var(--shadow-1);transform:translateY(calc(var(--motion-float-distance) * -0.33))}
+.tab.is-active .tab__icon{background:var(--color-surface);transform:translateY(-1px)}
+.tab.is-active .tab__label{color:var(--color-on-primary-container)}
+.tab:focus-visible{outline:none;box-shadow:var(--shadow-1),0 0 0 2px var(--interactive-focus)}
+.phone--active .nav{box-shadow:var(--shadow-3)}
+@media (prefers-reduced-motion:reduce){.tab,.tab__icon{transition:none}.tab:active,.tab.is-active{transform:none}}
+</style>
+</head>
+<body>
+<div class="row">
+  <span class="label">交流激活</span>
+  <div class="phone phone--active">
+    <nav class="nav" aria-label="底部导航">
+      <a class="tab is-active" href="#" aria-current="page">
+        <img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/messages-square.svg" width="24" height="24" alt="">
+        <span class="tab__label">交流</span>
+      </a>
+      <a class="tab" href="#">
+        <img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/list-todo.svg" width="24" height="24" alt="">
+        <span class="tab__label">任务</span>
+      </a>
+      <a class="tab" href="#">
+        <img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/sparkles.svg" width="24" height="24" alt="">
+        <span class="tab__label">预演</span>
+      </a>
+      <a class="tab" href="#">
+        <img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/user-round.svg" width="24" height="24" alt="">
+        <span class="tab__label">画像</span>
+      </a>
+    </nav>
+  </div>
+</div>
+<hr class="divider">
+<div class="row">
+  <span class="label">默认导航</span>
+  <div class="phone">
+    <nav class="nav nav--airy" aria-label="底部导航">
+      <a class="tab" href="#">
+        <img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/messages-square.svg" width="24" height="24" alt="">
+        <span class="tab__label">交流</span>
+      </a>
+      <a class="tab" href="#">
+        <img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/list-todo.svg" width="24" height="24" alt="">
+        <span class="tab__label">任务</span>
+      </a>
+      <a class="tab" href="#">
+        <img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/sparkles.svg" width="24" height="24" alt="">
+        <span class="tab__label">预演</span>
+      </a>
+      <a class="tab" href="#">
+        <img class="tab__icon" src="https://unpkg.com/lucide-static@latest/icons/user-round.svg" width="24" height="24" alt="">
+        <span class="tab__label">画像</span>
+      </a>
+    </nav>
+  </div>
+</div>
+</body>
+</html>

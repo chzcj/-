@@ -112,6 +112,8 @@ function packetToRetrievedContext(
     relevantPendingHypotheses: packet.pendingHypotheses || [],
     relevantFamilyInteractionPatterns: packet.familyInteractionPatterns || [],
     matchedMechanisms: packet.matchedMechanisms || [],
+    // v4 修复：补 dossierSlice（之前漏传 → how-to-speak 链路 dossierSlice 恒空）
+    dossierSlice: packet.dossierSlice || [],
     recentDiagnosis: [],
     parentNarrativePattern: flattenParentUnderstanding(packet.parentNarrativePattern),
     childQuotes: packet.childQuotes || [],

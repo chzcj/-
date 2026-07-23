@@ -21,6 +21,7 @@
 | 字体 | PingFang 系 | 微信系统字体 | 未加载 Web font-face |
 | build hero compact | `.hero-card.compact` 更小内边距 | `build-hero-card.compact` | 已补 SCSS |
 | Tab 图标 | SVG 描边 | data-uri SVG（对齐 Web path） | 已对齐 |
+| Onboarding intro CTA | build 主按钮 ~44–48px | `onboarding-info-cta` 54px | HTML Impeccable 修正版；固定底栏可读性优先 |
 
 ## P2 — 阴影 / 装饰 / 动画
 

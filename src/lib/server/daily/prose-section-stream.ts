@@ -2,10 +2,10 @@ import 'server-only'
 
 import type { OrchestrationOutput } from '@/types/database'
 import type { DailySection } from '@/types/daily-message'
+import { combinedProseAndSectionSystem } from '@/lib/server/daily/parent-facing-copy'
 import { buildDailyProsePayload, buildDailyProseTask, clampProse, resolveProseMode } from '@/lib/server/daily/prose-context'
 import { requireTextStream } from '@/lib/server/daily/llm-required'
 import { frontAiThinkingDisabled } from '@/lib/server/ark-agents'
-import { agentPrompts } from '@/lib/server/agent-prompts'
 import {
   createSectionStreamTracker,
   type SectionStreamCallbacks,
@@ -24,10 +24,9 @@ function proseEmitEnd(full: string, hasSections: boolean): number {
   return full.length
 }
 
-/** 合并 system：parentFacingStyle + dailyDialogueOrchestration + parentFacingCopy（style 只出现一次）。
- *  稳定前缀，便于 provider 侧 prompt cache 命中。 */
-function combinedProseAndSectionSystem(): string {
-  return `${agentPrompts.parentFacingStyle}\n\n---\n\n${agentPrompts.deepModelingParentDigest}\n\n---\n\n${agentPrompts.dailyDialogueOrchestration}\n\n---\n\n${agentPrompts.parentFacingCopy}`
+/** 合并 system：parentFacingStyle + deepModelingParentDigest + dailyDialogueOrchestration + parentFacingCopy */
+function mergedProseSectionSystem(): string {
+  return combinedProseAndSectionSystem()
 }
 
 /** 从 retrievalPack.dossierSlice 的 interventionTargets 行提炼默认 taskTitle */
@@ -41,8 +40,8 @@ function deriveTaskTitleFromDossierSlice(output: OrchestrationOutput): string | 
 }
 
 /** 合并 task：先输出 prose 正文，再按 marker 输出 sections + taskTitle */
-function buildProseAndSectionTask(output: OrchestrationOutput, skeletons: DailySection[]): string {
-  const proseTask = buildDailyProseTask(output)
+function buildProseAndSectionTask(output: OrchestrationOutput, skeletons: DailySection[], userText: string): string {
+  const proseTask = buildDailyProseTask(output, userText)
   if (!skeletons.length) {
     // 无 visible section：只输出 prose，不要求 marker
     return `${proseTask}\n\n本轮不输出 section，只输出上面这段正文。`
@@ -66,6 +65,7 @@ section 顺序必须为：${order}
 
 export type ProseAndSectionCallbacks = {
   deepModelDigest?: import('@/lib/server/memory/deep-modeling/pick-deep-model-digest').DeepModelDigestPack
+  clampMeta?: import('@/lib/server/daily/prose-context').ClampProseMeta
   onProseDelta?: (delta: string) => void
   onProseComplete?: () => void
   onSectionError?: (id: string, message: string) => void
@@ -83,7 +83,7 @@ export async function streamProseAndSections(
   callbacks: ProseAndSectionCallbacks
 ): Promise<{ prose: string; sections: DailySection[]; taskTitle?: string }> {
   const payload = buildDailyProsePayload(output, userText, { deepModelDigest: callbacks.deepModelDigest })
-  const task = buildProseAndSectionTask(output, visibleSkeletons)
+  const task = buildProseAndSectionTask(output, visibleSkeletons, userText)
   const sectionTracker = visibleSkeletons.length
     ? createSectionStreamTracker(visibleSkeletons, callbacks)
     : null
@@ -112,7 +112,7 @@ export async function streamProseAndSections(
   }
 
   await requireTextStream(
-    combinedProseAndSectionSystem(),
+    mergedProseSectionSystem(),
     task,
     {
       ...payload,
@@ -153,17 +153,25 @@ export async function streamProseAndSections(
     const inc = proseText.slice(proseSent)
     if (inc) emitProseDelta(inc)
     callbacks.onProseComplete?.()
-    return { prose: clampProse(proseText, resolveProseMode(output)), sections: visibleSkeletons, taskTitle: undefined }
+    return {
+      prose: clampProse(proseText, resolveProseMode(output, userText), callbacks.clampMeta),
+      sections: visibleSkeletons,
+      taskTitle: undefined,
+    }
   }
 
   if (!sectionTracker) {
-    return { prose: clampProse(proseText, resolveProseMode(output)), sections: [], taskTitle: undefined }
+    return { prose: clampProse(proseText, resolveProseMode(output, userText), callbacks.clampMeta), sections: [], taskTitle: undefined }
   }
 
   try {
     const result = sectionTracker.finalize()
     const taskTitle = result.taskTitle || deriveTaskTitleFromDossierSlice(output)
-    return { prose: clampProse(proseText, resolveProseMode(output)), sections: result.sections, taskTitle }
+    return {
+      prose: clampProse(proseText, resolveProseMode(output, userText), callbacks.clampMeta),
+      sections: result.sections,
+      taskTitle,
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : '这部分未生成'
     const partial = sectionTracker.buildPartialSections()
@@ -171,6 +179,10 @@ export async function streamProseAndSections(
       const hasContent = partial.find((s) => s.id === sk.id && (s.paragraphs?.length || s.items?.length || s.quotes?.length))
       if (!hasContent) callbacks.onSectionError?.(sk.id, message)
     }
-    return { prose: clampProse(proseText, resolveProseMode(output)), sections: partial, taskTitle: undefined }
+    return {
+      prose: clampProse(proseText, resolveProseMode(output, userText), callbacks.clampMeta),
+      sections: partial,
+      taskTitle: undefined,
+    }
   }
 }

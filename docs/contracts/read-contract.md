@@ -24,18 +24,19 @@
 
 | 字段 | 来源 | 含义 | 厚包上限 | 薄包上限 |
 |------|------|------|---------|---------|
-| `childStructureModels` | built_profile_snapshots.coreJudgment / ConditionalProfile.childTendency | 画像文本（人话） | 12 | 4 |
-| `entryEvidence` | entry_evidence_packs | 四模块采集包摘要 | 12 | 4 |
+| `childStructureModels` | built_profile_snapshots.coreJudgment / ConditionalProfile.childTendency | 画像文本（人话） | 24 | 4 |
+| `entryEvidence` | entry_evidence_packs | 四模块采集包摘要 | 24 | 4 |
 | `entryFacts` | entry_evidence_packs.decomposedInput 的 verifiableFacts+childBehaviors+triggerPoints | **具体事实直喂** | 80 | 6 |
 | `dossierSlice` | deep_model_digest.dossier → dossier-slicer（按 query 切） | **v3 主源** | 24 | 8 |
-| `matchedMechanisms` | evidence_networks → formatMatchedMechanismCards（兜底） | dossier 缺失时 | **8** | 3（仅名） |
-| `familyPatterns` | L7 FamilyInteractionCycle | 家庭互动模式 | 10 | 2 |
-| `parentUnderstanding` | parent_narrative_patterns flatten | 家长叙事模式 | 12 | 6 |
-| `recentEvents` | turn_events + daily_updates | 近期对话 | 12 | 5 |
-| `pendingHypotheses` | pending_hypotheses | 待验证假设 | 10 | 3 |
-| `childQuotes` | turn_events / evidence_networks | 孩子原话 | 16 | 4 |
-| `parentVerbatimSnippets` | turn_events | 家长原话 | 16 | 4 |
+| `matchedMechanisms` | evidence_networks → formatMatchedMechanismCards（兜底） | dossier 缺失时 | **8**（MATCHED_MECHANISMS_CARD_LIMIT） | 3（仅名） |
+| `familyPatterns` | L7 FamilyInteractionCycle | 家庭互动模式 | 20 | 2 |
+| `parentUnderstanding` | parent_narrative_patterns flatten | 家长叙事模式 | 24 | 6 |
+| `recentEvents` | turn_events + daily_updates | 近期对话 | 24 | 5 |
+| `pendingHypotheses` | pending_hypotheses | 待验证假设 | 20 | 3 |
+| `childQuotes` | turn_events / evidence_networks | 孩子原话 | 32 | 4 |
+| `parentVerbatimSnippets` | turn_events | 家长原话 | 32 | 4 |
 | `deepModelDigest` | deep_model_digest 层 | SecondMe 家长向摘要（机制叙事+锚定事实+**structuralTensions**） | 见 pick | 见 pick |
+| `domainAtomFacts`（v4 新增） | RetrievedContext.domainAtomFacts → 按问题域检索的原子事实独立通道 | **事实锚定** | 待定 | 待定 |
 
 **注入面（一批已接线）**：daily prose / visible+hidden section、how-to-speak、rehearsal analyze。均走同一厚包/digest pick。
 
@@ -90,3 +91,17 @@
 - 草案态：`SynthesisOutput.childStructureModelDraft.primaryConditionalProfile: string`（120-200 字文本草案，给 diagnosis handoff）
 - 成型态：`ChildStructureModel.primaryConditionalProfile: ConditionalProfile | null`（结构化对象，落 L5 层）
 - 读取统一：所有读取处取 `.childTendency` 字符串（如 [profile-rewrite.ts](../../src/lib/server/profile-rewrite.ts)、[router.ts](../../src/lib/server/memory/retrieval/router.ts)），禁止把对象塞进 LLM material。
+
+## HandbookPack（画像 Tab 成长手账）
+
+实现：`src/lib/server/profile/handbook-pack-builder.ts` → `GET /api/profile/handbook-pack`。
+
+| 字段 | 来源 | 消费者 |
+|------|------|--------|
+| `hero` / `stats` | child basic + page metrics + built completeness | MP `PortraitMemoryHero` |
+| `handbook` | `weeklyHandbookSynthesizer` → `family_handbook_snapshot` | MP `WeeklyHandbookCard` |
+| `memoryFeed` | turn_events + daily_updates + trajectory + tasks | MP `/memories` |
+| `highlightMoments` | `dailyPortraitRefresh` → `daily_ui_snapshot` | MP `/moments` + hub |
+| `timeCapsule` | `timeCapsuleCompare` → `family_time_capsule` | MP time-capsule 入口 |
+
+全链路追踪见 [handbook-pack-trace.md](./handbook-pack-trace.md)。

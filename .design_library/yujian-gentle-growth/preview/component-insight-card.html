@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insight Card</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+body{margin:0;padding:12px;background:var(--color-surface);font-family:var(--font-body);color:var(--color-on-surface)}
+.row{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap}
+.label{min-width:72px;max-width:88px;padding-top:10px;font:var(--type-caption);letter-spacing:.04em;color:var(--color-muted-foreground);flex-shrink:0}
+.divider{border:none;border-top:1px solid var(--color-border);margin:2px 0 12px}
+.insight{position:relative;overflow:hidden;width:332px;padding:16px;border-radius:22px;background:linear-gradient(180deg,var(--color-surface) 0%,var(--color-surface-container-low) 100%);border:1px solid var(--color-outline-variant);box-shadow:var(--shadow-2);flex-shrink:0;animation:gentle-float var(--motion-duration-slow) var(--motion-ease-emphasized) both}
+.insight::before{content:"";position:absolute;inset:-22px -22px auto auto;width:132px;height:132px;border-radius:var(--radius-full);background:radial-gradient(circle,var(--color-glow-soft) 0%,transparent 72%);opacity:.9;pointer-events:none}
+.insight::after{content:"";position:absolute;inset:1px;border-radius:inherit;border:1px solid rgba(255,255,255,.56);pointer-events:none}
+.insight__rail{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.insight__eyebrow{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 10px;border-radius:var(--radius-full);font:var(--type-caption);color:var(--color-on-primary-container);background:var(--color-primary-container);box-shadow:inset 0 0 0 1px rgba(255,255,255,.48)}
+.insight__eyebrow--warning{color:var(--color-warning);background:var(--color-warning-container)}
+.insight__trace{width:18px;height:1px;border-radius:var(--radius-full);background:var(--accent)}
+.insight__meta{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap;max-width:152px}
+.insight__pill{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border-radius:var(--radius-full);font:var(--type-caption);color:var(--color-muted-foreground);background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.72);flex-shrink:0}
+.insight__pill--accent{color:var(--color-on-primary-container);background:var(--color-primary-container);border-color:rgba(255,255,255,.58)}
+.insight__pill--warning{color:var(--color-warning);background:var(--color-warning-container)}
+.insight__title-wrap{display:grid;gap:6px;margin-bottom:10px}
+.insight__kicker{font:var(--type-caption);letter-spacing:.04em;color:var(--color-muted-foreground)}
+.insight__title{margin:0;font:var(--type-h4);line-height:1.34;color:var(--color-on-surface);letter-spacing:-.01em}
+.insight__body{display:grid;gap:10px}
+.insight__body p{margin:0;font:var(--type-caption);color:var(--color-on-surface-variant)}
+.insight__quiet{padding:12px 13px;border-radius:var(--radius-md);background:linear-gradient(180deg,var(--color-surface-container-low),var(--color-surface-container-high));border:1px solid var(--color-border)}
+.insight--authority{background:linear-gradient(180deg,var(--color-surface) 0%,var(--color-card) 62%,var(--color-surface-container-low) 100%)}
+.insight--authority .insight__quiet{background:linear-gradient(180deg,var(--color-primary-container),rgba(255,255,255,.72))}
+.insight--tension{background:linear-gradient(180deg,var(--color-surface) 0%,var(--color-card) 58%,var(--color-surface-container-high) 100%)}
+.insight--tension::before{background:radial-gradient(circle,var(--color-warning-container) 0%,transparent 74%);opacity:.72}
+.insight--tension .insight__quiet{background:linear-gradient(180deg,var(--color-warning-container),rgba(255,255,255,.72))}
+.insight__note{margin-top:10px;font:var(--type-caption);color:var(--color-muted-foreground)}
+@keyframes gentle-float{from{transform:translateY(var(--motion-float-distance));opacity:.96}to{transform:translateY(0);opacity:1}}
+</style>
+</head>
+<body>
+  <div class="row">
+    <span class="label">权威解读</span>
+    <article class="insight insight--authority">
+      <div class="insight__rail">
+        <span class="insight__eyebrow"><span class="insight__trace"></span>关系变化</span>
+        <div class="insight__meta">
+          <span class="insight__pill insight__pill--accent">先接住</span>
+          <span class="insight__pill">可继续</span>
+        </div>
+      </div>
+      <div class="insight__title-wrap">
+        <span class="insight__kicker">轻解释卡</span>
+        <h2 class="insight__title">先把靠近感放回来，再说真正想说的话</h2>
+      </div>
+      <div class="insight__body">
+        <p>你不是没有表达清楚，而是总会先照顾气氛，等到情绪稍微松一点，才把重点慢慢补上。</p>
+        <div class="insight__quiet">
+          <p>这张卡想先接住彼此的敏感，再把解释往前推半步。被理解的入口一旦柔和下来，关系里的靠近就更容易发生。</p>
+        </div>
+      </div>
+      <div class="insight__note">陪伴式提示：解释可以晚一点，但连接不要先断开。</div>
+    </article>
+  </div>
+  <hr class="divider">
+  <div class="row">
+    <span class="label">家庭张力</span>
+    <article class="insight insight--tension">
+      <div class="insight__rail">
+        <span class="insight__eyebrow insight__eyebrow--warning"><span class="insight__trace"></span>关系变化</span>
+        <div class="insight__meta">
+          <span class="insight__pill insight__pill--warning">先接住</span>
+          <span class="insight__pill">可继续</span>
+        </div>
+      </div>
+      <div class="insight__title-wrap">
+        <span class="insight__kicker">轻解释卡</span>
+        <h2 class="insight__title">张力冒头时，常常不是谁更强，而是谁先绷紧了</h2>
+      </div>
+      <div class="insight__body">
+        <p>一句提醒如果落在疲惫时刻，就容易被听成催促。表面看像立场不同，底下更像两个人都在保护自己。</p>
+        <div class="insight__quiet">
+          <p>先接住那一下不舒服，再谈要不要继续。这样做不会削弱边界，反而让关系里的回应更稳，也更有余地。</p>
+        </div>
+      </div>
+      <div class="insight__note">陪伴式提示：把紧绷感说小一点，彼此才有空间往下走。</div>
+    </article>
+  </div>
+</body>
+</html>

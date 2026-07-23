@@ -23,11 +23,14 @@
     "audit:memory": "node scripts/audit-memory-retrieval.mjs",
     "audit:memory-contract": "node scripts/audit-memory-contract.mjs",
     "test:frontend-read-pack": "npx tsx scripts/test-frontend-read-pack.mjs",
+    "replay:daily-prose": "node --import ./scripts/preload-server-only-stub.mjs --import tsx scripts/replay-daily-prose.mjs",
     "verify:conditional-profile": "node scripts/verify-conditional-profile-reads.mjs",
     "test:contracts": "npx tsx scripts/test-daily-contract.mjs && npx tsx scripts/test-daily-stream-client.mjs && npx tsx scripts/test-frontend-read-pack.mjs && node scripts/verify-conditional-profile-reads.mjs && node scripts/test-retrieval-packet.mjs && node scripts/audit-memory-contract.mjs && node scripts/audit-deep-modeling-pipeline.mjs",
     "test:account-lifecycle": "node scripts/test-account-lifecycle.mjs",
     "deploy": "bash deploy.sh",
     "sync:gitee": "node .agents/scripts/sync-gitee.mjs",
+    "batch:dialogue-reanalyze": "node scripts/batch-rerun-dialogue-analysis.mjs",
+    "audit:memory-utilization": "node scripts/audit-memory-utilization.mjs",
     "mp:install": "npm install --prefix miniprogram",
     "mp:dev": "npm run dev:weapp --prefix miniprogram",
     "mp:build": "npm run build:weapp --prefix miniprogram"
@@ -49,6 +52,11 @@
     "@types/react-dom": "^18.3.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.35",
+    "server-only": "^0.0.1",
+    "tsx": "^4.23.1",
     "typescript": "5.9.3"
+  },
+  "optionalDependencies": {
+    "@next/swc-darwin-arm64": "14.2.35"
   }
 }

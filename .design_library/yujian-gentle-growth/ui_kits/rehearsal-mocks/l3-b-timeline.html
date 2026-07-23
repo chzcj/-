@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>预演 L3-B · 时间线优先</title>
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <link rel="stylesheet" href="../../components.css" />
+  <link rel="stylesheet" href="../profile-mocks/shared-profile-mock.css" />
+  <link rel="stylesheet" href="shared-rehearsal-mock.css" />
+  <style>
+    .timeline-first-banner {
+      padding: 12px 14px; border-radius: 16px; margin-bottom: 4px;
+      background: var(--color-primary-container); font: var(--type-caption); line-height: 1.5;
+      color: var(--color-on-primary-container);
+    }
+  </style>
+</head>
+<body>
+  <a class="variant-badge" href="index.html">← 选版</a>
+  <div class="phone-stage">
+    <div class="phone-frame">
+      <div class="phone-inner">
+        <div class="status-bar"><span>9:41</span><span>L3-B 时间线</span></div>
+        <div class="phone-screen">
+          <header class="deep-header">
+            <button type="button" class="deep-header__btn" aria-label="返回">
+              <img src="https://unpkg.com/lucide-static@latest/icons/arrow-left.svg" width="18" height="18" alt="">
+            </button>
+            <h1 class="deep-header__title">对话分析</h1>
+            <button type="button" class="deep-header__btn" aria-label="关闭">
+              <img src="https://unpkg.com/lucide-static@latest/icons/x.svg" width="18" height="18" alt="">
+            </button>
+          </header>
+          <div class="result-scroll">
+            <p class="timeline-first-banner">先对照你们说了什么 · 高亮段是更容易触发冲突的地方 · 点气泡可改说话人</p>
+            <div class="timeline-body">
+              <div class="d-bubble-row is-parent">
+                <div class="d-bubble">
+                  <span class="d-bubble-speaker">家长</span>
+                  <span class="d-bubble-text">都七点半了，你怎么还不开始写？</span>
+                </div>
+              </div>
+              <div class="d-bubble-row is-child is-highlight">
+                <div class="d-bubble">
+                  <span class="d-bubble-speaker">孩子</span>
+                  <span class="d-bubble-text">你别催我行不行，我又不是不写。</span>
+                  <span class="d-bubble-reason">这里不是在谈时间，是在拒绝「被盯着」</span>
+                </div>
+              </div>
+              <div class="d-bubble-row is-parent is-highlight">
+                <div class="d-bubble">
+                  <span class="d-bubble-speaker">家长</span>
+                  <span class="d-bubble-text">我是怕你拖到很晚，明天又起不来。</span>
+                  <span class="d-bubble-reason">道理出发点是关心，孩子可能先听到的是评价</span>
+                </div>
+              </div>
+              <div class="d-bubble-row is-child">
+                <div class="d-bubble">
+                  <span class="d-bubble-speaker">孩子</span>
+                  <span class="d-bubble-text">知道了知道了，烦死了。</span>
+                </div>
+              </div>
+            </div>
+            <article class="pcard pcard--insight" style="width:100%;max-width:none">
+              <div class="pcard__inner">
+                <p class="pcard__insight-title">读完这段对话</p>
+                <p class="pcard__insight-body">越解释「我是为你好」，孩子越先进入防御。可以先从减少「被检查感」试起。</p>
+              </div>
+            </article>
+            <div class="try-tonight">
+              <span class="try-tonight__badge">今晚可试</span>
+              <p class="try-tonight__body">只问「今天最难的是哪一题」，不追问进度。</p>
+            </div>
+            <div class="result-actions">
+              <button type="button" class="mock-cta">用这次对话去情景预演</button>
+              <button type="button" class="mock-cta mock-cta--secondary">返回预演</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

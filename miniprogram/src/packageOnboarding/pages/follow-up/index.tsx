@@ -18,6 +18,7 @@ import {
   normalizeBuildEntryType,
 } from '@/lib/buildEntries'
 import { mpGoReplace, exitSupplementToProfile, goOnboardingHub } from '@/lib/mpOnboardingNav'
+import { resolveFollowUpVoicePrompt } from '@/lib/followUpPrompt'
 import {
   appendFollowUpText,
   clearEntryGate,
@@ -28,6 +29,7 @@ import {
   isSupplementFlow,
   type EntryFollowUpGate,
 } from '@/services/entryStorage'
+import { getEntryCaptureCharHint } from '@/lib/entryCharHint'
 
 const FOLLOW_UP_PLACEHOLDER = '把刚才想到的补充写在这里，或按住说话…'
 
@@ -62,7 +64,7 @@ export default function EntryFollowUpPage() {
     }
 
     const prefetched = loadEntryGate(entryType)
-    if (prefetched?.purpose && !force) {
+    if (prefetched && prefetched.shouldAsk !== false && !force) {
       applyFollowUp(prefetched)
       setAiLoading(false)
       loadedRef.current = true
@@ -86,7 +88,7 @@ export default function EntryFollowUpPage() {
 
     const payload: EntryFollowUpGate = {
       shouldAsk: true,
-      purpose: res.data.purpose || '请再补一个更具体的场景或原话。',
+      purpose: res.data.purpose,
       voicePrompt: res.data.voicePrompt,
       directions: res.data.directions,
     }
@@ -110,45 +112,46 @@ export default function EntryFollowUpPage() {
 
     setLoading(true)
     setApiError('')
-    Taro.showLoading({ title: '正在提交…', mask: true })
+    Taro.showLoading({ title: '正在判断是否还要追问…', mask: true })
 
-    appendFollowUpText(entryType, answer)
-    const combined = getCombinedEntryText(entryType)
-    const nextRound = round + 1
-    const canAskMore = round < MAX_ENTRY_FOLLOW_UP_ROUNDS
+    try {
+      appendFollowUpText(entryType, answer)
+      const combined = getCombinedEntryText(entryType)
+      const nextRound = round + 1
+      const canAskMore = round < MAX_ENTRY_FOLLOW_UP_ROUNDS
 
-    if (canAskMore && combined) {
-      const res = await requestEntryFollowUp(entryType, combined, isSupplementFlow())
-      if (res.ok && res.data.shouldAsk !== false) {
-        const payload: EntryFollowUpGate = {
-          shouldAsk: true,
-          purpose: res.data.purpose || '请再补一个更具体的场景或原话。',
-          voicePrompt: res.data.voicePrompt,
-          directions: res.data.directions,
+      if (canAskMore && combined) {
+        const res = await requestEntryFollowUp(entryType, combined, isSupplementFlow())
+        if (res.ok && res.data.shouldAsk !== false) {
+          const payload: EntryFollowUpGate = {
+            shouldAsk: true,
+            purpose: res.data.purpose,
+            voicePrompt: res.data.voicePrompt,
+            directions: res.data.directions,
+          }
+          saveEntryGate(entryType, payload)
+          applyFollowUp(payload)
+          setRound(nextRound)
+          Taro.nextTick(() => setText(''))
+          Taro.showToast({ title: '已记录，可继续补充', icon: 'none' })
+          return
         }
-        saveEntryGate(entryType, payload)
-        applyFollowUp(payload)
-        setRound(nextRound)
-        // 下一轮同页继续：延迟清空，避免鸿蒙上受控 Textarea value 与原生层聚焦竞争
-        Taro.nextTick(() => setText(''))
-        setLoading(false)
-        Taro.hideLoading()
-        Taro.showToast({ title: '已记录，可继续补充', icon: 'none' })
-        return
+        if (!res.ok) {
+          setApiError(res.error.message || '暂时没判断成功，可以直接整理或重试。')
+          return
+        }
       }
-      if (!res.ok) {
-        setApiError(res.error.message || '追问生成失败，可以直接整理或重试。')
-        setLoading(false)
-        Taro.hideLoading()
-        return
-      }
-    }
 
-    clearEntryGate(entryType)
-    setGate(null)
-    setLoading(false)
-    Taro.hideLoading()
-    await mpGoReplace(mpSummaryPath(entryType))
+      clearEntryGate(entryType)
+      setGate(null)
+      await mpGoReplace(mpSummaryPath(entryType))
+    } catch (err) {
+      console.error('[follow-up] submit failed', err)
+      setApiError('提交时出了点问题，可以重试或直接整理。')
+    } finally {
+      setLoading(false)
+      Taro.hideLoading()
+    }
   }
 
   const skip = async () => {
@@ -162,9 +165,14 @@ export default function EntryFollowUpPage() {
     void mpGoReplace(mpCapturePath(entryType))
   }
 
+  const combinedCharHintCount =
+    getCombinedEntryText(entryType).trim().length + text.trim().length
+  const moduleVolumeHint = getEntryCaptureCharHint(combinedCharHintCount)
+
   const canSubmit = hasSubmittableEntryText(text) && !loading && !aiLoading
   const roundLabel =
     round > 1 ? `第 ${round} 轮补充` : getFollowUpCount(entryType) > 0 ? '继续补充' : '补充细节'
+  const displayPrompt = gate ? resolveFollowUpVoicePrompt(entryType, round) : ''
 
   return (
     <HiFiBuildShell
@@ -222,19 +230,27 @@ export default function EntryFollowUpPage() {
           </View>
         </View>
       ) : gate ? (
-        <FollowUpCard voicePrompt={gate.voicePrompt || '请补一段具体发生的事，尽量说清当时谁说了什么、后来怎样结束。'} />
+        <>
+          <FollowUpCard voicePrompt={displayPrompt} />
+          {moduleVolumeHint ? (
+            <Text className='hint-text' style={{ display: 'block', marginTop: '8px' }}>
+              {moduleVolumeHint}
+            </Text>
+          ) : null}
+        </>
       ) : null}
 
       {!aiLoading ? (
         <BuildRecordBox
           label='补充回答'
-          status={roundLabel}
+          status='按住说话约 1 分钟 · 建议 300 字以上'
           value={text}
           placeholder={FOLLOW_UP_PLACEHOLDER}
           disabled={loading}
           metaLeft=''
           showMeta={false}
-          showCharHint={false}
+          showCharHint
+          charHintCount={combinedCharHintCount}
           onChange={setText}
         />
       ) : null}

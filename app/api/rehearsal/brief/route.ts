@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     const llm = await callFastJson<{
       sceneSituation?: string
       childUnderstanding?: string
+      understandingBullets?: string[]
       openingHint?: string
     }>(
       [promptRegistry.parentFacingStyle, promptRegistry.rehearsalSceneBrief].join('\n\n---\n\n'),
@@ -71,13 +72,29 @@ export async function POST(request: Request) {
       { maxTokens: 1024, disableThinking: frontAiThinkingDisabled() }
     ).catch(() => undefined)
 
+    const bullets = (llm?.understandingBullets || [])
+      .map((b) => String(b || '').trim())
+      .filter((b) => b.length > 4)
+      .slice(0, 3)
+    const childUnderstanding =
+      bullets.length >= 2
+        ? bullets.join('\n')
+        : llm?.childUnderstanding?.trim() ||
+          '还在根据你们的交流慢慢补全；可以先按这个场景练一版开口。'
+
     return ok({
       sceneId: base.id,
       sceneTitle: base.title,
       sceneSituation: llm?.sceneSituation?.trim() || base.summary,
-      childUnderstanding:
-        llm?.childUnderstanding?.trim() ||
-        '还在根据你们的交流慢慢补全；可以先按这个场景练一版开口。',
+      childUnderstanding,
+      understandingBullets:
+        bullets.length >= 2
+          ? bullets
+          : childUnderstanding
+              .split(/\n+/)
+              .map((line) => line.replace(/^[-•·\d.)]+\s*/, '').trim())
+              .filter((line) => line.length > 4)
+              .slice(0, 3),
       openingHint: llm?.openingHint?.trim() || base.openingHint,
     })
   } catch (error) {

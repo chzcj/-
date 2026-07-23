@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "wechat-miniprogram-designUI": {
+      "source": "Billzhouheart/wechat-miniprogram-designUI",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "266c26c8599419caab1b5a1bd89a59c43582d1bda5fa56ab462d3b4e1a3da966"
+    }
+  }
+}

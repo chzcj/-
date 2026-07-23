@@ -1,0 +1,54 @@
+{
+  "auditDate": "2026-07-21T23:30:00+08:00",
+  "phase0": ".trae/documents/memory-utilization-baseline-20260721.json",
+  "phase1": {
+    "audit_memory_contract": { "exit": 0, "passed": 19 },
+    "test_frontend_read_pack": { "exit": 0, "passed": 38, "failed": 0 },
+    "test_retrieval_packet": { "exit": 0, "passed": 14 },
+    "test_contracts_bundle": { "exit": 0, "note": "含 audit-memory-contract + verify-conditional-profile" },
+    "audit_prompt_registry": { "exit": 0, "topSpChars": { "portraitSynthesizer": 11614, "parentFacingStyle": 8930 } },
+    "audit_deep_modeling_pipeline": {
+      "exit": 1,
+      "phone": "12234567890",
+      "tenant": "fam_1783176296718_wy439s",
+      "mechanismCount": 15,
+      "portraitCardsRich": 0,
+      "pass": false,
+      "note": "digest 有 narrative+8 facts，但 daily_ui_snapshot 六卡 rich<2"
+    },
+    "audit_empty_atom_episodes": { "skipped": "本地无 DATABASE_URL；生产未单独跑" },
+    "audit_memory_retrieval": {
+      "exit": 0,
+      "pass": 12,
+      "fail": 0,
+      "warn": 1,
+      "warnReason": "未设 TEST_PASSWORD，跳过在线召回 probe",
+      "report": "scripts/test-reports/memory-retrieval-audit-1784733692507.json"
+    },
+    "test_xiaoyin_corpus": {
+      "exit": 0,
+      "skipped": "DEMO_DISABLED；CORPUS_LIMIT=1 profile phase 未跑通 auth",
+      "note": "需 TEST_PHONE/TEST_PASSWORD"
+    },
+    "audit_fullchain": {
+      "definedInPackageJson": false,
+      "manualEquivalent": "npm run test:contracts && node scripts/audit-prompt-registry.mjs",
+      "result": "pass"
+    }
+  },
+  "audit_memory_utilization": ".trae/documents/memory-utilization-audit-json-20260721.json",
+  "proseReplay": {
+    "file": "生产 .trae/documents/prose-replay-20260721.md",
+    "samples": 2,
+    "family": "f_demo",
+    "packStats": "entryFacts=6 dossierSlice=0（dossier 未生成故 slice 空）",
+    "rubricBeforeAvg": 13.5,
+    "rubricAfterAvg": 13.0,
+    "verbatimAnchorNote": "After 文案含「知道了」「检查讲错题」等行为描述，未直接引用 pack 原话子串；archiveFit=2/3"
+  },
+  "productionReadPack_f_demo": {
+    "nonEmptyKeysOnLatestTurnRow": 0,
+    "note": "turn_events.data 顶层无 retrievedContextSnapshot；replay 从 trace 内 snapshot 读到 entryFacts=6",
+    "deepModelDigest": { "mechanismNarrativeLen": 701, "hasDossier": false, "anchoredFactsN": 24 }
+  }
+}

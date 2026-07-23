@@ -25,6 +25,12 @@ interface ExtractedAtom {
   evidenceTier?: 'behavior' | 'verbatim' | 'repeated' | 'cross_scene' | 'outcome_checked'
   ecologicalLayer?: 'micro' | 'meso' | 'exo' | 'macro' | 'chrono'
   factRole?: 'presenting' | 'trigger' | 'response' | 'counter' | 'context'
+  /** v4 认识论状态：observed=直接观察 / reported=家长转述 / derived=多证据推导 / inferred=LLM推断 / hypothesized=待验证假设 */
+  epistemicStatus?: 'observed' | 'reported' | 'derived' | 'inferred' | 'hypothesized' | 'expert_confirmed'
+  /** 事件发生时间（非写入时间），用于时序推理 */
+  businessTime?: string
+  /** 0-1 数值置信度，用于贝叶斯更新与三角化 */
+  confidence?: number
 }
 
 interface ExtractedEpisode {
@@ -124,6 +130,12 @@ export async function ingestEpisodeStrict(text: string, ctx: IngestContext = {})
       isHighValue: hv,
       evidenceStrength: a.evidenceStrength || 'medium',
       embedding,
+      epistemicStatus: a.epistemicStatus || 'reported',
+      evidenceTier: a.evidenceTier,
+      factRole: a.factRole,
+      ecologicalLayer: a.ecologicalLayer,
+      businessTime: a.businessTime,
+      confidence: a.confidence,
     }
   })
 
@@ -140,6 +152,7 @@ export async function ingestEpisodeStrict(text: string, ctx: IngestContext = {})
       isHighValue: false,
       evidenceStrength: 'low',
       embedding: null,
+      epistemicStatus: 'reported',
     })
   }
 
