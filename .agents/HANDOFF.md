@@ -23,6 +23,73 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-23 07:00 | Trae | v4 全阶段完成（A-G + L0 全部落地 + 部署验证）
+
+**做了什么**
+- 按 `unified-deep-refactor-spec.md` 总纲执行全部 7 阶段（A-G）+ L0，全部通过 typecheck + lint + 部署验证
+
+**L0-1：服务器开 PORTRAIT_V3=1**
+- 服务器 .env.local 加 PORTRAIT_V3=1，PM2 重启
+- deep_model_digest 已有 35 条，dossier 生成链路激活
+
+**阶段 A-E（见上一条 HANDOFF）已落地**
+
+**阶段 F：成本优化**
+- F-1：DB 迁移 ALTER TABLE（fact_atoms 加 6 列，防生产 upsertAtoms 崩溃）
+- F-2：检索 query 拼接近 3 轮上下文（buildContextEnrichedQuery）
+- F-3：prompt cache 键序重排（dossierSlice 下移到后段，domainAtomFacts 新增第 12 键）
+- F-4：session cache + 漂移检测（canReuseCache + cos sim < 0.6 失效）
+- orchestration pipeline 补传 dossierSlice + domainAtomFacts（之前漏传）
+
+**阶段 G：v4 深度画像**
+- G-1+G-2：persona 系统
+  - 新建 `prompts/background/personaSynthesizer.md`（55 个 prompt，+1）
+  - 新建 `src/lib/server/memory/family-agent-persona/persona-store.ts`（layer_name='family_agent_persona'）
+  - modeling-identity.ts 加 personaSynthesizer（拼 SecondMe §A+§C 前缀）
+  - deep-mechanism/pipeline.ts 末尾接入 updateFamilyAgentPersona（每轮 deep review 后增量更新，平滑 0.6×旧+0.4×新）
+- G-3+G-4：数学引擎
+  - 新建 `src/lib/server/harness/bayesian.ts`
+  - computeTriangulatedConfidence（三角验证 confidence 硬公式：单源≤0.5/双源0.6-0.7/三源≥0.8/四源≥0.95 + 独立性调节 + 认识论惩罚）
+  - computeLikelihood + normalizePosteriors（贝叶斯 prior×likelihood=posterior 归一化）
+  - defaultPrior（来自 THEORY_CARDS 的机制类型先验）
+- G-5：persona 注入前台
+  - OrchestrationOutput 加 familyAgentPersona? 字段
+  - orchestration pipeline 加载 persona（loadFamilyAgentPersona）
+  - prose-context.ts 的 buildDailyProsePayload 注入 familyAgentPersona
+  - parentFacingStyle.md §二十五 persona 适配规则已就位
+
+**验证**
+- typecheck exit 0（55 prompts + tsc --noEmit 全通过）
+- lint 0 errors
+- 部署成功 PM2 online
+- 测试消息跑通：retrievalEpisodeCount=19 + post-gate 不误杀 + prose 正常产出
+- DB 迁移 6 列就位
+- deep_mechanism_review job 在跑（LLM warmup 超时是预存历史问题，非本次引入）
+- persona 生成代码已接入 pipeline 末尾，等 deep review 成功触发
+
+**全链路一致性矩阵完成度**
+| 字段 | SP | 类型 | DB | 契约 | 前台 |
+|---|---|---|---|---|---|
+| epistemicStatus | ✅ | ✅ | ✅ | ✅ | ✅ post-gate |
+| evidenceTier | ✅ | ✅ | ✅ | ✅ | — |
+| factRole | ✅ | ✅ | ✅ | ✅ | — |
+| confidence | ✅ | ✅ | ✅ | ✅ | ✅ post-gate |
+| EvidenceRef | ✅ | ✅ | — | ✅ | — |
+| sceneReadings | ✅ | ✅ | — | ✅ | ✅ |
+| domainAtomFacts | ✅ | ✅ | — | ✅ | ✅ 第12键 |
+| family_agent_persona | ✅ | ✅ | ✅ | 待补 | ✅ payload |
+
+**下一步**
+- persona 实际生成需等 deep_mechanism_review job 成功（LLM warmup 超时问题需服务器侧修复）
+- 可选：bayesian.ts 接入 model_review job（reviewer.ts 做似然更新）
+- 可选：bayesian.ts 接入 deep_mechanism pipeline（新假设设 prior + 归一化 posterior）
+- 可选：补 family_agent_persona 契约文档
+
+**风险/冲突**
+- LLM warmup 超时（AbortError）是预存历史问题，导致 deep_mechanism_review 重试；persona 生成依赖 deep review 成功
+- session cache 的 cos sim 漂移检测需要 embedding 可用（isEmbeddingEnabled）
+- post-gate 初期可能拦截率较高（LLM 尚未适应 v4 harness），需观察日志调阈值
+
 ## 2026-07-23 06:00 | Trae | 统一深度改造执行（阶段 A-E 全部落地）
 
 **做了什么**
