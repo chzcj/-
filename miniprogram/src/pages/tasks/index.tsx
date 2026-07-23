@@ -6,6 +6,8 @@ import { useTabBar } from '@/hooks/useTabBar'
 import { usePublicPageShare } from '@/hooks/useSharePage'
 import { SHARE_PATHS } from '@/lib/shareMessages'
 import { normalizeTaskDisplay } from '@yujian/contracts/task-display'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/services/childStorage'
 import { TaskFeedbackPanel, taskStatusVariant } from '@/components/tasks/TaskFeedbackPanel'
 import { fetchCurrentUser } from '@/services/auth'
 import {
@@ -40,6 +42,7 @@ export default function TasksPage() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [outbox, setOutbox] = useState<TaskOutboxSummary>(() => getTaskOutboxSummary())
   const [retryingOutbox, setRetryingOutbox] = useState(false)
+  const uiCopy = childSystemCopy(getChildDisplayName())
 
   const loadTasks = async () => {
     setLoading(true)
@@ -85,7 +88,6 @@ export default function TasksPage() {
   }
 
   const handleFeedbackChange = async (taskId: string, feedback: TaskFeedback, status: string) => {
-    setSavingId(taskId)
     setTasks((prev) =>
       prev.map((t) =>
         t.id === taskId
@@ -98,6 +100,7 @@ export default function TasksPage() {
           : t
       )
     )
+    setSavingId(taskId)
     try {
       await updateTaskFeedback(taskId, feedback, status)
       setOutbox(getTaskOutboxSummary())
@@ -177,23 +180,29 @@ export default function TasksPage() {
                       <Text className='task-card-a__source'>{display.sourceLine}</Text>
                       <View className='task-card-a__meta-end'>
                         <Text className={`task-card-a__badge status-tag--${variant}`}>{status}</Text>
-                        <View className='task-card-a__chev'>
-                          <Text className='task-card-a__chev-icon'>⌄</Text>
+                        <View className='task-card-a__expand'>
+                          <Text className='task-card-a__expand-label'>
+                            {open ? uiCopy.collapseFeedback : uiCopy.expandFeedback}
+                          </Text>
+                          <View className='task-card-a__chev'>
+                            <Text className='task-card-a__chev-icon'>⌄</Text>
+                          </View>
                         </View>
                       </View>
                     </View>
                   </View>
-                  <View className='task-card-a__body'>
-                    <View className='task-card-a__inner'>
-                      <TaskFeedbackPanel
-                        task={task}
-                        rationale={display.rationale}
-                        embedded
-                        disabled={saving}
-                        onFeedbackChange={handleFeedbackChange}
-                      />
+                  {open ? (
+                    <View className='task-card-a__body'>
+                      <View className='task-card-a__inner'>
+                        <TaskFeedbackPanel
+                          task={task}
+                          rationale={display.rationale}
+                          embedded
+                          onFeedbackChange={handleFeedbackChange}
+                        />
+                      </View>
                     </View>
-                  </View>
+                  ) : null}
                 </View>
               )
             })}

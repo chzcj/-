@@ -3,7 +3,8 @@ import Taro from '@tarojs/taro'
 import { useEffect, useMemo, useState } from 'react'
 import { DeepPageHeader } from '@/components/nav/DeepPageHeader'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
-import { loadChildBasicInfo } from '@/services/childStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { loadChildBasicInfo, getChildDisplayName } from '@/services/childStorage'
 import {
   buildHubProfileCards,
   type DailyPortraitCards,
@@ -51,8 +52,10 @@ export default function ProfileInsightPage() {
   const [supportFocus, setSupportFocus] = useState('')
   const [currentFocus, setCurrentFocus] = useState('')
 
+  const childCopy = childSystemCopy(getChildDisplayName())
+
   useEffect(() => {
-    setChildName(loadChildBasicInfo().childName || '孩子')
+    setChildName(loadChildBasicInfo().childName || getChildDisplayName())
     void (async () => {
       setLoading(true)
       try {
@@ -124,7 +127,7 @@ export default function ProfileInsightPage() {
                 {childName}的成长画像
               </Text>
               <Text className='insight-hero-copy'>
-                {cards.length} 张卡片，读懂孩子与亲子互动。不是报告墙——是手账里慢慢写厚的理解。
+                {childCopy.insightLede(cards.length)}
               </Text>
               <View className='insight-pct-row'>
                 <Text className='insight-pct-num'>{completeness}%</Text>

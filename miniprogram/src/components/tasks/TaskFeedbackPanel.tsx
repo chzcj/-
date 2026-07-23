@@ -1,5 +1,8 @@
 import { View, Text, Textarea } from '@tarojs/components'
+import Taro from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/services/childStorage'
 import type { TaskFeedback, TaskItem } from '@/services/taskStorage'
 import './TaskFeedbackPanel.scss'
 
@@ -42,16 +45,15 @@ function TaskChip({
   onPick: () => void
 }) {
   return (
-    <View
+    <Text
       className={`task-chip${selected ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
-      hoverClass={disabled ? 'none' : 'task-chip--press'}
-      catchClick={() => {
+      onClick={() => {
         if (disabled) return
         onPick()
       }}
     >
-      <Text className='task-chip__label'>{label}</Text>
-    </View>
+      {label}
+    </Text>
   )
 }
 
@@ -62,12 +64,15 @@ export function TaskFeedbackPanel({
   embedded,
   onFeedbackChange,
 }: TaskFeedbackPanelProps) {
+  const copy = childSystemCopy(getChildDisplayName())
   const [draft, setDraft] = useState<TaskFeedback>(task.feedback || {})
   const [moreOpen, setMoreOpen] = useState(false)
+  const [noteDraft, setNoteDraft] = useState(task.feedback?.note || '')
   const noteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setDraft(task.feedback || {})
+    setNoteDraft(task.feedback?.note || '')
   }, [task.id, task.feedback])
 
   useEffect(() => {
@@ -88,20 +93,12 @@ export function TaskFeedbackPanel({
     persist(next)
   }
 
-  function updateNote(note: string) {
+  function submitSupplement() {
     if (disabled) return
-    const next = { ...draft, note }
+    const next = { ...draft, note: noteDraft.trim() }
     setDraft(next)
-    if (noteTimerRef.current) clearTimeout(noteTimerRef.current)
-    noteTimerRef.current = setTimeout(() => persist(next), 400)
-  }
-
-  function flushNote() {
-    if (noteTimerRef.current) {
-      clearTimeout(noteTimerRef.current)
-      noteTimerRef.current = null
-    }
-    persist(draft)
+    persist(next)
+    Taro.showToast({ title: copy.supplementSaved, icon: 'success' })
   }
 
   const whyText =
@@ -143,19 +140,13 @@ export function TaskFeedbackPanel({
         <Text className='task-why-body'>{whyText}</Text>
       </View>
 
-      <Text
-        className='task-feedback-more-toggle'
-        onClick={(e) => {
-          e.stopPropagation()
-          setMoreOpen((v) => !v)
-        }}
-      >
-        {moreOpen ? '收起补充项 ▾' : '补充孩子反应或一句备注 ▸'}
+      <Text className='task-feedback-more-toggle' onClick={() => setMoreOpen((v) => !v)}>
+        {moreOpen ? `收起补充项 ▾` : `${copy.supplementReaction} ▸`}
       </Text>
       {moreOpen ? (
         <View className='task-feedback-more'>
           <View className='feedback-group'>
-            <Text className='feedback-question'>孩子反应？</Text>
+            <Text className='feedback-question'>{copy.reactionQuestion}</Text>
             <View className='choice-row'>
               {['改善', '无变化', '变差'].map((value) => (
                 <TaskChip
@@ -172,12 +163,17 @@ export function TaskFeedbackPanel({
             <Textarea
               className='feedback-note'
               placeholder='只记录结果，不编辑任务内容'
-              value={draft.note || ''}
+              value={noteDraft}
               disabled={disabled}
-              onInput={(e) => updateNote(e.detail.value)}
-              onBlur={flushNote}
+              onInput={(e) => setNoteDraft(e.detail.value)}
             />
           </View>
+          <Text
+            className='pill primary block task-feedback-submit'
+            onClick={submitSupplement}
+          >
+            {copy.saveSupplement}
+          </Text>
         </View>
       ) : null}
     </View>

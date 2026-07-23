@@ -7,24 +7,30 @@ import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
 import { buildHubProfileCards } from '@/lib/profile/hub-profile-cards'
 import { getLatestProfile, hasProfile } from '@/lib/storage/profileStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 import type { StructuralTension } from '@/types/deep-model-digest'
 import type { DailyPortraitCards, PortraitCardSection } from '@/types/portrait-card'
 import '../portrait-revamp.css'
 
-const TITLES: Record<string, string> = {
-  growth: '动态成长画像',
-  focus: '当前关注点',
-  behavior: '孩子行为模式',
-  interaction: '亲子互动关系',
-  strategies: '有效策略',
-  hypotheses: '孩子写作业的机制',
-  tensions: '孩子健康成长阻力',
+function cardTitles(copy: ReturnType<typeof childSystemCopy>): Record<string, string> {
+  return {
+    growth: '动态成长画像',
+    focus: '当前关注点',
+    behavior: copy.behaviorPattern,
+    interaction: '亲子互动关系',
+    strategies: '有效策略',
+    hypotheses: copy.homeworkMechanism,
+    tensions: copy.growthTension,
+  }
 }
 
 export default function ProfileCardDetailPage() {
   const router = useRouter()
   const params = useParams()
   const card = String(params.card || '')
+  const childCopy = childSystemCopy(getChildDisplayName())
+  const titles = cardTitles(childCopy)
   const [summary, setSummary] = useState('')
   const [lead, setLead] = useState('')
   const [sections, setSections] = useState<PortraitCardSection[]>([])
@@ -93,7 +99,7 @@ export default function ProfileCardDetailPage() {
     return cards.find((c) => c.slug === card)
   }, [portraitCards, hubCards, structuralTensions, completeness, coreJudgment, supportFocus, currentFocus, card])
 
-  const title = TITLES[card] || '画像详情'
+  const title = titles[card] || '画像详情'
   const progress = cardMeta?.progress ?? completeness
   const progressHint = cardMeta?.progressHint ?? ''
   const displayLead = lead && lead !== summary ? lead : summary

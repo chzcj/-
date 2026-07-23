@@ -5,6 +5,8 @@ import { DeepPageHeader } from '@/components/nav/DeepPageHeader'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
 import { apiRequest } from '@/services/api'
 import { writeLastDialogueAnalysisId } from '@/lib/rehearsalScenesCache'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/services/childStorage'
 import type { DialogueAnalysisPayload, DialogueAnalysisV2 } from '@yujian/contracts/rehearsal-dialogue'
 import './index.scss'
 
@@ -15,6 +17,8 @@ export default function DialogueResultPage() {
   const [data, setData] = useState<DialogueAnalysisPayload | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+
+  const childCopy = childSystemCopy(getChildDisplayName())
 
   useEffect(() => {
     if (!id.startsWith('da_')) {
@@ -123,7 +127,7 @@ export default function DialogueResultPage() {
                 </Text>
               </View>
 
-              <Text className='overview-kicker'>系统记忆 · 此场景下的孩子</Text>
+              <Text className='overview-kicker'>{childCopy.inSceneMemory}</Text>
               <View className='da-dossier-strip'>
                 {v2.dossierCells.map((cell) => (
                   <View key={cell.label} className='da-dossier-cell'>

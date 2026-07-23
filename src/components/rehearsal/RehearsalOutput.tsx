@@ -1,5 +1,7 @@
 'use client'
 
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 type ChildReaction = { immediateReaction: string; innerReaction: string; behaviorRisk: string }
 
 export type RehearsalAnalyzeData = {
@@ -48,11 +50,14 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
 }
 
 export function RehearsalOutput({ data }: { data: RehearsalAnalyzeData }) {
+  const childCopy = childSystemCopy(getChildDisplayName())
   if (data.profileAware) {
     return (
       <section className="section">
         <h2 className="section-title">预演分析</h2>
-        {data.childLikelyHearing ? <ProfileBlock title="孩子可能先听成">{data.childLikelyHearing}</ProfileBlock> : null}
+        {data.childLikelyHearing ? (
+          <ProfileBlock title={childCopy.childMayHearFirst}>{data.childLikelyHearing}</ProfileBlock>
+        ) : null}
         {data.possibleChildReaction ? (
           <ProfileBlock title="他可能的反应">
             {`当下：${data.possibleChildReaction.immediateReaction}\n心里：${data.possibleChildReaction.innerReaction}\n行为风险：${data.possibleChildReaction.behaviorRisk}`}
@@ -98,7 +103,7 @@ export function RehearsalOutput({ data }: { data: RehearsalAnalyzeData }) {
           ))}
         </div>
       ) : typeof data.childMayHear === 'string' && data.childMayHear ? (
-        <ProfileBlock title="孩子可能先听成">{data.childMayHear}</ProfileBlock>
+        <ProfileBlock title={childCopy.childMayHearFirst}>{data.childMayHear}</ProfileBlock>
       ) : null}
       {data.stuckPoint ? <ProfileBlock title="更容易卡住的地方">{data.stuckPoint}</ProfileBlock> : null}
       {data.suggestedWording ? (

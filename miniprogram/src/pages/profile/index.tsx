@@ -26,6 +26,8 @@ import {
   hydrateProfileFromRemote,
   type LocalProfileSnapshot,
 } from '@/services/profileStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/services/childStorage'
 import { requireOnboardingComplete } from '@/utils/navigation'
 import './index.scss'
 
@@ -104,6 +106,7 @@ export default function ProfilePage() {
   const [updateNotice, setUpdateNotice] = useState('')
   const [partialRefreshing, setPartialRefreshing] = useState(false)
   const [modal, setModal] = useState<EditModalKind>(null)
+  const childCopy = childSystemCopy(getChildDisplayName())
   const [isWechatUser, setIsWechatUser] = useState(true)
 
   const syncLocalProfile = useCallback(() => {
@@ -431,7 +434,7 @@ export default function ProfilePage() {
               编辑个人资料 ›
             </Text>
             <Text className='setting-row' onClick={() => setModal('child')}>
-              编辑孩子信息 ›
+              {childCopy.editChildInfo} ›
             </Text>
             {!isWechatUser ? (
               <Text className='setting-row' onClick={() => setModal('password')}>

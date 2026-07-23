@@ -24,6 +24,7 @@ import { analyzeRehearsalTurn } from '@/services/rehearsalAnalyze'
 import { apiRequest } from '@/services/api'
 import { fetchCurrentUser } from '@/services/auth'
 import { getLatestProfile } from '@/services/profileStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
 import { getChildDisplayName } from '@/services/childStorage'
 import { saveTaskFromRehearsal } from '@/services/taskStorage'
 import {
@@ -491,8 +492,8 @@ export default function RehearsalPage() {
         })
         setStatusText(
           reply.hintTitle.includes('松动') || reply.hintTitle.includes('具体')
-            ? '当前状态：孩子开始谈条件，有一点松动'
-            : '当前状态：孩子仍有防御，需要先降压力'
+            ? childCopy.statusLoosen
+            : childCopy.statusDefensive
         )
         setRound((r) => r + 1)
         setRoundsSinceCheckpoint((c) => {
@@ -539,7 +540,7 @@ export default function RehearsalPage() {
           whatHappenedBeforeTalk: summary.slice(0, 200),
           sceneTitle,
           sceneSummary: summary.slice(0, 240),
-          parentGoal: `在「${sceneTitle}」场景里把话说到孩子听得进去`,
+          parentGoal: childCopy.speakInScene(sceneTitle),
         },
         rehearsalTranscript,
       }
@@ -605,6 +606,7 @@ export default function RehearsalPage() {
     ? `${sceneTitle} · ${selectedScene.mentionCountHint}`
     : sceneTitle
   const childDisplayName = getChildDisplayName()
+  const childCopy = childSystemCopy(childDisplayName)
   const endCopy = getRehearsalEndCopy(endData)
 
   return (
@@ -696,9 +698,7 @@ export default function RehearsalPage() {
             </View>
           ) : null}
 
-          <Text className='boundary-note muted'>
-            这里不是预测孩子一定会这样说，而是基于已有记录，帮你提前看见可能的沟通走向。
-          </Text>
+          <Text className='boundary-note muted'>{childCopy.rehearsalDisclaimer}</Text>
           <View id='rehearsal-entry-bottom' className='scroll-anchor' />
         </ScrollView>
       ) : null}
@@ -718,10 +718,10 @@ export default function RehearsalPage() {
           </View>
 
           <View className='info-card'>
-            <Text className='card-eyebrow'>系统记忆 · 此场景下的孩子</Text>
+            <Text className='card-eyebrow'>{childCopy.inSceneMemory}</Text>
             <Text className='info-card-title'>我会参考这些理解</Text>
             {briefLoading ? (
-              <Text className='insight-loading muted'>正在模拟本场景下孩子的反应…</Text>
+              <Text className='insight-loading muted'>{childCopy.simulatingReaction}</Text>
             ) : insightBullets.length ? (
               <View className='insight-list'>
                 {insightBullets.map((bullet, index) => (
@@ -820,7 +820,7 @@ export default function RehearsalPage() {
             </View>
 
             <View className='profile-block'>
-              <Text className='profile-block-title'>孩子最容易被触发的是</Text>
+              <Text className='profile-block-title'>{childCopy.triggerEasily}</Text>
               <Text className='profile-block-body'>{endCopy.trigger}</Text>
             </View>
 

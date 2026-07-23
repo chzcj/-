@@ -28,6 +28,7 @@ import {
   writeRehearsalScenesCache,
 } from '@/lib/rehearsal-scenes-cache'
 import { pickRehearsalTaskTitle } from '@yujian/contracts/rehearsal-end'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
 import {
   pickRehearsalL3Opening,
   type RehearsalSceneBriefL3,
@@ -458,8 +459,8 @@ export default function RehearsalPage() {
           }
           setStatusText(
             reply.hintTitle.includes('松动') || reply.hintTitle.includes('具体')
-              ? '当前状态：孩子开始谈条件，有一点松动'
-              : '当前状态：孩子仍有防御，需要先降压力'
+              ? childCopy.statusLoosen
+              : childCopy.statusDefensive
           )
           setRound((r) => r + 1)
           setRoundsSinceCheckpoint((c) => {
@@ -487,8 +488,8 @@ export default function RehearsalPage() {
           setFeed((prev) => [...prev, { type: 'child', ...reply }])
           setStatusText(
             reply.hintTitle.includes('松动') || reply.hintTitle.includes('具体')
-              ? '当前状态：孩子开始谈条件，有一点松动'
-              : '当前状态：孩子仍有防御，需要先降压力'
+              ? childCopy.statusLoosen
+              : childCopy.statusDefensive
           )
           setRound((r) => r + 1)
           setRoundsSinceCheckpoint((c) => {
@@ -562,6 +563,7 @@ export default function RehearsalPage() {
     ? `${sceneTitle} · ${selectedScene.mentionCountHint}`
     : sceneTitle
   const childDisplayName = getChildDisplayName()
+  const childCopy = childSystemCopy(childDisplayName)
 
   return (
     <OnboardingGuard>
@@ -655,9 +657,7 @@ export default function RehearsalPage() {
                 </span>
               </button>
             ) : null}
-            <p className="boundary-note">
-              这里不是预测孩子一定会这样说，而是基于已有记录，帮你提前看见可能的沟通走向。
-            </p>
+            <p className="boundary-note">{childCopy.rehearsalDisclaimer}</p>
           </div>
         </div>
 
@@ -678,10 +678,10 @@ export default function RehearsalPage() {
             </article>
 
             <article className="info-card">
-              <p className="card-eyebrow">系统记忆 · 此场景下的孩子</p>
+              <p className="card-eyebrow">{childCopy.inSceneMemory}</p>
               <h3 className="info-card-title">我会参考这些理解</h3>
               {briefLoading ? (
-                <p className="hint-text">正在模拟本场景下孩子的反应…</p>
+                <p className="hint-text">{childCopy.simulatingReaction}</p>
               ) : insightBullets.length ? (
                 <ul className="insight-list">
                   {insightBullets.map((bullet) => (

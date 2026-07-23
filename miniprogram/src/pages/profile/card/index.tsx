@@ -13,19 +13,11 @@ import {
 import { buildProfileCardSharePath } from '@/lib/shareMessages'
 import { apiRequest } from '@/services/api'
 import { getLatestProfile, hasProfile } from '@/services/profileStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/services/childStorage'
 import '@/styles/profile-handbook-sheet.scss'
 import '../memories/index.scss'
 import './index.scss'
-
-const CARD_TITLES: Record<string, string> = {
-  growth: '动态成长画像',
-  focus: '值得长期关注',
-  behavior: '孩子行为模式',
-  interaction: '亲子互动关系',
-  strategies: '试试这些好方法',
-  hypotheses: '孩子写作业的机制',
-  tensions: '孩子健康成长阻力',
-}
 
 const CARD_BADGE: Record<string, string> = {
   growth: '成长画像',
@@ -53,11 +45,25 @@ function normalizeSections(raw?: ApiSection[]): PortraitCardSection[] {
     .filter((s): s is PortraitCardSection => Boolean(s?.heading && s.items.length))
 }
 
+function cardTitles(copy: ReturnType<typeof childSystemCopy>): Record<string, string> {
+  return {
+    growth: '动态成长画像',
+    focus: '值得长期关注',
+    behavior: copy.behaviorPattern,
+    interaction: '亲子互动关系',
+    strategies: '试试这些好方法',
+    hypotheses: copy.homeworkMechanism,
+    tensions: copy.growthTension,
+  }
+}
+
 export default function ProfileCardPage() {
   const router = useRouter()
   const cardId = router.params.id || ''
+  const childCopy = childSystemCopy(getChildDisplayName())
+  const titles = cardTitles(childCopy)
   usePublicPageShare(() => ({
-    title: CARD_TITLES[cardId] ? `育见 · ${CARD_TITLES[cardId]}` : '育见 · 孩子画像',
+    title: titles[cardId] ? `育见 · ${titles[cardId]}` : childCopy.portraitShareTitle,
     path: buildProfileCardSharePath(cardId),
   }))
 
@@ -125,7 +131,7 @@ export default function ProfileCardPage() {
 
       if (cardRes.ok) {
         const normalized = normalizeSections(cardRes.data.sections)
-        setTitle(cardRes.data.title || CARD_TITLES[cardId] || cardId)
+        setTitle(cardRes.data.title || titles[cardId] || cardId)
         setSummary(cardRes.data.summary || '')
         setLead(cardRes.data.lead || '')
         setSections(normalized)
@@ -139,7 +145,7 @@ export default function ProfileCardPage() {
         setOpenSections(initialOpen)
       } else {
         setLoadError(cardRes.error.message || '加载失败')
-        setTitle(CARD_TITLES[cardId] || cardId)
+        setTitle(titles[cardId] || cardId)
       }
       setLoading(false)
     })()
@@ -185,7 +191,7 @@ export default function ProfileCardPage() {
     <View className='profile-subpage card-detail-page'>
       <View className='app-safe-top' />
       <DeepPageHeader
-        title={title || CARD_TITLES[cardId] || '画像详情'}
+        title={title || titles[cardId] || '画像详情'}
         showClose
         onBack={goBack}
         onClose={() => void Taro.switchTab({ url: '/pages/profile/index' })}

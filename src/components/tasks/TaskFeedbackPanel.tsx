@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 import type { TaskFeedback, TaskItem } from '@/lib/storage/taskStorage'
 
 type TaskFeedbackPanelProps = {
@@ -35,18 +37,15 @@ export function TaskFeedbackPanel({
   embedded,
   onFeedbackChange,
 }: TaskFeedbackPanelProps) {
+  const copy = childSystemCopy(getChildDisplayName())
   const [draft, setDraft] = useState<TaskFeedback>(task.feedback || {})
-  const noteTimerRef = useRef<number | null>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [noteDraft, setNoteDraft] = useState(task.feedback?.note || '')
 
   useEffect(() => {
     setDraft(task.feedback || {})
+    setNoteDraft(task.feedback?.note || '')
   }, [task.id, task.feedback])
-
-  useEffect(() => {
-    return () => {
-      if (noteTimerRef.current) window.clearTimeout(noteTimerRef.current)
-    }
-  }, [])
 
   function persist(next: TaskFeedback) {
     const status = deriveStatus(next, task.status || '待执行')
@@ -60,20 +59,12 @@ export function TaskFeedbackPanel({
     persist(next)
   }
 
-  function updateNote(note: string) {
+  function submitSupplement() {
     if (disabled) return
-    const next = { ...draft, note }
+    const next = { ...draft, note: noteDraft.trim() }
     setDraft(next)
-    if (noteTimerRef.current) window.clearTimeout(noteTimerRef.current)
-    noteTimerRef.current = window.setTimeout(() => persist(next), 400)
-  }
-
-  function flushNote() {
-    if (noteTimerRef.current) {
-      window.clearTimeout(noteTimerRef.current)
-      noteTimerRef.current = null
-    }
-    persist(draft)
+    persist(next)
+    window.alert(copy.supplementSaved)
   }
 
   const whyText =
@@ -119,35 +110,50 @@ export function TaskFeedbackPanel({
         <p className="task-why-body">{whyText}</p>
       </div>
 
-      <details className="task-feedback-more">
-        <summary>补充孩子反应或一句备注</summary>
-        <div className="feedback-group">
-          <p className="feedback-question">孩子反应？</p>
-          <div className="choice-row">
-            {['改善', '无变化', '变差'].map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={`task-chip${draft.reaction === value ? ' selected' : ''}`}
-                disabled={disabled}
-                onClick={() => pick('reaction', value)}
-              >
-                {value}
-              </button>
-            ))}
+      <button
+        type="button"
+        className="task-feedback-more-toggle"
+        onClick={() => setMoreOpen((v) => !v)}
+      >
+        {moreOpen ? '收起补充项 ▾' : `${copy.supplementReaction} ▸`}
+      </button>
+      {moreOpen ? (
+        <div className="task-feedback-more">
+          <div className="feedback-group">
+            <p className="feedback-question">{copy.reactionQuestion}</p>
+            <div className="choice-row">
+              {['改善', '无变化', '变差'].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`task-chip${draft.reaction === value ? ' selected' : ''}`}
+                  disabled={disabled}
+                  onClick={() => pick('reaction', value)}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="feedback-group task-feedback-note-group">
-          <textarea
-            className="feedback-note"
-            placeholder="只记录结果，不编辑任务内容"
-            value={draft.note || ''}
+          <div className="feedback-group task-feedback-note-group">
+            <textarea
+              className="feedback-note"
+              placeholder="只记录结果，不编辑任务内容"
+              value={noteDraft}
+              disabled={disabled}
+              onChange={(e) => setNoteDraft(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            className="primary-button block task-feedback-submit"
             disabled={disabled}
-            onChange={(e) => updateNote(e.target.value)}
-            onBlur={flushNote}
-          />
+            onClick={submitSupplement}
+          >
+            {copy.saveSupplement}
+          </button>
         </div>
-      </details>
+      ) : null}
     </div>
   )
 }

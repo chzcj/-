@@ -14,6 +14,8 @@ import { ProfileEditModals, type EditModalKind } from '@/components/profile/Prof
 import { buildHubProfileCards } from '@/lib/profile/hub-profile-cards'
 import { readProfileTabCache, writeProfileTabCache } from '@/lib/profile-tab-cache'
 import { getLatestProfile, hasProfile, hydrateProfileFromRemote } from '@/lib/storage/profileStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 import type { HandbookPack } from '@/types/handbook-pack'
 import type { StructuralTension } from '@/types/deep-model-digest'
 import type { DailyPortraitCards } from '@/types/portrait-card'
@@ -63,6 +65,7 @@ export default function FamilyProfilePage() {
   /** 5 分钟内不重复 POST daily-refresh，对齐小程序，避免状态条闪跳 */
   const lastDisplayRefreshAtRef = useRef(0)
   const DISPLAY_REFRESH_DEBOUNCE_MS = 5 * 60 * 1000
+  const childCopy = childSystemCopy(getChildDisplayName())
 
   const applyHubData = useCallback((hub: { ok?: boolean; data?: Record<string, unknown> } | null) => {
     if (!hub?.ok || !hub.data) return
@@ -350,7 +353,7 @@ export default function FamilyProfilePage() {
               <span className="account-chevron" aria-hidden="true">›</span>
             </button>
             <button type="button" className="setting-row" onClick={() => setEditModal('child')}>
-              <span>编辑孩子信息</span>
+              <span>{childCopy.editChildInfo}</span>
               <span className="account-chevron" aria-hidden="true">›</span>
             </button>
             <button type="button" className="setting-row" onClick={() => setEditModal('password')}>

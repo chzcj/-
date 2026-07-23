@@ -200,6 +200,20 @@
   gap: 8px;
 }
 
+.task-card-a__expand {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-card-a__expand-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6f9f56;
+  line-height: 1.2;
+}
+
 .task-card-a__badge {
   flex-shrink: 0;
   font-size: 11px;
@@ -217,10 +231,11 @@
 
 .task-card-a__chev {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: rgba(111, 166, 95, 0.12);
+  background: rgba(111, 166, 95, 0.16);
+  border: 1px solid rgba(111, 166, 95, 0.38);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -228,7 +243,8 @@
 }
 
 .task-card-a__chev-icon {
-  font-size: 12px;
+  font-size: 17px;
+  font-weight: 700;
   line-height: 1;
   color: #577f45;
   margin-top: 1px;
@@ -238,26 +254,13 @@
   transform: rotate(180deg);
 }
 
-/* 微信端 grid 0fr 动画不稳定，用 max-height 展开（mock A 同款缓动） */
+/* 展开区：仅在 is-open 时挂载（避免 max-height+overflow 在微信端吞触摸） */
 .task-card-a__body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.36s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.task-card-a.is-open .task-card-a__body {
-  max-height: 960px;
+  overflow: visible;
 }
 
 .task-card-a__inner {
-  overflow: hidden;
-  padding: 0 16px;
-}
-
-.task-card-a.is-open .task-card-a__inner {
-  padding-bottom: 16px;
-  position: relative;
-  z-index: 2;
+  padding: 0 16px 16px;
 }
 
 /* embedded feedback — scoped to beat global .pill / hifi overrides */
@@ -288,26 +291,16 @@
   align-items: center;
   justify-content: center;
   margin: 0;
-  min-height: auto;
+  min-height: 36px;
   padding: 8px 14px;
   border-radius: $radius-pill;
-  border: 1px solid rgba(111, 166, 95, 0.28) !important;
-  background: #fff !important;
+  border: 1px solid rgba(111, 166, 95, 0.28);
+  background: #fff;
   color: $ink;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.35;
   box-shadow: none;
-}
-
-.task-card-a .task-chip::after {
-  border: none;
-}
-
-.task-card-a .task-chip__label {
-  font-size: 13px;
-  color: inherit;
-  line-height: 1.35;
 }
 
 .task-card-a .task-chip.selected {

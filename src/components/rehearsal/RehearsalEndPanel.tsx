@@ -2,6 +2,8 @@
 
 import type { RehearsalAnalyzeData } from '@/components/rehearsal/RehearsalOutput'
 import { getRehearsalEndCopy } from '@yujian/contracts/rehearsal-end'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 
 export type RehearsalEndPanelProps = {
   endData: RehearsalAnalyzeData | null
@@ -21,6 +23,7 @@ export function RehearsalEndPanel({
   onRestart,
 }: RehearsalEndPanelProps) {
   const copy = getRehearsalEndCopy(endData)
+  const childCopy = childSystemCopy(getChildDisplayName())
 
   return (
     <section className="section rehearsal-end-layout">
@@ -35,7 +38,7 @@ export function RehearsalEndPanel({
       </article>
 
       <div className="profile-block">
-        <h3>孩子最容易被触发的是</h3>
+        <h3>{childCopy.triggerEasily}</h3>
         <p>{copy.trigger}</p>
       </div>
 

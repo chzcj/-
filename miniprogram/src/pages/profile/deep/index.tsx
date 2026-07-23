@@ -8,9 +8,12 @@ import { portraitCardLead, type DailyPortraitCards } from '@/lib/portraitCard'
 import { SHARE_PATHS } from '@/lib/shareMessages'
 import { apiRequest } from '@/services/api'
 import { getLatestProfile, hasProfile } from '@/services/profileStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/services/childStorage'
 import './index.scss'
 
 export default function ProfileDeepPage() {
+  const childCopy = childSystemCopy(getChildDisplayName())
   usePublicPageShare({
     title: '育见 · 家庭机制链',
     path: SHARE_PATHS.profileDeep,
@@ -62,7 +65,7 @@ export default function ProfileDeepPage() {
             style={{ marginTop: '12px' }}
             onClick={() => void Taro.navigateTo({ url: '/packageOnboarding/pages/hub/index' })}
           >
-            建立孩子画像
+            {childCopy.buildPortrait}
           </Text>
         </View>
       </HiFiMainShell>
@@ -81,7 +84,7 @@ export default function ProfileDeepPage() {
         <Text className='section-label'>深层解释</Text>
         <Text className='hero-title'>家庭机制链</Text>
         <Text className='hero-copy'>
-          下面用家长能听懂的话说清：家里常见动作如何触发孩子反应，又怎样绕回下一轮。
+          {childCopy.deepMechanismLede}
         </Text>
       </View>
 

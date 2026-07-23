@@ -3,6 +3,8 @@
 import { useCallback, useState } from 'react'
 import { useTencentAsrInput } from '@/hooks/useTencentAsrInput'
 import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 
 type DialogueSegment = {
   speaker: string
@@ -65,10 +67,12 @@ export function RehearsalDialogueCapture() {
     }
   }
 
+  const childCopy = childSystemCopy(getChildDisplayName())
+
   return (
     <section className="section rehearsal-dialogue-section">
       <h2 className="section-title">记录亲子对话</h2>
-      <p className="hint-text">长按录音转写，或把对话文字粘贴进来；我们会结合孩子画像标出值得留意的句子。</p>
+      <p className="hint-text">{childCopy.dialogueCaptureHint}</p>
 
       <div className="soft-card">
         <textarea

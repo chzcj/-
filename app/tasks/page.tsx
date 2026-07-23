@@ -12,7 +12,9 @@ import {
   type TaskItem,
 } from '@/lib/storage/taskStorage'
 import { getTaskOutboxSummary, type TaskOutboxSummary } from '@/lib/storage/taskOutbox'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
 import { normalizeTaskDisplay } from '@yujian/contracts/task-display'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 
 function taskStatus(task: TaskItem) {
   if (task.status) return task.status
@@ -92,6 +94,8 @@ export default function TasksPage() {
     }
   }
 
+  const uiCopy = childSystemCopy(getChildDisplayName())
+
   return (
     <OnboardingGuard>
       <HiFiMainShell activeTab="tasks">
@@ -156,9 +160,14 @@ export default function TasksPage() {
                         <span className="task-card-a__source">{display.sourceLine}</span>
                         <div className="task-card-a__meta-end">
                           <span className={`task-card-a__badge status-tag--${variant}`}>{status}</span>
-                          <span className="task-card-a__chev" aria-hidden="true">
-                            ⌄
-                          </span>
+                          <div className="task-card-a__expand">
+                            <span className="task-card-a__expand-label">
+                              {open ? uiCopy.collapseFeedback : uiCopy.expandFeedback}
+                            </span>
+                            <span className="task-card-a__chev" aria-hidden="true">
+                              ⌄
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>

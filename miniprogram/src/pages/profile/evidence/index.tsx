@@ -8,6 +8,8 @@ import { portraitCardSections, type DailyPortraitCards } from '@/lib/portraitCar
 import { SHARE_PATHS } from '@/lib/shareMessages'
 import { apiRequest } from '@/services/api'
 import { getLatestProfile, hasProfile } from '@/services/profileStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/services/childStorage'
 import './index.scss'
 
 type EvidenceItem = {
@@ -29,6 +31,7 @@ function evidenceFromCards(cards: DailyPortraitCards | undefined): EvidenceItem[
 }
 
 export default function ProfileEvidencePage() {
+  const childCopy = childSystemCopy(getChildDisplayName())
   usePublicPageShare({
     title: '育见 · 画像从哪来',
     path: SHARE_PATHS.profileEvidence,
@@ -92,7 +95,7 @@ export default function ProfileEvidencePage() {
             style={{ marginTop: '12px' }}
             onClick={() => void Taro.navigateTo({ url: '/packageOnboarding/pages/hub/index' })}
           >
-            建立孩子画像
+            {childCopy.buildPortrait}
           </Text>
         </View>
       </HiFiMainShell>

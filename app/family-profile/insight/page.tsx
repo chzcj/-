@@ -6,6 +6,8 @@ import { ProfileSubPage } from '../_components/ProfileSubPage'
 import { buildHubProfileCards } from '@/lib/profile/hub-profile-cards'
 import { getLatestProfile, hasProfile } from '@/lib/storage/profileStorage'
 import type { StructuralTension } from '@/types/deep-model-digest'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 import type { DailyPortraitCards } from '@/types/portrait-card'
 
 const TILE_BADGE: Record<string, string> = {
@@ -30,6 +32,8 @@ export default function InsightPage() {
   const [supportFocus, setSupportFocus] = useState('')
   const [currentFocus, setCurrentFocus] = useState('')
 
+  const childCopy = childSystemCopy(getChildDisplayName())
+
   useEffect(() => {
     void (async () => {
       setLoading(true)
@@ -50,6 +54,7 @@ export default function InsightPage() {
         if (d.supportFocus) setSupportFocus(d.supportFocus)
         if (d.currentFocus) setCurrentFocus(d.currentFocus)
         if (d.childName) setChildName(d.childName)
+        else setChildName(getChildDisplayName())
       }
       setLoading(false)
     })()
@@ -82,7 +87,7 @@ export default function InsightPage() {
             <p className="sheet-kicker">育见 · 理解层</p>
             <h3>{childName}的成长画像</h3>
             <p className="sheet-lead" style={{ marginBottom: 0 }}>
-              {cards.length} 张卡片，读懂孩子与亲子互动。不是报告墙——是手账里慢慢写厚的理解。
+              {childCopy.insightLede(cards.length)}
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
               <strong style={{ fontSize: 28, color: '#6f9f56' }}>{completeness}%</strong>

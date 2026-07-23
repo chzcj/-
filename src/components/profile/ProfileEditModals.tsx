@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import { saveChildBasicInfo, getActiveChild } from '@/lib/storage/childStorage'
+import { saveChildBasicInfo, getActiveChild, getChildDisplayName } from '@/lib/storage/childStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
 import { forceAccountSyncToServer } from '@/lib/account/accountSync'
 import { getStorage, updateStorage } from '@/lib/storage/localStorageService'
 
@@ -136,9 +137,11 @@ export function ProfileEditModals({ kind, onClose, onLoggedOut }: Props) {
     }
   }
 
+  const childCopy = childSystemCopy(getChildDisplayName())
+
   const titles: Record<EditModalKind, string> = {
     profile: '编辑个人资料',
-    child: '编辑孩子信息',
+    child: childCopy.editChildInfo,
     password: '修改密码',
     delete: '注销账号',
   }

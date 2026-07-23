@@ -2,7 +2,8 @@ import { View, Text, Textarea, Input, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui'
-import { loadChildBasicInfo, saveChildBasicInfo } from '@/services/childStorage'
+import { loadChildBasicInfo, saveChildBasicInfo, getChildDisplayName } from '@/services/childStorage'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
 import { loadParentInfo, saveParentInfo } from '@/services/parentStorage'
 import { pushAccountSyncToServer } from '@/services/accountSync'
 import { apiRequest } from '@/services/api'
@@ -66,9 +67,11 @@ export function ProfileEditModals({ kind, onClose }: ProfileEditModalsProps) {
 
   if (!kind) return null
 
+  const childCopy = childSystemCopy(getChildDisplayName())
+
   const titles: Record<Exclude<EditModalKind, null>, string> = {
     profile: '编辑个人资料',
-    child: '编辑孩子信息',
+    child: childCopy.editChildInfo,
     password: '修改密码',
     delete: '注销账号',
   }

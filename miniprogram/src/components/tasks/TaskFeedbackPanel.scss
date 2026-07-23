@@ -48,11 +48,11 @@
   align-items: center;
   justify-content: center;
   margin: 0;
-  min-height: auto;
+  min-height: 36px;
   padding: 8px 14px;
   border-radius: $radius-pill;
-  border: 1px solid rgba(111, 166, 95, 0.28) !important;
-  background: #fff !important;
+  border: 1px solid rgba(111, 166, 95, 0.28);
+  background: #fff;
   color: $ink;
   font-size: 13px;
   font-weight: 500;
@@ -60,25 +60,10 @@
   box-shadow: none;
 }
 
-.task-chip::after {
-  border: none;
-}
-
-.task-chip__label {
-  font-size: 13px;
-  font-weight: inherit;
-  color: inherit;
-  line-height: 1.35;
-}
-
 .task-chip.selected {
   background: #eef7cf;
   border-color: #9dcc75;
   color: #415f36;
-  font-weight: 600;
-}
-
-.task-chip.selected .task-chip__label {
   font-weight: 600;
 }
 
@@ -122,6 +107,16 @@
 
 .task-feedback-more {
   margin-top: 8px;
+}
+
+.task-feedback-submit {
+  margin-top: 12px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .feedback-note {

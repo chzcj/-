@@ -8,6 +8,8 @@ import type {
   DialogueSampleLine,
   DialogueTryTonightStep,
 } from '@yujian/contracts/rehearsal-dialogue'
+import { childSystemCopy } from '@yujian/contracts/child-system-copy'
+import { getChildDisplayName } from '@/lib/storage/childStorage'
 
 export type DialogueAnalysisViewProps = {
   summary: string
@@ -22,6 +24,7 @@ export function DialogueAnalysisV2View({
   onGoRehearsal,
   onBack,
 }: DialogueAnalysisViewProps) {
+  const childCopy = childSystemCopy(getChildDisplayName())
   const meta = v2.meta
   const phaseCount = meta?.phaseCount ?? v2.phases.length
   const highlightCount =
@@ -39,7 +42,7 @@ export function DialogueAnalysisV2View({
         </span>
       </div>
 
-      <p className="overview-kicker">系统记忆 · 此场景下的孩子</p>
+      <p className="overview-kicker">{childCopy.inSceneMemory}</p>
       <div className="da-dossier-strip">
         {v2.dossierCells.map((cell: DialogueDossierCell) => (
           <div key={cell.label} className="da-dossier-cell">
