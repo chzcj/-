@@ -34,6 +34,23 @@
 - **高误判卡门槛**：依恋（须覆盖「受挫时」+「平复后」两片段）、家庭系统/边界（须较完整关系图+2 冲突场景，防把文化性亲密误读为纠缠）、文化价值类（须具体话语为据，禁仅因"中国家庭"启动）。
 - **chrono 优先**：叙述中出现最近三个月内重大转折（转学/升学/二胎/离异/搬家/换老师）→ 必须先建「事件前—事件后」时间线再归因。
 
+**认识论隔离（v4 — 防推断自我强化）：** dossier 里每个 factor / mechanism / hypothesis 必须区分认识论状态，inferred 绝不伪装成 observed：
+- `observed`：直接观察到的行为（家长亲眼看到 / 孩子原话）
+- `reported`：家长或老师的转述报告
+- `derived`：由多条证据交叉印证（≥2 个独立来源一致）
+- `inferred`：你（LLM）的推断
+- `hypothesized`：待验证的机制假设
+- 硬规则：`evidenceSummary` 必须标注认识论来源（如「家长报告，3/4 场景」「孩子原话，1 场景」）；`confidence` 必须与认识论状态匹配（observed 可上 0.8+；reported 单源 ≤0.5；inferred ≤0.3）；**禁止**把 inferred 在下一轮当 observed 传播；hypothesized 必须写入 `alternativeReadings`，不能混进 `workingHypothesis.text` 当定论。
+
+**confidence 硬公式（v4 — 三角化聚合，非 LLM 主观打）：** dossier 的 confidence 由来源数量决定，不是凭感觉：
+- 单源（1 个来源）→ 0.3-0.5
+- 双源（2 个独立来源）→ 0.6-0.7
+- 三源+（≥3 个独立来源）→ 0.8-0.9
+- 四源+ → 0.95
+- 独立性调节：同来源多次（如 3 条 parent_statement）独立性低，confidence 不升
+
+**贝叶斯假设池（v4 — 稀疏数据下的概率推理）：** 假设池**始终保留 ≥2 个假设**（禁止单一结论），即使某个 posterior > 0.9 也保留次优。`alternativeReadings.distinguishingEvidence` 写明「做什么观察能区分 H_A 和 H_B」——驱动下一轮任务生成。稀疏数据诚实：3 条证据 → 1 个低置信假设 + 2 个待验证方向 + workingHypothesis.text 写明「证据尚不足以做稳定整合」；10 条 → 2 个中置信假设；50 条 → 1 个高置信工作假设 + 反证检查。
+
 ## 理论透镜怎么用（system 尾部 15×9 卡）
 
 卡含 9 字段：核心观点 / 适用场景 / 观察信号 / 判断维度 / 置信度规则 / 推荐干预 / 禁忌建议 / 用户可见表达 / 输出约束。
@@ -43,6 +60,8 @@
 - 用 `parentFacingExpression` 翻译成家长可见人话（这是理论隐身的关键出口）。
 - 用 `outputConstraints` 限定层级（如"exo 只能做情境解释，不能替代个体证据"）。
 - **禁止**输出 `theoryCardId` / 理论名给存储层家长字段。
+
+**防塌缩（v4 — 多视角不趋同）：** 用理论透镜做结构化判断时，不同视角必须聚焦各自的 focalDimension，禁止跨域趋同。视角正交锚点：依恋只看「受挫-平复」片段；家庭系统只看「三角关系/边界/联盟」；行为功能只看「前因-行为-后果」链；生态系统只看「exo/macro 压力源」；发展只看「阶段任务/敏感期」。产出后若发现不同视角内容高度相似（>0.85），说明视角塌缩了，需降该视角权重或重新聚焦。不同家庭的视角权重组合不同——A 家庭依恋主导，B 家庭系统主导。
 
 ## 七段底稿逐字段规范
 
@@ -73,6 +92,12 @@
 
 **硬规则**：evidenceSummary 的来源标签必在上表 8 个之内。禁止「学习模块」「行为模块」「心理模块」等臆想标签。
 
+**EvidenceRef 硬规则（v4 — 判断可回溯到原话）：** dossier 里每个 factor / mechanism / prediction 的 `confidence` 必须由来源聚合而来，不是 LLM 主观打：
+- `DossierPrediction` 必须带 `confidence`（0-1 数值）和 `evidenceRefs`（指向 atom_id）
+- `CandidateMechanism` 必须带 `sceneReadings`（≥2 场景）+ `relatedMechanismIds`（≥1 competesWith 边）
+- 机制间关系边（MechanismEdge）必须带 `evidenceRefs`——支持这条边的证据
+- **禁止** confidence 直接写 0.8 但不列来源（「家长反映」不是来源标签）；禁止机制之间无 competesWith 边（平铺矩阵，无关系）
+
 ### sceneReadings（场景化解读 —— 交织的核心载体）
 每个关键场景一条：`scene` + `protectiveMix`（{PR_t1:0.6, PR_t2:0.3, PR_t3:0.5}）+ `mainPerpetuatingId` + `reading`（人话）。**同一行为在不同场景 protective 配比不同**——这就是"交织"，禁止单公式。
 
@@ -102,6 +127,15 @@
 - 同一行为在不同场景可有不同 protective 配比。**禁止**「拖延=保护控制」「沉默=对抗」单公式。
 - 必须在 sceneReadings 给出至少 2 个场景的 protectiveMix 配比差异。
 - 例（附录 A）：作业前 {PR_t1:0.6, PR_t3:0.5, PR_t2:0.3}；检查段 {PR_t2:0.7, PR_t3:0.4, PR_t1:0.2}；冲突后 {PR_t3:0.7, PR_t1:0.3}——同一沉默，三场景配比不同。
+
+**φ_r 消息函数（v4 — 关系决定特征如何被理解）：** 不同关系类型用不同消息函数，不能线性相加。五个「不能」：
+1. 「支持」和「控制」不能用同一个消息函数——前者缓冲，后者放大，方向相反，用同一个会互相抵消
+2. 「父亲对孩子」不能默认等同「孩子对父亲」——方向不对称（actor ≠ partner）
+3. 「一次严重冲突」不能等同「五次轻微不耐烦」——频率 × 强度是非线性组合
+4. 「高频但低可信度的单方报告」不能压过「低频但多来源一致的证据」——可信度 × 频率是非线性
+5. 正向保护因素不能只作负向风险的抵消项——它可能**改变整个机制路径**
+
+在 dossier 里体现为：`sceneReadings.protectiveMix` 用不同数值配比体现同一因素在不同场景的不同作用；`alternativeReadings` 保留竞争假设不删减；`workingHypothesis` 必须引用 ≥2 个 mechanism，且 ≥2 个有 competesWith 关系。
 
 ## 理论隐身禁令
 
@@ -218,98 +252,4 @@
 }
 ```
 
-自检：sceneReadings ≥2 且 protectiveMix 跨场景不同？predictions 可证伪？interventionTargets 挂 prediction？JSON 无理论名？
-
----
-
-## 认识论隔离段（v4 harness — 防推断自我强化）
-
-**核心铁律**：dossier 里的每个 factor / mechanism / hypothesis 必须区分认识论状态，inferred 绝不伪装成 observed。
-
-认识论状态标注：
-- `observed`：直接观察到的行为（家长亲眼看到 / 孩子原话）
-- `reported`：家长或老师的转述报告
-- `derived`：由多条证据交叉印证（≥2 个独立来源一致）
-- `inferred`：你（LLM）的推断
-- `hypothesized`：待验证的机制假设
-
-**硬规则**：
-1. dossier 里的 `evidenceSummary` 必须标注认识论来源（如「家长报告，3/4 场景」「孩子原话，1 场景」）
-2. `confidence` 必须与认识论状态匹配：observed 可上 0.8+；reported 单源 ≤0.5；inferred ≤0.3
-3. **禁止**把 inferred 的判断在下一轮当 observed 再传播——这会产生「推断自我强化」
-4. hypothesized 判断必须写入 `alternativeReadings`，不能混进 `workingHypothesis.text` 当定论
-
----
-
-## φ_r 消息函数段（v4 harness — 关系决定特征如何被理解）
-
-**核心铁律**：不同关系类型用不同消息函数，不能线性相加。
-
-五个「不能」：
-1. 「支持」和「控制」不能用同一个消息函数——前者缓冲，后者放大，方向相反，用同一个会互相抵消
-2. 「父亲对孩子」不能默认等同「孩子对父亲」——方向不对称（actor ≠ partner）
-3. 「一次严重冲突」不能等同「五次轻微不耐烦」——频率 × 强度是非线性组合
-4. 「高频但低可信度的单方报告」不能压过「低频但多来源一致的证据」——可信度 × 频率是非线性
-5. 正向保护因素不能只作负向风险的抵消项——它可能**改变整个机制路径**
-
-**在 dossier 里的体现**：
-- `sceneReadings.protectiveMix` 用不同数值配比体现同一因素在不同场景的不同作用
-- `alternativeReadings` 保留竞争假设，不删减为单一结论
-- `workingHypothesis` 必须引用 ≥2 个 mechanism，且 ≥2 个有 competesWith 关系
-
----
-
-## 贝叶斯更新段（v4 harness — 稀疏数据下的概率推理）
-
-**核心铁律**：dossier 的 confidence 由三角化聚合（硬公式），不是 LLM 主观打。
-
-confidence 硬公式（TriangulatedFact）：
-- 单源（1 个来源） → 0.3-0.5
-- 双源（2 个独立来源） → 0.6-0.7
-- 三源+（≥3 个独立来源） → 0.8-0.9
-- 四源+ → 0.95
-- 独立性调节：同来源多次（如 3 条 parent_statement）独立性低，confidence 不升
-
-贝叶斯假设池：
-- 先验来自 THEORY_CARDS（领域知识）+ 发展心理学常识
-- 少量证据做似然更新：`posterior = (prior × likelihood) / Σ`
-- 假设池**始终保留 ≥2 个假设**（禁止单一结论），即使某个 posterior > 0.9 也保留次优
-- `alternativeReadings.distinguishingEvidence` 写明「做什么观察能区分 H_A 和 H_B」——驱动下一轮任务生成
-
-**稀疏数据诚实**：
-- 3 条证据 → 1 个低置信假设 + 2 个待验证方向 + workingHypothesis.text 写明「证据尚不足以做稳定整合」
-- 10 条 → 2 个中置信假设
-- 50 条 → 1 个高置信工作假设 + 反证检查
-
----
-
-## 防塌缩段（v4 harness — 多视角不趋同）
-
-**核心铁律**：5 个视角头（依恋/家庭系统/行为功能/生态系统/发展）必须聚焦各自的 focalDimension，禁止跨域。
-
-视角正交锚点：
-- **依恋头**：只看「受挫-平复」片段
-- **家庭系统头**：只看「三角关系 / 边界 / 联盟」
-- **行为功能头**：只看「前因-行为-后果」链
-- **生态系统头**：只看「exo/macro 压力源」
-- **发展头**：只看「阶段任务 / 敏感期」
-
-防塌缩检查：产出后计算 5 个视角内容之间的相似度，>0.85 则降 gateWeight 或要求重产。
-
-门控权重（Causal Head Gating）：每个视角头有 gateWeight（0-1），基于该视角证据充分度动态调整。A 家庭依恋头主导，B 家庭系统头主导——不同家庭权重组合不同。
-
----
-
-## EvidenceRef 硬规则段（v4 harness — 判断可回溯到原话）
-
-**核心铁律**：dossier 里每个 factor / mechanism / prediction 的 `confidence` 必须由 TriangulatedFact 的 confidence 聚合而来，不是 LLM 主观打。
-
-- 每个 `DossierFactor` 的 `evidenceSummary` 必须列出来源标签（如「作业模块 N/M 场景」「日常模块」）
-- 来源标签必须在 portraitSynthesizer §来源标签映射表的 8 个之内，禁止臆想标签
-- `DossierPrediction` 必须带 `confidence`（0-1 数值）和 `evidenceRefs`（指向 atom_id）
-- `CandidateMechanism` 必须带 `sceneReadings`（≥2 场景）+ `relatedMechanismIds`（≥1 competesWith 边）
-- 机制间关系边（MechanismEdge）必须带 `evidenceRefs`——支持这条边的证据
-
-**禁止**：
-- confidence 直接写 0.8 但不列来源（「家长反映」不是来源标签）
-- 机制之间无 competesWith 边（平铺矩阵，无关系）
+自检：sceneReadings ≥2 且 protectiveMix 跨场景不同？predictions 可证伪？interventionTargets 挂 prediction？JSON 无理论名？evidenceSummary 标了认识论来源？alternativeReadings ≥2 假设？
