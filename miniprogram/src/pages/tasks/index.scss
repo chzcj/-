@@ -1,5 +1,11 @@
 @import '../../styles/tokens.scss';
 
+/* 对齐 mock-screen: padding 8px 18px；page 外层 12px 20px，此处补 -2px 使列表区 ≈ 18px */
+.tasks-section-a {
+  margin-left: -2px;
+  margin-right: -2px;
+}
+
 .tasks-page-title {
   display: block;
   width: 100%;
@@ -160,7 +166,7 @@
 .task-card-a__headline {
   display: block;
   font-size: 18px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.35;
   color: #202633;
@@ -215,27 +221,34 @@
   flex-shrink: 0;
   width: 20px;
   height: 20px;
-  line-height: 20px;
-  text-align: center;
   border-radius: 50%;
   background: rgba(111, 166, 95, 0.12);
-  color: #577f45;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.task-card-a__chev-icon {
+  font-size: 12px;
+  line-height: 1;
+  color: #577f45;
+  margin-top: 1px;
 }
 
 .task-card-a.is-open .task-card-a__chev {
   transform: rotate(180deg);
 }
 
+/* 微信端 grid 0fr 动画不稳定，用 max-height 展开（mock A 同款缓动） */
 .task-card-a__body {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .task-card-a.is-open .task-card-a__body {
-  grid-template-rows: 1fr;
+  max-height: 960px;
 }
 
 .task-card-a__inner {
@@ -270,12 +283,15 @@
 }
 
 .task-card-a .task-chip {
-  display: inline-block;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: auto;
   padding: 8px 14px;
   border-radius: $radius-pill;
   border: 1px solid rgba(111, 166, 95, 0.28);
-  background: #fff;
+  background: #fff !important;
   color: $ink;
   font-size: 13px;
   font-weight: 500;
@@ -283,8 +299,14 @@
   line-height: 1.35;
 }
 
+.task-card-a .task-chip__label {
+  font-size: 13px;
+  color: inherit;
+  line-height: 1.35;
+}
+
 .task-card-a .task-chip.selected {
-  background: #eef7cf;
+  background: #eef7cf !important;
   border-color: #9dcc75;
   color: #415f36;
   font-weight: 600;

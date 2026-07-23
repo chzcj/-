@@ -6,6 +6,7 @@ import { getTurnEventByTraceId } from '@/lib/server/memory/database-manager'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
 import { saveHandbookCandidate } from '@/lib/server/profile/handbook-candidates-store'
+import { clampMatchedMechanismsForFrontend } from '@/lib/server/memory/deep-modeling/digest-limits'
 import { handbookPageAdmitJobKey } from '@/lib/server/profile/handbook-jobs'
 import { getWeekKey } from '@/lib/server/profile/week-utils'
 import { buildDailyDialogueRetrievalPacket } from '@/lib/server/memory/retrieval/router'
@@ -156,7 +157,8 @@ function buildFamilyMemoryBlock(
   }
   if (pack.entryFacts.length) lines.push(`采集事实：${pack.entryFacts.slice(0, 16).join('；')}`)
   if (pack.matchedMechanisms.length) {
-    lines.push(`家庭模式卡：${pack.matchedMechanisms.slice(0, 10).join('；')}`)
+    // v4 P1-3b：BFF clamp 1 主 2 次（不靠 SP 自觉）
+    lines.push(`家庭模式卡：${clampMatchedMechanismsForFrontend(pack.matchedMechanisms).join('；')}`)
   }
   if (pack.childQuotes.length) lines.push(`孩子原话：${pack.childQuotes.slice(0, 8).join('；')}`)
   if (pack.familyPatterns.length) lines.push(`家庭互动：${pack.familyPatterns.slice(0, 6).join('；')}`)

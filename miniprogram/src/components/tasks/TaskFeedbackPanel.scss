@@ -29,6 +29,7 @@
 }
 
 .feedback-question {
+  display: block;
   font-size: 12px;
   color: $muted;
   margin-bottom: 8px;
@@ -42,6 +43,10 @@
 }
 
 .task-chip {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: auto;
   padding: 8px 14px;
   border-radius: $radius-pill;
@@ -53,10 +58,21 @@
   box-shadow: none;
 }
 
+.task-chip__label {
+  font-size: 13px;
+  font-weight: inherit;
+  color: inherit;
+  line-height: 1.35;
+}
+
 .task-chip.selected {
   background: #eef7cf;
   border-color: #9dcc75;
   color: #415f36;
+  font-weight: 600;
+}
+
+.task-chip.selected .task-chip__label {
   font-weight: 600;
 }
 

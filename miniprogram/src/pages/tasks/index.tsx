@@ -101,10 +101,11 @@ export default function TasksPage() {
 
   return (
     <HiFiMainShell>
-      <Text className='tasks-page-title page-heading'>今晚待试</Text>
-      <Text className='tasks-page-lede muted'>
-        点卡片展开：先反馈，再读「为什么要试」。
-      </Text>
+      <View className='tasks-section-a'>
+        <Text className='tasks-page-title'>今晚待试</Text>
+        <Text className='tasks-page-lede'>
+          点卡片展开：先反馈，再读「为什么要试」。
+        </Text>
 
       {outbox.failed > 0 ? (
         <View className='task-sync-banner' onClick={() => void handleRetryOutbox()}>
@@ -165,7 +166,9 @@ export default function TasksPage() {
                       <Text className='task-card-a__source'>{display.sourceLine}</Text>
                       <View className='task-card-a__meta-end'>
                         <Text className={`task-card-a__badge status-tag--${variant}`}>{status}</Text>
-                        <Text className='task-card-a__chev'>⌄</Text>
+                        <View className='task-card-a__chev'>
+                          <Text className='task-card-a__chev-icon'>⌄</Text>
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -204,6 +207,7 @@ export default function TasksPage() {
           ) : null}
         </>
       )}
+      </View>
     </HiFiMainShell>
   )
 }

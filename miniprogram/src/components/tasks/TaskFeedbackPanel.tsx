@@ -30,6 +30,28 @@ const EFFECT_OPTIONS: Array<{ label: string; value: string }> = [
   { label: '更僵了', value: '不好' },
 ]
 
+function TaskChip({
+  label,
+  selected,
+  disabled,
+  onPick,
+}: {
+  label: string
+  selected: boolean
+  disabled?: boolean
+  onPick: () => void
+}) {
+  return (
+    <View
+      className={`task-chip${selected ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
+      hoverClass='none'
+      catchClick={onPick}
+    >
+      <Text className='task-chip__label'>{label}</Text>
+    </View>
+  )
+}
+
 export function TaskFeedbackPanel({
   task,
   rationale,
@@ -90,25 +112,25 @@ export function TaskFeedbackPanel({
         <Text className='feedback-label'>试过了吗？</Text>
         <View className='choice-row'>
           {COMPLETED_OPTIONS.map(({ label, value }) => (
-            <Text
+            <TaskChip
               key={value}
-              className={`task-chip${draft.completed === value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
-              onClick={() => pick('completed', value)}
-            >
-              {label}
-            </Text>
+              label={label}
+              selected={draft.completed === value}
+              disabled={disabled}
+              onPick={() => pick('completed', value)}
+            />
           ))}
         </View>
         <Text className='feedback-label'>效果怎么样？</Text>
         <View className='choice-row'>
           {EFFECT_OPTIONS.map(({ label, value }) => (
-            <Text
+            <TaskChip
               key={value}
-              className={`task-chip${draft.effect === value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
-              onClick={() => pick('effect', value)}
-            >
-              {label}
-            </Text>
+              label={label}
+              selected={draft.effect === value}
+              disabled={disabled}
+              onPick={() => pick('effect', value)}
+            />
           ))}
         </View>
       </View>
@@ -118,7 +140,10 @@ export function TaskFeedbackPanel({
         <Text className='task-why-body'>{whyText}</Text>
       </View>
 
-      <Text className='task-feedback-more-toggle' onClick={() => setMoreOpen((v) => !v)}>
+      <Text
+        className='task-feedback-more-toggle'
+        onClick={() => setMoreOpen((v) => !v)}
+      >
         {moreOpen ? '收起补充项 ▾' : '补充孩子反应或一句备注 ▸'}
       </Text>
       {moreOpen ? (
@@ -127,13 +152,13 @@ export function TaskFeedbackPanel({
             <Text className='feedback-question'>孩子反应？</Text>
             <View className='choice-row'>
               {['改善', '无变化', '变差'].map((value) => (
-                <Text
+                <TaskChip
                   key={value}
-                  className={`task-chip${draft.reaction === value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
-                  onClick={() => pick('reaction', value)}
-                >
-                  {value}
-                </Text>
+                  label={value}
+                  selected={draft.reaction === value}
+                  disabled={disabled}
+                  onPick={() => pick('reaction', value)}
+                />
               ))}
             </View>
           </View>

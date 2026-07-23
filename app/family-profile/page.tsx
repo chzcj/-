@@ -45,8 +45,12 @@ export default function FamilyProfilePage() {
     interactionPattern?: string
     effectiveStrategies?: string
     pendingHypotheses?: string
+    pendingHypothesesList?: string[]
     behaviorSummary?: string
     hasRealData?: boolean
+    highlights?: string[]
+    highlightMoments?: string[]
+    thinkingChips?: string[]
   }>({})
   const [portraitCards, setPortraitCards] = useState<DailyPortraitCards>({})
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null)
@@ -67,8 +71,14 @@ export default function FamilyProfilePage() {
       interactionPattern: d.interactionPattern as string | undefined,
       effectiveStrategies: d.effectiveStrategies as string | undefined,
       pendingHypotheses: d.pendingHypotheses as string | undefined,
+      // v4 P1-2d：接 pendingHypothesesList（数组形式，供 chip 子页消费）
+      pendingHypothesesList: d.pendingHypothesesList as string[] | undefined,
       behaviorSummary: d.behaviorSummary as string | undefined,
       hasRealData: d.hasRealData as boolean | undefined,
+      // v4 P1-2d：接 highlights + highlightMoments + thinkingChips
+      highlights: d.highlights as string[] | undefined,
+      highlightMoments: d.highlightMoments as string[] | undefined,
+      thinkingChips: d.thinkingChips as string[] | undefined,
     })
     if (d.portraitCards) setPortraitCards(d.portraitCards as DailyPortraitCards)
     if (d.refreshedAt !== undefined) setRefreshedAt(d.refreshedAt as string | null)
