@@ -223,6 +223,10 @@ export async function POST(request: Request) {
                       familyPatterns: packet.familyInteractionPatterns || [],
                       entryFacts: (packet as { entryFacts?: string[] }).entryFacts || [],
                       childQuotes: (packet as { childQuotes?: string[] }).childQuotes || [],
+                      // v4：补 dossierSlice（含 workingHypothesis/sceneReadings/interventionTargets）
+                      dossierSlice: (packet as { dossierSlice?: string[] }).dossierSlice || [],
+                      // v4：补 domainAtomFacts（情境化高质量 atom）
+                      domainAtomFacts: (packet as { domainAtomFacts?: string[] }).domainAtomFacts || [],
                     } : undefined,
                     rehearsalTranscript: transcriptLines,
                     parentRoundCount,

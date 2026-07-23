@@ -10,6 +10,7 @@ export type PainClusterId =
   | 'phone'
   | 'morning'
   | 'grades'
+  | 'dynamic'
 
 export type PainTurnInput = {
   text: string
@@ -25,6 +26,8 @@ export type PainClusterScore = {
   score: number
   samples: string[]
   mentionCountHint: string
+  /** v4 动态场景：LLM 归类的家长可读场景描述 */
+  dynamicSummary?: string
 }
 
 const CLUSTERS: Array<{ id: PainClusterId; label: string; re: RegExp }> = [
@@ -79,6 +82,14 @@ export const EXTENDED_SCENE_SEEDS: Record<
     seed: '成绩出来怎么谈',
     openingHint: '他可能先防着评价，而不是听到你在关心哪里卡住了。',
     openingChild: '考成这样又怎样……你别问了。',
+  },
+  dynamic: {
+    title: '其他高频场景',
+    subtitle: '从你的交流里发现的一些反复出现的场景。',
+    summary: '从交流记录里发现的一些反复出现但不在常规分类里的场景，点进去看看。',
+    seed: '其他高频场景',
+    openingHint: '先看看这个场景下，你们通常怎么开始的。',
+    openingChild: '又来了……',
   },
 }
 
@@ -150,7 +161,7 @@ export function rankPainClusters(
   if (withSignal.length >= topN) return withSignal.slice(0, topN)
 
   // 不足 TopN：保留有信号的，再按默认顺序补 seed（不写假频次）
-  const picked = [...withSignal]
+  const picked: PainClusterScore[] = [...withSignal]
   for (const c of CLUSTERS) {
     if (picked.length >= topN) break
     if (picked.some((p) => p.id === c.id)) continue
@@ -164,6 +175,32 @@ export function rankPainClusters(
       mentionCountHint: '',
     })
   }
+
+  // v4：收集未匹配到固定 cluster 的 turn（可能是家庭特有冲突点）
+  const unmatched: string[] = []
+  for (const turn of turns) {
+    if (opts?.excludeRehearsalMode && (turn.mode || '').includes('rehearsal')) continue
+    const msg = (turn.text || '').trim()
+    if (msg.length < 8) continue
+    if (msg.startsWith('【预演场景')) continue
+    const matched = CLUSTERS.some(c => c.re.test(msg))
+    if (!matched) unmatched.push(msg.slice(0, 120))
+  }
+
+  // 如果有 ≥5 条未匹配的 turn，附加一个 dynamic 场景占位（LLM 在 hydrator 阶段归类）
+  if (unmatched.length >= 5 && picked.length < topN + 2) {
+    picked.push({
+      id: 'dynamic' as PainClusterId,
+      label: '其他高频场景',
+      n14: unmatched.length,
+      n90: unmatched.length,
+      score: unmatched.length,
+      samples: unmatched.slice(0, 5),
+      mentionCountHint: hintFor(unmatched.length, unmatched.length),
+      dynamicSummary: '从你的交流记录里发现了一些反复出现但不在常规分类里的场景，点进去看看',
+    })
+  }
+
   return picked.slice(0, topN)
 }
 
