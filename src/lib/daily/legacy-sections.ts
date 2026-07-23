@@ -10,17 +10,6 @@ export function composeLegacySectionsFromCards(cards?: DailyCards): DailySection
 
   for (const id of active) {
     switch (id) {
-      case 'follow_up':
-        if (cards.followUp?.question) {
-          sections.push({
-            id: 'follow_up',
-            label: '还想确认一点',
-            kind: 'mixed',
-            paragraphs: cards.followUp.distinction ? [cards.followUp.distinction] : undefined,
-            items: [cards.followUp.question],
-          })
-        }
-        break
       case 'judgment_delta':
         if (cards.judgmentDelta) {
           sections.push({
@@ -48,17 +37,6 @@ export function composeLegacySectionsFromCards(cards?: DailyCards): DailySection
             label: '结合孩子画像的分析',
             kind: 'paragraphs',
             paragraphs: [cards.understandingCard.reading],
-          })
-        }
-        break
-      case 'deep_analysis':
-        if (cards.deepAnalysis?.points?.length) {
-          sections.push({
-            id: 'deep_analysis',
-            label: cards.deepAnalysis.title || '深度分析',
-            kind: 'list',
-            items: cards.deepAnalysis.points,
-            hidden: true,
           })
         }
         break

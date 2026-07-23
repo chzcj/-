@@ -23,7 +23,7 @@ function deriveImperativeTaskTitle(
 ): string {
   const fallback = '今晚先试一次小步骤'
   if (given && given.trim().length >= 4 && !TASK_TITLE_BANNED.test(given)) {
-    return given.trim().slice(0, 24)
+    return given.trim().slice(0, 48)
   }
 
   const advice = sections.find((s) => s.id === 'advice' && !s.hidden)
@@ -40,9 +40,9 @@ function deriveImperativeTaskTitle(
 
   if (actionLike) {
     const cut = actionLike.split(/[。！？\n]/)[0]?.trim() || actionLike
-    const title = cut.slice(0, 24)
-    if (/^(先|问|说|记录|观察|约定|只做|试|把|等|停|补|今晚|今天)/.test(title)) return title
-    return `先${title}`.slice(0, 24)
+    const title = cut.slice(0, 48)
+    if (/^(先|问|说|记录|观察|约定|只做|试|把|等|停|补|今晚|今天|别)/.test(title)) return title
+    return `先${title}`.slice(0, 48)
   }
 
   // 三级兜底前先从正文挖「今晚/今天…」祈使句（advice section 缺席但正文含具体建议的轮次）
@@ -50,7 +50,7 @@ function deriveImperativeTaskTitle(
     .split(/[。！？\n]/)
     .map((s) => s.trim())
     .find((s) => s.length >= 6 && s.length <= 40 && /^(今晚|今天|先|试着|只)/.test(s) && !TASK_TITLE_BANNED.test(s))
-  if (proseSentence) return proseSentence.slice(0, 24)
+  if (proseSentence) return proseSentence.slice(0, 48)
 
   return fallback
 }
@@ -96,7 +96,7 @@ export function composeDailyActions(
       label: '接下来观察什么',
       kind: 'expand_sections',
       primary: true,
-      payload: { sectionIds: hiddenIds.length ? hiddenIds : ['deep_analysis'], hiddenReady },
+      payload: { sectionIds: hiddenIds.length ? hiddenIds : ['child_voice'], hiddenReady },
     })
     actions.push({
       id: 'back_daily',

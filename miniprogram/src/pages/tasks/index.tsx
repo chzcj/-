@@ -1,6 +1,6 @@
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { useTabBar } from '@/hooks/useTabBar'
 import { usePublicPageShare } from '@/hooks/useSharePage'
@@ -72,6 +72,13 @@ export default function TasksPage() {
     if (!requireOnboardingComplete(user)) return
     await loadTasks()
   })
+
+  useEffect(() => {
+    const needsRefine = tasks.some((t) => !t.rationale?.trim() || !t.actionHint?.trim())
+    if (!needsRefine || loading) return
+    const timers = [2500, 6000, 12000, 22000].map((ms) => setTimeout(() => void loadTasks(), ms))
+    return () => timers.forEach(clearTimeout)
+  }, [tasks, loading])
 
   const toggleTask = (taskId: string) => {
     setSelectedId((prev) => (prev === taskId ? null : taskId))
@@ -152,9 +159,13 @@ export default function TasksPage() {
                 <View
                   key={task.id}
                   className={`task-card-a${open ? ' is-open' : ''}${saving ? ' is-saving' : ''}`}
-                  onClick={() => toggleTask(task.id)}
+                  hoverClass='none'
                 >
-                  <View className='task-card-a__head'>
+                  <View
+                    className='task-card-a__head'
+                    hoverClass='none'
+                    onClick={() => toggleTask(task.id)}
+                  >
                     {display.sceneLabel ? (
                       <Text className='task-card-a__scene'>{display.sceneLabel}</Text>
                     ) : null}
@@ -173,7 +184,7 @@ export default function TasksPage() {
                     </View>
                   </View>
                   <View className='task-card-a__body'>
-                    <View className='task-card-a__inner' catchClick>
+                    <View className='task-card-a__inner'>
                       <TaskFeedbackPanel
                         task={task}
                         rationale={display.rationale}

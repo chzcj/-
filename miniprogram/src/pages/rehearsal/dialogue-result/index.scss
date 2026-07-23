@@ -82,10 +82,10 @@
 .da-meta-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 26px;
+  min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: $text-small;
+  font-size: 14px;
   font-weight: 620;
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid $line;
@@ -101,7 +101,7 @@
 .overview-kicker {
   display: block;
   margin: 4px 0 8px;
-  font-size: $text-small;
+  font-size: 14px;
   font-weight: 700;
   color: $green-deep;
 }
@@ -122,14 +122,14 @@
 .da-dossier-label {
   display: block;
   margin-bottom: 4px;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
   color: $green-deep;
 }
 
 .da-dossier-body {
   display: block;
-  font-size: 12px;
+  font-size: 13.5px;
   line-height: 1.48;
   color: $ink-soft;
 }
@@ -144,7 +144,7 @@
 .da-synthesis-title {
   display: block;
   margin-bottom: 8px;
-  font-size: $text-small;
+  font-size: 13.5px;
   font-weight: 700;
   color: $green-deep;
 }
@@ -159,7 +159,7 @@
 .da-rhythm-map-lede {
   display: block;
   margin-bottom: 8px;
-  font-size: $text-small;
+  font-size: 14px;
   line-height: 1.55;
   color: $muted;
 }
@@ -181,7 +181,7 @@
 
 .da-phase-title {
   flex: 1;
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.4;
   font-weight: 700;
   color: $ink;
@@ -193,7 +193,7 @@
   padding: 8px 10px;
   border-radius: 10px;
   background: $green-soft;
-  font-size: $text-small;
+  font-size: 15px;
   line-height: 1.48;
   color: $green-deep;
 }
@@ -206,14 +206,21 @@
 
 .da-phase-quote {
   display: block;
-  font-size: $text-small;
-  line-height: 1.45;
+  font-size: 15px;
+  line-height: 1.5;
   color: $ink-soft;
 }
 
 .da-quote-speaker {
+  font-size: 15px;
   font-weight: 600;
   color: $ink;
+}
+
+.da-phase-quote-text {
+  font-size: 15px;
+  line-height: 1.5;
+  color: $ink-soft;
 }
 
 .da-trigger-tag {
@@ -221,7 +228,7 @@
   margin-left: 4px;
   padding: 0 6px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 700;
   color: #8a5a20;
   background: #fbefd4;
@@ -237,7 +244,7 @@
 .da-action-block__badge {
   display: block;
   margin-bottom: 6px;
-  font-size: $text-small;
+  font-size: 13.5px;
   font-weight: 700;
   color: $green-deep;
 }
@@ -245,7 +252,7 @@
 .da-action-block__lead {
   display: block;
   margin-bottom: 10px;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.5;
   color: $ink;
 }
@@ -257,14 +264,14 @@
 .da-step-label {
   display: block;
   margin-bottom: 4px;
-  font-size: $text-small;
+  font-size: 15px;
   font-weight: 700;
   color: $green-deep;
 }
 
 .da-step-text {
   display: block;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.58;
   color: $ink;
 }
@@ -279,7 +286,7 @@
 .da-sample-card__title {
   display: block;
   margin-bottom: 6px;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   color: $green-deep;
 }
@@ -287,7 +294,7 @@
 .da-sample-card__scene {
   display: block;
   margin-bottom: 10px;
-  font-size: $text-small;
+  font-size: 14px;
   line-height: 1.5;
   color: $muted;
 }
@@ -300,13 +307,13 @@
 
 .da-sample-line {
   display: block;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.55;
   color: $ink-soft;
 }
 
 .da-sample-role {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   color: $muted;
   margin-right: 6px;

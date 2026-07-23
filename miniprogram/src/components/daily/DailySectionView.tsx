@@ -4,7 +4,7 @@ import { AuthorityInsightCard } from '@/components/hifi/AuthorityInsightCard'
 import { parseStreamingSectionBody } from '@/lib/parseStreamingSection'
 import { stripParentFacingMarkdown } from '@/lib/textDisplay'
 
-const AUTHORITY_SECTION_IDS = new Set(['diagnosis_headline', 'this_time', 'profile_reading'])
+const AUTHORITY_SECTION_IDS = new Set(['diagnosis_headline', 'this_time'])
 
 function sectionPlainBody(section: DailySection): string {
   if (section.streamingText) return section.streamingText

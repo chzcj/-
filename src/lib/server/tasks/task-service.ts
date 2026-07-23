@@ -1,7 +1,7 @@
 import 'server-only'
 
 import type { UserTask } from '@/types/database'
-import { getUserTasks, saveUserTasks } from '@/lib/server/memory/database-manager'
+import { getTurnEventByTraceId, getUserTasks, saveUserTasks } from '@/lib/server/memory/database-manager'
 import { buildMemoryWritePlan, createDailyUpdate } from '@/lib/server/memory/pipeline'
 import { enqueueJob, enqueueDeepMechanismReview } from '@/lib/server/jobs/queue'
 import { deepMechanismDebounceKey } from '@/lib/server/memory/deep-mechanism/s2-flags'
@@ -9,6 +9,7 @@ import { markDossierPredictionFailed } from '@/lib/server/memory/dossier/predict
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import type { TenantId } from '@/lib/server/memory/tenant'
 import { createId } from '@/lib/storage/storageIds'
+import { buildTaskReplyExcerpt } from '@yujian/contracts/task-seed'
 import { refineTonightTaskInBackground } from '@/lib/server/tasks/tonight-task-agent'
 
 const MAX_STORED = 50
@@ -23,16 +24,62 @@ function isUnsatisfiedTaskFeedback(
   return blob.includes('未达预期')
 }
 
+const refiningTaskIds = new Set<string>()
+
 function isCurrentTask(task: UserTask): boolean {
   return task.status !== '已完成' && task.status !== '已过期'
+}
+
+function taskNeedsRefine(task: UserTask): boolean {
+  return !task.rationale?.trim() || !task.actionHint?.trim()
+}
+
+async function resolveTaskReplyExcerpt(tenant: TenantId, task: UserTask): Promise<string | undefined> {
+  if (task.sourceTraceId) {
+    const turn = await getTurnEventByTraceId(tenant, task.sourceTraceId).catch(() => null)
+    if (turn?.assistantReply?.trim()) {
+      const pack = turn.specializedContextPackSnapshot as
+        | { sections?: Array<{ id?: string; hidden?: boolean; paragraphs?: string[]; items?: string[] }> }
+        | undefined
+      const excerpt = buildTaskReplyExcerpt(turn.assistantReply, pack?.sections)
+      if (excerpt.length >= 40) return excerpt
+    }
+  }
+  return task.title
+}
+
+function scheduleTaskRefineIfNeeded(tenant: TenantId, tasks: UserTask[]): void {
+  for (const task of tasks) {
+    if (!taskNeedsRefine(task)) continue
+    if (refiningTaskIds.has(task.taskId)) continue
+    refiningTaskIds.add(task.taskId)
+    void (async () => {
+      try {
+        const replyExcerpt = await resolveTaskReplyExcerpt(tenant, task)
+        await refineTonightTaskInBackground({
+          tenant,
+          taskId: task.taskId,
+          seedTitle: task.title,
+          observation: task.observation,
+          replyExcerpt,
+        })
+      } catch {
+        /* ignore */
+      } finally {
+        refiningTaskIds.delete(task.taskId)
+      }
+    })()
+  }
 }
 
 export async function listRecentUserTasks(tenant: TenantId): Promise<{ current: UserTask[]; history: UserTask[] }> {
   const all = await getUserTasks(tenant)
   const sorted = all
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const current = sorted.filter(isCurrentTask).slice(0, MAX_CURRENT)
+  scheduleTaskRefineIfNeeded(tenant, current)
   return {
-    current: sorted.filter(isCurrentTask).slice(0, MAX_CURRENT),
+    current,
     history: sorted.filter((task) => !isCurrentTask(task)).slice(0, MAX_STORED),
   }
 }
@@ -101,16 +148,23 @@ export async function createUserTask(
   const taskTraceId = args.sourceTraceId || createId('trace')
   void enqueueJob('daily_deep', { text: title, tenant, traceId: taskTraceId }, `daily_deep_${episodeId}`, taskTraceId)
 
-  // 轻度异步：专用 Agent 润色今晚任务标题（不挡保存响应）
-  void refineTonightTaskInBackground({
-    tenant,
-    taskId: task.taskId,
-    seedTitle: title,
-    observation: args.observation,
-    replyExcerpt: args.replyExcerpt,
-  }).catch((err) => {
+  // 保存后同步 refine（最多等 5s），让任务 Tab 首屏就有 scene/hint/rationale
+  try {
+    await Promise.race([
+      refineTonightTaskInBackground({
+        tenant,
+        taskId: task.taskId,
+        seedTitle: title,
+        observation: args.observation,
+        replyExcerpt: args.replyExcerpt,
+      }),
+      new Promise<void>((resolve) => setTimeout(resolve, 8000)),
+    ])
+    const refreshed = (await getUserTasks(tenant)).find((t) => t.taskId === task.taskId)
+    if (refreshed) return refreshed
+  } catch (err) {
     console.warn('[tonight-task] refine failed:', err instanceof Error ? err.message : err)
-  })
+  }
 
   return task
 }

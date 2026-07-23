@@ -44,8 +44,11 @@ function TaskChip({
   return (
     <View
       className={`task-chip${selected ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
-      hoverClass='none'
-      catchClick={onPick}
+      hoverClass={disabled ? 'none' : 'task-chip--press'}
+      catchClick={() => {
+        if (disabled) return
+        onPick()
+      }}
     >
       <Text className='task-chip__label'>{label}</Text>
     </View>
@@ -142,7 +145,10 @@ export function TaskFeedbackPanel({
 
       <Text
         className='task-feedback-more-toggle'
-        onClick={() => setMoreOpen((v) => !v)}
+        onClick={(e) => {
+          e.stopPropagation()
+          setMoreOpen((v) => !v)
+        }}
       >
         {moreOpen ? '收起补充项 ▾' : '补充孩子反应或一句备注 ▸'}
       </Text>

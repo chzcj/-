@@ -47,15 +47,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
   min-height: auto;
   padding: 8px 14px;
   border-radius: $radius-pill;
-  border: 1px solid rgba(111, 166, 95, 0.28);
-  background: #fff;
+  border: 1px solid rgba(111, 166, 95, 0.28) !important;
+  background: #fff !important;
   color: $ink;
   font-size: 13px;
   font-weight: 500;
+  line-height: 1.35;
   box-shadow: none;
+}
+
+.task-chip::after {
+  border: none;
 }
 
 .task-chip__label {
@@ -78,7 +84,11 @@
 
 .task-chip.disabled {
   opacity: 0.6;
-  pointer-events: none;
+}
+
+.task-chip--press {
+  opacity: 0.82;
+  transform: scale(0.98);
 }
 
 .task-why-block {

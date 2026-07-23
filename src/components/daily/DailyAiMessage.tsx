@@ -196,7 +196,6 @@ export function DailyAiMessage({
                 retrievalPackDigest: {
                   understandingCard: cards?.understandingCard?.reading || '',
                   evidenceBasis: cards?.evidenceBasis || '',
-                  deepAnalysis: cards?.deepAnalysis?.points || [],
                   adviceSeed: cards?.adviceSeed || '',
                   confidenceMode: cards?.confidenceMode || '',
                 },

@@ -155,7 +155,7 @@ export default function DialogueResultPage() {
                     {phase.quotes.map((q) => (
                       <Text key={`${phase.title}-${q.text.slice(0, 8)}`} className='da-phase-quote'>
                         <Text className='da-quote-speaker'>{q.speaker}：</Text>
-                        「{q.text}」
+                        <Text className='da-phase-quote-text'>「{q.text}」</Text>
                         {q.isPeak ? <Text className='da-trigger-tag'>峰值</Text> : null}
                       </Text>
                     ))}

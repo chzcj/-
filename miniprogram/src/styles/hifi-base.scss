@@ -346,6 +346,12 @@
   text-align: center;
 }
 
+.end-actions .pill.disabled {
+  flex: 0 1 auto;
+  min-width: auto;
+  max-width: 100%;
+}
+
 .mascot {
   width: 148px;
   height: 132px;

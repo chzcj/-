@@ -655,21 +655,15 @@ export interface DailyCards {
   understandingCard?: { tier: '初版' | '标准' | '深度'; reading: string }
   /** 本轮判断依据（来自已存证据/事件，家长可读） */
   evidenceBasis?: string
-  /** 低置信 / 需追问时的结构化追问卡 */
-  followUp?: { question: string; distinction?: string }
-  /** 深度原因折叠区（来自检索上下文，非重复气泡正文） */
-  deepAnalysis?: { title: string; points: string[] }
   /** 高/低置信分流：影响 AI 组件组合 */
   confidenceMode?: 'high' | 'low'
   /** 下一步建议展开时的方向提示（来自路由/检索） */
   adviceSeed?: string
   /** 本轮动态选中的附加组件（最多 3 个，由规则引擎按意图+置信度决定） */
   activeComponents?: Array<
-    | 'follow_up'
     | 'judgment_delta'
     | 'evidence'
     | 'deep_reading'
-    | 'deep_analysis'
     | 'advice_hint'
     | 'linked_areas'
     | 'action_rehearsal'

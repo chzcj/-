@@ -111,28 +111,6 @@ export function buildDailyCards(output: OrchestrationOutput, userText?: string):
       ? 'low'
       : 'high'
 
-  if (route.needFollowup || route.frontResponseType === 'one_key_followup') {
-    const question = route.followupQuestion?.trim()
-    if (question) {
-      cards.followUp = { question, distinction: extractDistinction(question) }
-    } else if (rel === 'insufficient') {
-      cards.followUp = {
-        question: '想先确认一个现场细节，好区分两种可能——您凭最近几次印象说就行。',
-        distinction: '整体回避 vs 某个具体点变敏感',
-      }
-    } else if (rel === 'new_mechanism_signal') {
-      cards.followUp = {
-        question: '这像是新出现的情况。最近一次和之前最不一样的地方是什么？',
-        distinction: '偶发波动 vs 开始反复出现',
-      }
-    } else if (route.needFollowup) {
-      cards.followUp = {
-        question: '想再确认一个细节，好把判断收得更准——您凭最近几次印象说就行。',
-        distinction: '表面行为 vs 触发前的状态',
-      }
-    }
-  }
-
   if (output.inputType === 'ask_advice') {
     cards.adviceSeed =
       ctx.relevantFamilyInteractionPatterns?.[0] ||
@@ -146,27 +124,6 @@ export function buildDailyCards(output: OrchestrationOutput, userText?: string):
       ctx.relevantFamilyInteractionPatterns?.[0] ||
       ctx.relevantChildStructureModel?.[1] ||
       undefined
-  }
-
-  if (route.needDeepDiagnosis || rel === 'counter_evidence' || rel === 'new_mechanism_signal') {
-    const points: string[] = []
-    if (ctx.relevantPendingHypotheses?.[0]) {
-      points.push(`还在验证：${truncateParentText(ctx.relevantPendingHypotheses[0], 120)}`)
-    }
-    if (ctx.relevantPastEvents?.[1] || ctx.relevantPastEvents?.[0]) {
-      const evt = ctx.relevantPastEvents[1] || ctx.relevantPastEvents[0]
-      points.push(`相关片段：${truncateParentText(evt, 120)}`)
-    }
-    if (output.relationshipToExistingModel.explanation && rel !== 'safety') {
-      const exp = sanitizeForParent(output.relationshipToExistingModel.explanation)
-      if (exp) points.push(truncateParentText(exp, 100))
-    }
-    if (points.length) {
-      cards.deepAnalysis = {
-        title: rel === 'counter_evidence' ? '为什么这条值得重新看' : '结合已有材料，这轮多看的点',
-        points: points.slice(0, 4),
-      }
-    }
   }
 
   const baseCards = { ...cards }

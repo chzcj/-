@@ -75,7 +75,7 @@
 }
 
 .scene-tag {
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 720;
   padding: 3px 8px;
   border-radius: 999px;
@@ -121,8 +121,15 @@
 .brief-sub {
   display: block;
   margin: -6px 0 14px;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.45;
+}
+
+.insight-loading {
+  display: block;
+  font-size: 14px;
+  line-height: 1.65;
+  color: $muted;
 }
 
 .info-card {
@@ -136,7 +143,7 @@
 .card-eyebrow {
   display: block;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 680;
   color: #868b94;
   letter-spacing: 0.02em;
@@ -166,7 +173,7 @@
 .insight-list-item {
   position: relative;
   padding-left: 14px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.65;
   color: #4a5160;
 }
@@ -362,7 +369,7 @@
 
 .scenario-desc {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
 }
 

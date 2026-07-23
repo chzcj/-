@@ -1,11 +1,9 @@
 import type { DailyCards, OrchestrationOutput } from '@/types/database'
 
 export type DailyComponentId =
-  | 'follow_up'
   | 'judgment_delta'
   | 'evidence'
   | 'deep_reading'
-  | 'deep_analysis'
   | 'advice_hint'
   | 'linked_areas'
   | 'action_rehearsal'
@@ -33,8 +31,6 @@ export function enumerateDailyComponentCandidates(
     picked.push(id)
   }
 
-  if (lowConf && cards.followUp?.question) tryPush('follow_up')
-
   if (intent === 'ask_advice') {
     if (cards.adviceSeed) tryPush('advice_hint')
     tryPush('action_task')
@@ -50,8 +46,7 @@ export function enumerateDailyComponentCandidates(
     if (cards.evidenceBasis && !lowConf) tryPush('evidence')
     if (cards.understandingCard?.reading) tryPush('deep_reading')
   } else if (intent === 'ask_explanation' || route.needDeepDiagnosis) {
-    if (cards.deepAnalysis?.points?.length) tryPush('deep_analysis')
-    else if (cards.evidenceBasis) tryPush('evidence')
+    if (cards.evidenceBasis) tryPush('evidence')
   }
 
   if (cards.judgmentDelta && (rel === 'counter_evidence' || rel === 'new_mechanism_signal')) {
@@ -83,11 +78,9 @@ export function selectDailyComponents(
 }
 
 export const DAILY_COMPONENT_LABELS: Record<DailyComponentId, string> = {
-  follow_up: '低置信追问',
   judgment_delta: '判断有更新',
   evidence: '为什么这样看',
   deep_reading: '结合家庭的理解',
-  deep_analysis: '深度分析',
   advice_hint: '家里流程提示',
   linked_areas: '关联领域',
   action_rehearsal: '去沟通预演',

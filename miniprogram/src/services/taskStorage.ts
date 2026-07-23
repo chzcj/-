@@ -1,6 +1,6 @@
 import Taro from '@tarojs/taro'
 import { apiRequest } from '@/services/api'
-import { normalizeTaskTitle } from '@/lib/textDisplay'
+import { coerceTaskSeedTitle } from '@yujian/contracts/task-seed'
 import {
   enqueueTaskCreate,
   enqueueTaskFeedback,
@@ -46,6 +46,7 @@ type ServerTask = {
   rationale?: string
   feedback?: TaskFeedback
   sourceTraceId?: string
+  clientId?: string
   createdAt: string
 }
 
@@ -80,21 +81,85 @@ function mapServerTask(t: ServerTask): TaskItem {
     rationale: t.rationale,
     feedback: t.feedback,
     sourceTraceId: t.sourceTraceId,
+    clientId: t.clientId,
     createdAt: t.createdAt,
+  }
+}
+
+function taskRichness(task: TaskItem): number {
+  return (
+    (task.rationale?.trim() ? 4 : 0) +
+    (task.actionHint?.trim() ? 2 : 0) +
+    (task.sceneLabel?.trim() ? 1 : 0) +
+    (task.id.startsWith('task_') ? 1 : 0)
+  )
+}
+
+function mergeTaskPair(primary: TaskItem, secondary: TaskItem): TaskItem {
+  const richer = taskRichness(primary) >= taskRichness(secondary) ? primary : secondary
+  const other = richer === primary ? secondary : primary
+  const id = richer.id.startsWith('task_')
+    ? richer.id
+    : other.id.startsWith('task_')
+      ? other.id
+      : richer.id
+  return {
+    ...other,
+    ...richer,
+    id,
+    clientId: richer.clientId || other.clientId,
+    sceneLabel: richer.sceneLabel || other.sceneLabel,
+    actionHint: richer.actionHint || other.actionHint,
+    rationale: richer.rationale || other.rationale,
+    feedback: richer.feedback || other.feedback,
+    status: richer.status || other.status,
   }
 }
 
 function mergeTasks(local: TaskItem[], server: TaskItem[]): TaskItem[] {
   const byId = new Map<string, TaskItem>()
-  for (const t of [...server, ...local]) {
-    const existing = byId.get(t.id)
-    if (!existing || new Date(t.createdAt).getTime() >= new Date(existing.createdAt).getTime()) {
-      byId.set(t.id, t)
+  const clientIdToServerId = new Map<string, string>()
+
+  for (const task of server) {
+    byId.set(task.id, task)
+    if (task.clientId) clientIdToServerId.set(task.clientId, task.id)
+  }
+
+  for (const task of local) {
+    const canonicalId =
+      task.clientId && clientIdToServerId.has(task.clientId)
+        ? clientIdToServerId.get(task.clientId)!
+        : task.id
+    const normalized = canonicalId === task.id ? task : { ...task, id: canonicalId }
+    const existing = byId.get(canonicalId)
+    byId.set(canonicalId, existing ? mergeTaskPair(existing, normalized) : normalized)
+  }
+
+  const deduped = new Map<string, TaskItem>()
+  const noTrace: TaskItem[] = []
+  for (const task of byId.values()) {
+    if (task.sourceTraceId) {
+      const prev = deduped.get(task.sourceTraceId)
+      deduped.set(task.sourceTraceId, prev ? mergeTaskPair(prev, task) : task)
+    } else {
+      noTrace.push(task)
     }
   }
-  return [...byId.values()].sort(
+
+  return [...deduped.values(), ...noTrace].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
+}
+
+function upsertLocalTask(serverTask: TaskItem, clientId: string) {
+  const local = loadLocalTasks().filter(
+    (task) =>
+      task.id !== clientId &&
+      task.clientId !== clientId &&
+      task.id !== serverTask.id &&
+      !(task.sourceTraceId && task.sourceTraceId === serverTask.sourceTraceId)
+  )
+  saveLocalTasks([serverTask, ...local].slice(0, 20))
 }
 
 export async function fetchTasksFromServer(): Promise<{ current: TaskItem[]; history: TaskItem[] }> {
@@ -128,7 +193,7 @@ export async function saveTask(
   extras?: { observation?: string; replyExcerpt?: string }
 ): Promise<boolean> {
   if (!title.trim()) return false
-  const normalizedTitle = normalizeTaskTitle(title, '到点只说一句开始然后等')
+  const normalizedTitle = coerceTaskSeedTitle(title, '到点只说一句开始然后等')
   if (!normalizedTitle.trim()) return false
   const observation = extras?.observation?.trim() || undefined
   const replyExcerpt = extras?.replyExcerpt?.trim() || undefined
@@ -145,6 +210,11 @@ export async function saveTask(
         ...(replyExcerpt ? { replyExcerpt } : {}),
       },
     })
+    if (res.ok && res.data.task) {
+      upsertLocalTask(mapServerTask(res.data.task), clientId)
+      await fetchTasksFromServer()
+      return true
+    }
     if (res.ok) {
       await fetchTasksFromServer()
       return true

@@ -130,14 +130,10 @@
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid rgba(111, 166, 95, 0.18);
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
   transition:
     box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.28s ease,
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.task-card-a:active {
-  transform: scale(0.995);
+    border-color 0.28s ease;
 }
 
 .task-card-a.is-open {
@@ -152,6 +148,7 @@
 
 .task-card-a__head {
   padding: 16px 16px 14px;
+  cursor: pointer;
 }
 
 .task-card-a__scene {
@@ -170,6 +167,7 @@
   letter-spacing: -0.025em;
   line-height: 1.35;
   color: #202633;
+  word-break: break-word;
 }
 
 .task-card-a__hint {
@@ -258,6 +256,8 @@
 
 .task-card-a.is-open .task-card-a__inner {
   padding-bottom: 16px;
+  position: relative;
+  z-index: 2;
 }
 
 /* embedded feedback — scoped to beat global .pill / hifi overrides */
@@ -287,16 +287,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
   min-height: auto;
   padding: 8px 14px;
   border-radius: $radius-pill;
-  border: 1px solid rgba(111, 166, 95, 0.28);
+  border: 1px solid rgba(111, 166, 95, 0.28) !important;
   background: #fff !important;
   color: $ink;
   font-size: 13px;
   font-weight: 500;
-  box-shadow: none;
   line-height: 1.35;
+  box-shadow: none;
+}
+
+.task-card-a .task-chip::after {
+  border: none;
 }
 
 .task-card-a .task-chip__label {

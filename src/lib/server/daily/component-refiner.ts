@@ -47,10 +47,10 @@ export async function refineDailyActiveComponents(args: {
 
 选择依据（按优先级）：
 1. 家长意图（inputType）：求建议→偏 advice_hint/action_task；想预演→action_rehearsal；倾诉/报告→evidence/deep_reading
-2. 置信度（confidenceMode=low）：优先 follow_up，避免同时堆太多判断
+2. 置信度（confidenceMode=low）：避免同时堆太多判断
 3. 是否已有家庭画像证据：高置信且有 evidenceBasis 时可出 evidence 或 deep_reading
 4. 关系信号 counter_evidence/new_mechanism_signal 时可出 judgment_delta
-5. 动作类组件（预演/任务）每轮最多选 1 个，不要与 follow_up 抢注意力
+5. 动作类组件（预演/任务）每轮最多选 1 个
 
 只输出 JSON：{"components":["id1","id2"]}，id 必须严格来自 candidates 列表。不要输出解释。`,
       {
@@ -65,7 +65,6 @@ export async function refineDailyActiveComponents(args: {
         ruleSuggestion: rulePick,
         hasEvidence: Boolean(cards.evidenceBasis),
         hasDeepReading: Boolean(cards.understandingCard?.reading),
-        hasDeepAnalysis: Boolean(cards.deepAnalysis?.points?.length),
       },
       { disableThinking: frontAiThinkingDisabled() }
     )

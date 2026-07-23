@@ -22,6 +22,23 @@ function sanitizeGeneratedTitle(raw: unknown, seedTitle: string): string {
   return title
 }
 
+function fallbackFromExcerpt(replyExcerpt: string | undefined, seedTitle: string) {
+  const chunks = (replyExcerpt || '')
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-•·\d.)]+\s*/, '').trim())
+    .filter((line) => line.length > 8)
+  if (!chunks.length) return {}
+  const actionHint = chunks.find((line) => /别|不要|只问|只说|先|停|不要先/.test(line))?.slice(0, 72)
+  const rationale =
+    chunks.find((line) => line.length >= 24 && !/家长|孩子/.test(line.slice(0, 4)))?.slice(0, 280) ||
+    chunks.find((line) => line.length >= 20)?.slice(0, 280)
+  void seedTitle
+  return {
+    actionHint,
+    rationale,
+  }
+}
+
 function sanitizeShort(raw: unknown, max: number): string | undefined {
   if (typeof raw !== 'string') return undefined
   const v = raw.trim().slice(0, max)
@@ -42,9 +59,10 @@ export async function refineTonightTaskInBackground(args: {
     }).catch(() => null),
     loadDeepModelDigest(args.tenant).catch(() => null),
   ])
-  const digest = digestLoaded?.mechanismNarrative
-    ? digestLoaded
-    : await buildDeepModelDigest(args.tenant).catch(() => digestLoaded)
+  if (!digestLoaded?.mechanismNarrative) {
+    void buildDeepModelDigest(args.tenant).catch(() => undefined)
+  }
+  const digest = digestLoaded
   const ai = await callAgentJson<{
     title?: string
     sceneLabel?: string
@@ -56,7 +74,7 @@ export async function refineTonightTaskInBackground(args: {
     {
       seedTitle: args.seedTitle.slice(0, 60),
       observation: (args.observation || '').slice(0, 120),
-      replyExcerpt: (args.replyExcerpt || '').slice(0, 600),
+      replyExcerpt: (args.replyExcerpt || '').slice(0, 1200),
       deepModelDigest: pickDeepModelDigestPack(digest),
       retrievalPack: packet
         ? {
@@ -67,13 +85,14 @@ export async function refineTonightTaskInBackground(args: {
           }
         : undefined,
     },
-    { maxTokens: 480 }
+    { maxTokens: 640 }
   ).catch(() => undefined)
 
+  const fallback = fallbackFromExcerpt(args.replyExcerpt, args.seedTitle)
   const nextTitle = sanitizeGeneratedTitle(ai?.title, args.seedTitle)
-  const sceneLabel = sanitizeShort(ai?.sceneLabel, 24)
-  const actionHint = sanitizeShort(ai?.actionHint, 40)
-  const rationale = sanitizeShort(ai?.rationale, 140)
+  const sceneLabel = sanitizeShort(ai?.sceneLabel, 24) || sanitizeShort(args.observation, 24)
+  const actionHint = sanitizeShort(ai?.actionHint, 72) || sanitizeShort(fallback.actionHint, 72)
+  const rationale = sanitizeShort(ai?.rationale, 280) || sanitizeShort(fallback.rationale, 280)
 
   const all = await getUserTasks(args.tenant)
   const idx = all.findIndex((t) => t.taskId === args.taskId)

@@ -1,5 +1,5 @@
 const MARKDOWN_LIST_PREFIX = /^\s*[-*•]\s+/
-const TASK_TITLE_MAX = 24
+const TASK_TITLE_MAX = 48
 const TASK_TITLE_BANNED =
   /模式能对上|标记为|观察记录|当前输入|已有画像|写入记忆|判断有更新|待验证|不急着套旧解释|服务器记录恢复/i
 

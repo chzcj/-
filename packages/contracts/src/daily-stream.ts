@@ -4,8 +4,6 @@ export interface DailyCards {
   judgmentDelta?: string
   understandingCard?: { tier: '初版' | '标准' | '深度'; reading: string }
   evidenceBasis?: string
-  followUp?: { question: string; distinction?: string }
-  deepAnalysis?: { title: string; points: string[] }
   confidenceMode?: 'high' | 'low'
   adviceSeed?: string
   sections?: DailySection[]

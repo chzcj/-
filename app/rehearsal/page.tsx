@@ -253,6 +253,10 @@ export default function RehearsalPage() {
     setSelectedId(scene.id)
     setSceneTitle(scene.title)
     setSummary(scene.summary)
+    setSceneSituation(scene.summary)
+    setChildUnderstanding('')
+    setSceneBrief(null)
+    setStep('confirm')
     void (async () => {
       setBriefLoading(true)
       try {
@@ -321,7 +325,6 @@ export default function RehearsalPage() {
         setSceneBrief(null)
       } finally {
         setBriefLoading(false)
-        setStep('confirm')
       }
     })()
   }
@@ -552,9 +555,9 @@ export default function RehearsalPage() {
     setTonightSaved(true)
   }
 
-  const insightBullets = parseInsightBullets(childUnderstanding, [
-    truncate(sceneSituation || summary, 72),
-  ].filter((line) => line.length > 8))
+  const insightBullets = briefLoading
+    ? []
+    : parseInsightBullets(childUnderstanding, []).filter(Boolean)
   const briefSubLine = selectedScene.mentionCountHint
     ? `${sceneTitle} · ${selectedScene.mentionCountHint}`
     : sceneTitle
@@ -677,11 +680,17 @@ export default function RehearsalPage() {
             <article className="info-card">
               <p className="card-eyebrow">系统记忆 · 此场景下的孩子</p>
               <h3 className="info-card-title">我会参考这些理解</h3>
-              <ul className="insight-list">
-                {insightBullets.map((bullet) => (
-                  <li key={bullet}>{bullet}</li>
-                ))}
-              </ul>
+              {briefLoading ? (
+                <p className="hint-text">正在模拟本场景下孩子的反应…</p>
+              ) : insightBullets.length ? (
+                <ul className="insight-list">
+                  {insightBullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="hint-text">暂时还没有足够记忆，先按场景摘要练一轮。</p>
+              )}
             </article>
 
             <button className="primary-button wide-button" type="button" onClick={enterRehearsal}>

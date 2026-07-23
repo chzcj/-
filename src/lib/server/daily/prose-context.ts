@@ -7,12 +7,11 @@ import {
 import type { DeepModelDigestPack } from '@/lib/server/memory/deep-modeling/pick-deep-model-digest'
 import { pickTurnRelevantSnippets } from '@/lib/server/daily/turn-relevant-snippets'
 
-export type ProseMode = 'follow_up' | 'analysis' | 'light'
+export type ProseMode = 'analysis' | 'light'
 
 const PROSE_MAX: Record<ProseMode, number> = {
-  follow_up: 100,
   analysis: 200,
-  light: 80,
+  light: 100,
 }
 
 const UNDERSTAND_HINT =
@@ -36,7 +35,7 @@ export function resolveProseRouting(
     return { mode: 'analysis', reason: '安全跟进需展开' }
   }
   if (rel === 'new_mechanism_signal') {
-    return { mode: 'follow_up', reason: '新机制信号需追问' }
+    return { mode: 'light', reason: '新机制信号需轻量追问' }
   }
 
   const low =
@@ -44,7 +43,7 @@ export function resolveProseRouting(
     rel === 'insufficient' ||
     route === 'one_key_followup'
   if (low) {
-    return { mode: 'follow_up', reason: '信息不足或编排建议追问' }
+    return { mode: 'light', reason: '信息不足或编排建议追问' }
   }
   if (output.inputType === 'ask_advice') {
     return { mode: 'analysis', reason: '家长要方法' }
@@ -196,9 +195,7 @@ export function buildDailyProseTask(output: OrchestrationOutput, userText = ''):
     '4. 只输出中文正文：无 JSON、无标题、无 markdown、无「作为 AI」口吻；禁止口播「这里想区分…后面处理不一样」。',
   ]
 
-  if (mode === 'follow_up') {
-    lines.push('【建议】追问轮宜短：只问一个现场问题，或短接住 + 一问；不必凑分析。')
-  } else if (mode === 'analysis') {
+  if (mode === 'analysis') {
     lines.push(
       '【建议】分析轮：直接答本题；若材料够，可用一两句讲透一个关键点（人话、无术语）；不必类型标签、不必面面俱到。'
     )

@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     ])
     let digest = digestLoaded
     if (!digest?.mechanismNarrative) {
-      digest = await buildDeepModelDigest(tenant).catch(() => digest)
+      void buildDeepModelDigest(tenant).catch(() => undefined)
     }
     const digestPack = pickDeepModelDigestPack(digest)
 

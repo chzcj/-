@@ -2,14 +2,14 @@ import type { DailySection } from '@/types/daily-message'
 
 const PRIORITY_BY_ROUTE: Record<string, string[]> = {
   high: ['diagnosis_headline', 'history_thinking', 'advice', 'relief_signal'],
-  low: ['directions', 'this_time', 'follow_up'],
+  low: ['directions', 'this_time'],
   risk: ['relief_signal', 'history_thinking', 'advice'],
 }
 
 export function routeKeyForSections(sections: DailySection[]): keyof typeof PRIORITY_BY_ROUTE {
   const ids = new Set(sections.map((s) => s.id))
-  if (ids.has('relief_signal') && ids.has('deep_analysis')) return 'risk'
-  if (ids.has('directions') || ids.has('follow_up')) return 'low'
+  if (ids.has('relief_signal')) return 'risk'
+  if (ids.has('directions')) return 'low'
   return 'high'
 }
 
