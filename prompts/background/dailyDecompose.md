@@ -85,4 +85,6 @@ POST /api/daily/turn 快速响应后 → daily_deep Job
 }
 ```
 
-不输出 Markdown、代码块或 JSON 以外的解释。
+## 硬规则
+
+- 不输出 Markdown、代码块或 JSON 以外的解释。
