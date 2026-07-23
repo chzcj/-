@@ -7,7 +7,9 @@ export type { TaskFeedback, TaskItem }
 
 type TaskFeedbackPanelProps = {
   task: TaskItem
+  rationale?: string
   disabled?: boolean
+  embedded?: boolean
   onFeedbackChange: (taskId: string, feedback: TaskFeedback, status: string) => void | Promise<void>
 }
 
@@ -17,8 +19,26 @@ function deriveStatus(feedback: TaskFeedback, fallback: string): string {
   return fallback
 }
 
-export function TaskFeedbackPanel({ task, disabled, onFeedbackChange }: TaskFeedbackPanelProps) {
+const COMPLETED_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: '做了', value: '是' },
+  { label: '还没', value: '否' },
+]
+
+const EFFECT_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: '有松动', value: '好' },
+  { label: '差不多', value: '一般' },
+  { label: '更僵了', value: '不好' },
+]
+
+export function TaskFeedbackPanel({
+  task,
+  rationale,
+  disabled,
+  embedded,
+  onFeedbackChange,
+}: TaskFeedbackPanelProps) {
   const [draft, setDraft] = useState<TaskFeedback>(task.feedback || {})
+  const [moreOpen, setMoreOpen] = useState(false)
   const noteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -59,62 +79,76 @@ export function TaskFeedbackPanel({ task, disabled, onFeedbackChange }: TaskFeed
     persist(draft)
   }
 
+  const whyText =
+    rationale?.trim() ||
+    task.rationale?.trim() ||
+    '还在根据你们的交流补全；先试一次，反馈会帮我记进记忆。'
+
   return (
-    <View className='feedback-panel task-feedback-panel'>
-      <Text className='feedback-title'>任务反馈</Text>
-      <View className='feedback-group'>
-        <Text className='feedback-question'>是否完成？</Text>
+    <View className={`feedback-panel task-feedback-panel${embedded ? ' task-feedback-panel--embedded' : ''}`}>
+      <View className='feedback-block'>
+        <Text className='feedback-label'>试过了吗？</Text>
         <View className='choice-row'>
-          {['是', '否'].map((value) => (
+          {COMPLETED_OPTIONS.map(({ label, value }) => (
             <Text
               key={value}
-              className={`choice-button${draft.completed === value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
+              className={`task-chip${draft.completed === value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
               onClick={() => pick('completed', value)}
             >
-              {value}
+              {label}
             </Text>
           ))}
         </View>
-      </View>
-      <View className='feedback-group'>
-        <Text className='feedback-question'>效果如何？</Text>
+        <Text className='feedback-label'>效果怎么样？</Text>
         <View className='choice-row'>
-          {['好', '一般', '不好'].map((value) => (
+          {EFFECT_OPTIONS.map(({ label, value }) => (
             <Text
               key={value}
-              className={`choice-button${draft.effect === value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
+              className={`task-chip${draft.effect === value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
               onClick={() => pick('effect', value)}
             >
-              {value}
+              {label}
             </Text>
           ))}
         </View>
       </View>
-      <View className='feedback-group'>
-        <Text className='feedback-question'>孩子反应？</Text>
-        <View className='choice-row'>
-          {['改善', '无变化', '变差'].map((value) => (
-            <Text
-              key={value}
-              className={`choice-button${draft.reaction === value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
-              onClick={() => pick('reaction', value)}
-            >
-              {value}
-            </Text>
-          ))}
+
+      <View className='task-why-block'>
+        <Text className='task-why-kicker'>为什么要试这个</Text>
+        <Text className='task-why-body'>{whyText}</Text>
+      </View>
+
+      <Text className='task-feedback-more-toggle' onClick={() => setMoreOpen((v) => !v)}>
+        {moreOpen ? '收起补充项 ▾' : '补充孩子反应或一句备注 ▸'}
+      </Text>
+      {moreOpen ? (
+        <View className='task-feedback-more'>
+          <View className='feedback-group'>
+            <Text className='feedback-question'>孩子反应？</Text>
+            <View className='choice-row'>
+              {['改善', '无变化', '变差'].map((value) => (
+                <Text
+                  key={value}
+                  className={`task-chip${draft.reaction === value ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
+                  onClick={() => pick('reaction', value)}
+                >
+                  {value}
+                </Text>
+              ))}
+            </View>
+          </View>
+          <View className='feedback-group task-feedback-note-group'>
+            <Textarea
+              className='feedback-note'
+              placeholder='只记录结果，不编辑任务内容'
+              value={draft.note || ''}
+              disabled={disabled}
+              onInput={(e) => updateNote(e.detail.value)}
+              onBlur={flushNote}
+            />
+          </View>
         </View>
-      </View>
-      <View className='feedback-group task-feedback-note-group'>
-        <Text className='feedback-question'>可选：补充一句</Text>
-        <Textarea
-          className='feedback-note'
-          placeholder='只记录结果，不编辑任务内容'
-          value={draft.note || ''}
-          disabled={disabled}
-          onInput={(e) => updateNote(e.detail.value)}
-          onBlur={flushNote}
-        />
-      </View>
+      ) : null}
     </View>
   )
 }

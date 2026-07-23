@@ -1,0 +1,237 @@
+@import url('../../colors_and_type.css');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans, 'PingFang SC', 'Helvetica Neue', sans-serif);
+  background: linear-gradient(165deg, #f4f7ef 0%, #eef3e8 45%, #e8efe3 100%);
+  color: var(--ink, #1a2418);
+}
+
+.mock-hub,
+.mock-phone-wrap {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.mock-hub h1 {
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+
+.mock-hub p {
+  margin: 0 0 20px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ink-muted, #4a5646);
+}
+
+.mock-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mock-nav a {
+  display: block;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(111, 166, 95, 0.22);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.mock-nav a:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(31, 47, 28, 0.08);
+  border-color: rgba(111, 166, 95, 0.38);
+}
+
+.mock-nav a strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.mock-nav a span {
+  font-size: 0.82rem;
+  color: var(--ink-muted, #4a5646);
+}
+
+.mock-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: var(--yujian-primary-700, #6f9f56);
+  text-decoration: none;
+}
+
+.mock-phone {
+  width: 100%;
+  max-width: 390px;
+  margin: 0 auto;
+  min-height: 780px;
+  border-radius: 28px;
+  background: #fafcf7;
+  box-shadow: 0 24px 64px rgba(26, 36, 24, 0.12), 0 0 0 1px rgba(111, 166, 95, 0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mock-status-bar {
+  height: 44px;
+  padding: 12px 20px 0;
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.mock-screen {
+  flex: 1;
+  padding: 8px 18px 28px;
+  overflow-y: auto;
+}
+
+.mock-page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin: 0 0 6px;
+}
+
+.mock-page-lede {
+  margin: 0 0 18px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.mock-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* —— shared task content —— */
+.task-scene {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--yujian-primary-700);
+  margin-bottom: 6px;
+}
+
+.task-headline {
+  margin: 0;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.task-sub {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.task-source {
+  font-size: 0.72rem;
+  color: #7a8775;
+}
+
+/* feedback block (top of expanded) */
+.feedback-block {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(111, 166, 95, 0.16);
+}
+
+.feedback-label {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.feedback-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chip {
+  appearance: none;
+  border: 1px solid rgba(111, 166, 95, 0.28);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.16s ease;
+}
+
+.chip:active {
+  transform: scale(0.97);
+}
+
+.chip.is-on {
+  background: var(--yujian-primary-100, #eef7cf);
+  border-color: var(--yujian-primary-500, #9dcc75);
+  color: var(--yujian-primary-900, #415f36);
+  font-weight: 600;
+}
+
+/* why block (middle) */
+.why-block {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(111, 166, 95, 0.08);
+}
+
+.why-kicker {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--yujian-primary-700);
+}
+
+.why-body {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: #3d4a39;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mock-nav a,
+  .chip {
+    transition: none;
+  }
+}

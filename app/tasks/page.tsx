@@ -12,6 +12,7 @@ import {
   type TaskItem,
 } from '@/lib/storage/taskStorage'
 import { getTaskOutboxSummary, type TaskOutboxSummary } from '@/lib/storage/taskOutbox'
+import { normalizeTaskDisplay } from '@yujian/contracts/task-display'
 
 function taskStatus(task: TaskItem) {
   if (task.status) return task.status
@@ -57,10 +58,8 @@ export default function TasksPage() {
 
   useEffect(() => {
     if (!selectedId || !taskListRef.current) return
-    const panel = taskListRef.current.querySelector(
-      `[data-task-id="${selectedId}"] .task-feedback-panel`
-    )
-    panel?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    const card = taskListRef.current.querySelector(`[data-task-id="${selectedId}"]`)
+    card?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [selectedId])
 
   useEffect(() => {
@@ -96,10 +95,10 @@ export default function TasksPage() {
   return (
     <OnboardingGuard>
       <HiFiMainShell activeTab="tasks">
-        <section className="section">
+        <section className="section tasks-section-a">
           <h2 className="section-title">今晚待试</h2>
-          <p className="hero-copy" style={{ marginTop: 0, marginBottom: 12 }}>
-            最近几条来自交流和预演，试过后反馈一下，我会记进记忆。
+          <p className="tasks-page-lede">
+            点卡片展开：先反馈，再读「为什么要试」。
           </p>
           {outbox.failed > 0 ? (
             <div className="task-sync-banner" role="status">
@@ -118,7 +117,7 @@ export default function TasksPage() {
           ) : outbox.pending > 0 ? (
             <p className="hint-text task-sync-pending">正在后台同步 {outbox.pending} 条待上传记录</p>
           ) : null}
-          <div id="taskList" ref={taskListRef}>
+          <div id="taskList" ref={taskListRef} className="task-list-a">
             {loading ? (
               <p className="hint-text">正在加载…</p>
             ) : tasks.length === 0 ? (
@@ -128,35 +127,53 @@ export default function TasksPage() {
                 const open = selectedId === task.id
                 const status = taskStatus(task)
                 const variant = taskStatusVariant(status)
+                const display = normalizeTaskDisplay(task)
                 return (
-                  <div key={task.id} className="task-item" data-task-id={task.id}>
-                    <div className={`task-card${open ? ' selected' : ''}`}>
-                      <p className="task-title">{task.title}</p>
-                      <div className="task-meta">
-                        <span className="task-source">{task.source || '来自交流'}</span>
-                        <button
-                          type="button"
-                          className={`status-tag status-tag--${variant}${savingId === task.id ? ' saving' : ''}`}
-                          aria-expanded={open}
-                          aria-label={`${status}，${open ? '收起' : '展开'}反馈`}
-                          onClick={() => toggleTask(task.id)}
-                        >
-                          <span className="status-text">{status}</span>
-                          <span
-                            className={`status-caret ${open ? 'down' : 'up'}`}
-                            aria-hidden="true"
-                          />
-                        </button>
+                  <article
+                    key={task.id}
+                    className={`task-card-a${open ? ' is-open' : ''}`}
+                    data-task-id={task.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={open}
+                    onClick={() => toggleTask(task.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        toggleTask(task.id)
+                      }
+                    }}
+                  >
+                    <div className="task-card-a__head">
+                      {display.sceneLabel ? (
+                        <p className="task-card-a__scene">{display.sceneLabel}</p>
+                      ) : null}
+                      <h3 className="task-card-a__headline">{display.headline}</h3>
+                      {display.actionHint ? (
+                        <p className="task-card-a__hint">{display.actionHint}</p>
+                      ) : null}
+                      <div className="task-card-a__meta">
+                        <span className="task-card-a__source">{display.sourceLine}</span>
+                        <div className="task-card-a__meta-end">
+                          <span className={`task-card-a__badge status-tag--${variant}`}>{status}</span>
+                          <span className="task-card-a__chev" aria-hidden="true">
+                            ⌄
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    {open ? (
-                      <TaskFeedbackPanel
-                        task={task}
-                        disabled={savingId === task.id}
-                        onFeedbackChange={handleFeedbackChange}
-                      />
-                    ) : null}
-                  </div>
+                    <div className="task-card-a__body">
+                      <div className="task-card-a__inner" onClick={(e) => e.stopPropagation()}>
+                        <TaskFeedbackPanel
+                          task={task}
+                          rationale={display.rationale}
+                          embedded
+                          disabled={savingId === task.id}
+                          onFeedbackChange={handleFeedbackChange}
+                        />
+                      </div>
+                    </div>
+                  </article>
                 )
               })
             )}

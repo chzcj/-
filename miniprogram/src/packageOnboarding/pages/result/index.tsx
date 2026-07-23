@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { HiFiBuildHero, HiFiBuildShell } from '@/components/profile/HiFiBuildShell'
 import { useSafeShareAppMessage } from '@/hooks/useSharePage'
+import { buildOnboardingResultHero } from '@yujian/contracts/profile-result-hero'
 import { portraitCardSummary, type DailyPortraitCards } from '@/lib/portraitCard'
 import { mpGoReplace } from '@/lib/mpOnboardingNav'
 import { apiRequest } from '@/services/api'
@@ -83,6 +84,10 @@ export default function OnboardingResult() {
     portraitCardSummary(portraitCards.growth) || snapshot?.coreJudgment || ''
   const focusText =
     portraitCardSummary(portraitCards.focus) || snapshot?.supportFocus || ''
+  const heroCopy = buildOnboardingResultHero({
+    coreJudgment: snapshot?.coreJudgment,
+    growthSummary: portraitCardSummary(portraitCards.growth),
+  })
   const completeness = snapshot?.completeness
 
   if (loading) {
@@ -130,9 +135,9 @@ export default function OnboardingResult() {
       ]}
     >
       <HiFiBuildHero
-        kicker='画像已生成'
-        title='可以开始交流和预演了'
-        copy='下面的理解会作为后续对话的背景。'
+        kicker={heroCopy.kicker}
+        title={heroCopy.title}
+        copy={heroCopy.copy}
         compact
         mascot={false}
       />

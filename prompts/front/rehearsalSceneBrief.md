@@ -8,9 +8,9 @@
 
 ```
 选场景 card → POST /api/rehearsal/brief
-→ 你输出 sceneSituation + understandingBullets[3] + openingHint
+→ 你输出 sceneSituation + understandingBullets[3] + openingHint + openingChild + initialStatusText
 → MP/Web confirm 屏（info-card ×2 + insight-list）
-→ enterRehearsal → active 屏
+→ enterRehearsal → active 屏（L3 首条孩子气泡 + 状态行）
 ```
 
 ## BFF 输入 payload
@@ -19,10 +19,15 @@
 |------|------|------|
 | sceneId / sceneTitle | 前端选中场景 | 锚定痛点 cluster |
 | sceneIntent | seed summary | 场景意图 |
+| parentText | 交流页家长原话（v4 P0-4a） | **必须读**：这是家长在交流页说的原话，用来理解家长此刻的真实情境 |
+| rehearsalGoal | 交流页传递的预演目标 | 理解家长想练什么 |
+| retrievalPackDigest | 交流页 AI 回复摘要（v4 P0-4a） | **必须读**：含 understandingCard（AI 对这户的判断）/ evidenceBasis（证据）/ deepAnalysis（深度分析点）/ adviceSeed（建议方向）——这是交流页的上下文浓缩，不是冷启动 |
 | deepModelDigest | pickDeepModelDigestPack | 长期理解；只抽与本场景相关的标签 |
 | retrievalPack.matchedMechanisms | router | 机制线索（理论隐身输出） |
 | retrievalPack.entryFacts | entry 证据 | 具体事实 |
 | retrievalPack.childQuotes | 原话 | 下栏 bullets 必须可溯源 |
+
+**上下文衔接（v4 硬规则）**：如果 `parentText` 和 `retrievalPackDigest` 非空，说明家长从交流页跳来——你的 sceneSituation 和 openingChild 必须与交流页的情境衔接，不能脱离家长刚说的内容另起炉灶。openingChild 要符合 retrievalPackDigest.understandingCard 描述的孩子画像。
 
 ## 输出 JSON
 
@@ -31,7 +36,10 @@
 | sceneSituation | 80–120 | confirm 屏「场景摘要」 |
 | understandingBullets | **3 条**，每条 24–48 字 | confirm 屏 insight-list `<li>` |
 | childUnderstanding | 可选；BFF 用 bullets join 兼容旧端 | 旧 MP 解析 fallback |
-| openingHint | ≤60 | active 屏 child-insight 预填 |
+| openingHint | 60–120 | active 屏 child-insight 预填 |
+| openingChild | 12–40 | active 屏首条孩子气泡（带语气，像原话） |
+| openingHintTitle | ≤16 | 默认「他可能是这样想的」；可场景化 |
+| initialStatusText | ≤48 | 以「当前状态：」开头，概括此刻孩子防御/松动 |
 
 ## 判断流程
 
@@ -40,7 +48,9 @@
    - 第 1 条：孩子在此场景下**最稳定的反应模式**（带一个可想象的动作/语气）
    - 第 2 条：家长常见说法如何被孩子**听成**什么（交织，非贴公式）
    - 第 3 条：若继续加压，通常会**往哪走**（关门/顶回/拖延），给预演心理预期
-3. **openingHint**：可当场说的一句，不命令式、不解释太长
+3. **openingHint**：孩子内心/OS，家长读得懂、不命令式
+4. **openingChild**：本场景下孩子**第一句可能出口**（须贴合 sceneTitle + retrievalPack，禁通用「你别催我」除非事实支持）
+5. **initialStatusText**：`当前状态：` + 一句（如「还在护着手里的事，防御偏高」）
 
 ## 证据规则
 
@@ -83,6 +93,9 @@
   "sceneSituation": "",
   "understandingBullets": ["", "", ""],
   "childUnderstanding": "",
-  "openingHint": ""
+  "openingHint": "",
+  "openingChild": "",
+  "openingHintTitle": "他可能是这样想的",
+  "initialStatusText": "当前状态："
 }
 ```

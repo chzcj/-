@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>任务 Mock B · 编辑式层次</title>
+  <link rel="stylesheet" href="shared-tasks-mock.css" />
+  <style>
+    .task-card-b {
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid rgba(31, 47, 28, 0.08);
+      overflow: hidden;
+      transition: box-shadow 0.3s ease;
+    }
+
+    .task-card-b.is-open {
+      box-shadow: 0 16px 40px rgba(31, 47, 28, 0.1);
+    }
+
+    .task-card-b__tap {
+      padding: 18px 18px 16px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+    }
+
+    .task-card-b__headline {
+      font-size: 1.28rem;
+      line-height: 1.32;
+      margin-bottom: 8px;
+    }
+
+    .task-card-b__scene-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .task-card-b__pill {
+      font-size: 0.7rem;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: #f3f6ef;
+      color: #5a6b54;
+      font-weight: 600;
+    }
+
+    .task-card-b__action-hint {
+      margin: 0;
+      font-size: 0.86rem;
+      color: var(--yujian-primary-800, #577f45);
+      font-weight: 600;
+    }
+
+    .task-card-b__expand {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.28s ease;
+    }
+
+    .task-card-b.is-open .task-card-b__expand {
+      max-height: 520px;
+      opacity: 1;
+    }
+
+    .task-card-b__expand-inner {
+      padding: 0 18px 18px;
+    }
+
+    .task-card-b .feedback-block {
+      background: #f8faf6;
+      border-radius: 14px;
+      padding: 14px;
+      border: none;
+      margin-top: 0;
+    }
+
+    .task-card-b .why-block {
+      margin-top: 14px;
+      background: transparent;
+      padding: 0 2px;
+      border-left: 3px solid var(--yujian-primary-400, #b1d774);
+      border-radius: 0;
+      padding-left: 14px;
+    }
+
+    .task-card-b .why-body {
+      font-size: 0.9rem;
+      line-height: 1.62;
+    }
+
+    .task-card-b__divider {
+      height: 1px;
+      background: rgba(31, 47, 28, 0.06);
+      margin: 0 18px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .task-card-b__expand {
+        transition: none;
+      }
+      .task-card-b.is-open .task-card-b__expand {
+        max-height: none;
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="mock-phone-wrap">
+    <a class="mock-back" href="index.html">← 返回选版</a>
+    <div class="mock-phone">
+      <div class="mock-status-bar">B · 编辑式层次</div>
+      <div class="mock-screen">
+        <h1 class="mock-page-title">今晚待试</h1>
+        <p class="mock-page-lede">大字是「具体做什么」，展开后「为什么」是阅读重心。</p>
+        <div class="mock-task-list" id="taskList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TASKS = [
+      {
+        id: 't1',
+        scene: '数学卷子',
+        time: '周三晚',
+        headline: '只问一句：订正卡在哪一步？',
+        action: '说完就停，不要接「那几点开始写」。',
+        source: '来自交流',
+        why: '他一听到「几点还不写」，更容易先护着手头正在做的事，而不是切到作业。我们不是在催进度，是在找真正卡住的地方——这和他「不是不想写，是怕写了还被改」的模式一致。',
+      },
+      {
+        id: 't2',
+        scene: '吵后修复',
+        time: '睡前',
+        headline: '补一句：刚才我说重了，我想听你怎么想',
+        action: '停 3 秒，不追加道理或作业安排。',
+        source: '来自预演',
+        why: '冲突后他的防御还在。若马上回到「作业怎么办」，他会把修复也当成手段。先让关系松一点，后面的具体任务才进得去。',
+      },
+      {
+        id: 't3',
+        scene: '收手机',
+        time: '周末',
+        headline: '先问：你觉得再玩多久比较好收？',
+        action: '让他说数；你可以接受、或只微调 5 分钟。',
+        source: '来自交流',
+        why: '「收手机」常被听成控制。让他参与定时间，是在给一点掌控感——不是放任，是把对抗换成协商。',
+      },
+    ]
+
+    function renderFeedback() {
+      return `
+        <div class="feedback-block">
+          <p class="feedback-label">是否执行 · 效果</p>
+          <div class="feedback-row" data-group="done">
+            <button type="button" class="chip" data-v="是">做了</button>
+            <button type="button" class="chip" data-v="否">还没</button>
+          </div>
+          <div class="feedback-row" data-group="effect">
+            <button type="button" class="chip" data-v="好">有松动</button>
+            <button type="button" class="chip" data-v="一般">一般</button>
+            <button type="button" class="chip" data-v="不好">更糟</button>
+          </div>
+        </div>
+      `
+    }
+
+    const list = document.getElementById('taskList')
+    list.innerHTML = TASKS.map(
+      (t) => `
+      <article class="task-card-b" data-id="${t.id}">
+        <button type="button" class="task-card-b__tap" aria-expanded="false">
+          <div class="task-card-b__scene-row">
+            <span class="task-card-b__pill">${t.time}</span>
+            <span class="task-card-b__pill">${t.scene}</span>
+            <span class="task-source">${t.source}</span>
+          </div>
+          <h2 class="task-headline task-card-b__headline">${t.headline}</h2>
+          <p class="task-card-b__action-hint">${t.action}</p>
+        </button>
+        <div class="task-card-b__divider"></div>
+        <div class="task-card-b__expand">
+          <div class="task-card-b__expand-inner">
+            ${renderFeedback()}
+            <div class="why-block">
+              <p class="why-kicker">这个任务的意义</p>
+              <p class="why-body">${t.why}</p>
+            </div>
+          </div>
+        </div>
+      </article>
+    `
+    ).join('')
+
+    let openId = null
+
+    list.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip')
+      if (chip) {
+        e.stopPropagation()
+        const row = chip.closest('.feedback-row')
+        row.querySelectorAll('.chip').forEach((c) => c.classList.remove('is-on'))
+        chip.classList.add('is-on')
+        return
+      }
+      const tap = e.target.closest('.task-card-b__tap')
+      const card = e.target.closest('.task-card-b')
+      if (!tap && !card) return
+      const id = card.dataset.id
+      openId = openId === id ? null : id
+      list.querySelectorAll('.task-card-b').forEach((c) => {
+        const open = c.dataset.id === openId
+        c.classList.toggle('is-open', open)
+        const btn = c.querySelector('.task-card-b__tap')
+        if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false')
+      })
+    })
+  </script>
+</body>
+</html>

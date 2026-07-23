@@ -4,6 +4,7 @@ import './globals.css';
 import './hifi-app.css';
 import './hifi-desktop.css';
 import './tasks-ui.css';
+import './tasks-variant-a.css';
 
 const notoSerif = Noto_Serif_SC({
   subsets: ['latin'],

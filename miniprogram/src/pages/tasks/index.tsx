@@ -5,6 +5,7 @@ import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { useTabBar } from '@/hooks/useTabBar'
 import { usePublicPageShare } from '@/hooks/useSharePage'
 import { SHARE_PATHS } from '@/lib/shareMessages'
+import { normalizeTaskDisplay } from '@yujian/contracts/task-display'
 import { TaskFeedbackPanel, taskStatusVariant } from '@/components/tasks/TaskFeedbackPanel'
 import { fetchCurrentUser } from '@/services/auth'
 import {
@@ -24,31 +25,6 @@ function taskStatus(task: TaskItem) {
   if (task.feedback?.completed === '否') return '进行中'
   return '待执行'
 }
-
-function taskSubtitle(task: TaskItem): string {
-  const source = (task.source || '来自交流').replace(/^来自交流$/, '交流')
-  const scene = (task.observation || '').replace(/^来自交流\s*·\s*/, '').trim()
-  if (scene && scene !== source && scene !== '来自交流') {
-    const short = scene.slice(0, 16)
-    return `${source} · ${short}${scene.length > 16 ? '…' : ''}`
-  }
-  return source
-}
-
-function displayTaskTitle(title: string): string {
-  const t = title
-    .trim()
-    .replace(/^今晚可以试一次[：:]?/, '')
-    .replace(/^今晚试一下[：:]?/, '')
-    .replace(/^今晚先试一次小步骤$/, '到点只说一句开始然后等')
-    .trim()
-  if (t.length <= 20) return t
-  const slice = t.slice(0, 20)
-  const breakAt = Math.max(slice.lastIndexOf('，'), slice.lastIndexOf('。'), slice.lastIndexOf(' '))
-  const cut = breakAt >= 10 ? slice.slice(0, breakAt) : slice
-  return `${cut}…`
-}
-
 
 export default function TasksPage() {
   useTabBar('tasks')
@@ -125,9 +101,9 @@ export default function TasksPage() {
 
   return (
     <HiFiMainShell>
-      <Text className='hero-title page-heading'>今晚待试</Text>
-      <Text className='hero-copy muted'>
-        最近几条来自交流和预演，试过后反馈一下，我会记进记忆。
+      <Text className='tasks-page-title page-heading'>今晚待试</Text>
+      <Text className='tasks-page-lede muted'>
+        点卡片展开：先反馈，再读「为什么要试」。
       </Text>
 
       {outbox.failed > 0 ? (
@@ -164,57 +140,68 @@ export default function TasksPage() {
         </View>
       ) : (
         <>
-        {tasks.map((task) => {
-          const open = selectedId === task.id
-          const status = taskStatus(task)
-          const variant = taskStatusVariant(status)
-          const saving = savingId === task.id
-          return (
-            <View key={task.id} className='task-item'>
-              <View
-                className={`task-card hifi-card${open ? ' selected open' : ''}`}
-                onClick={() => toggleTask(task.id)}
-              >
-                <Text className='task-title'>{displayTaskTitle(task.title)}</Text>
-                <Text className='task-subtitle muted'>{taskSubtitle(task)}</Text>
-                <View className='task-meta'>
-                  <Text className='task-source'>{task.source || '来自交流'}</Text>
-                  <Text
-                    className={`status-tag status-tag--${variant}${saving ? ' saving' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleTask(task.id)
-                    }}
-                  >
-                    <Text className='status-text'>{open ? '收起' : status}</Text>
-                    <Text className={`status-caret ${open ? 'down' : 'up'}`}>›</Text>
-                  </Text>
+          <View className='task-list-a'>
+            {tasks.map((task) => {
+              const open = selectedId === task.id
+              const status = taskStatus(task)
+              const variant = taskStatusVariant(status)
+              const saving = savingId === task.id
+              const display = normalizeTaskDisplay(task)
+              return (
+                <View
+                  key={task.id}
+                  className={`task-card-a${open ? ' is-open' : ''}${saving ? ' is-saving' : ''}`}
+                  onClick={() => toggleTask(task.id)}
+                >
+                  <View className='task-card-a__head'>
+                    {display.sceneLabel ? (
+                      <Text className='task-card-a__scene'>{display.sceneLabel}</Text>
+                    ) : null}
+                    <Text className='task-card-a__headline'>{display.headline}</Text>
+                    {display.actionHint ? (
+                      <Text className='task-card-a__hint'>{display.actionHint}</Text>
+                    ) : null}
+                    <View className='task-card-a__meta'>
+                      <Text className='task-card-a__source'>{display.sourceLine}</Text>
+                      <View className='task-card-a__meta-end'>
+                        <Text className={`task-card-a__badge status-tag--${variant}`}>{status}</Text>
+                        <Text className='task-card-a__chev'>⌄</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View className='task-card-a__body'>
+                    <View className='task-card-a__inner' catchClick>
+                      <TaskFeedbackPanel
+                        task={task}
+                        rationale={display.rationale}
+                        embedded
+                        disabled={saving}
+                        onFeedbackChange={handleFeedbackChange}
+                      />
+                    </View>
+                  </View>
                 </View>
-                {open ? <Text className='task-collapse-hint'>点击卡片任意处可收起</Text> : null}
-              </View>
-              {open ? (
-                <TaskFeedbackPanel
-                  task={task}
-                  disabled={saving}
-                  onFeedbackChange={handleFeedbackChange}
-                />
-              ) : null}
-            </View>
-          )
-        })}
-        {history.length ? (
-          <View className='task-history'>
-            <Text className='section-label' onClick={() => setHistoryOpen((value) => !value)}>
-              已完成与过去尝试 {historyOpen ? '▾' : '▸'}
-            </Text>
-            {historyOpen ? history.map((task) => (
-              <View key={task.id} className='task-history-row'>
-                <Text className='task-title'>{displayTaskTitle(task.title)}</Text>
-                <Text className='task-subtitle muted'>{taskStatus(task)}</Text>
-              </View>
-            )) : null}
+              )
+            })}
           </View>
-        ) : null}
+          {history.length ? (
+            <View className='task-history'>
+              <Text className='section-label' onClick={() => setHistoryOpen((value) => !value)}>
+                已完成与过去尝试 {historyOpen ? '▾' : '▸'}
+              </Text>
+              {historyOpen
+                ? history.map((task) => {
+                    const display = normalizeTaskDisplay(task)
+                    return (
+                      <View key={task.id} className='task-history-row'>
+                        <Text className='task-title'>{display.headline}</Text>
+                        <Text className='task-subtitle muted'>{taskStatus(task)}</Text>
+                      </View>
+                    )
+                  })
+                : null}
+            </View>
+          ) : null}
         </>
       )}
     </HiFiMainShell>

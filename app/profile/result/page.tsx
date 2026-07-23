@@ -8,6 +8,8 @@ import { OnboardingGuard } from '@/components/layout/OnboardingGuard'
 import { StructuralTensionCard } from '@/components/hifi/StructuralTensionCard'
 import { useHydratedProfile } from '@/hooks/useHydratedProfile'
 import { humanizeMechanismLabel } from '@/lib/entry-name-i18n'
+import { buildOnboardingResultHero } from '@yujian/contracts/profile-result-hero'
+import { portraitCardSummary, type DailyPortraitCards } from '@/types/portrait-card'
 import type { StructuralTension } from '@/types/deep-model-digest'
 
 function ProfileResultContent() {
@@ -16,6 +18,7 @@ function ProfileResultContent() {
   const justFinishedOnboarding = searchParams.get('onboarding') === '1'
   const { profile, loading } = useHydratedProfile()
   const [structuralTensions, setStructuralTensions] = useState<StructuralTension[]>([])
+  const [portraitCards, setPortraitCards] = useState<DailyPortraitCards>({})
 
   useEffect(() => {
     void fetch('/api/profile/hub', { credentials: 'include' })
@@ -23,6 +26,9 @@ function ProfileResultContent() {
       .then((hub) => {
         if (hub?.ok && Array.isArray(hub.data?.structuralTensions)) {
           setStructuralTensions(hub.data.structuralTensions)
+        }
+        if (hub?.ok && hub.data?.portraitCards) {
+          setPortraitCards(hub.data.portraitCards)
         }
       })
       .catch(() => {})
@@ -61,6 +67,10 @@ function ProfileResultContent() {
   }
 
   const hasEvidence = (profile.evidence || []).length > 0
+  const heroCopy = buildOnboardingResultHero({
+    coreJudgment: profile.coreJudgment,
+    growthSummary: portraitCardSummary(portraitCards.growth),
+  })
 
   return (
     <OnboardingGuard>
@@ -73,9 +83,9 @@ function ProfileResultContent() {
 
         {justFinishedOnboarding ? (
           <article className="hero-card compact">
-            <span className="module-kicker">画像已生成</span>
-            <h2 className="hero-title">可以开始交流和预演了</h2>
-            <p className="hero-copy">下面的理解会作为后续对话的背景。</p>
+            <span className="module-kicker">{heroCopy.kicker}</span>
+            <h2 className="hero-title">{heroCopy.title}</h2>
+            <p className="hero-copy">{heroCopy.copy}</p>
             <button type="button" className="primary-button wide-button" onClick={() => router.push('/daily')}>
               开始交流
               <ArrowRight size={18} />

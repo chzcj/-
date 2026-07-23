@@ -693,6 +693,12 @@ export interface UserTask {
   /** 关联 dossier workingHypothesis.predictions[].id（如 pred_1） */
   linkedPredictionId?: string
   observation?: string
+  /** 情境标签，如「周三 · 数学卷子订正」 */
+  sceneLabel?: string
+  /** 小字禁忌/做法提示 */
+  actionHint?: string
+  /** 为什么要试 · 家长可见意义句 */
+  rationale?: string
   /** 客户端幂等键：离线 outbox 重放时去重 */
   clientId?: string
   /** 客户端反馈时间戳：较旧的重放会被忽略 */

@@ -23,6 +23,43 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-23 16:15 | Cursor | 任务页 A 版落地（Web + MP）
+
+**做了什么**
+- 任务卡片 A 版：情境标签 + 大字行动句 + 小字禁忌；`grid-template-rows` 柔和内联展开
+- 展开区：先「做了/还没 + 效果 chip」，再「为什么要试」；反应/备注收进补充项
+- `UserTask` + `TaskItem` 扩展 `sceneLabel` / `actionHint` / `rationale`；`tonightTaskGenerator` SP 加厚
+- `packages/contracts/task-display.ts` · `app/tasks-variant-a.css`
+
+**验证**
+- typecheck ✓ · build:weapp ✓ · deploy ✓
+
+**下一步**
+- 新保存任务需等后台 refine 才有完整四字段；旧任务用 title + observation 兜底
+
+## 2026-07-23 14:40 | Cursor | Part 5 预演 L3 + 建档 Hero 硬编码清除
+
+**做了什么**
+- 预演 L3：`POST /api/rehearsal/brief` 扩展 `openingChild` / `openingHintTitle` / `initialStatusText`；`rehearsalSceneBrief.md` schema 同步
+- 共享契约：`packages/contracts/rehearsal-scene-brief.ts`（`pickRehearsalL3Opening`）+ `profile-result-hero.ts`（`buildOnboardingResultHero`）
+- MP/Web `rehearsal`：confirm→active 用 brief 记忆字段，移除「你别催我」「防御比较高」等通用兜底；L2 insight-list 仅来自 brief（不再 hardcode confirmBullets）
+- MP `packageOnboarding/pages/result` + Web `profile/result`：Hero 读 `coreJudgment`≤30 + `growth.summary`≤60
+
+**为什么**
+- Trae Part 5 差距表 #4c L3 hardcode ❌、#5 Hero hardcode ❌
+
+**验证**
+- `npm run typecheck` ✓；`miniprogram npm run build:weapp` ✓
+- `npm run build` + `npm run deploy` ✓；readiness `ready:true`
+
+**下一步**
+- Part 5 仍剩：4a handoff retrievalPackDigest、2c tensions enrich、3 chip 子页
+- 小程序本地 DevTools 重新预览预演 confirm→active、建档 result Hero
+
+**风险/冲突**
+- brief LLM 未返回 openingChild 时仍回退 scene seed（场景化，非作业通用句）
+- 未 commit；与 Trae v4 本地改动并存
+
 ## 2026-07-23 08:30 | Trae | 给 Cursor 的 v4 改造完整交接
 
 > Cursor 你好，这是 Trae 在 2026-07-22~23 做的 v4 深度改造的完整交接。改动涉及 **~30 个文件、~2000 行新增代码、7 个 SP 重构、5 份理论文档、4 份契约文档**。请务必先读完本段再动代码。

@@ -12,6 +12,9 @@ export type TaskItem = {
   title: string
   source?: string
   observation?: string
+  sceneLabel?: string
+  actionHint?: string
+  rationale?: string
   status?: string
   feedback?: TaskFeedback
   sourceTraceId?: string
@@ -48,6 +51,9 @@ function mapServerTask(t: {
   source?: string
   status?: string
   observation?: string
+  sceneLabel?: string
+  actionHint?: string
+  rationale?: string
   feedback?: TaskFeedback
   sourceTraceId?: string
   clientId?: string
@@ -59,6 +65,9 @@ function mapServerTask(t: {
     source: t.source,
     status: t.status,
     observation: t.observation,
+    sceneLabel: t.sceneLabel,
+    actionHint: t.actionHint,
+    rationale: t.rationale,
     feedback: t.feedback,
     sourceTraceId: t.sourceTraceId,
     clientId: t.clientId,

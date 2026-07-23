@@ -192,6 +192,14 @@ export function DailyAiMessage({
                 parentText: action.payload?.parentOriginalText || seed,
                 rehearsalGoal: action.payload?.rehearsalGoal || '',
                 traceId: traceId || '',
+                // v4 P0-4a：携带交流页上下文，让预演不冷启动
+                retrievalPackDigest: {
+                  understandingCard: cards?.understandingCard?.reading || '',
+                  evidenceBasis: cards?.evidenceBasis || '',
+                  deepAnalysis: cards?.deepAnalysis?.points || [],
+                  adviceSeed: cards?.adviceSeed || '',
+                  confidenceMode: cards?.confidenceMode || '',
+                },
               })
             )
             sessionStorage.setItem('childos_rehearsal_scene_seed', seed.slice(0, 80))

@@ -37,7 +37,7 @@ export {
    失败指数退避重试；幂等键去重；CAS 终态守卫；心跳防僵尸误判；DB 未启用→inline 降级。
    ================================================================ */
 
-type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite' | 'deep_mechanism_review' | 'dossier_patch' | 'growth_trajectory_update' | 'profile_build_run' | 'family_memory_feed_rebuild' | 'weekly_handbook_update' | 'time_capsule_update' | 'handbook_page_admit' | 'handbook_backfill' | 'handbook_purge_bad_pages'
+type JobType = 'memory_write' | 'episode_ingest' | 'digest_update' | 'entry_evidence' | 'model_review' | 'daily_deep' | 'profile_rewrite' | 'deep_mechanism_review' | 'dossier_patch' | 'growth_trajectory_update' | 'profile_build_run' | 'family_memory_feed_rebuild' | 'weekly_handbook_update' | 'time_capsule_update' | 'handbook_page_admit' | 'handbook_backfill' | 'handbook_purge_bad_pages' | 'atom_curation'
 interface MemoryWritePayload { plan: MemoryWritePlan; tenant: TenantId }
 interface EpisodeIngestPayload { text: string; ctx: IngestContext }
 interface DigestUpdatePayload { tenant: TenantId }
@@ -261,6 +261,10 @@ async function runJob(jobType: JobType, payload: unknown): Promise<void> {
     const p = payload as { tenant: TenantId }
     const { runTimeCapsuleUpdate } = await import('@/lib/server/profile/time-capsule')
     await runTimeCapsuleUpdate(p.tenant)
+  } else if (jobType === 'atom_curation') {
+    const p = payload as { tenant: TenantId }
+    const { runAtomCuration } = await import('@/lib/server/memory/episode/atom-curation')
+    await runAtomCuration(p.tenant)
   }
 }
 

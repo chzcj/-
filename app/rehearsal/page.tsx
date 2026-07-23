@@ -16,7 +16,6 @@ import {
   REHEARSAL_SCENES,
   type RehearsalScene,
 } from '@/data/rehearsalScenes'
-import { getLatestProfile } from '@/lib/storage/profileStorage'
 import { getChildDisplayName } from '@/lib/storage/childStorage'
 import { saveTaskFromRehearsal } from '@/lib/storage/taskStorage'
 import { RehearsalDialogueCapture } from '@/components/rehearsal/RehearsalDialogueCapture'
@@ -29,6 +28,10 @@ import {
   writeRehearsalScenesCache,
 } from '@/lib/rehearsal-scenes-cache'
 import { pickRehearsalTaskTitle } from '@yujian/contracts/rehearsal-end'
+import {
+  pickRehearsalL3Opening,
+  type RehearsalSceneBriefL3,
+} from '@yujian/contracts/rehearsal-scene-brief'
 import { useRouter } from 'next/navigation'
 
 type SimulationStep = 'entry' | 'confirm' | 'active' | 'end'
@@ -81,7 +84,12 @@ export default function RehearsalPage() {
   const [selectedId, setSelectedId] = useState(REHEARSAL_SCENES[0].id)
   const [summary, setSummary] = useState(REHEARSAL_SCENES[0].summary)
   const [sceneTitle, setSceneTitle] = useState(REHEARSAL_SCENES[0].title)
-  const [statusText, setStatusText] = useState('当前状态：孩子有点烦，防御比较高')
+  const [handoffDigest, setHandoffDigest] = useState<{
+    parentText?: string
+    rehearsalGoal?: string
+    retrievalPackDigest?: Record<string, unknown>
+  }>({})
+  const [statusText, setStatusText] = useState('')
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(false)
   const [round, setRound] = useState(0)
@@ -93,6 +101,7 @@ export default function RehearsalPage() {
   const [rehearsalTraceId, setRehearsalTraceId] = useState<string | undefined>()
   const [sceneSituation, setSceneSituation] = useState('')
   const [childUnderstanding, setChildUnderstanding] = useState('')
+  const [sceneBrief, setSceneBrief] = useState<RehearsalSceneBriefL3 | null>(null)
   const [briefLoading, setBriefLoading] = useState(false)
   const [lastDialogueAnalysisId, setLastDialogueAnalysisId] = useState<string | null>(null)
   const feedEndRef = useRef<HTMLDivElement>(null)
@@ -187,6 +196,15 @@ export default function RehearsalPage() {
           seedText?: string
           parentText?: string
           rehearsalGoal?: string
+          traceId?: string
+          retrievalPackDigest?: {
+            understandingCard?: string
+            evidenceBasis?: string
+            deepAnalysis?: string[]
+            adviceSeed?: string
+            confidenceMode?: string
+            linkedAreas?: string[]
+          }
         }
         const matched =
           scenes.find((s) => s.id === handoff.sceneId) ||
@@ -199,6 +217,12 @@ export default function RehearsalPage() {
             .join('。')
             .slice(0, 800) || matched.summary
         )
+        // v4 P0-4a：存储 handoff digest，供 brief route 调用时携带
+        setHandoffDigest({
+          parentText: handoff.parentText,
+          rehearsalGoal: handoff.rehearsalGoal,
+          retrievalPackDigest: handoff.retrievalPackDigest as Record<string, unknown> | undefined,
+        })
         setStep('confirm')
         return
       }
@@ -236,7 +260,13 @@ export default function RehearsalPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ sceneId: scene.id }),
+          body: JSON.stringify({
+            sceneId: scene.id,
+            // v4 P0-4a：携带交流页上下文，让预演不冷启动
+            parentText: handoffDigest.parentText || undefined,
+            rehearsalGoal: handoffDigest.rehearsalGoal || undefined,
+            retrievalPackDigest: handoffDigest.retrievalPackDigest || undefined,
+          }),
         })
         const json = (await res.json()) as {
           ok?: boolean
@@ -245,6 +275,9 @@ export default function RehearsalPage() {
             childUnderstanding?: string
             understandingBullets?: string[]
             openingHint?: string
+            openingChild?: string
+            openingHintTitle?: string
+            initialStatusText?: string
           }
         }
         if (json.ok && json.data) {
@@ -257,20 +290,35 @@ export default function RehearsalPage() {
               ? bullets.join('\n')
               : json.data.childUnderstanding || ''
           )
-          if (json.data.openingHint) {
+          setSceneBrief({
+            openingHint: json.data.openingHint || '',
+            openingChild: json.data.openingChild || '',
+            openingHintTitle: json.data.openingHintTitle || '他可能是这样想的',
+            initialStatusText: json.data.initialStatusText || '',
+          })
+          if (json.data.openingHint || json.data.openingChild) {
             setScenes((prev) =>
               prev.map((s) =>
-                s.id === scene.id ? { ...s, openingHint: json.data!.openingHint! } : s
+                s.id === scene.id
+                  ? {
+                      ...s,
+                      openingHint: json.data!.openingHint || s.openingHint,
+                      openingChild: json.data!.openingChild || s.openingChild,
+                      openingHintTitle: json.data!.openingHintTitle || s.openingHintTitle,
+                    }
+                  : s
               )
             )
           }
         } else {
           setSceneSituation(scene.summary)
           setChildUnderstanding('')
+          setSceneBrief(null)
         }
       } catch {
         setSceneSituation(scene.summary)
         setChildUnderstanding('')
+        setSceneBrief(null)
       } finally {
         setBriefLoading(false)
         setStep('confirm')
@@ -284,21 +332,21 @@ export default function RehearsalPage() {
 
   function enterRehearsal() {
     const scene = selectedScene
+    const firstUnderstanding = (childUnderstanding || sceneSituation || summary).split('\n')[0]?.trim()
+    const l3 = pickRehearsalL3Opening(sceneBrief, scene, firstUnderstanding)
     setRound(0)
     setRoundsSinceCheckpoint(0)
     setShowCheckpoint(false)
     setEndData(null)
     setTaskSaved(false)
     setTonightSaved(false)
-    setStatusText('当前状态：孩子有点烦，防御比较高')
+    if (l3.initialStatusText) setStatusText(l3.initialStatusText)
     setFeed([
       {
         type: 'child',
-        childText: scene.openingChild || '你别催我行不行，我又不是不写。',
-        hintTitle: scene.openingHintTitle || '他可能是这样想的',
-        hintText:
-          scene.openingHint ||
-          '他现在不一定是在认真回答“什么时候写”，更像是在把你推开。',
+        childText: l3.openingChild,
+        hintTitle: l3.openingHintTitle,
+        hintText: l3.openingHint || firstUnderstanding || scene.summary.slice(0, 80),
       },
     ])
     setStep('active')
@@ -504,20 +552,9 @@ export default function RehearsalPage() {
     setTonightSaved(true)
   }
 
-  const profile = getLatestProfile()
-  const confirmBullets = profile?.coreJudgment
-    ? [
-        truncate(profile.coreJudgment, 72),
-        profile.supportFocus ? truncate(profile.supportFocus, 72) : '他对“被站在旁边盯着”比较敏感。',
-        '他不一定是不想配合，更可能是对开始之后会被催、被改、被评价有防御。',
-      ]
-    : [
-        '孩子最近几次冲突多发生在作业开始前。',
-        '他对“被站在旁边盯着”比较敏感。',
-        '他不一定是不想写，更可能是对“开始之后会被催、被检查、被评价”有防御。',
-      ]
-
-  const insightBullets = parseInsightBullets(childUnderstanding, confirmBullets)
+  const insightBullets = parseInsightBullets(childUnderstanding, [
+    truncate(sceneSituation || summary, 72),
+  ].filter((line) => line.length > 8))
   const briefSubLine = selectedScene.mentionCountHint
     ? `${sceneTitle} · ${selectedScene.mentionCountHint}`
     : sceneTitle

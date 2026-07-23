@@ -5,7 +5,9 @@ import type { TaskFeedback, TaskItem } from '@/lib/storage/taskStorage'
 
 type TaskFeedbackPanelProps = {
   task: TaskItem
+  rationale?: string
   disabled?: boolean
+  embedded?: boolean
   onFeedbackChange: (taskId: string, feedback: TaskFeedback, status: string) => void | Promise<void>
 }
 
@@ -15,7 +17,24 @@ function deriveStatus(feedback: TaskFeedback, fallback: string): string {
   return fallback
 }
 
-export function TaskFeedbackPanel({ task, disabled, onFeedbackChange }: TaskFeedbackPanelProps) {
+const COMPLETED_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: '做了', value: '是' },
+  { label: '还没', value: '否' },
+]
+
+const EFFECT_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: '有松动', value: '好' },
+  { label: '差不多', value: '一般' },
+  { label: '更僵了', value: '不好' },
+]
+
+export function TaskFeedbackPanel({
+  task,
+  rationale,
+  disabled,
+  embedded,
+  onFeedbackChange,
+}: TaskFeedbackPanelProps) {
   const [draft, setDraft] = useState<TaskFeedback>(task.feedback || {})
   const noteTimerRef = useRef<number | null>(null)
 
@@ -57,72 +76,78 @@ export function TaskFeedbackPanel({ task, disabled, onFeedbackChange }: TaskFeed
     persist(draft)
   }
 
-  return (
-    <div className="feedback-panel task-feedback-panel">
-      <p className="feedback-title">任务反馈</p>
+  const whyText =
+    rationale?.trim() ||
+    task.rationale?.trim() ||
+    '还在根据你们的交流补全；先试一次，反馈会帮我记进记忆。'
 
-      <div className="feedback-group">
-        <p className="feedback-question">是否完成？</p>
+  return (
+    <div className={`feedback-panel task-feedback-panel${embedded ? ' task-feedback-panel--embedded' : ''}`}>
+      <div className="feedback-block">
+        <p className="feedback-label">试过了吗？</p>
         <div className="choice-row">
-          {['是', '否'].map((value) => (
+          {COMPLETED_OPTIONS.map(({ label, value }) => (
             <button
               key={value}
               type="button"
-              className={`choice-button${draft.completed === value ? ' selected' : ''}`}
+              className={`task-chip${draft.completed === value ? ' selected' : ''}`}
               disabled={disabled}
               onClick={() => pick('completed', value)}
             >
-              {value}
+              {label}
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="feedback-group">
-        <p className="feedback-question">效果如何？</p>
+        <p className="feedback-label">效果怎么样？</p>
         <div className="choice-row">
-          {['好', '一般', '不好'].map((value) => (
+          {EFFECT_OPTIONS.map(({ label, value }) => (
             <button
               key={value}
               type="button"
-              className={`choice-button${draft.effect === value ? ' selected' : ''}`}
+              className={`task-chip${draft.effect === value ? ' selected' : ''}`}
               disabled={disabled}
               onClick={() => pick('effect', value)}
             >
-              {value}
+              {label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="feedback-group">
-        <p className="feedback-question">孩子反应？</p>
-        <div className="choice-row">
-          {['改善', '无变化', '变差'].map((value) => (
-            <button
-              key={value}
-              type="button"
-              className={`choice-button${draft.reaction === value ? ' selected' : ''}`}
-              disabled={disabled}
-              onClick={() => pick('reaction', value)}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
+      <div className="task-why-block">
+        <p className="task-why-kicker">为什么要试这个</p>
+        <p className="task-why-body">{whyText}</p>
       </div>
 
-      <div className="feedback-group task-feedback-note-group">
-        <p className="feedback-question">可选：补充一句</p>
-        <textarea
-          className="feedback-note"
-          placeholder="只记录结果，不编辑任务内容"
-          value={draft.note || ''}
-          disabled={disabled}
-          onChange={(e) => updateNote(e.target.value)}
-          onBlur={flushNote}
-        />
-      </div>
+      <details className="task-feedback-more">
+        <summary>补充孩子反应或一句备注</summary>
+        <div className="feedback-group">
+          <p className="feedback-question">孩子反应？</p>
+          <div className="choice-row">
+            {['改善', '无变化', '变差'].map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={`task-chip${draft.reaction === value ? ' selected' : ''}`}
+                disabled={disabled}
+                onClick={() => pick('reaction', value)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="feedback-group task-feedback-note-group">
+          <textarea
+            className="feedback-note"
+            placeholder="只记录结果，不编辑任务内容"
+            value={draft.note || ''}
+            disabled={disabled}
+            onChange={(e) => updateNote(e.target.value)}
+            onBlur={flushNote}
+          />
+        </div>
+      </details>
     </div>
   )
 }

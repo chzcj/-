@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>育见 · 交流页 Section 形态预览</title>
+  <style>
+    :root {
+      --bg: radial-gradient(120% 55% at 8% -8%, rgba(238, 247, 207, 0.9), transparent 52%),
+        radial-gradient(70% 36% at 100% 4%, rgba(246, 237, 180, 0.45), transparent 48%),
+        #f8f6e5;
+      --green: #9dcc75;
+      --green-deep: #6f9f56;
+      --green-soft: #f1f8df;
+      --ink: #202633;
+      --ink-soft: #5c616d;
+      --muted: #868b94;
+      --card: rgba(255, 255, 247, 0.88);
+      --line: rgba(73, 91, 45, 0.08);
+      --shadow-lift: 0 2px 8px rgba(31, 39, 51, 0.04);
+      --radius-row: 20px;
+      --radius-inner: 12px;
+      --radius-control: 16px;
+      --radius-card: 24px;
+      --radius-pill: 999px;
+      --phone-w: 390px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: #e8ece4;
+      color: var(--ink);
+    }
+
+    .page-header {
+      padding: 28px 20px 8px;
+      text-align: center;
+    }
+
+    .page-header h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .page-header p {
+      margin: 0 auto;
+      max-width: 720px;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--ink-soft);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(320px, 420px) minmax(280px, 1fr);
+      gap: 20px;
+      padding: 16px 20px 48px;
+      align-items: start;
+      justify-content: center;
+    }
+
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
+      .catalog, .notes { order: 2; }
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 20px;
+      padding: 18px 20px;
+      box-shadow: 0 10px 28px rgba(31, 39, 51, 0.06);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .route-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .route-btn {
+      appearance: none;
+      border: 1px solid rgba(31, 39, 51, 0.1);
+      background: #fff;
+      color: var(--ink-soft);
+      border-radius: var(--radius-pill);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .route-btn.is-active {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+
+    .catalog-item {
+      border-top: 1px solid var(--line);
+      padding: 12px 0;
+    }
+
+    .catalog-item:first-of-type { border-top: none; padding-top: 0; }
+
+    .catalog-item h3 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      color: var(--green-deep);
+    }
+
+    .catalog-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .catalog-item p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink-soft);
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      margin-right: 6px;
+    }
+
+    .tag-visible { background: var(--green-soft); color: var(--green-deep); }
+    .tag-hidden { background: #f3f4f6; color: #6b7280; }
+    .tag-legacy { background: #fff7ed; color: #c2410c; }
+
+    .phone-wrap { position: sticky; top: 16px; }
+
+    .phone {
+      width: var(--phone-w);
+      margin: 0 auto;
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(31, 39, 51, 0.14), 0 0 0 1px rgba(31, 39, 51, 0.08);
+      background: var(--bg);
+    }
+
+    .phone-inner {
+      padding: 16px 20px 24px;
+      min-height: 640px;
+    }
+
+    .message-row.user { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+    .message-row.ai { margin-bottom: 14px; }
+
+    .bubble {
+      border-radius: var(--radius-row);
+      padding: 14px 16px;
+      word-break: break-word;
+    }
+
+    .user .bubble {
+      max-width: 72%;
+      color: #fff;
+      background: linear-gradient(135deg, #a7d77a, #7fb964);
+      border-top-right-radius: var(--radius-inner);
+      box-shadow: var(--shadow-lift);
+      font-size: 15px;
+      line-height: 1.68;
+    }
+
+    .ai .bubble {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-top-left-radius: var(--radius-inner);
+      box-shadow: var(--shadow-lift);
+    }
+
+    .bubble-reply {
+      font-size: 15px;
+      line-height: 1.68;
+      color: var(--ink);
+    }
+
+    .bubble-section + .bubble-section {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .bubble-reply + .bubble-section {
+      margin-top: 12px;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .section-label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--green-deep);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .section-body {
+      font-size: 15px;
+      line-height: 1.68;
+      color: var(--ink-soft);
+    }
+
+    .section-body p { margin: 0; }
+    .section-body p + p { margin-top: 9px; }
+
+    .bubble-list {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .bubble-list li + li { margin-top: 7px; }
+
+    .quote-list { display: grid; gap: 8px; margin-top: 8px; }
+
+    .quote-line {
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: var(--radius-control);
+      color: var(--ink);
+      background: rgba(241, 248, 223, 0.72);
+      border: 1px solid rgba(111, 159, 86, 0.16);
+    }
+
+    .section-footnote {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .authority-insight-card {
+      background: var(--card);
+      border-radius: var(--radius-card);
+      padding: 16px 18px;
+      box-shadow: 0 6px 18px rgba(31, 39, 51, 0.05);
+      border: 1px solid rgba(111, 159, 86, 0.12);
+    }
+
+    .authority-badge {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .authority-insight-title {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .authority-insight-body {
+      margin: 0 0 6px;
+      font-size: 15px;
+      line-height: 1.68;
+      color: var(--ink-soft);
+    }
+
+    .suggestion-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 14px;
+    }
+
+    .pill {
+      min-height: 34px;
+      padding: 7px 13px;
+      border-radius: var(--radius-pill);
+      color: var(--green-deep);
+      background: var(--green-soft);
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+    }
+
+    .pill.primary {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .memory-label-tag {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: left;
+      padding-left: 4px;
+    }
+
+    .deep-expand-hint {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(241, 248, 223, 0.65);
+      border: 1px dashed rgba(111, 159, 86, 0.35);
+      font-size: 13px;
+      color: var(--ink-soft);
+      line-height: 1.55;
+    }
+
+    .notes ul {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--ink-soft);
+    }
+
+    .notes li + li { margin-top: 8px; }
+
+    .warn {
+      background: #fff8eb;
+      border: 1px solid #fde68a;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #92400e;
+      margin-bottom: 12px;
+    }
+
+    .hidden-route .bubble-section.is-hidden-preview {
+      opacity: 0.55;
+      border: 1px dashed rgba(111, 159, 86, 0.3);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <h1>育见 · 交流页 Section 形态预览</h1>
+    <p>
+      对齐小程序 / Web <code>DailySectionView</code> 真渲染：高置信默认 3 张可见卡 + hidden 深度展开；
+      低置信追问 3 卡；风险缓和另有一套。左侧切换路由，中间为手机气泡，右侧为重复度审计摘要（线上 DB 461 轮抽样）。
+    </p>
+  </header>
+
+  <div class="layout">
+    <aside class="panel catalog">
+      <h2>路由切换</h2>
+      <div class="route-tabs" id="route-tabs"></div>
+      <div id="catalog-list"></div>
+    </aside>
+
+    <main class="phone-wrap">
+      <div class="phone">
+        <div class="phone-inner" id="phone-preview"></div>
+      </div>
+    </main>
+
+    <aside class="panel notes">
+      <h2>线上重复度（2026-07-22）</h2>
+      <div class="warn">
+        数据源：<code>turn_events.specializedContextPackSnapshot.sections</code>，最近 461 轮。
+        审计脚本：<code>scripts/audit-section-repetition.mjs</code>
+      </div>
+      <ul>
+        <li><strong>最常用骨架（39%）</strong>：深度分析 + 判断依据 + 今晚先这样试 + hidden（画像/孩子心声）</li>
+        <li><strong>疑似可合并</strong>：<code>diagnosis_headline</code> ↔ <code>history_thinking</code>（都在复述场景链）；<code>advice</code> ↔ prose 正文（都在说今晚怎么做）</li>
+        <li><strong>模板化短语</strong>：<code>profile_reading</code> 里「不是懒」出现率 21%；<code>child_voice</code> 有 6 条几乎相同的内心独白前缀</li>
+        <li><strong>低置信追问</strong>：<code>follow_up</code> 的 4 条追问项高度同质（「语音 30 秒…原话…」）</li>
+        <li><strong>偶发复制 bug</strong>：2 轮 <code>diagnosis_headline</code> 与 <code>advice</code> 正文相似度 70%</li>
+        <li><strong>历史遗留</strong>：<code>professional_perspective</code> 仍有个别旧轮次（已从新骨架移除）</li>
+      </ul>
+      <h2 style="margin-top:20px">UI 规则速记</h2>
+      <ul>
+        <li><code>diagnosis_headline</code> / <code>this_time</code> / <code>profile_reading</code> → <strong>AuthorityInsightCard</strong>（无绿色小标题，有「清北学霸·家庭智慧」徽章）</li>
+        <li>其余可见 section → 绿色 <code>section-label</code> + 普通正文 / 列表 / 引语块</li>
+        <li><code>hidden</code> 默认不显示；点 action「展开深度理解」后进 <code>DailyDeepExpandCard</code></li>
+        <li>sections 完成后出现 <code>suggestion-strip</code> 药丸按钮（保存任务 / 预演 / 展开等）</li>
+      </ul>
+    </aside>
+  </div>
+
+  <script>
+    const ROUTES = {
+      high: {
+        label: '高置信（默认）',
+        prose: '他拖，多半不是不想写，是「一坐下就觉得会被挑错」。你催，他先烦；不催，他又真的不动。今晚别急着把整晚作业谈完，先把「怎么开始」这件事单独拎出来。',
+        sections: [
+          {
+            id: 'diagnosis_headline',
+            label: '深度分析',
+            kind: 'paragraphs',
+            visible: true,
+            authority: true,
+            paragraphs: [
+              '你家孩子属于「下笔前先害怕」这一类：笔还没动，脑子里已经在想「写错了怎么办」。所以一催开工，他先烦、再拖——不是在磨蹭，是在躲「不得不面对那一页」的那一刻。这和「懒」不是一回事。'
+            ],
+            direction: '第一句给类型判断 → 从孩子心里解释 → 可带 1 个现场；用 AuthorityInsightCard 大卡'
+          },
+          {
+            id: 'history_thinking',
+            label: '判断依据',
+            kind: 'list',
+            visible: true,
+            items: [
+              '催促 → 烦躁 → 拖延，在最近几次作业夜反复出现，不是偶然。',
+              '你说「知道了」但仍不动，说明他卡在启动，而不是完全拒绝学习。',
+              '之前约定只抽十个单词那次，他确认没有加罚后情绪平稳——说明「会不会又被加码」是关键变量。'
+            ],
+            direction: '2–4 条事实链；易与深度分析复述同一链条（合并候选）'
+          },
+          {
+            id: 'advice',
+            label: '今晚先这样试',
+            kind: 'paragraphs',
+            visible: true,
+            paragraphs: [
+              '今晚只改开始前 10 分钟：让他自己选第一项，这 10 分钟你不查对错、不追加任务。你要验证的是：压力降下来后，他能不能自己迈出第一步。'
+            ],
+            direction: '一个小动作 + 今晚验证什么；taskTitle 常从这里提炼（与 prose 易重复）'
+          },
+          {
+            id: 'profile_reading',
+            label: '结合孩子画像的分析',
+            kind: 'paragraphs',
+            visible: false,
+            authority: true,
+            paragraphs: [
+              '在「被检查、被追问进度」的场景里，他更容易先防御、再撤退；一旦确认今晚没有隐藏加练，他反而愿意问一道题。'
+            ],
+            direction: 'hidden；条件化「在…场景里更容易…」；线上「不是懒」模板化 21%'
+          },
+          {
+            id: 'child_voice',
+            label: '孩子可能怎么想',
+            kind: 'quotes',
+            visible: false,
+            quotes: [
+              '我知道要做，但我一开始就会想到后面会被看、被纠正。',
+              '要是我拖一下，说不定今晚就不会马上进入那一整套流程。',
+              '你催我，我就更不想开始——开始了就意味着又要被盯着。'
+            ],
+            note: '以上不是孩子原话，而是基于过往情境和本次表现的推测。',
+            direction: 'hidden；2–3 句第一人称；线上有批量相同前缀'
+          }
+        ],
+        actions: ['保存为今晚任务', '去预演怎么说', '展开深度理解']
+      },
+      low: {
+        label: '低置信 / 追问',
+        prose: '你感觉他情绪不对，这个信号值得重视。但现在还缺一个完整现场，我没法判断是「启动前就炸」还是「做到一半被戳到」。',
+        sections: [
+          {
+            id: 'directions',
+            label: '目前有几个可能方向',
+            kind: 'list',
+            visible: true,
+            items: [
+              '可能是作业启动前的压力太大，一提学习就先防御。',
+              '也可能是最近别处受挫（同伴、成绩），回家借题发泄。',
+              '还可能是亲子互动里，某句话成了固定引爆点。'
+            ],
+            direction: '3 条可区分分叉，不能是同义词换皮'
+          },
+          {
+            id: 'this_time',
+            label: '这次更像是',
+            kind: 'paragraphs',
+            visible: true,
+            authority: true,
+            paragraphs: [
+              '目前信息还不够判断是哪一种。情绪爆发在哪个环节发生——开始前、进行中、还是结束后——是区分的关键。'
+            ],
+            direction: '轻判断 + 还差什么；开头「目前信息还不够…」线上重复 13%'
+          },
+          {
+            id: 'follow_up',
+            label: '追问',
+            kind: 'mixed',
+            visible: true,
+            paragraphs: ['能不能用语音说 30 秒以上，照当时发生的原话，讲一个最近最头疼的场景？'],
+            items: [
+              '爆发前几分钟发生了什么？谁先说了什么？',
+              '孩子当时的第一反应是什么？原话是什么？',
+              '这次和之前几次，有没有哪里不一样？'
+            ],
+            note: '可以讲得乱一点、长一点，这会直接影响后面判断。',
+            direction: '1 个主问题 + 3–4 条子项；线上追问项高度同质'
+          }
+        ],
+        actions: ['用语音补充现场']
+      },
+      risk: {
+        label: '风险缓和',
+        prose: '你愿意先收住、不急着定性，这本身就是在给关系留缝。我们不靠一次对话下结论，先看接下来 24–48 小时有没有可重复的缓和信号。',
+        sections: [
+          {
+            id: 'relief_signal',
+            label: '这算是一个缓和信号',
+            kind: 'paragraphs',
+            visible: true,
+            paragraphs: [
+              '你提到「少讲大道理、说好不加的时候，他会好一点」——这其实是一个关键信号：你已经亲手验证过，当任务边界明确、不追加时，他有能力启动并保持稳定。'
+            ],
+            direction: '承接风险话题，避免乐观结案'
+          },
+          {
+            id: 'history_thinking',
+            label: '接下来 24–48 小时先看',
+            kind: 'list',
+            visible: true,
+            items: [
+              '他是否在低压力入口下，出现过一次主动问題或自行开始。',
+              '冲突后冷却时间内，他愿不愿意跟你说一句非学习的话。',
+              '你收住催促后，他是继续关门，还是会露一点缓和。'
+            ],
+            direction: '风险路由下 label 会变；仍是 list 形态'
+          },
+          {
+            id: 'advice',
+            label: '今晚先这样试',
+            kind: 'paragraphs',
+            visible: true,
+            paragraphs: [
+              '今晚先守住一条：不谈成绩、不追加任务。只观察他会不会在一个小入口上自己动一下——比如问一道题、或自己打开本子。'
+            ],
+            direction: '与高置信 advice 同 id 同 label，内容更保守'
+          },
+          {
+            id: 'deep_analysis',
+            label: '如果出现这些情况',
+            kind: 'paragraphs',
+            visible: false,
+            paragraphs: [
+              '若连续两天出现自伤言语、完全拒学、或封闭到无法沟通，需要优先寻求线下专业支持；育见可以帮你整理观察记录，但不能替代医疗判断。'
+            ],
+            direction: 'hidden；风险边界，非日常分析'
+          }
+        ],
+        actions: ['展开深度理解', '保存观察要点']
+      },
+      hidden: {
+        label: '深度展开页',
+        prose: '（与当轮 prose 相同，此处省略）',
+        sections: [
+          {
+            id: 'profile_reading',
+            label: '结合孩子画像的分析',
+            kind: 'paragraphs',
+            visible: true,
+            authority: true,
+            paragraphs: [
+              '在「被检查、被追问进度」的场景里，他更容易先防御、再撤退；一旦确认今晚没有隐藏加练，他反而愿意问一道题。'
+            ],
+            direction: 'DailyDeepExpandCard 内展示；默认气泡里 hidden'
+          },
+          {
+            id: 'child_voice',
+            label: '孩子可能怎么想',
+            kind: 'quotes',
+            visible: true,
+            quotes: [
+              '我知道要做，但我一开始就会想到后面会被看、被纠正。',
+              '要是我拖一下，说不定今晚就不会马上进入那一整套流程。'
+            ],
+            note: '以上不是孩子原话，而是基于过往情境和本次表现的推测。',
+            direction: '引语块 + 脚注 disclaimer'
+          },
+          {
+            id: 'deep_analysis',
+            label: '这次要验证什么',
+            kind: 'paragraphs',
+            visible: true,
+            paragraphs: [
+              '接下来 2–3 次，看同一情境下他是继续防御，还是出现一次低冲突配合。重点不是「今晚写没写完」，而是「低压力入口能不能复现」。'
+            ],
+            direction: 'ask_advice 时 hidden 标题会变；此句线上开头重复 ~18%'
+          }
+        ],
+        actions: ['理解准确', '不太像'],
+        deepExpand: true
+      }
+    }
+
+    function renderSection(sec) {
+      const hiddenClass = sec.visible === false ? ' is-hidden-preview' : ''
+      let body = ''
+
+      if (sec.authority) {
+        body = `
+          <div class="authority-insight-card">
+            <p class="authority-badge">清北学霸 · 家庭智慧</p>
+            <h3 class="authority-insight-title">${sec.label}</h3>
+            ${(sec.paragraphs || []).map((p) => `<p class="authority-insight-body">${p}</p>`).join('')}
+          </div>`
+      } else if (sec.kind === 'list') {
+        body = `
+          <div class="section-body">
+            <ul class="bubble-list">${(sec.items || []).map((i) => `<li>${i}</li>`).join('')}</ul>
+          </div>`
+      } else if (sec.kind === 'quotes') {
+        body = `
+          <div class="section-body">
+            <div class="quote-list">${(sec.quotes || []).map((q) => `<p class="quote-line">「${q}」</p>`).join('')}</div>
+            ${sec.note ? `<p class="section-footnote">${sec.note}</p>` : ''}
+          </div>`
+      } else if (sec.kind === 'mixed') {
+        body = `
+          <div class="section-body">
+            ${(sec.paragraphs || []).map((p) => `<p>${p}</p>`).join('')}
+            <ul class="bubble-list">${(sec.items || []).map((i) => `<li>${i}</li>`).join('')}</ul>
+            ${sec.note ? `<p class="section-footnote">${sec.note}</p>` : ''}
+          </div>`
+      } else {
+        body = `
+          <div class="section-body">
+            ${(sec.paragraphs || []).map((p) => `<p>${p}</p>`).join('')}
+          </div>`
+      }
+
+      const label = sec.authority ? '' : `<span class="section-label">${sec.label}</span>`
+      return `<div class="bubble-section${hiddenClass}" data-section-id="${sec.id}">${label}${body}</div>`
+    }
+
+    function renderPhone(routeKey) {
+      const route = ROUTES[routeKey]
+      const showUser = routeKey !== 'hidden'
+      const visibleSections = route.sections.filter((s) => routeKey === 'hidden' ? true : s.visible !== false)
+
+      const sectionsHtml = visibleSections.map(renderSection).join('')
+      const actionsHtml = route.actions
+        ? `<div class="suggestion-strip">${route.actions.map((a, i) => `<button type="button" class="pill${i === 0 ? ' primary' : ''}">${a}</button>`).join('')}</div>`
+        : ''
+
+      const deepHint = route.deepExpand
+        ? '<div class="deep-expand-hint">↑ 模拟 <code>DailyDeepExpandCard</code> 全屏/半屏展开页，hidden section 在此变为可见。</div>'
+        : ''
+
+      document.getElementById('phone-preview').innerHTML = `
+        ${showUser ? `<div class="message-row user"><div class="bubble">孩子初二，最近写作业总是拖到很晚，我催他就发脾气，不催就不写，怎么办？</div></div>` : ''}
+        <div class="message-row ai">
+          <div class="bubble">
+            ${routeKey !== 'hidden' ? `<div class="bubble-reply">${route.prose}</div>` : '<p class="section-footnote">（展开页顶部可带当轮 prose 摘要，主内容为下方 hidden sections）</p>'}
+            ${sectionsHtml}
+            ${actionsHtml}
+            ${routeKey !== 'hidden' ? '<div class="memory-label-tag">已记住</div>' : ''}
+          </div>
+        </div>
+        ${deepHint}
+      `
+
+      const catalog = document.getElementById('catalog-list')
+      catalog.innerHTML = route.sections
+        .map((s) => {
+          const vis = s.visible === false ? '<span class="tag tag-hidden">hidden</span>' : '<span class="tag tag-visible">可见</span>'
+          return `<div class="catalog-item">
+            <h3>${s.id}</h3>
+            <div class="catalog-meta">${vis} kind=${s.kind} · label=${s.label}</div>
+            <p>${s.direction}</p>
+          </div>`
+        })
+        .join('')
+    }
+
+    const tabs = document.getElementById('route-tabs')
+    Object.entries(ROUTES).forEach(([key, route]) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'route-btn' + (key === 'high' ? ' is-active' : '')
+      btn.textContent = route.label
+      btn.dataset.route = key
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.route-btn').forEach((b) => b.classList.remove('is-active'))
+        btn.classList.add('is-active')
+        renderPhone(key)
+      })
+      tabs.appendChild(btn)
+    })
+
+    renderPhone('high')
+  </script>
+</body>
+</html>

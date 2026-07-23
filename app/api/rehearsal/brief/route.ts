@@ -33,13 +33,27 @@ export async function POST(request: Request) {
   if (!(await verifyAppApi(request))) return authError()
 
   try {
-    const body = (await request.json()) as { sceneId?: string }
+    const body = (await request.json()) as {
+      sceneId?: string
+      parentText?: string
+      rehearsalGoal?: string
+      retrievalPackDigest?: {
+        understandingCard?: string
+        evidenceBasis?: string
+        deepAnalysis?: string[]
+        adviceSeed?: string
+        confidenceMode?: string
+        linkedAreas?: string[]
+      }
+    }
     const sceneId = body.sceneId || REHEARSAL_SCENES[0].id
     const base = resolveSceneSeed(sceneId)
     const tenant = await resolveTenant()
 
+    // v4 P0-4a：如果有交流页带来的 parentText，用它做检索 query（比场景标题语义更准）
+    const retrievalQuery = body.parentText || base.title
     const [packet, digestLoaded] = await Promise.all([
-      buildDailyDialogueRetrievalPacket(base.title, tenant, { fast: true }).catch(() => null),
+      buildDailyDialogueRetrievalPacket(retrievalQuery, tenant, { fast: true }).catch(() => null),
       loadDeepModelDigest(tenant).catch(() => null),
     ])
     let digest = digestLoaded
@@ -53,12 +67,19 @@ export async function POST(request: Request) {
       childUnderstanding?: string
       understandingBullets?: string[]
       openingHint?: string
+      openingChild?: string
+      openingHintTitle?: string
+      initialStatusText?: string
     }>(
       [promptRegistry.parentFacingStyle, promptRegistry.rehearsalSceneBrief].join('\n\n---\n\n'),
       {
         sceneId: base.id,
         sceneTitle: base.title,
         sceneIntent: base.summary,
+        // v4 P0-4a：携带交流页上下文
+        parentText: body.parentText || '',
+        rehearsalGoal: body.rehearsalGoal || '',
+        retrievalPackDigest: body.retrievalPackDigest || null,
         deepModelDigest: digestPack,
         retrievalPack: packet
           ? {
@@ -96,6 +117,13 @@ export async function POST(request: Request) {
               .filter((line) => line.length > 4)
               .slice(0, 3),
       openingHint: llm?.openingHint?.trim() || base.openingHint,
+      openingChild: llm?.openingChild?.trim() || base.openingChild,
+      openingHintTitle: llm?.openingHintTitle?.trim() || base.openingHintTitle || '他可能是这样想的',
+      initialStatusText:
+        llm?.initialStatusText?.trim() ||
+        (bullets[0]
+          ? `当前状态：${bullets[0].slice(0, 36)}${bullets[0].length > 36 ? '…' : ''}`
+          : undefined),
     })
   } catch (error) {
     return failFromError(error)

@@ -15,6 +15,62 @@ import {
 
 export type { DailyPortraitCards, PortraitCardContent, PortraitCardKey }
 
+/**
+ * v4 P0-2c：把后台 structuralTensions 的学术 title 翻译成家长可读语言。
+ * 如果 title 是学术化的（含"与""之间""失衡""卷入""纠缠"等），翻译为人话；
+ * 如果 title 本身已经是人话，保留原文。
+ */
+const TENSION_TRANSLATIONS: Array<[RegExp, string]> = [
+  [/高情感接纳.*低行为结构|情感.*结构.*失衡/i, '你们很懂孩子的感受，但管学习时的规矩还没立稳'],
+  [/三角.*关系|三角化|站队/i, '孩子被夹在大人之间，容易两边看脸色'],
+  [/纠缠|过度卷入|界限不清|边界不清/i, '大人和孩子的事搅在一起，孩子自己的空间不够'],
+  [/疏离|情感断裂|情感冷漠/i, '家人之间的温度不够，孩子不太愿意主动说心里话'],
+  [/控制.*自主|自主.*控制|高压控制/i, '管得紧但孩子自己说了算的空间少'],
+  [/期望.*落差|期待.*失配/i, '你们希望的和孩子现在能做的，中间有一段距离'],
+  [/依恋.*回避|回避型依恋/i, '孩子遇到难受的事习惯自己扛，不太找大人求助'],
+  [/依恋.*矛盾|矛盾型依恋/i, '孩子又想靠近又怕被说，表现出来就是一会儿黏一会儿推开'],
+  [/强制循环|coercive/i, '催了才动、不催不动，越催越僵的循环'],
+  [/角色.*倒置|父母化|parentification/i, '孩子承担了不该他这个年纪操心的事'],
+  [/稳态|homeostasis/i, '家里习惯了这样的节奏，即使不舒服也很难自己改'],
+  [/代际.*传递|intergenerational/i, '你们自己成长中经历的模式，不知不觉带到了这一代'],
+]
+
+function translateTensionForParent(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+
+  // 如果 title 里已经有人话特征（含"你们""孩子""家里"），不再翻译
+  if (/你们|孩子|家里|容易|其实|可能是/.test(trimmed) && trimmed.length < 60) {
+    return trimmed
+  }
+
+  for (const [re, translation] of TENSION_TRANSLATIONS) {
+    if (re.test(trimmed)) return translation
+  }
+
+  // 兜底：如果含学术信号词但没匹配到映射，做最小翻译
+  if (/失衡|卷入|纠缠|断裂|失配|倒置|稳态|传递|三角/.test(trimmed)) {
+    return trimmed.replace(/失衡/g, '不一致').replace(/卷入/g, '卷进来').replace(/纠缠/g, '搅在一起')
+  }
+
+  return trimmed
+}
+
+/** 处理 structuralTensions 数组：翻译学术 title + 保留 detail 上下文 */
+function translateTensionsForParent(tensions: string[]): string[] {
+  return tensions.map((t) => {
+    // tensionLine 格式是 "title：detail"，翻译 title 保留 detail
+    const colonIdx = t.indexOf('：')
+    if (colonIdx > 0) {
+      const title = t.slice(0, colonIdx)
+      const detail = t.slice(colonIdx + 1)
+      const translated = translateTensionForParent(title)
+      return detail.trim() ? `${translated}（${detail.trim()}）` : translated
+    }
+    return translateTensionForParent(t)
+  })
+}
+
 const CARD_KEYS: PortraitCardKey[] = [
   'growth',
   'focus',
@@ -84,7 +140,7 @@ function defaultSectionsForKey(
     tensions: [
       {
         heading: '家里容易绕进去的地方',
-        items: dedupeTextParts(pack.structuralTensions).slice(0, 4),
+        items: translateTensionsForParent(dedupeTextParts(pack.structuralTensions)).slice(0, 4),
       },
     ],
   }

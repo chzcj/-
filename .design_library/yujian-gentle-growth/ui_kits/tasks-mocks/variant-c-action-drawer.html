@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>任务 Mock C · 行动条抽屉</title>
+  <link rel="stylesheet" href="shared-tasks-mock.css" />
+  <style>
+    .task-card-c {
+      position: relative;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(111, 166, 95, 0.2);
+      overflow: hidden;
+    }
+
+    .task-card-c__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 14px 14px 12px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .task-card-c__row:active {
+      background: rgba(111, 166, 95, 0.06);
+    }
+
+    .task-card-c__dot {
+      flex-shrink: 0;
+      width: 8px;
+      height: 8px;
+      margin-top: 7px;
+      border-radius: 50%;
+      background: var(--yujian-primary-500, #9dcc75);
+      box-shadow: 0 0 0 3px rgba(157, 204, 117, 0.25);
+    }
+
+    .task-card-c__main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .task-card-c__headline {
+      font-size: 1.02rem;
+      line-height: 1.38;
+      margin: 0;
+    }
+
+    .task-card-c__subline {
+      margin: 4px 0 0;
+      font-size: 0.78rem;
+      color: var(--ink-muted);
+      line-height: 1.4;
+    }
+
+    .task-card-c__open-icon {
+      flex-shrink: 0;
+      font-size: 1.1rem;
+      color: var(--yujian-primary-600);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      line-height: 1;
+      margin-top: 2px;
+    }
+
+    .task-card-c.is-open .task-card-c__open-icon {
+      transform: rotate(45deg);
+    }
+
+    .task-card-c__drawer {
+      transform: translateY(8px);
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.28s ease,
+        max-height 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .task-card-c.is-open .task-card-c__drawer {
+      transform: translateY(0);
+      opacity: 1;
+      max-height: 480px;
+    }
+
+    .task-card-c__drawer-inner {
+      padding: 0 14px 16px 32px;
+      border-top: 1px dashed rgba(111, 166, 95, 0.22);
+      margin-top: 0;
+      padding-top: 14px;
+    }
+
+    .task-card-c .feedback-row {
+      margin-bottom: 8px;
+    }
+
+    .task-card-c .chip {
+      padding: 7px 12px;
+      font-size: 0.78rem;
+    }
+
+    .task-card-c .why-block {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(111, 166, 95, 0.14);
+    }
+
+    .task-card-c .why-body {
+      font-size: 0.82rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .task-card-c__drawer,
+      .task-card-c__open-icon {
+        transition: none;
+      }
+      .task-card-c.is-open .task-card-c__drawer {
+        transform: none;
+        opacity: 1;
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="mock-phone-wrap">
+    <a class="mock-back" href="index.html">← 返回选版</a>
+    <div class="mock-phone">
+      <div class="mock-status-bar">C · 行动条 + 抽屉</div>
+      <div class="mock-screen">
+        <h1 class="mock-page-title">今晚待试</h1>
+        <p class="mock-page-lede">列表保持干净；点开从下方滑出反馈与意义。</p>
+        <div class="mock-task-list" id="taskList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TASKS = [
+      {
+        id: 't1',
+        headline: '作业前 · 只问「订正卡在哪」',
+        sub: '周三数学 · 别接「几点开始写」',
+        why: '找卡点，不催开始。他怕的是写了还被改，不是不会做。',
+      },
+      {
+        id: 't2',
+        headline: '吵完后 · 「我说重了，想听你怎么想」',
+        sub: '睡前 · 停 3 秒不追加道理',
+        why: '先降防御，再谈作业。修复若像手段，他会更关上门。',
+      },
+      {
+        id: 't3',
+        headline: '收手机前 · 让他先说「再玩多久合适」',
+        sub: '周末 · 你可接受或微调 5 分钟',
+        why: '参与定数 = 降对抗。控制感少一点，协商才进得去。',
+      },
+    ]
+
+    function renderDrawer(why) {
+      return `
+        <div class="task-card-c__drawer">
+          <div class="task-card-c__drawer-inner">
+            <p class="feedback-label">做了吗 · 效果</p>
+            <div class="feedback-row">
+              <button type="button" class="chip" data-v="done-y">做了</button>
+              <button type="button" class="chip" data-v="done-n">还没</button>
+              <button type="button" class="chip" data-v="fx-good">有效</button>
+              <button type="button" class="chip" data-v="fx-mid">一般</button>
+              <button type="button" class="chip" data-v="fx-bad">更僵</button>
+            </div>
+            <div class="why-block">
+              <p class="why-kicker">为什么值得试</p>
+              <p class="why-body">${why}</p>
+            </div>
+          </div>
+        </div>
+      `
+    }
+
+    const list = document.getElementById('taskList')
+    list.innerHTML = TASKS.map(
+      (t) => `
+      <article class="task-card-c" data-id="${t.id}">
+        <div class="task-card-c__row">
+          <span class="task-card-c__dot" aria-hidden="true"></span>
+          <div class="task-card-c__main">
+            <h2 class="task-headline task-card-c__headline">${t.headline}</h2>
+            <p class="task-card-c__subline">${t.sub}</p>
+          </div>
+          <span class="task-card-c__open-icon" aria-hidden="true">+</span>
+        </div>
+        ${renderDrawer(t.why)}
+      </article>
+    `
+    ).join('')
+
+    let openId = null
+
+    list.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip')
+      if (chip) {
+        e.stopPropagation()
+        const row = chip.closest('.feedback-row')
+        row.querySelectorAll('.chip').forEach((c) => c.classList.remove('is-on'))
+        chip.classList.add('is-on')
+        return
+      }
+      const row = e.target.closest('.task-card-c__row')
+      const card = e.target.closest('.task-card-c')
+      if (!row && !card) return
+      const id = card.dataset.id
+      openId = openId === id ? null : id
+      list.querySelectorAll('.task-card-c').forEach((c) => {
+        c.classList.toggle('is-open', c.dataset.id === openId)
+      })
+    })
+  </script>
+</body>
+</html>

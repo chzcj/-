@@ -3,7 +3,7 @@ import { buildThinkingChips } from '@/lib/server/daily/thinking-chips'
 import { createDailyUpdate } from '@/lib/server/memory/write/decision-engine'
 import { resolveTenant } from '@/lib/server/memory/tenant'
 import { enqueueJob } from '@/lib/server/jobs/queue'
-import { saveTurnEvent } from '@/lib/server/memory/database-manager'
+import { saveTurnEvent, getMergedParentInputHistory } from '@/lib/server/memory/database-manager'
 import { buildTurnEvent } from '@/lib/server/orchestration/pipeline'
 import { deriveEpisodeId } from '@/lib/server/memory/episode/pipeline'
 import { shouldSkipEpisodeIngest } from '@/lib/server/memory/episode/ingest-gate'
@@ -155,6 +155,16 @@ export async function POST(request: Request) {
               text,
               ctx: { ...episodeCtx, episodeId },
             }, `episode_ingest:${episodeId}`, traceId).catch(err => console.warn('[daily/stream] episode 入队失败:', err))
+
+            // v4：每10轮触发一次 atom_curation（高精选情境化 atom）
+            try {
+              const history = await getMergedParentInputHistory(tenant, 200)
+              const turnCount = history.length
+              if (turnCount > 0 && turnCount % 10 === 0) {
+                void enqueueJob('atom_curation', { tenant }, `atom_curation:${tenant.familyId}:${tenant.childId}:${turnCount}`, null)
+                  .catch(err => console.warn('[daily/stream] atom_curation 入队失败:', err))
+              }
+            } catch { /* ignore turn count check */ }
           }
 
           controller.close()

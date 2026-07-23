@@ -13,16 +13,22 @@ const TASK_TITLE_BANNED =
 
 function sanitizeGeneratedTitle(raw: unknown, seedTitle: string): string {
   const seedRaw = seedTitle.trim().replace(TASK_TITLE_BANNED, '').trim()
-  const seed = (seedRaw.slice(0, 20) || '到点只说一句开始然后等').slice(0, 20)
+  const seed = seedRaw.slice(0, 40) || '到点只说一句开始然后等'
   if (typeof raw !== 'string') return seed
   let title = raw.trim().replace(/^["「]|["」]$/g, '')
   title = title.replace(/今晚可以试一次[：:]?/g, '').replace(/今晚试一下[：:]?/g, '').trim()
-  title = title.slice(0, 20)
-  if (title.length < 8 || TASK_TITLE_BANNED.test(title)) return seed
+  title = title.slice(0, 48)
+  if (title.length < 8 || TASK_TITLE_BANNED.test(title)) return seed.slice(0, 48)
   return title
 }
 
-/** 保存任务后轻度异步：专用 Agent 润色标题（10–20 字完整句）。 */
+function sanitizeShort(raw: unknown, max: number): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const v = raw.trim().slice(0, max)
+  return v.length >= 4 ? v : undefined
+}
+
+/** 保存任务后轻度异步：专用 Agent 润色任务包（标题 + 情境 + 意义）。 */
 export async function refineTonightTaskInBackground(args: {
   tenant: TenantId
   taskId: string
@@ -39,12 +45,17 @@ export async function refineTonightTaskInBackground(args: {
   const digest = digestLoaded?.mechanismNarrative
     ? digestLoaded
     : await buildDeepModelDigest(args.tenant).catch(() => digestLoaded)
-  const ai = await callAgentJson<{ title?: string }>(
+  const ai = await callAgentJson<{
+    title?: string
+    sceneLabel?: string
+    actionHint?: string
+    rationale?: string
+  }>(
     'tonightTaskGenerator',
-    '生成家长可执行的小任务标题（10–20字完整一句，禁止今晚试一下套话）。',
+    '生成情境化今晚任务包（title/sceneLabel/actionHint/rationale）。',
     {
-      seedTitle: args.seedTitle.slice(0, 40),
-      observation: (args.observation || '').slice(0, 80),
+      seedTitle: args.seedTitle.slice(0, 60),
+      observation: (args.observation || '').slice(0, 120),
       replyExcerpt: (args.replyExcerpt || '').slice(0, 600),
       deepModelDigest: pickDeepModelDigestPack(digest),
       retrievalPack: packet
@@ -56,20 +67,32 @@ export async function refineTonightTaskInBackground(args: {
           }
         : undefined,
     },
-    { maxTokens: 120 }
+    { maxTokens: 480 }
   ).catch(() => undefined)
 
   const nextTitle = sanitizeGeneratedTitle(ai?.title, args.seedTitle)
-  if (!nextTitle || nextTitle === args.seedTitle.trim()) return
+  const sceneLabel = sanitizeShort(ai?.sceneLabel, 24)
+  const actionHint = sanitizeShort(ai?.actionHint, 40)
+  const rationale = sanitizeShort(ai?.rationale, 140)
 
   const all = await getUserTasks(args.tenant)
   const idx = all.findIndex((t) => t.taskId === args.taskId)
   if (idx < 0) return
-  if (all[idx].title === nextTitle) return
+
+  const prev = all[idx]
+  const unchanged =
+    prev.title === nextTitle &&
+    (prev.sceneLabel || '') === (sceneLabel || '') &&
+    (prev.actionHint || '') === (actionHint || '') &&
+    (prev.rationale || '') === (rationale || '')
+  if (unchanged) return
 
   all[idx] = {
-    ...all[idx],
+    ...prev,
     title: nextTitle,
+    sceneLabel: sceneLabel || prev.sceneLabel,
+    actionHint: actionHint || prev.actionHint,
+    rationale: rationale || prev.rationale,
     updatedAt: new Date().toISOString(),
   }
   await saveUserTasks(all, args.tenant)

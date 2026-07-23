@@ -22,6 +22,8 @@ curl -L -o design-reference/pages/index.html \
 
 ## 育见新增 UI 白名单（对齐 hifi 时保留逻辑，只调样式）
 
+- **交流 Section 形态预览**（改 section 结构前必看）：[`daily-sections-preview.html`](./daily-sections-preview.html) — 浏览器直接打开；含高置信 / 低置信 / 风险 / 深度展开四套 UI + 线上重复度摘要。
+
 相对 `design-reference/extracted/` 参考，以下为实现层新增，**禁止因像素对齐而删除**。设计原则与 token 见根目录 [`DESIGN.md`](../DESIGN.md)。
 
 - 交流：流式打断、section 重试、深度展开卡、`/daily/how-to-speak`、action 条、starter chips

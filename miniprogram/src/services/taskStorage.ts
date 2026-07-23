@@ -23,6 +23,9 @@ export type TaskItem = {
   title: string
   source?: string
   observation?: string
+  sceneLabel?: string
+  actionHint?: string
+  rationale?: string
   status?: string
   feedback?: TaskFeedback
   sourceTraceId?: string
@@ -38,6 +41,9 @@ type ServerTask = {
   source?: string
   status?: string
   observation?: string
+  sceneLabel?: string
+  actionHint?: string
+  rationale?: string
   feedback?: TaskFeedback
   sourceTraceId?: string
   createdAt: string
@@ -69,6 +75,9 @@ function mapServerTask(t: ServerTask): TaskItem {
     source: t.source,
     status: t.status,
     observation: t.observation,
+    sceneLabel: t.sceneLabel,
+    actionHint: t.actionHint,
+    rationale: t.rationale,
     feedback: t.feedback,
     sourceTraceId: t.sourceTraceId,
     createdAt: t.createdAt,

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>任务 Mock A · 柔和内联展开</title>
+  <link rel="stylesheet" href="shared-tasks-mock.css" />
+  <style>
+    .task-card-a {
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(111, 166, 95, 0.18);
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.28s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .task-card-a:hover {
+      border-color: rgba(111, 166, 95, 0.32);
+    }
+
+    .task-card-a.is-open {
+      border-color: rgba(111, 166, 95, 0.42);
+      box-shadow: 0 12px 32px rgba(84, 120, 69, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .task-card-a__head {
+      padding: 16px 16px 14px;
+    }
+
+    .task-card-a__headline {
+      font-size: 1.12rem;
+    }
+
+    .task-card-a__meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .task-card-a__badge {
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--yujian-primary-100);
+      color: var(--yujian-primary-800);
+      font-weight: 600;
+    }
+
+    .task-card-a__chev {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(111, 166, 95, 0.12);
+      display: grid;
+      place-items: center;
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .task-card-a.is-open .task-card-a__chev {
+      transform: rotate(180deg);
+    }
+
+    .task-card-a__body {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .task-card-a.is-open .task-card-a__body {
+      grid-template-rows: 1fr;
+    }
+
+    .task-card-a__inner {
+      overflow: hidden;
+      padding: 0 16px;
+    }
+
+    .task-card-a.is-open .task-card-a__inner {
+      padding-bottom: 16px;
+    }
+
+    .task-card-a__inner .feedback-block {
+      border-top: none;
+      margin-top: 0;
+      padding-top: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .task-card-a,
+      .task-card-a__body,
+      .task-card-a__chev {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="mock-phone-wrap">
+    <a class="mock-back" href="index.html">← 返回选版</a>
+    <div class="mock-phone">
+      <div class="mock-status-bar">A · 柔和内联展开</div>
+      <div class="mock-screen">
+        <h1 class="mock-page-title">今晚待试</h1>
+        <p class="mock-page-lede">点卡片展开：先反馈，再读「为什么要试」。</p>
+        <div class="mock-task-list" id="taskList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TASKS = [
+      {
+        id: 't1',
+        scene: '周三 · 数学卷子订正',
+        headline: '作业开始前，只问一句：订正卡在哪一步？',
+        sub: '不要先问「几点写」——那会让他先护着手头的事。',
+        source: '来自交流 · 昨晚 21:04',
+        why: '他最近几次冲突都发生在「催开始」而不是「不会做」。这一句是在找卡点，不是在催进度。',
+      },
+      {
+        id: 't2',
+        scene: '吵完后的修复',
+        headline: '睡前只补一句：刚才我说重了，我想听你怎么想',
+        sub: '说完停 3 秒，不追加解释或道理。',
+        source: '来自预演 · 今天 19:20',
+        why: '刚吵完时，他更需要确认对话不会马上变成批评。先修复关系，再谈作业。',
+      },
+      {
+        id: 't3',
+        scene: '手机时间 · 周末',
+        headline: '约定前先问：你觉得再玩多久会比较好收？',
+        sub: '让他说一个数，你再决定是否接受或微调。',
+        source: '来自交流 · 周六下午',
+        why: '他常把「收手机」听成「你又要控制我」。让他参与定数，是在降对抗，不是让步。',
+      },
+    ]
+
+    function renderFeedback() {
+      return `
+        <div class="feedback-block">
+          <p class="feedback-label">试过了吗？</p>
+          <div class="feedback-row" data-group="done">
+            <button type="button" class="chip" data-v="是">做了</button>
+            <button type="button" class="chip" data-v="否">还没</button>
+          </div>
+          <p class="feedback-label">效果怎么样？</p>
+          <div class="feedback-row" data-group="effect">
+            <button type="button" class="chip" data-v="好">有松动</button>
+            <button type="button" class="chip" data-v="一般">差不多</button>
+            <button type="button" class="chip" data-v="不好">更僵了</button>
+          </div>
+        </div>
+      `
+    }
+
+    function renderWhy(why) {
+      return `
+        <div class="why-block">
+          <p class="why-kicker">为什么要试这个</p>
+          <p class="why-body">${why}</p>
+        </div>
+      `
+    }
+
+    const list = document.getElementById('taskList')
+    list.innerHTML = TASKS.map(
+      (t) => `
+      <article class="task-card-a" data-id="${t.id}" tabindex="0">
+        <div class="task-card-a__head">
+          <p class="task-scene">${t.scene}</p>
+          <h2 class="task-headline task-card-a__headline">${t.headline}</h2>
+          <p class="task-sub">${t.sub}</p>
+          <div class="task-card-a__meta">
+            <span class="task-source">${t.source}</span>
+            <span class="task-card-a__badge">待执行</span>
+            <span class="task-card-a__chev" aria-hidden="true">⌄</span>
+          </div>
+        </div>
+        <div class="task-card-a__body">
+          <div class="task-card-a__inner">
+            ${renderFeedback()}
+            ${renderWhy(t.why)}
+          </div>
+        </div>
+      </article>
+    `
+    ).join('')
+
+    let openId = null
+
+    list.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip')
+      if (chip) {
+        e.stopPropagation()
+        const row = chip.closest('.feedback-row')
+        row.querySelectorAll('.chip').forEach((c) => c.classList.remove('is-on'))
+        chip.classList.add('is-on')
+        return
+      }
+      const card = e.target.closest('.task-card-a')
+      if (!card) return
+      const id = card.dataset.id
+      openId = openId === id ? null : id
+      list.querySelectorAll('.task-card-a').forEach((c) => {
+        c.classList.toggle('is-open', c.dataset.id === openId)
+      })
+    })
+  </script>
+</body>
+</html>

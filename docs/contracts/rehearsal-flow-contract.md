@@ -34,6 +34,9 @@ L4 结束页仅展示：`closingAdvice` / `childLikelyHearing` / `saferVersion` 
 | `sceneSituation` | rehearsalSceneBrief | info-card 场景摘要 |
 | `understandingBullets[3]` | rehearsalSceneBrief | insight-list |
 | `openingHint` | rehearsalSceneBrief | L3 child-insight 预填 |
+| `openingChild` | rehearsalSceneBrief | L3 首条孩子气泡 |
+| `openingHintTitle` | rehearsalSceneBrief | L3 hint 标题 |
+| `initialStatusText` | rehearsalSceneBrief | L3 状态行（session 持久化） |
 
 ## L3 对话分析 V2-F
 

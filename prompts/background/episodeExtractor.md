@@ -93,6 +93,27 @@
 
 **禁止**把每条家长倾诉都标 isHighValue=true；一次日常抱怨若无原话/反证/结果对照，应 isHighValue=false。
 
+## atom content 情境化规则（v4 — 高质量事实需要情境）
+
+atom 的 `content` **不能是孤立的裸事实**，必须带最小情境，让下游（手账/画像/预演）读出来就知道「在什么场景、谁在做什么、孩子怎么反应」。
+
+**格式**：`[场景标签] 事实主体 + 情境线索（家长当时在做什么 / 孩子的反应 / 时间频率）`
+
+**好 vs 坏**：
+- 坏：`"他说'写完你又加'"` — 孤立原话，下游不知道在什么场景
+- 好：`"[作业前] 妈妈催第三遍后他说'写完你又加'，嘴上答应但没动笔"` — 带场景+频率+动作
+- 坏：`"每天晚上催他写数学他都不动"` — 只有行为，缺情绪和触发
+- 好：`"[作业前] 每天晚上催他写数学都不动，妈妈越催语气越急，他越沉默"` — 带场景+情绪递进
+- 坏：`"老师说他上课走神"` — 只有转述
+- 好：`"[学校] 老师反馈他最近上课走神，尤其周三数学课被点名两次"` — 带场景+频率
+
+**字数**：30-80 字。宁可多写情境，不要只留裸事实。高价值 atom（isHighValue=true）尤其要丰满——这些会进手账和画像，单薄了撑不起来。
+
+**禁止**：
+- content 只有一句话原话，没有任何场景或动作线索
+- content 只有抽象标签（"孩子拖延"）没有具体行为
+- content 超过 100 字（太长说明该拆成多条 atom）
+
 ## 输出 JSON（childos.episode.v1，只输出 JSON）
 
 ```json
@@ -134,12 +155,12 @@
 输入：`"这周每天晚上催他写数学他都不动，周三他说'写完你又加'，老师说他最近上课走神。"`
 
 - 好：
-  - atom1: content="每天晚上催他写数学他都不动", sourceType=parent_explicit, evidenceTier="repeated", factRole="response", ecologicalLayer="micro", epistemicStatus="reported", confidence=0.65（明确"每天"=反复，但仍是家长报告）
-  - atom2: content="他说'写完你又加'", sourceType=child_quote, evidenceTier="verbatim", isHighValue=true, factRole="trigger", epistemicStatus="observed", confidence=0.85（孩子原话直接听到）
-  - atom3: content="老师说他最近上课走神", sourceType=material_observation, evidenceTier="behavior", factRole="context", epistemicStatus="reported", confidence=0.55（老师观察转述，是现象非定论）
+  - atom1: content="[作业前] 每天晚上催他写数学都不动，妈妈越催语气越急他越沉默", sourceType=parent_explicit, evidenceTier="repeated", factRole="response", ecologicalLayer="micro", epistemicStatus="reported", confidence=0.65（明确"每天"=反复，但仍是家长报告）
+  - atom2: content="[作业前] 妈妈催第三遍后他说'写完你又加'，嘴上答应但没动笔", sourceType=child_quote, evidenceTier="verbatim", isHighValue=true, factRole="trigger", epistemicStatus="observed", confidence=0.85（孩子原话直接听到，带场景和动作）
+  - atom3: content="[学校] 老师反馈他最近上课走神，尤其周三数学课被点名两次", sourceType=material_observation, evidenceTier="behavior", factRole="context", epistemicStatus="reported", confidence=0.55（老师观察转述，带场景和频率）
 - 坏：
-  - atom1: evidenceTier 留空但明明写了"每天"（漏标 repeated）
-  - atom2: sourceType=parent_inferred 把孩子原话当家长推测（错——原话应 child_quote）
+  - atom1: content="每天晚上催他写数学他都不动"（裸事实无情境——缺情绪和动作线索）
+  - atom2: content="他说'写完你又加'"（孤立原话无场景——下游不知道在什么情境下说的）
   - atom3: content="孩子注意力有缺陷"（把老师观察"走神"升级成"注意力缺陷"定论，违反材料判定红线）
-  - atom4: 编造"孩子可能厌学"（输入没有，编造）
-  - atom5: epistemicStatus="observed" 但 content 是"孩子可能在逃避控制"（这是推断，应标 inferred，标 observed 是认识论越界）
+  - atom4: content="孩子可能厌学"（编造，输入没有）
+  - atom5: epistemicStatus="observed" 但 content="孩子可能在逃避控制"（这是推断，应标 inferred，标 observed 是认识论越界）
