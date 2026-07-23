@@ -16,6 +16,12 @@ import { createId } from '@/lib/storage/storageIds'
 import { classifySafetyTier } from '@/lib/server/daily/safety-tier'
 import { flattenParentUnderstanding } from '@/lib/server/memory/retrieval/router'
 import type { TenantId } from '@/lib/server/memory/tenant'
+import { getMergedParentInputHistory } from '@/lib/server/memory/database-manager'
+import {
+  canReuseCache,
+  mergeIncrementalRetrievalPacket,
+  setCachedRetrievalPacket,
+} from '@/lib/server/memory/retrieval-session-cache'
 
 import { buildDailyComponentPick } from '@/lib/server/daily/component-refiner'
 import { humanizeBuiltJudgment, sanitizeForParent } from '@/lib/server/daily/profile-sanitize'
@@ -223,12 +229,52 @@ export function buildTurnEvent(args: {
   }
 }
 
+/**
+ * v4：构建上下文增强的检索 query。
+ * 主信号 = 本轮 userText（权重最高）；
+ * 次信号 = 近 3 轮家长输入的主题关键词（帮助向量检索召回领域相关 atom）。
+ * 不拼接历史全文（避免噪声），只提取关键词。
+ */
+async function buildContextEnrichedQuery(userText: string, tenant: TenantId): Promise<string> {
+  try {
+    const recent = await getMergedParentInputHistory(tenant, 3)
+    if (recent.length <= 1) return userText
+    // 取近 3 轮（不含本轮），提取每轮前 30 字作为主题线索
+    const contextSnippets = recent
+      .slice(0, 2)
+      .map(r => (r.text || '').slice(0, 30))
+      .filter(Boolean)
+    if (contextSnippets.length === 0) return userText
+    return `${userText} 上下文：${contextSnippets.join('；')}`
+  } catch {
+    return userText
+  }
+}
+
 export async function runOrchestrationPipeline(input: OrchestrationInput): Promise<OrchestrationOutput> {
   const maturity = input.maturityLevel ? { level: input.maturityLevel } : getCurrentMaturityState(input.tenant)
 
   // 每轮使用当前输入重跑向量检索。warmTurn 只表示前端线程状态，绝不能成为
   // 跳过记忆搜索的开关，否则对话话题切换后会锁死首轮证据。
-  const retrievalPacket = await buildDailyDialogueRetrievalPacket(input.userText, input.tenant)
+  // v4：session cache + 漂移检测——warmTurn 且话题未漂移时复用首轮 packet（省检索成本），
+  // 话题漂移（cos sim < 0.6）时失效 cache 做全量检索。
+  // v4：检索 query 拼接近期上下文关键词，让向量检索能召回领域相关 atom
+  const retrievalQuery = await buildContextEnrichedQuery(input.userText, input.tenant)
+  let retrievalPacket: Awaited<ReturnType<typeof buildDailyDialogueRetrievalPacket>>
+  if (input.warmTurn) {
+    const { reuse, cached, currentEmbedding } = await canReuseCache(input.tenant, retrievalQuery)
+    if (reuse && cached) {
+      retrievalPacket = await mergeIncrementalRetrievalPacket(cached.packet, input.userText, input.tenant)
+    } else {
+      retrievalPacket = await buildDailyDialogueRetrievalPacket(retrievalQuery, input.tenant)
+      // 存储 cache（用本轮 query embedding，供下一轮漂移检测）
+      if (currentEmbedding) {
+        setCachedRetrievalPacket(input.tenant, retrievalPacket, currentEmbedding)
+      }
+    }
+  } else {
+    retrievalPacket = await buildDailyDialogueRetrievalPacket(retrievalQuery, input.tenant)
+  }
   const effectiveMaturity = retrievalPacket.contextMaturityLevel || maturity.level
 
   const inputType = classifyInputType(input.userText)
