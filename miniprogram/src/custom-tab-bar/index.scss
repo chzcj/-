@@ -1,28 +1,37 @@
 @import '../styles/tokens.scss';
 
+/*
+ * 贴底整栏：填满微信 tabBar 槽位（不要 position:fixed 浮层）。
+ * fixed 会叠在原生文字栏之上，预演 Tab 上常出现「上面图标栏 + 下面纯文字栏」。
+ */
 .bottom-tabs-wrap {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 0 16px calc(6px + env(safe-area-inset-bottom));
-  z-index: 1000;
   box-sizing: border-box;
-  /* 实色封底：禁止正文从浮起 Tab 圆角/安全区透出 */
-  background: #f8f6e5;
+  width: 100%;
+  height: 100%;
+  min-height: 56px;
+  padding: 4px 6px 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #ffffff;
   border-top: 1px solid rgba(73, 91, 45, 0.08);
+  display: flex;
+  align-items: stretch;
+}
+
+.bottom-tabs-wrap.is-hidden {
+  display: none;
 }
 
 .bottom-tabs {
-  height: 56px;
-  border-radius: 18px;
-  padding: 4px 6px;
+  flex: 1;
+  min-height: 52px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: $shadow-soft;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .tab-button {
@@ -35,11 +44,13 @@
   justify-content: center;
   gap: 1px;
   color: rgba(91, 96, 106, 0.72);
+  background: transparent;
 }
 
 .tab-button.active {
   color: $green-deep;
-  background: rgba(157, 204, 117, 0.14);
+  background: rgba(157, 204, 117, 0.18);
+  box-shadow: 0 4px 14px rgba(111, 159, 86, 0.2);
   font-weight: 600;
 }
 

@@ -21,7 +21,7 @@ export default function ProfileMomentsPage() {
         onBack={() => void Taro.navigateBack()}
         onClose={() => void Taro.switchTab({ url: '/pages/profile/index' })}
       />
-      <ScrollView scrollY className='profile-sub-scroll'>
+      <ScrollView scrollY enhanced showScrollbar={false} className='profile-sub-scroll'>
         {loading && !moments.length ? (
           <View className='sub-state'>
             <View className='loader' />

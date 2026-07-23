@@ -10,6 +10,7 @@ export type TabKey = 'chat' | 'tasks' | 'rehearsal' | 'profile'
 
 export type CustomTabBarHandle = {
   setSelected: (index: number) => void
+  setVisible: (visible: boolean) => void
 }
 
 const TABS: { key: TabKey; label: string; url: string; Icon: typeof ChatIcon }[] = [
@@ -21,9 +22,11 @@ const TABS: { key: TabKey; label: string; url: string; Icon: typeof ChatIcon }[]
 
 const CustomTabBar = forwardRef<CustomTabBarHandle>((_, ref) => {
   const [selected, setSelected] = useState(0)
+  const [visible, setVisible] = useState(true)
 
   useImperativeHandle(ref, () => ({
     setSelected: (index: number) => setSelected(index),
+    setVisible: (next: boolean) => setVisible(next),
   }))
 
   const switchTab = async (index: number, url: string) => {
@@ -38,7 +41,7 @@ const CustomTabBar = forwardRef<CustomTabBarHandle>((_, ref) => {
   }
 
   return (
-    <View className='bottom-tabs-wrap'>
+    <View className={`bottom-tabs-wrap${visible ? '' : ' is-hidden'}`}>
       <View className='bottom-tabs'>
         {TABS.map((tab, index) => {
           const active = selected === index

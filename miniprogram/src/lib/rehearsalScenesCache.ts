@@ -2,21 +2,31 @@ import Taro from '@tarojs/taro'
 import type { RehearsalScene } from '@/data/rehearsalScenes'
 
 const KEY = 'childos_rehearsal_scenes_cache_v1'
-const TTL_MS = 90_000
+/** 超过此时长仍可展示，但下次进入应后台刷新 */
+const SOFT_TTL_MS = 90_000
+/** 超过此时长才丢弃缓存（避免登录后空白缓冲） */
+const HARD_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 export type RehearsalScenesCache = {
   at: number
   scenes: RehearsalScene[]
   rankedFromDialogue: boolean
+  /** true = 已过软 TTL，建议静默刷新 */
+  stale?: boolean
 }
 
-export function readRehearsalScenesCache(): RehearsalScenesCache | null {
+export function readRehearsalScenesCache(opts?: { allowStale?: boolean }): RehearsalScenesCache | null {
+  const allowStale = opts?.allowStale !== false
   try {
     const parsed = Taro.getStorageSync(KEY) as RehearsalScenesCache | ''
     if (!parsed || typeof parsed !== 'object' || !parsed.at) return null
-    if (Date.now() - parsed.at > TTL_MS) return null
     if (!Array.isArray(parsed.scenes) || !parsed.scenes.length) return null
-    return parsed
+    const age = Date.now() - parsed.at
+    if (!Number.isFinite(age) || age < 0) return null
+    if (age > HARD_TTL_MS) return null
+    const stale = age > SOFT_TTL_MS
+    if (stale && !allowStale) return null
+    return { ...parsed, stale }
   } catch {
     return null
   }

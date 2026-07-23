@@ -1,9 +1,10 @@
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HiFiMainShell } from '@/components/hifi/HiFiMainShell'
 import { HiFiInputZone } from '@/components/hifi/HiFiInputZone'
-import { useTabBar } from '@/hooks/useTabBar'
+import { useTabBar, hideRehearsalTabBar, showRehearsalTabBar } from '@/hooks/useTabBar'
+import { useChatAutoScroll, CHAT_SCROLL_ANCHOR_A, CHAT_SCROLL_ANCHOR_B } from '@/hooks/useChatAutoScroll'
 import { usePublicPageShare } from '@/hooks/useSharePage'
 import { SHARE_PATHS } from '@/lib/shareMessages'
 import { normalizeTaskTitle } from '@/lib/textDisplay'
@@ -11,8 +12,8 @@ import {
   SimulationParentBubble,
   SimulationSecondMeBubble,
   SimulationSystemHintBubble,
-  SimulationThinkingBubble,
 } from '@/components/rehearsal/SimulationBubbles'
+import { RehearsalGeneratingHint } from '@/components/rehearsal/RehearsalGeneratingHint'
 import { REHEARSAL_SCENES, type RehearsalScene, type SimulationStep } from '@/data/rehearsalScenes'
 import { mapAnalyzeToSecondMe, type RehearsalAnalyzeData } from '@/lib/rehearsalStream'
 import { getRehearsalEndCopy, pickRehearsalTaskTitle } from '@yujian/contracts/rehearsal-end'
@@ -55,7 +56,7 @@ type DialogueRehearsalContext = {
   sourceAnalysisId?: string
 }
 
-type FeedItem = RehearsalFeedItem | { type: 'thinking' }
+type FeedItem = RehearsalFeedItem
 
 type RehearsalHandoff = {
   sceneId?: string
@@ -63,7 +64,22 @@ type RehearsalHandoff = {
   parentText?: string
   rehearsalGoal?: string
   traceId?: string
+  retrievalPackDigest?: Record<string, unknown>
 }
+
+type BriefRequestCtx = {
+  parentText?: string
+  rehearsalGoal?: string
+  retrievalPackDigest?: Record<string, unknown>
+  /** 保留对话分析/handoff 带来的标题与摘要，不要被静态场景文案覆盖 */
+  preserveSceneCopy?: boolean
+  /** 带入上下文时的场景摘要兜底（避免 setState 未落盘时读到旧 summary） */
+  fallbackSituation?: string
+}
+
+type SeedApplyResult =
+  | { seeded: false }
+  | { seeded: true; sceneId: string; briefCtx: BriefRequestCtx }
 
 function truncate(text: string, max = 72) {
   const value = text.trim()
@@ -98,19 +114,55 @@ function matchSceneFromText(text: string, pool: RehearsalScene[]): RehearsalScen
   return list.find((s) => s.id === 'homework_start') || list[0]
 }
 
+function mapApiScenes(patches: RehearsalScene[]): RehearsalScene[] {
+  return patches.map((patch) => {
+    const base = REHEARSAL_SCENES.find((s) => s.id === patch.id)
+    return {
+      id: patch.id,
+      title: patch.title || base?.title || '练一句开口',
+      subtitle: patch.lede || patch.subtitle || base?.subtitle || '',
+      lede: patch.lede || patch.subtitle || base?.lede,
+      mentionCountHint: patch.mentionCountHint,
+      summary: patch.summary || base?.summary || '',
+      placeholder: base?.placeholder || '描述一下你想练的场景。',
+      seed: patch.seed || base?.seed || patch.title || '',
+      openingHint: patch.openingHint || base?.openingHint,
+      openingChild: patch.openingChild || base?.openingChild,
+      openingHintTitle: patch.openingHintTitle || base?.openingHintTitle,
+    } satisfies RehearsalScene
+  })
+}
+
+function readInitialScenes(): {
+  scenes: RehearsalScene[]
+  rankedFromDialogue: boolean
+} {
+  const cached = readRehearsalScenesCache({ allowStale: true })
+  if (cached?.scenes?.length) {
+    return {
+      scenes: cached.scenes,
+      rankedFromDialogue: cached.rankedFromDialogue,
+    }
+  }
+  return {
+    scenes: REHEARSAL_SCENES,
+    rankedFromDialogue: false,
+  }
+}
+
 export default function RehearsalPage() {
   useTabBar('rehearsal')
   usePublicPageShare({
     title: '育见 · 沟通预演',
     path: SHARE_PATHS.rehearsal,
   })
+  const [boot] = useState(() => readInitialScenes())
   const [step, setStep] = useState<SimulationStep>('entry')
-  const [scenes, setScenes] = useState<RehearsalScene[]>(REHEARSAL_SCENES)
-  const [scenesLoading, setScenesLoading] = useState(true)
-  const [rankedFromDialogue, setRankedFromDialogue] = useState(false)
-  const [selectedId, setSelectedId] = useState(REHEARSAL_SCENES[0].id)
-  const [summary, setSummary] = useState(REHEARSAL_SCENES[0].summary)
-  const [sceneTitle, setSceneTitle] = useState(REHEARSAL_SCENES[0].title)
+  const [scenes, setScenes] = useState<RehearsalScene[]>(boot.scenes)
+  const [rankedFromDialogue, setRankedFromDialogue] = useState(boot.rankedFromDialogue)
+  const [selectedId, setSelectedId] = useState(boot.scenes[0]?.id || REHEARSAL_SCENES[0].id)
+  const [summary, setSummary] = useState(boot.scenes[0]?.summary || REHEARSAL_SCENES[0].summary)
+  const [sceneTitle, setSceneTitle] = useState(boot.scenes[0]?.title || REHEARSAL_SCENES[0].title)
   const [statusText, setStatusText] = useState('')
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -127,6 +179,39 @@ export default function RehearsalPage() {
   const [childUnderstanding, setChildUnderstanding] = useState('')
   const [sceneBrief, setSceneBrief] = useState<RehearsalSceneBriefL3 | null>(null)
   const [briefLoading, setBriefLoading] = useState(false)
+  const briefRequestRef = useRef(0)
+  const stepRef = useRef(step)
+  const briefLoadingRef = useRef(briefLoading)
+  stepRef.current = step
+  briefLoadingRef.current = briefLoading
+
+  const scrollFingerprint = useMemo(() => {
+    const last = feed[feed.length - 1]
+    const loadingFlag = loading ? 1 : 0
+    if (!last) return `${feed.length}|${loadingFlag}`
+    if (last.type === 'parent') return `${feed.length}|p|${last.text.length}|${loadingFlag}`
+    if (last.type === 'child') {
+      return `${feed.length}|c|${last.childText.length}|${last.hintText.length}|${last.hintPending ? 1 : 0}|${last.suggestedText?.length ?? 0}|${loadingFlag}`
+    }
+    if (last.type === 'system_hint') return `${feed.length}|hint|${last.text.length}|${loadingFlag}`
+    return `${feed.length}|${loadingFlag}`
+  }, [feed, loading])
+
+  const { scrollIntoView, onScroll, scrollToBottom, resumeFollowOnSend, setViewHeight } =
+    useChatAutoScroll([scrollFingerprint], { enabled: step === 'active' })
+
+  useEffect(() => {
+    if (step !== 'active') return
+    const timer = setTimeout(() => {
+      Taro.createSelectorQuery()
+        .select('#rehearsal-chat-scroll')
+        .boundingClientRect((rect) => {
+          if (rect && !Array.isArray(rect) && rect.height) setViewHeight(rect.height)
+        })
+        .exec()
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [setViewHeight, feed.length, step])
 
   const selectedScene = scenes.find((s) => s.id === selectedId) || scenes[0] || REHEARSAL_SCENES[0]
 
@@ -147,112 +232,158 @@ export default function RehearsalPage() {
     setStep(saved.step)
   }, [])
 
-  const applySceneSeed = useCallback((): boolean => {
+  const applySceneSeed = useCallback((): SeedApplyResult => {
     try {
       const dialogueCtx = Taro.getStorageSync(REHEARSAL_DIALOGUE_CONTEXT_KEY) as DialogueRehearsalContext | ''
       if (dialogueCtx && typeof dialogueCtx === 'object' && dialogueCtx.sceneSummary) {
         Taro.removeStorageSync(REHEARSAL_DIALOGUE_CONTEXT_KEY)
+        try {
+          Taro.removeStorageSync(REHEARSAL_SCENE_SEED_KEY)
+          Taro.removeStorageSync(REHEARSAL_HANDOFF_KEY)
+        } catch {
+          /* ignore */
+        }
         const matched = matchSceneFromText(
           `${dialogueCtx.sceneTitle || ''} ${dialogueCtx.sceneSummary || ''}`,
           scenes
         )
+        const title = dialogueCtx.sceneTitle || matched.title
+        const sceneSummary = dialogueCtx.sceneSummary
+        const interimUnderstanding = [dialogueCtx.openingHint, dialogueCtx.tryTonight]
+          .map((part) => String(part || '').trim())
+          .filter(Boolean)
+          .join('\n')
         setSelectedId(matched.id)
-        setSceneTitle(dialogueCtx.sceneTitle || matched.title)
-        setSummary(dialogueCtx.sceneSummary)
+        setSceneTitle(title)
+        setSummary(sceneSummary)
+        setSceneSituation(sceneSummary)
+        setChildUnderstanding(interimUnderstanding)
+        setSceneBrief(null)
         setSourceAnalysisId(dialogueCtx.sourceAnalysisId)
-        setStep('confirm')
-        return true
+        return {
+          seeded: true,
+          sceneId: matched.id,
+          briefCtx: {
+            parentText: sceneSummary,
+            rehearsalGoal: dialogueCtx.tryTonight || dialogueCtx.openingHint || '围绕刚才的真实对话练开口',
+            preserveSceneCopy: true,
+            fallbackSituation: sceneSummary,
+          },
+        }
       }
       const handoff = Taro.getStorageSync(REHEARSAL_HANDOFF_KEY) as RehearsalHandoff | ''
       if (handoff && typeof handoff === 'object' && (handoff.seedText || handoff.sceneId)) {
         Taro.removeStorageSync(REHEARSAL_HANDOFF_KEY)
+        try {
+          Taro.removeStorageSync(REHEARSAL_SCENE_SEED_KEY)
+        } catch {
+          /* ignore */
+        }
         const matched =
           scenes.find((s) => s.id === handoff.sceneId) ||
           matchSceneFromText(handoff.seedText || handoff.parentText || '', scenes)
-        setSelectedId(matched.id)
-        setSceneTitle(matched.title)
-        setSummary(
+        const nextSummary =
           [handoff.parentText, handoff.rehearsalGoal, handoff.seedText]
             .filter((part): part is string => Boolean(part?.trim()))
             .join('。')
             .slice(0, 800) || matched.summary
-        )
-        setStep('confirm')
-        return true
+        setSelectedId(matched.id)
+        setSceneTitle(matched.title)
+        setSummary(nextSummary)
+        setSceneSituation(nextSummary)
+        setChildUnderstanding('')
+        setSceneBrief(null)
+        return {
+          seeded: true,
+          sceneId: matched.id,
+          briefCtx: {
+            parentText: handoff.parentText || handoff.seedText || nextSummary,
+            rehearsalGoal: handoff.rehearsalGoal,
+            retrievalPackDigest: handoff.retrievalPackDigest,
+            preserveSceneCopy: true,
+            fallbackSituation: nextSummary,
+          },
+        }
       }
       const seed = Taro.getStorageSync(REHEARSAL_SCENE_SEED_KEY)
-      if (!seed) return false
+      if (!seed) return { seeded: false }
       Taro.removeStorageSync(REHEARSAL_SCENE_SEED_KEY)
       const seedText = String(seed)
       const matched =
         scenes.find(
           (s) => s.title.includes(seedText) || s.seed === seedText || seedText.includes(s.title.slice(0, 2))
         ) || matchSceneFromText(seedText, scenes)
+      const nextSummary = seedText.length > 40 ? seedText : matched.summary
       setSelectedId(matched.id)
-      setSummary(seedText.length > 40 ? seedText : matched.summary)
+      setSummary(nextSummary)
       setSceneTitle(matched.title)
-      setStep('confirm')
-      return true
+      setSceneSituation(nextSummary)
+      setChildUnderstanding('')
+      setSceneBrief(null)
+      return {
+        seeded: true,
+        sceneId: matched.id,
+        briefCtx: {
+          parentText: nextSummary,
+          preserveSceneCopy: true,
+          fallbackSituation: nextSummary,
+        },
+      }
     } catch {
-      return false
+      return { seeded: false }
     }
   }, [scenes])
 
-  useEffect(() => {
-    const cached = readRehearsalScenesCache()
-    if (cached) {
-      setScenes(cached.scenes)
-      setRankedFromDialogue(cached.rankedFromDialogue)
-      setScenesLoading(false)
-    }
-    void (async () => {
-      if (!cached) setScenesLoading(true)
-      const res = await apiRequest<{
-        scenes?: RehearsalScene[]
-        rankedFromDialogue?: boolean
-      }>('/api/rehearsal/scenes')
-      if (!res.ok || !res.data.scenes?.length) {
-        if (!cached) setScenesLoading(false)
-        setRankedFromDialogue(false)
-        return
+  const refreshScenesSilently = useCallback(async () => {
+    const res = await apiRequest<{
+      scenes?: RehearsalScene[]
+      rankedFromDialogue?: boolean
+    }>('/api/rehearsal/scenes')
+    if (!res.ok || !res.data.scenes?.length) return
+    const next = mapApiScenes(res.data.scenes)
+    const ranked = Boolean(res.data.rankedFromDialogue)
+    setRankedFromDialogue(ranked)
+    setScenes(next)
+    writeRehearsalScenesCache(next, ranked)
+    setSelectedId((prev) => {
+      if (next.some((s) => s.id === prev)) return prev
+      const first = next[0]
+      if (first) {
+        setSceneTitle(first.title)
+        setSummary(first.summary)
+        return first.id
       }
-      setRankedFromDialogue(Boolean(res.data.rankedFromDialogue))
-      const next = res.data.scenes!.map((patch) => {
-        const base = REHEARSAL_SCENES.find((s) => s.id === patch.id)
-        return {
-          id: patch.id,
-          title: patch.title || base?.title || '练一句开口',
-          subtitle: patch.lede || patch.subtitle || base?.subtitle || '',
-          lede: patch.lede || patch.subtitle || base?.lede,
-          mentionCountHint: patch.mentionCountHint,
-          summary: patch.summary || base?.summary || '',
-          placeholder: base?.placeholder || '描述一下你想练的场景。',
-          seed: patch.seed || base?.seed || patch.title || '',
-          openingHint: patch.openingHint || base?.openingHint,
-          openingChild: patch.openingChild || base?.openingChild,
-          openingHintTitle: patch.openingHintTitle || base?.openingHintTitle,
-        } satisfies RehearsalScene
-      })
-      setScenes(next)
-      writeRehearsalScenesCache(next, Boolean(res.data.rankedFromDialogue))
-      if (next[0] && !next.some((s) => s.id === selectedId)) {
-        setSelectedId(next[0].id)
-        setSceneTitle(next[0].title)
-        setSummary(next[0].summary)
-      }
-      setScenesLoading(false)
-    })()
+      return prev
+    })
   }, [])
 
   useDidShow(async () => {
     const user = await fetchCurrentUser()
     if (!requireOnboardingComplete(user)) return
-    const seeded = applySceneSeed()
-    if (!seeded) {
+    // 每次进入预演 Tab：静默刷新场景，不打断当前列表
+    void refreshScenesSilently()
+    const seedResult = applySceneSeed()
+    if (seedResult.seeded) {
+      await openSceneBrief(seedResult.sceneId, seedResult.briefCtx)
+    } else {
       const saved = loadRehearsalSession()
-      if (saved && saved.step !== 'entry') {
+      const canResumeActive =
+        saved?.step === 'active' && Array.isArray(saved.feed) && saved.feed.length > 0
+      if (canResumeActive && saved) {
         restoreRehearsalSession(saved)
         Taro.showToast({ title: '已恢复上次预演', icon: 'none', duration: 2000 })
+      } else {
+        // Tab 默认首页 = 选个场景练；不自动跳进 confirm「正在整理场景」
+        if (saved) clearRehearsalSession()
+        if (
+          !briefLoadingRef.current &&
+          stepRef.current !== 'active' &&
+          stepRef.current !== 'end'
+        ) {
+          briefRequestRef.current += 1
+          setBriefLoading(false)
+          setStep('entry')
+        }
       }
     }
     let lastId = loadLastDialogueAnalysisId()
@@ -268,7 +399,7 @@ export default function RehearsalPage() {
   })
 
   useEffect(() => {
-    if (step === 'entry') return
+    if (step === 'entry' || step === 'confirm') return
     saveRehearsalSession({
       version: 1,
       savedAt: new Date().toISOString(),
@@ -277,7 +408,7 @@ export default function RehearsalPage() {
       summary,
       sceneTitle,
       statusText,
-      feed: feed.filter((item): item is RehearsalFeedItem => item.type !== 'thinking'),
+      feed,
       round,
       roundsSinceCheckpoint,
       showCheckpoint,
@@ -304,26 +435,47 @@ export default function RehearsalPage() {
     sourceAnalysisId,
   ])
 
+  const tabBarHiddenByUsRef = useRef(false)
+
   useEffect(() => {
-    if (step === 'active' || step === 'end') {
-      void Taro.hideTabBar({ animation: true })
-    } else {
-      void Taro.showTabBar({ animation: true })
+    const shouldHide = step === 'active' || step === 'end'
+    if (shouldHide) {
+      hideRehearsalTabBar()
+      tabBarHiddenByUsRef.current = true
+      return
+    }
+    // entry/confirm：只有我们主动 hide 过才 show，避免一进预演就拉出原生文字栏
+    if (tabBarHiddenByUsRef.current) {
+      showRehearsalTabBar()
+      tabBarHiddenByUsRef.current = false
     }
   }, [step])
 
-  const openSceneBrief = async (sceneId: string) => {
-    if (briefLoading) return
+  // 确认页只用 RehearsalGeneratingHint，禁止/清掉微信原生 showLoading 遮罩（含热更新残留）
+  useEffect(() => {
+    if (step !== 'confirm' && !briefLoading) return
+    Taro.hideLoading()
+  }, [step, briefLoading])
+
+  const openSceneBrief = async (sceneId: string, ctx?: BriefRequestCtx) => {
     const scene = scenes.find((s) => s.id === sceneId)
     if (!scene) return
-    setSelectedId(scene.id)
-    setSceneTitle(scene.title)
-    setSummary(scene.summary)
-    setSceneSituation(scene.summary)
-    setChildUnderstanding('')
-    setSceneBrief(null)
-    setStep('confirm')
+    const requestId = ++briefRequestRef.current
+    const fallbackSituation = ctx?.fallbackSituation || ctx?.parentText || scene.summary
     setBriefLoading(true)
+    setStep('confirm')
+    Taro.hideLoading()
+    setSelectedId(scene.id)
+    if (!ctx?.preserveSceneCopy) {
+      setSceneTitle(scene.title)
+      setSummary(scene.summary)
+      setSceneSituation(scene.summary)
+      setChildUnderstanding('')
+      setSceneBrief(null)
+    } else {
+      setSceneSituation(fallbackSituation)
+      setSceneBrief(null)
+    }
     try {
       const res = await apiRequest<{
         sceneSituation?: string
@@ -335,13 +487,20 @@ export default function RehearsalPage() {
         initialStatusText?: string
       }>('/api/rehearsal/brief', {
         method: 'POST',
-        data: { sceneId: scene.id },
+        timeout: 90000,
+        data: {
+          sceneId: scene.id,
+          ...(ctx?.parentText ? { parentText: ctx.parentText } : {}),
+          ...(ctx?.rehearsalGoal ? { rehearsalGoal: ctx.rehearsalGoal } : {}),
+          ...(ctx?.retrievalPackDigest ? { retrievalPackDigest: ctx.retrievalPackDigest } : {}),
+        },
       })
+      if (requestId !== briefRequestRef.current) return
       if (res.ok) {
         const bullets = (res.data.understandingBullets || [])
           .map((b) => String(b || '').trim())
           .filter((b) => b.length > 4)
-        setSceneSituation(res.data.sceneSituation || scene.summary)
+        setSceneSituation(res.data.sceneSituation || fallbackSituation)
         setChildUnderstanding(
           bullets.length >= 2
             ? bullets.join('\n')
@@ -367,18 +526,34 @@ export default function RehearsalPage() {
             )
           )
         }
-      } else {
+      } else if (!ctx?.preserveSceneCopy) {
+        setSceneSituation(scene.summary)
+        setChildUnderstanding('')
+        setSceneBrief(null)
+        Taro.showToast({ title: '场景整理未完成，可先按摘要练', icon: 'none', duration: 2200 })
+      }
+    } catch {
+      if (requestId !== briefRequestRef.current) return
+      if (!ctx?.preserveSceneCopy) {
         setSceneSituation(scene.summary)
         setChildUnderstanding('')
         setSceneBrief(null)
       }
-    } catch {
-      setSceneSituation(scene.summary)
-      setChildUnderstanding('')
-      setSceneBrief(null)
+      Taro.showToast({ title: '网络较慢，可先按摘要练', icon: 'none', duration: 2200 })
     } finally {
-      setBriefLoading(false)
+      if (requestId === briefRequestRef.current) {
+        setBriefLoading(false)
+        Taro.hideLoading()
+      }
     }
+  }
+
+  const backToEntry = () => {
+    briefRequestRef.current += 1
+    setBriefLoading(false)
+    Taro.hideLoading()
+    clearRehearsalSession()
+    setStep('entry')
   }
 
   const startSimulation = () => void openSceneBrief(selectedId)
@@ -403,6 +578,8 @@ export default function RehearsalPage() {
       },
     ])
     setStep('active')
+    setTimeout(() => scrollToBottom(true), 80)
+    setTimeout(() => scrollToBottom(true), 280)
   }
 
   const patchLastChild = (patch: Partial<Extract<FeedItem, { type: 'child' }>>) => {
@@ -422,10 +599,20 @@ export default function RehearsalPage() {
     const value = text.trim()
     if (!value || loading || step !== 'active') return
 
-    setFeed((prev) => [...prev, { type: 'parent', text: value }, { type: 'thinking' }])
+    const pendingChild: Extract<FeedItem, { type: 'child' }> = {
+      type: 'child',
+      childText: '',
+      hintTitle: '他可能是这样听到的',
+      hintText: '',
+      hintPending: true,
+    }
+    resumeFollowOnSend()
+    setFeed((prev) => [...prev, { type: 'parent', text: value }, pendingChild])
     setLoading(true)
+    setTimeout(() => scrollToBottom(true), 32)
+    setTimeout(() => scrollToBottom(true), 120)
+    setTimeout(() => scrollToBottom(true), 280)
 
-    let childBubbleStarted = false
     const parentText = `【预演场景：${sceneTitle}】\n场景摘要：${summary}\n家长说：${value}`
 
     const priorTurns = feed
@@ -446,28 +633,14 @@ export default function RehearsalPage() {
       round + 1,
       {
       onReactionDelta: (reactionText) => {
-        setFeed((prev) => prev.filter((item) => item.type !== 'thinking'))
-        if (!childBubbleStarted) {
-          childBubbleStarted = true
-          setFeed((prev) => [
-            ...prev,
-            {
-              type: 'child',
-              childText: reactionText,
-              hintTitle: '他可能是这样想的',
-              hintText: '…',
-            },
-          ])
-        } else {
-          patchLastChild({ childText: reactionText })
-        }
+        patchLastChild({ childText: reactionText })
       },
       onFinal: (data) => {
         if (data.traceId) setRehearsalTraceId(data.traceId)
         const reply = mapAnalyzeToSecondMe(data)
         setEndData(data)
         setFeed((prev) => {
-          const next = prev.filter((item) => item.type !== 'thinking')
+          const next = [...prev]
           const childItem: Extract<FeedItem, { type: 'child' }> = {
             type: 'child',
             childText: reply.childText,
@@ -476,15 +649,11 @@ export default function RehearsalPage() {
             suggestedTitle: reply.suggestedTitle,
             suggestedText: reply.suggestedText,
           }
-          if (childBubbleStarted) {
-            for (let i = next.length - 1; i >= 0; i--) {
-              if (next[i].type === 'child') {
-                next[i] = childItem
-                break
-              }
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (next[i].type === 'child') {
+              next[i] = childItem
+              break
             }
-          } else {
-            next.push(childItem)
           }
           return reply.dailyToneReminder
             ? [...next, { type: 'system_hint', text: reply.dailyToneReminder }]
@@ -506,15 +675,12 @@ export default function RehearsalPage() {
         })
       },
       onError: (message) => {
-        setFeed((prev) => [
-          ...prev.filter((item) => item.type !== 'thinking'),
-          {
-            type: 'child',
-            childText: '……（这次没有模拟出来，你可以换一句更轻的试试）',
-            hintTitle: '预演暂时中断',
-            hintText: message,
-          },
-        ])
+        patchLastChild({
+          childText: '……（这次没有模拟出来，你可以换一句更轻的试试）',
+          hintTitle: '预演暂时中断',
+          hintText: message,
+          hintPending: false,
+        })
       },
       },
       {
@@ -549,15 +715,12 @@ export default function RehearsalPage() {
     setLoading(false)
 
     if (result.httpError && !result.data) {
-      setFeed((prev) => [
-        ...prev.filter((item) => item.type !== 'thinking'),
-        {
-          type: 'child',
-          childText: '……（这次没有模拟出来）',
-          hintTitle: '网络不太稳定',
-          hintText: result.httpError || '请稍后再试',
-        },
-      ])
+      patchLastChild({
+        childText: '……（这次没有模拟出来）',
+        hintTitle: '网络不太稳定',
+        hintText: result.httpError || '请稍后再试',
+        hintPending: false,
+      })
     }
   }
 
@@ -632,7 +795,7 @@ export default function RehearsalPage() {
           enhanced
           showScrollbar={false}
         >
-          <Text className='hero-title page-heading'>选个场景{'\n'}练怎么开口</Text>
+          <Text className='hero-title page-heading'>选个场景练</Text>
 
           <View
             className='voice-hero'
@@ -652,7 +815,7 @@ export default function RehearsalPage() {
           <View className='section-head-row'>
             <Text className='section-label'>从对话里提出的痛点</Text>
             <Text className='section-head-meta muted'>
-              {scenesLoading ? '整理中…' : rankedFromDialogue ? '按近期交流排序' : '可练场景'}
+              {rankedFromDialogue ? '按近期交流排序' : '可练场景'}
             </Text>
           </View>
 
@@ -661,7 +824,11 @@ export default function RehearsalPage() {
               <View
                 key={scene.id}
                 className={`scenario-card scene-card${selectedId === scene.id ? ' active' : ''}`}
-                onClick={() => void openSceneBrief(scene.id)}
+                onClick={() => {
+                  setSelectedId(scene.id)
+                  setSceneTitle(scene.title)
+                  setSummary(scene.summary)
+                }}
               >
                 <View className='scene-meta'>
                   {scene.mentionCountHint ? (
@@ -676,40 +843,55 @@ export default function RehearsalPage() {
                 <Text className='scenario-desc muted'>{scene.lede || scene.subtitle}</Text>
               </View>
             ))}
-            {scenesLoading && scenes.length <= REHEARSAL_SCENES.length ? (
-              <Text className='muted scene-grid-hint'>正在刷新场景排序…</Text>
-            ) : null}
           </View>
-          <Text className='pill primary wide-pill' onClick={() => void startSimulation()}>
-            {briefLoading ? '正在整理场景…' : '开始预演'}
-          </Text>
+          <View className='pill primary wide-pill' hoverClass='none' onClick={() => void startSimulation()}>
+            <Text className='wide-pill__label'>
+              {briefLoading ? '正在整理场景…' : '开始预演'}
+            </Text>
+          </View>
 
-          {lastDialogueAnalysisId ? (
-            <View
-              className='dialogue-entry-card dialogue-entry-card--resume'
-              onClick={() =>
-                void Taro.navigateTo({
-                  url: `/pages/rehearsal/dialogue-result/index?id=${encodeURIComponent(lastDialogueAnalysisId)}`,
-                })
-              }
+          <View className={`rehearsal-footnote${lastDialogueAnalysisId ? ' has-action' : ''}`}>
+            {lastDialogueAnalysisId ? (
+              <View
+                className='rehearsal-footnote__action'
+                hoverClass='none'
+                onClick={() =>
+                  void Taro.navigateTo({
+                    url: `/pages/rehearsal/dialogue-result/index?id=${encodeURIComponent(lastDialogueAnalysisId)}`,
+                  })
+                }
+              >
+                <View className='rehearsal-footnote__action-copy'>
+                  <Text className='rehearsal-footnote__eyebrow'>录音分析</Text>
+                  <Text className='rehearsal-footnote__title'>查看上次对话分析</Text>
+                  <Text className='rehearsal-footnote__desc'>转写与解读已保存，可带入情景预演</Text>
+                </View>
+                <View className='rehearsal-footnote__chev' aria-hidden />
+              </View>
+            ) : null}
+            <Text
+              className={`rehearsal-footnote__note${lastDialogueAnalysisId ? ' is-divided' : ''}`}
             >
-              <Text className='dialogue-entry-title'>查看上次对话分析</Text>
-              <Text className='dialogue-entry-desc muted'>录音转写与解读已保存，可继续带入情景预演</Text>
-            </View>
-          ) : null}
-
-          <Text className='boundary-note muted'>{childCopy.rehearsalDisclaimer}</Text>
+              {childCopy.rehearsalDisclaimer}
+            </Text>
+          </View>
           <View id='rehearsal-entry-bottom' className='scroll-anchor' />
         </ScrollView>
       ) : null}
 
       {step === 'confirm' ? (
         <View className='rehearsal-brief-layout'>
-          <Text className='nav-back' onClick={() => { clearRehearsalSession(); setStep('entry') }}>
+          <Text className='nav-back' onClick={backToEntry}>
             ← 返回选场景
           </Text>
           <Text className='brief-lede'>这次先按这个痛点场景来练</Text>
           <Text className='brief-sub muted'>{briefSubLine}</Text>
+
+          {briefLoading ? (
+            <View className='brief-loading-banner'>
+              <RehearsalGeneratingHint />
+            </View>
+          ) : null}
 
           <View className='info-card'>
             <Text className='card-eyebrow'>这个场景长什么样</Text>
@@ -721,7 +903,11 @@ export default function RehearsalPage() {
             <Text className='card-eyebrow'>{childCopy.inSceneMemory}</Text>
             <Text className='info-card-title'>我会参考这些理解</Text>
             {briefLoading ? (
-              <Text className='insight-loading muted'>{childCopy.simulatingReaction}</Text>
+              <View className='insight-skeleton'>
+                <View className='insight-skeleton-line insight-skeleton-line--long' />
+                <View className='insight-skeleton-line insight-skeleton-line--mid' />
+                <View className='insight-skeleton-line insight-skeleton-line--short' />
+              </View>
             ) : insightBullets.length ? (
               <View className='insight-list'>
                 {insightBullets.map((bullet, index) => (
@@ -735,9 +921,18 @@ export default function RehearsalPage() {
             )}
           </View>
 
-          <Text className='pill primary wide-pill' onClick={enterRehearsal}>
-            进入预演
-          </Text>
+          <View
+            className={`pill primary wide-pill${briefLoading ? ' disabled' : ''}`}
+            hoverClass='none'
+            onClick={() => {
+              if (briefLoading) return
+              enterRehearsal()
+            }}
+          >
+            <Text className='wide-pill__label'>
+              {briefLoading ? '正在整理场景…' : '进入预演'}
+            </Text>
+          </View>
         </View>
       ) : null}
 
@@ -758,6 +953,8 @@ export default function RehearsalPage() {
               className='chat-scroll-view'
               scrollY
               scrollWithAnimation
+              scrollIntoView={scrollIntoView}
+              onScroll={onScroll}
               enhanced
               showScrollbar={false}
             >
@@ -765,19 +962,20 @@ export default function RehearsalPage() {
                 {feed.map((item, i) => {
                   if (item.type === 'parent') return <SimulationParentBubble key={i} text={item.text} />
                   if (item.type === 'system_hint') return <SimulationSystemHintBubble key={i} text={item.text} />
-                  if (item.type === 'thinking') return <SimulationThinkingBubble key={i} />
                   return (
                     <SimulationSecondMeBubble
                       key={i}
                       childText={item.childText}
                       hintTitle={item.hintTitle}
                       hintText={item.hintText}
+                      hintPending={item.hintPending}
                       suggestedTitle={item.suggestedTitle}
                       suggestedText={item.suggestedText}
                     />
                   )
                 })}
-                <View id='rehearsal-chat-anchor' className='scroll-anchor' />
+                <View id={CHAT_SCROLL_ANCHOR_A} className='scroll-anchor' />
+                <View id={CHAT_SCROLL_ANCHOR_B} className='scroll-anchor' />
               </View>
             </ScrollView>
           </View>

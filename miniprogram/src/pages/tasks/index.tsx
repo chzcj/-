@@ -40,9 +40,29 @@ export default function TasksPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  /** 真机上 keyframes 常不跑；先挂载再加 is-shown，靠 opacity transition 淡入 */
+  const [historyShown, setHistoryShown] = useState(false)
   const [outbox, setOutbox] = useState<TaskOutboxSummary>(() => getTaskOutboxSummary())
   const [retryingOutbox, setRetryingOutbox] = useState(false)
   const uiCopy = childSystemCopy(getChildDisplayName())
+
+  useEffect(() => {
+    if (!historyOpen) {
+      setHistoryShown(false)
+      return
+    }
+    const timer = setTimeout(() => setHistoryShown(true), 30)
+    return () => clearTimeout(timer)
+  }, [historyOpen])
+
+  const toggleHistory = () => {
+    if (historyOpen) {
+      setHistoryShown(false)
+      setTimeout(() => setHistoryOpen(false), 420)
+      return
+    }
+    setHistoryOpen(true)
+  }
 
   const loadTasks = async () => {
     setLoading(true)
@@ -185,7 +205,7 @@ export default function TasksPage() {
                             {open ? uiCopy.collapseFeedback : uiCopy.expandFeedback}
                           </Text>
                           <View className='task-card-a__chev'>
-                            <Text className='task-card-a__chev-icon'>⌄</Text>
+                            <View className='task-card-a__chev-icon' />
                           </View>
                         </View>
                       </View>
@@ -209,11 +229,12 @@ export default function TasksPage() {
           </View>
           {history.length ? (
             <View className='task-history'>
-              <Text className='section-label' onClick={() => setHistoryOpen((value) => !value)}>
+              <Text className='section-label' onClick={toggleHistory}>
                 已完成与过去尝试 {historyOpen ? '▾' : '▸'}
               </Text>
-              {historyOpen
-                ? history.map((task) => {
+              {historyOpen ? (
+                <View className={`task-history-list${historyShown ? ' is-shown' : ''}`}>
+                  {history.map((task) => {
                     const display = normalizeTaskDisplay(task)
                     return (
                       <View key={task.id} className='task-history-row'>
@@ -221,8 +242,9 @@ export default function TasksPage() {
                         <Text className='task-subtitle muted'>{taskStatus(task)}</Text>
                       </View>
                     )
-                  })
-                : null}
+                  })}
+                </View>
+              ) : null}
             </View>
           ) : null}
         </>

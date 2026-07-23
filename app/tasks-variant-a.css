@@ -185,10 +185,12 @@
   border-top: none;
 }
 
-.hifi-app-root .task-card-a .feedback-label {
+.hifi-app-root .task-card-a .feedback-label,
+.hifi-app-root .task-card-a .feedback-question {
   margin: 0 0 10px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--muted);
 }
 
@@ -235,7 +237,7 @@
 
 .hifi-app-root .task-card-a .task-why-kicker {
   margin: 0 0 6px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #6f9f56;
 }
@@ -267,17 +269,31 @@
 .hifi-app-root .task-card-a .task-feedback-submit {
   width: 100%;
   margin-top: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hifi-app-root .task-card-a .task-feedback-more .feedback-question {
-  font-size: 0.75rem;
-  margin-bottom: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 10px;
 }
 
 .hifi-app-root .task-card-a .task-feedback-more .feedback-note {
   background: rgba(255, 255, 255, 0.68);
   border: 1px solid rgba(111, 166, 95, 0.12);
   box-shadow: none;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.hifi-app-root .task-card-a .task-feedback-more .feedback-note::placeholder {
+  font-size: 0.875rem;
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,6 @@
 import { View, Text } from '@tarojs/components'
 import { getChildDisplayName } from '@/services/childStorage'
+import { RehearsalAnimatedEllipsis } from '@/components/rehearsal/RehearsalAnimatedEllipsis'
 
 function childAvatarLabel(name: string) {
   const trimmed = name.trim()
@@ -34,19 +35,28 @@ type SecondMeProps = {
   childText: string
   hintTitle: string
   hintText: string
+  hintPending?: boolean
   suggestedTitle?: string
   suggestedText?: string
+}
+
+function isHintPlaceholder(text: string): boolean {
+  const t = text.trim()
+  return t === '…' || t === '...' || t === '。。。' || t === '……' || /^[.…]{2,}$/.test(t)
 }
 
 export function SimulationSecondMeBubble({
   childText,
   hintTitle,
   hintText,
+  hintPending = false,
   suggestedTitle,
   suggestedText,
 }: SecondMeProps) {
   const childName = getChildDisplayName()
   const avatarLabel = childAvatarLabel(childName)
+  const showBubbleLoading = !childText.trim()
+  const showHintLoading = hintPending || isHintPlaceholder(hintText)
 
   return (
     <View className='rehearsal-msg rehearsal-msg--child'>
@@ -56,12 +66,20 @@ export function SimulationSecondMeBubble({
       <View className='rehearsal-msg-col'>
         <View className='rehearsal-child-stack'>
           <View className='rehearsal-bubble rehearsal-bubble--child'>
-            <Text className='rehearsal-bubble-text'>{childText}</Text>
+            {showBubbleLoading ? (
+              <RehearsalAnimatedEllipsis variant='bubble' />
+            ) : (
+              <Text className='rehearsal-bubble-text'>{childText}</Text>
+            )}
           </View>
-          {hintText ? (
+          {(showHintLoading || hintText) ? (
             <View className='rehearsal-child-insight'>
               <Text className='rehearsal-child-insight-label'>{hintTitle}</Text>
-              <Text className='rehearsal-child-insight-body'>{hintText}</Text>
+              {showHintLoading ? (
+                <RehearsalAnimatedEllipsis variant='insight' />
+              ) : (
+                <Text className='rehearsal-child-insight-body'>{hintText}</Text>
+              )}
             </View>
           ) : null}
           {suggestedText ? (
@@ -70,25 +88,6 @@ export function SimulationSecondMeBubble({
               <Text className='rehearsal-child-insight-body'>{suggestedText}</Text>
             </View>
           ) : null}
-        </View>
-      </View>
-    </View>
-  )
-}
-
-export function SimulationThinkingBubble() {
-  return (
-    <View className='rehearsal-msg rehearsal-msg--child'>
-      <View className='rehearsal-avatar'>
-        <Text>…</Text>
-      </View>
-      <View className='rehearsal-msg-col'>
-        <View className='rehearsal-bubble rehearsal-bubble--child thinking-bubble'>
-          <View className='thinking-dots'>
-            <View className='thinking-dots-dot' />
-            <View className='thinking-dots-dot' />
-            <View className='thinking-dots-dot' />
-          </View>
         </View>
       </View>
     </View>

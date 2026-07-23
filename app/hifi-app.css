@@ -607,6 +607,85 @@
       display: grid;
       gap: 10px;
     }
+.hifi-app-root .rehearsal-footnote{
+      margin: 2px 0 4px;
+      padding: 14px 16px 15px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(111, 159, 86, 0.2);
+      box-shadow: 0 4px 14px rgba(31, 39, 51, 0.04);
+    }
+.hifi-app-root .rehearsal-footnote.has-action{
+      padding-top: 12px;
+    }
+.hifi-app-root .rehearsal-footnote__action{
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 2px 2px 12px;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+    }
+.hifi-app-root .rehearsal-footnote__action-copy{
+      flex: 1;
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+.hifi-app-root .rehearsal-footnote__eyebrow{
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #6f9f56;
+    }
+.hifi-app-root .rehearsal-footnote__title{
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+      color: #202633;
+    }
+.hifi-app-root .rehearsal-footnote__desc{
+      display: block;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #5c616d;
+    }
+.hifi-app-root .rehearsal-footnote__chev{
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(241, 248, 223, 0.95);
+      border: 1px solid rgba(111, 159, 86, 0.22);
+      position: relative;
+    }
+.hifi-app-root .rehearsal-footnote__chev::after{
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 48%;
+      width: 7px;
+      height: 7px;
+      border-right: 2px solid #6f9f56;
+      border-bottom: 2px solid #6f9f56;
+      transform: translate(-40%, -50%) rotate(-45deg);
+    }
+.hifi-app-root .rehearsal-footnote__note{
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #5c616d;
+}
+.hifi-app-root .rehearsal-footnote__note.is-divided{
+      padding-top: 12px;
+      border-top: 1px solid rgba(111, 159, 86, 0.16);
+    }
 .hifi-app-root .feedback-actions, .hifi-app-root .end-actions{
       margin-top: 14px;
       display: flex;

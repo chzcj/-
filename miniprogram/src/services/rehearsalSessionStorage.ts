@@ -13,6 +13,7 @@ export type RehearsalFeedItem =
       childText: string
       hintTitle: string
       hintText: string
+      hintPending?: boolean
       suggestedTitle?: string
       suggestedText?: string
     }
@@ -39,6 +40,8 @@ export type RehearsalActiveSession = {
 
 export function saveRehearsalSession(session: RehearsalActiveSession): void {
   try {
+    // entry/confirm 不落盘（confirm 落盘会让下次点 Tab 掉进「正在整理场景」）
+    if (session.step === 'entry' || session.step === 'confirm') return
     const feed = session.feed.slice(-MAX_FEED_ITEMS)
     Taro.setStorageSync(STORAGE_KEY, {
       ...session,
@@ -54,7 +57,11 @@ export function loadRehearsalSession(): RehearsalActiveSession | null {
   try {
     const raw = Taro.getStorageSync(STORAGE_KEY) as RehearsalActiveSession | ''
     if (!raw || typeof raw !== 'object' || raw.version !== 1) return null
-    if (!raw.step || raw.step === 'entry') return null
+    // 只恢复真正开练的对话；confirm 半成品一律丢掉
+    if (!raw.step || raw.step === 'entry' || raw.step === 'confirm') {
+      if (raw.step === 'confirm') clearRehearsalSession()
+      return null
+    }
     const age = Date.now() - new Date(raw.savedAt || 0).getTime()
     if (!Number.isFinite(age) || age > MAX_AGE_MS) {
       clearRehearsalSession()

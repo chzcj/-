@@ -641,23 +641,31 @@ export default function RehearsalPage() {
             <button className="primary-button wide-button" type="button" onClick={startSimulation} disabled={briefLoading}>
               {briefLoading ? '正在整理场景…' : '开始预演'}
             </button>
-            {lastDialogueAnalysisId ? (
-              <button
-                type="button"
-                className="dialogue-resume-card"
-                onClick={() =>
-                  router.push(
-                    `/rehearsal/dialogue-result?id=${encodeURIComponent(lastDialogueAnalysisId)}`
-                  )
-                }
+            <div className={`rehearsal-footnote${lastDialogueAnalysisId ? ' has-action' : ''}`}>
+              {lastDialogueAnalysisId ? (
+                <button
+                  type="button"
+                  className="rehearsal-footnote__action"
+                  onClick={() =>
+                    router.push(
+                      `/rehearsal/dialogue-result?id=${encodeURIComponent(lastDialogueAnalysisId)}`
+                    )
+                  }
+                >
+                  <span className="rehearsal-footnote__action-copy">
+                    <span className="rehearsal-footnote__eyebrow">录音分析</span>
+                    <span className="rehearsal-footnote__title">查看上次对话分析</span>
+                    <span className="rehearsal-footnote__desc">转写与解读已保存，可带入情景预演</span>
+                  </span>
+                  <span className="rehearsal-footnote__chev" aria-hidden />
+                </button>
+              ) : null}
+              <p
+                className={`rehearsal-footnote__note${lastDialogueAnalysisId ? ' is-divided' : ''}`}
               >
-                <span className="dialogue-resume-card__title">查看上次对话分析</span>
-                <span className="dialogue-resume-card__desc">
-                  录音转写与解读已保存，可继续带入情景预演
-                </span>
-              </button>
-            ) : null}
-            <p className="boundary-note">{childCopy.rehearsalDisclaimer}</p>
+                {childCopy.rehearsalDisclaimer}
+              </p>
+            </div>
           </div>
         </div>
 

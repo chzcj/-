@@ -33,7 +33,7 @@ export default function ProfileHandbookPage() {
           更新中…
         </Text>
       ) : null}
-      <ScrollView scrollY className='profile-sub-scroll'>
+      <ScrollView scrollY enhanced showScrollbar={false} className='profile-sub-scroll'>
         {loading && !handbook && !heroCopy ? (
           <View className='sub-state'>
             <View className='loader' />

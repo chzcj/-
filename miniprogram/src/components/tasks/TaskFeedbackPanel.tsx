@@ -163,17 +163,15 @@ export function TaskFeedbackPanel({
             <Textarea
               className='feedback-note'
               placeholder='只记录结果，不编辑任务内容'
+              placeholderStyle='font-size:14px;color:#868b94;line-height:1.55'
               value={noteDraft}
               disabled={disabled}
               onInput={(e) => setNoteDraft(e.detail.value)}
             />
           </View>
-          <Text
-            className='pill primary block task-feedback-submit'
-            onClick={submitSupplement}
-          >
-            {copy.saveSupplement}
-          </Text>
+          <View className='pill primary block task-feedback-submit' onClick={submitSupplement}>
+            <Text className='task-feedback-submit-label'>{copy.saveSupplement}</Text>
+          </View>
         </View>
       ) : null}
     </View>

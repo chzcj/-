@@ -72,11 +72,47 @@
   gap: 12px;
 }
 
+.da-scene-lede {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 17px;
+  border-radius: 16px;
+  background: $green-soft;
+  border: 1px solid rgba(111, 159, 86, 0.14);
+}
+
+.da-scene-lede-headline {
+  display: block;
+  font-size: 20px;
+  line-height: 1.38;
+  font-weight: 700;
+  color: $ink;
+  letter-spacing: 0.01em;
+}
+
+.da-scene-lede-detail {
+  display: block;
+  font-size: 13px;
+  line-height: 1.62;
+  font-weight: 400;
+  color: $muted;
+}
+
+.da-scene-lede-text {
+  display: block;
+  font-size: 17px;
+  line-height: 1.55;
+  font-weight: 650;
+  color: $ink;
+  letter-spacing: 0.01em;
+}
+
 .da-meta-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .da-meta-pill {
@@ -85,16 +121,16 @@
   min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 620;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid $line;
+  background: rgba(241, 248, 223, 0.72);
+  border: 1px solid rgba(111, 159, 86, 0.14);
   color: $ink-soft;
 }
 
 .da-meta-pill--accent {
   background: $green-soft;
-  border-color: rgba(111, 159, 86, 0.2);
+  border-color: rgba(111, 159, 86, 0.22);
   color: $green-deep;
 }
 

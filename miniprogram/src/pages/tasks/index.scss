@@ -102,11 +102,21 @@
   margin: 24px 0 12px;
 }
 
+/* 真机：不用 keyframes（常不触发、会卡在 opacity:0）；用 opacity transition */
+.task-history-list {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.task-history-list.is-shown {
+  opacity: 1;
+}
+
 .task-history-row {
   margin-top: 8px;
   padding: 14px 16px;
   border-radius: 16px;
-  background: rgba(255, 255, 247, 0.58);
+  background: rgba(255, 255, 247, 0.72);
 }
 
 .task-title {
@@ -231,6 +241,7 @@
 
 .task-card-a__chev {
   flex-shrink: 0;
+  box-sizing: border-box;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -242,12 +253,17 @@
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* CSS 几何箭头：避免 Text 字形基线导致不在圆心 */
 .task-card-a__chev-icon {
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1;
-  color: #577f45;
-  margin-top: 1px;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  margin: 0;
+  padding: 0;
+  border-right: 2px solid #577f45;
+  border-bottom: 2px solid #577f45;
+  /* 先上移再旋转，展开 180° 后上下态都仍在圆心 */
+  transform: translateY(-1.5px) rotate(45deg);
 }
 
 .task-card-a.is-open .task-card-a__chev {
@@ -270,10 +286,12 @@
   border-top: none;
 }
 
-.task-card-a .feedback-label {
+.task-card-a .feedback-label,
+.task-card-a .feedback-question {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.4;
   color: $muted;
   margin: 0 0 10px;
 }
@@ -319,7 +337,7 @@
 
 .task-card-a .task-why-kicker {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #6f9f56;
   margin-bottom: 6px;
@@ -337,4 +355,10 @@
   margin-top: 12px;
   font-size: 13px;
   color: $muted;
+}
+
+.task-card-a .feedback-note {
+  font-size: 14px;
+  line-height: 1.55;
+  color: $ink;
 }

@@ -10,6 +10,25 @@ import { getChildDisplayName } from '@/services/childStorage'
 import type { DialogueAnalysisPayload, DialogueAnalysisV2 } from '@yujian/contracts/rehearsal-dialogue'
 import './index.scss'
 
+function splitSceneLede(text: string): { headline: string; detail: string } | null {
+  const trimmed = text.trim()
+  const idx = trimmed.search(/[：:]/)
+  if (idx <= 0 || idx >= trimmed.length - 1) return null
+  const headline = trimmed.slice(0, idx).trim()
+  const detail = trimmed.slice(idx + 1).trim()
+  if (!headline || !detail) return null
+  return { headline, detail }
+}
+
+/** 优先用带「总述：具体」结构的 summary；sceneLabel 多为短标签不含冒号 */
+function pickSceneLedeText(summary?: string | null, sceneLabel?: string | null): string {
+  const summaryText = (summary || '').trim()
+  const labelText = (sceneLabel || '').trim()
+  if (splitSceneLede(summaryText)) return summaryText
+  if (splitSceneLede(labelText)) return labelText
+  return summaryText || labelText
+}
+
 export default function DialogueResultPage() {
   useSafeShareAppMessage({ title: '育见 · 对话分析' })
   const router = useRouter()
@@ -115,13 +134,29 @@ export default function DialogueResultPage() {
           ) : null}
 
           {data?.status === 'done' && v2 ? (
-            <View className='da-result-flow'>
+              <View className='da-result-flow'>
+              {pickSceneLedeText(data.summary, meta?.sceneLabel) ? (() => {
+                const sceneLedeText = pickSceneLedeText(data.summary, meta?.sceneLabel)
+                const sceneLedeParts = splitSceneLede(sceneLedeText)
+                return (
+                  <View className='da-scene-lede'>
+                    {sceneLedeParts ? (
+                      <>
+                        <Text className='da-scene-lede-headline'>{sceneLedeParts.headline}</Text>
+                        <Text className='da-scene-lede-detail'>{sceneLedeParts.detail}</Text>
+                      </>
+                    ) : (
+                      <Text className='da-scene-lede-text'>{sceneLedeText}</Text>
+                    )}
+                  </View>
+                )
+              })() : null}
+
               <View className='da-meta-row'>
-                {meta?.sceneLabel ? <Text className='da-meta-pill'>{meta.sceneLabel}</Text> : null}
-                {meta?.durationHint ? <Text className='da-meta-pill'>{meta.durationHint}</Text> : null}
-                {data.summary && !meta?.sceneLabel ? (
-                  <Text className='da-meta-pill'>{data.summary}</Text>
+                {meta?.sceneLabel && !splitSceneLede(pickSceneLedeText(data.summary, meta?.sceneLabel)) ? (
+                  <Text className='da-meta-pill'>{meta.sceneLabel}</Text>
                 ) : null}
+                {meta?.durationHint ? <Text className='da-meta-pill'>{meta.durationHint}</Text> : null}
                 <Text className='da-meta-pill da-meta-pill--accent'>
                   {phaseCount} 段 · 精选 {highlightCount} 句
                 </Text>
