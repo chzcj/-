@@ -22,6 +22,7 @@ import {
   mergeIncrementalRetrievalPacket,
   setCachedRetrievalPacket,
 } from '@/lib/server/memory/retrieval-session-cache'
+import { loadFamilyAgentPersona } from '@/lib/server/memory/family-agent-persona/persona-store'
 
 import { buildDailyComponentPick } from '@/lib/server/daily/component-refiner'
 import { humanizeBuiltJudgment, sanitizeForParent } from '@/lib/server/daily/profile-sanitize'
@@ -328,7 +329,9 @@ export async function runOrchestrationPipeline(input: OrchestrationInput): Promi
     },
     routingDecision,
     memoryAction,
-    frontResponseDraft: frontResponse
+    frontResponseDraft: frontResponse,
+    // v4：加载家庭 persona 注入前台 payload（调关注点/语气/提问策略）
+    familyAgentPersona: (await loadFamilyAgentPersona(input.tenant).catch(() => null)) || undefined,
   }
 }
 

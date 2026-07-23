@@ -145,6 +145,8 @@ export function buildDailyProsePayload(
     packStats,
     retrievalPack,
     deepModelDigest: digest,
+    // v4：家庭个性化视角配置（SP §二十五 persona 适配用）
+    familyAgentPersona: output.familyAgentPersona || null,
     writingRules: {
       outputOnlyProse: true,
       noJsonNoHeadings: true,

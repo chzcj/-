@@ -16,6 +16,7 @@ const MODELING_IDENTITY_AGENTS = new Set<AgentPromptKey>([
   'deepDiagnosis',
   'profileBuildSynthesis',
   'deepModelDigestBuilder',
+  'personaSynthesizer',
 ])
 
 /** 从 secondMeCollaboratorIdentity.md 抽出 §A 与 §C（不含前台 §B）。 */

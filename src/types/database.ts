@@ -643,6 +643,8 @@ export interface OrchestrationOutput {
   routingDecision: RoutingDecision
   memoryAction: MemoryAction
   frontResponseDraft: string
+  /** v4：家庭个性化视角配置（调关注点敏感度/语言温度/提问策略） */
+  familyAgentPersona?: FamilyAgentPersona
 }
 
 // 日常对话页的家长可读卡片（交付文档 4.5 判断差量 + 初版/标准/深度孩子理解分析卡）。

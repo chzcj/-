@@ -22,6 +22,12 @@ import {
 import { getCurrentMaturityState } from '@/lib/server/context/maturity'
 import { createId } from '@/lib/storage/storageIds'
 import type { TenantId } from '@/lib/server/memory/tenant'
+import {
+  loadFamilyAgentPersona,
+  saveFamilyAgentPersona,
+  buildDefaultPersona,
+} from '@/lib/server/memory/family-agent-persona/persona-store'
+import type { FamilyAgentPersona } from '@/types/database'
 import type {
   CandidateMechanism,
   CrossEntryEvidenceNetwork,
@@ -743,5 +749,65 @@ export async function runDeepMechanismReview(
   await buildDeepModelDigest(tenant, structuralTensions).catch((err) => {
     console.error('[deep-mechanism] digest 构建失败:', err)
   })
+
+  // v4：每轮 deep_mechanism_review 后增量更新 family_agent_persona
+  await updateFamilyAgentPersona(tenant).catch((err) => {
+    console.error('[deep-mechanism] persona 更新失败:', err)
+  })
+
   return true
+}
+
+/**
+ * v4：调用 personaSynthesizer Agent 生成/增量更新家庭 persona。
+ * 失败不阻断 deep_mechanism_review 主流程。
+ */
+async function updateFamilyAgentPersona(tenant: TenantId): Promise<void> {
+  const currentPersona = await loadFamilyAgentPersona(tenant)
+  const dossier = currentPersona ? null : null // dossier 通过 digest 读，此处简化
+  const parentInputHistory = (await getMergedParentInputHistory(tenant, 10)).map(h => h.text).filter(Boolean).slice(0, 10)
+  if (parentInputHistory.length === 0 && currentPersona) return
+
+  const ai = await callAgentJson<{
+    parentTraits: FamilyAgentPersona['parentTraits']
+    childTraits: FamilyAgentPersona['childTraits']
+    familyClimate: FamilyAgentPersona['familyClimate']
+    toneCalibration: FamilyAgentPersona['toneCalibration']
+    questionStrategy: FamilyAgentPersona['questionStrategy']
+  }>('personaSynthesizer', '生成或增量更新家庭 Agent persona', {
+    familyId: tenant.familyId,
+    currentPersona,
+    dossier,
+    parentInputHistory,
+  }, { maxTokens: 2048 })
+
+  if (!ai) return
+
+  // 平滑更新：新值 = 0.6 × 旧值 + 0.4 × 新判定值（首次生成直接用判定值）
+  const prev = currentPersona ?? buildDefaultPersona(tenant.familyId)
+  const smooth = (oldVal: number, newVal: number | undefined) =>
+    newVal === undefined ? oldVal : currentPersona ? 0.6 * oldVal + 0.4 * newVal : newVal
+
+  const updated: FamilyAgentPersona = {
+    familyId: tenant.familyId,
+    parentTraits: {
+      anxietyLevel: smooth(prev.parentTraits.anxietyLevel, ai.parentTraits?.anxietyLevel),
+      controlTendency: smooth(prev.parentTraits.controlTendency, ai.parentTraits?.controlTendency),
+      reflectivity: smooth(prev.parentTraits.reflectivity, ai.parentTraits?.reflectivity),
+    },
+    childTraits: {
+      ageStage: ai.childTraits?.ageStage || prev.childTraits.ageStage,
+      temperament: ai.childTraits?.temperament || prev.childTraits.temperament,
+    },
+    familyClimate: {
+      conflictFrequency: smooth(prev.familyClimate.conflictFrequency, ai.familyClimate?.conflictFrequency),
+      supportLevel: smooth(prev.familyClimate.supportLevel, ai.familyClimate?.supportLevel),
+    },
+    toneCalibration: ai.toneCalibration || prev.toneCalibration,
+    questionStrategy: ai.questionStrategy || prev.questionStrategy,
+    updatedAt: new Date().toISOString(),
+    version: (prev.version || 0) + 1,
+  }
+  await saveFamilyAgentPersona(updated, tenant)
+  console.info(`[deep-mechanism] persona 更新成功 v${updated.version}`)
 }
