@@ -23,6 +23,27 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-22 19:45 | Cursor(牛) | UI 复盘写入记忆 + alwaysApply 规则
+
+**做了什么**
+- 新增复盘：`.agents/postmortems/2026-07-22-tasks-ui-mp-porting-retrospective.md`（~30 轮任务/预演 UI 问题 + Agent 反省）
+- 新增强制注入规则：`.cursor/rules/miniprogram-ui-interaction-lessons.mdc`（`alwaysApply: true`）
+- 更新 `ENGINEERING-PLAYBOOK.md` 索引、`miniprogram/docs/issue-backlog.md` M7-06～M7-11
+
+**为什么**
+- 用户要求把这段时间 UI 踩坑与反省沉淀为「每次强行注入」的经验，避免下轮 Agent 再犯 catchClick / overflow 吞触摸 / 无提交按钮 等
+
+**验证**
+- 规则 frontmatter `alwaysApply: true` 与 voice-debug 同级
+- 复盘含 P0/P1 注册表、收工门禁、关键文件索引
+
+**下一步**
+- 改任务/反馈/展开 UI 前先读 postmortem；真机点 chip+提交再改样式
+- 若用户要入库：commit 上述 4 文件并 push Gitee/GitHub
+
+**风险/冲突**
+- 勿与 `voice-input-locked` 混用排障顺序；任务「点不了」优先本复盘 P0-01/02，不是网络
+
 ## 2026-07-23 09:00 | Trae | P0+P1+核心改造：预演handoff/atom情境化/手账丰富化/画像页/tensions翻译
 
 > Cursor 你好，这轮 Trae 做了用户要求的 P0 硬 gap + 预演核心改造 + atom 质量升级 + 画像/手账情境化。共改 ~15 文件、3 个新文件、2 个 SP 加硬规则段。

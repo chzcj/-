@@ -41,6 +41,12 @@
 | M7-02 | 任务 | 反馈 PUT 应为 POST | fixed | `taskStorage.ts` |
 | M7-03 | 任务 | 无 loading/来源/乐观更新 | fixed | `pages/tasks/index.tsx` |
 | M7-04 | 任务 | daily task action 缺失 | fixed | `DailyAiMessage.tsx` |
+| M7-06 | 任务 | chip 用 catchClick 导致真机零响应 | fixed | `TaskFeedbackPanel.tsx` — 改 Text+onClick |
+| M7-07 | 任务 | max-height 展开吞触摸 | fixed | `pages/tasks/index.tsx` — 条件 mount |
+| M7-08 | 任务 | 补充区无提交按钮 / chevron 无文案 | fixed | `TaskFeedbackPanel` + `index.scss` |
+| M7-09 | 任务 | 系统文案硬编码「孩子」 | fixed | `child-system-copy.ts` |
+| M7-10 | 任务 | 卡片点击蓝闪/缩放 | fixed | `pages/tasks/index.tsx` hoverClass/tap-highlight |
+| M7-11 | 任务 | refine/merge 导致内容薄或重复卡 | fixed | `task-service.ts`, `taskStorage.ts` |
 
 ## P2 细节
 

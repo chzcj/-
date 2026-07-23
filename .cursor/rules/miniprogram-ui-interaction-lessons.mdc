@@ -1,0 +1,44 @@
+---
+description: 小程序/UI 交互教训（任务展开·chip 点击·affordance·昵称）— 2026-07-22 复盘，每轮强制注入
+alwaysApply: true
+---
+
+# 小程序 UI 交互铁律（2026-07-18～07-22 复盘）
+
+完整复盘（必读）：[`.agents/postmortems/2026-07-22-tasks-ui-mp-porting-retrospective.md`](../.agents/postmortems/2026-07-22-tasks-ui-mp-porting-retrospective.md)
+
+用户约 30 轮对话的核心结论：**能点、能懂、像 Web、系统文案用 onboarding 昵称** — 不是 Agent 自嗨动效。
+
+## P0 禁止（再犯 = 验收失败）
+
+1. **Taro chip/pill 禁用 `catchClick`** — 不存在，handler 不会绑定。与 daily 一致：`Text`/`View` + `onClick`。
+2. **可交互展开区禁止 `max-height` + `overflow:hidden` 常驻 DOM** — 微信 WebView 吞触摸。用 **条件挂载**（`open ? <Panel/> : null`）或实测过的 `grid-template-rows`。
+3. **禁止在用户说「保持原样」后擅自升级 UI** — 例：daily「保存为任务」只改 optimistic 状态，不改 pill 形态/宽 primary。
+4. **禁止只改容器字号** — 改字体必须 grep 嵌套 class（如 `.da-phase-quote`），对最终 Text 节点设 `font-size`。
+
+## 家长 affordance（任务/反馈类必做）
+
+- 每条可输入路径必须有 **可见主按钮**（如「保存补充」）+ 成功 toast，不能只有 blur 自动存。
+- 展开/折叠 = **文字标签**（「展开反馈」/「收起」）+ **≥30px chevron**，不能只有小三角。
+- 系统壳层「孩子」→ `childSystemCopy(getChildDisplayName())`（`packages/contracts/src/child-system-copy.ts`）；**不改** Agent/SP 分析正文。
+
+## 改任务/预演/画像 UI 时的工作流
+
+```
+1. 真机或预览先点 chip / 提交 / 展开（再改 SCSS）
+2. MP + Web 同改（TaskFeedbackPanel、tasks-variant-a.css、contracts）
+3. npm run build:weapp
+4. 卡片：hoverClass='none'，-webkit-tap-highlight-color: transparent，禁 :active scale
+```
+
+## 排障顺序（用户说「按钮点不了」）
+
+1. 事件名是否在 Taro 文档存在（`onClick` vs `catchClick`）
+2. 父级 overflow/max-height/opacity 是否挡 touch
+3. `disabled` / `pointer-events` / 条件渲染是否 mount
+4. 最后才查样式好不好看
+
+## 与全链路规则关系
+
+- 任务内容薄 → 先查 refine/read-pack/seed（`task-service`、`taskStorage`），不只 beautify 卡片。
+- 触达 Agent 字段仍遵守 `ai-product-engineering.mdc` + `fullchain-contract-check.mdc`。

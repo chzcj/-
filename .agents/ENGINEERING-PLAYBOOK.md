@@ -22,6 +22,7 @@
 | [ai-product-engineering.mdc](../.cursor/rules/ai-product-engineering.mdc) | **全局 alwaysApply**：前端×Agent×BFF；producer/consumer/空转/L1–L4；触发范围与禁止项 | 任何触达 Agent/BFF/契约的改动 |
 | [fullchain-contract-check.mdc](../.cursor/rules/fullchain-contract-check.mdc) | Agent/契约收工 7 步 + `npm run audit:fullchain` | 改 SP/BFF/契约/读包时 |
 | [voice-debug-code-first.mdc](../.cursor/rules/voice-debug-code-first.mdc) | 语音排障默认是代码问题；connectSocket 只调一次；不甩锅域名/网络 | 语音相关排障 |
+| [miniprogram-ui-interaction-lessons.mdc](../.cursor/rules/miniprogram-ui-interaction-lessons.mdc) | **全局 alwaysApply**：任务 chip/展开/提交 affordance；禁 catchClick；禁 overflow 吞触摸；昵称 childSystemCopy | 改小程序/Web 任务·反馈·展开 UI |
 | [voice-input-locked.mdc](../.cursor/rules/voice-input-locked.mdc) | 语音链路已验收，未授权不能改 | 动语音前必读 |
 | [sp-content-depth.mdc](../.cursor/rules/sp-content-depth.mdc) | SP 不能是便条骨架（2026-07-18 铁律） | 写/改任何 SP 时 |
 | [deploy-after-update.mdc](../.cursor/rules/deploy-after-update.mdc) | 改完可上线代码要 typecheck/build/deploy | 改完代码收工前 |
@@ -41,6 +42,7 @@
 | 文件 | 内容 | 何时读 |
 |------|------|--------|
 | [.agents/postmortems/2026-07-14-voice-asr-outage.md](postmortems/2026-07-14-voice-asr-outage.md) | 语音两次失效的完整复盘、排障清单、沟通铁律 | 语音出问题、或想避免重蹈覆辙时 |
+| [.agents/postmortems/2026-07-22-tasks-ui-mp-porting-retrospective.md](postmortems/2026-07-22-tasks-ui-mp-porting-retrospective.md) | 任务页/小程序 UI ~30 轮问题、catchClick/overflow 吞触摸、affordance、Agent 反省 | 改任务反馈、展开交互、MP↔Web parity 时 |
 | [.agents/README.md](README.md) | .agents 入口索引，指向 postmortem | 第一次了解协作机制时 |
 
 ---
