@@ -23,6 +23,172 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-23 08:30 | Trae | 给 Cursor 的 v4 改造完整交接
+
+> Cursor 你好，这是 Trae 在 2026-07-22~23 做的 v4 深度改造的完整交接。改动涉及 **~30 个文件、~2000 行新增代码、7 个 SP 重构、5 份理论文档、4 份契约文档**。请务必先读完本段再动代码。
+
+### 一、为什么改（背景）
+
+v3 之前系统的核心问题是**推断自我强化**：LLM 推断 → 存库 → 下一轮当事实读出来 → 再推断 → 3 轮后推断变诊断。此外还有：事实和推测混在一起无法区分、置信度全靠 LLM 主观打、机制卡复读、前台空泛回答不引用具体事实、dossierSlice 在多条链路漏传。
+
+v4 的解法是**认识论隔离 + 确定性 harness + 三角验证 + 贝叶斯假设池**——用确定性代码约束 LLM 的偷懒路径，让"推断永远不能升级为事实"。
+
+### 二、改了什么（7 个阶段 + L0 + SP 审查）
+
+#### 阶段 A：字段层改造（效果瓶颈，最先补）
+
+**核心：给 fact_atoms 表加 6 列，让每条原子事实带上认识论身份证**
+
+| 文件 | 改动 |
+|---|---|
+| [db.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/db.ts) | fact_atoms 表 CREATE TABLE 加 6 列 + ALTER TABLE 迁移（DO $$ 块，防已存在表不自动加列）+ AtomRow 加字段 + FactAtomRecord 加字段 + upsertAtoms SQL 改 16 值/行 |
+| [pipeline.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/memory/episode/pipeline.ts) | ExtractedAtom 补 epistemicStatus/businessTime/confidence + 构造 AtomRow 时补映射（修复"抽取时有写库时丢"）+ fallback atom 补 epistemicStatus |
+| [database.ts](file:///Users/mac/Desktop/育见-2/src/types/database.ts) | 新增 EvidenceRef / TriangulatedFact / MechanismEdge / FamilyAgentPersona 类型 + CandidateMechanism 加 sceneReadings/relatedMechanismIds/evidenceRefs/overallStrengthScore + PendingHypothesis 加 prior/likelihood/posterior/distinguishingEvidence/supportingEvidenceRefs/contradictingEvidenceRefs + RetrievedContext 加 domainAtomFacts |
+| [family-understanding-dossier.ts](file:///Users/mac/Desktop/育见-2/src/types/family-understanding-dossier.ts) | DossierPrediction 加 confidence + evidenceRefs |
+
+**6 个新列含义**：
+- `epistemic_status`：observed/reported/derived/inferred/hypothesized（认识论来源，全链路隔离的起点）
+- `evidence_tier`：behavior/verbatim/repeated/cross_scene/outcome_checked（证据分层，映射 confidence 上限）
+- `fact_role`：presenting/trigger/response/counter/context（事实角色）
+- `ecological_layer`：micro/meso/exo/macro/chrono（生态层 hint）
+- `business_time`：事件发生时间（区别于系统写入时间）
+- `confidence`：0-1 数值置信度（替代 evidenceStrength 三档）
+
+**认识论单向流**：observed → reported → derived → inferred → hypothesized（可信度递减）。hypothesized 不得升级为 observed，只能被 ≥2 独立来源印证升级为 derived。
+
+#### 阶段 B：SP 加厚（6 个 SP 加 v4 harness 段，后来重构为融入原有章节）
+
+**核心：把 v4 硬规则写进 SP，让 LLM 在生成时就遵守**
+
+改了 7 个 SP（详见下方"SP 结构重构"段）。v4 内容**不是**追加在末尾，而是**融入**原有逻辑流：
+- 认识论隔离 → 融入 parentFacingStyle §四输入拆解
+- 替代解释 → 融入 §六候选解释
+- 非归罪 → 融入 §七家长理解
+- 事实锚定+把握度+反套模板 → 融入 §九 prose 写法
+- 认识论/贝叶斯/confidence 硬公式 → 融入 portraitSynthesizer 证据分层段
+- φ_r 消息函数 → 融入 portraitSynthesizer 交织纪律段
+
+#### 阶段 C：post-gate harness 校验（确定性代码约束 LLM）
+
+**核心：LLM 产出后用代码校验，不达标就打回重试**
+
+| 文件 | 改动 |
+|---|---|
+| [post-gate.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/harness/post-gate.ts)（新建） | validateProseOrThrow（禁用词/认识论越界/空壳/虚高置信）+ validateSectionCopyOrThrow（段落完整性/禁用词） |
+| [llm-required.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/daily/llm-required.ts) | requireTextStream 接 validateProseOrThrow |
+| [parent-facing-copy.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/daily/parent-facing-copy.ts) | requireFastJson 的 validate 钩子接 validateSectionCopyOrThrow |
+
+#### 阶段 D：契约修过时 + 补缺失
+
+| 文件 | 改动 |
+|---|---|
+| memory-write.md | 修 PR-B3 过时（memory_write 不再链式 deep_mechanism）+ 补 dossier_patch 链 |
+| read-contract.md | 厚包上限 8 处同步代码值 + 补 domainAtomFacts v4 行 |
+| dossier-schema.md（新建） | dossier 10 段 schema + 子类型 + v4 约束 + 切片规则 |
+| atom-episode-schema.md（新建） | fact_atoms 16 列 + epistemic_status 传播权限 + confidence 硬公式 |
+| family-agent-persona.md（新建） | persona 层定义 + 类型 + 生成更新时机 + 前台消费链路 |
+
+#### 阶段 E：前台消费修复
+
+| 文件 | 改动 |
+|---|---|
+| parent-facing-copy.ts L107-118 | dossierSlice 非空时不再丢弃 retrievalPack，保留 entryFacts(5)/childQuotes(3)/parentVerbatimSnippets(3)/matchedMechanisms(3) |
+| how-to-speak/route.ts | packetToRetrievedContext 补 dossierSlice（之前漏传） |
+
+#### 阶段 F：成本优化
+
+| 文件 | 改动 |
+|---|---|
+| db.ts | ALTER TABLE 迁移块（DO $$ ... END $$） |
+| router.ts | 高价值 atom 独立进 domainAtomFacts 通道，不再打平混进 supportingEvidence |
+| frontend-read-pack.ts | 键序重排（dossierSlice 下移到后段）+ domainAtomFacts 新增第 12 键 + SLICE_LIMITS 加 domainAtomFacts |
+| orchestration/pipeline.ts | 补传 dossierSlice + domainAtomFacts + buildContextEnrichedQuery（近 3 轮上下文拼接）+ session cache 漂移检测（cos sim < 0.6 失效） |
+| retrieval-session-cache.ts | 加 canReuseCache + isQueryDrifted + getCachedRetrievalEntry + CacheEntry 加 queryEmbedding |
+| prose-context.ts | PACK_FIELD_GUIDE 加 domainAtomFacts 说明 |
+
+#### 阶段 G：v4 深度画像
+
+| 文件 | 改动 |
+|---|---|
+| personaSynthesizer.md（新建） | persona 生成/更新 SP（55 个 prompt，+1） |
+| persona-store.ts（新建） | layer_name='family_agent_persona'，loadFamilyAgentPersona / saveFamilyAgentPersona / buildDefaultPersona |
+| modeling-identity.ts | MODELING_IDENTITY_AGENTS 加 personaSynthesizer |
+| deep-mechanism/pipeline.ts | 末尾接入 updateFamilyAgentPersona（每轮 deep review 后增量更新，平滑 0.6×旧+0.4×新） |
+| bayesian.ts（新建） | computeTriangulatedConfidence（三角验证硬公式）+ computeLikelihood + normalizePosteriors + defaultPrior |
+| database.ts | OrchestrationOutput 加 familyAgentPersona? |
+| orchestration/pipeline.ts | 加载 persona 注入 OrchestrationOutput |
+| prose-context.ts | buildDailyProsePayload 注入 familyAgentPersona |
+
+#### L0：服务器开 PORTRAIT_V3=1
+
+服务器 .env.local 加 PORTRAIT_V3=1，PM2 重启。dossier v3 生成链路激活。
+
+#### SP 结构重构（第二轮）
+
+全量审查 34 个活跃 SP，修复 3 个：
+- **deepMechanismReview.md**：补 # 标题 + 删 20 张理论卡全文（system 尾部已注入，重复了）+ 补链路位置
+- **dailyDecompose.md**：末尾裸句补 ## 硬规则 标题
+- **family-agent-persona.md**：新建契约文档
+
+其余 31 个 SP 结构全部连贯，无需改动。
+
+### 三、Cursor 需要注意的点
+
+#### 1. fact_atoms 表迁移
+生产环境 fact_atoms 表已通过 `DO $$ ... END $$` 迁移块自动加了 6 列。但如果你在本地开发环境重置数据库，CREATE TABLE IF NOT EXISTS 会建带 6 列的新表，不需要额外操作。
+
+#### 2. post-gate 可能误杀
+post-gate 初期拦截率可能较高（LLM 尚未适应 v4 harness）。如果发现 LLM 产出被频繁打回重试导致超时，检查 [post-gate.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/harness/post-gate.ts) 的阈值是否过严。
+
+#### 3. persona 生成依赖 deep_mechanism_review
+persona 在 deep_mechanism_review job 完成后生成。服务器 LLM warmup 超时（AbortError）是预存历史问题，会导致 deep review 重试，persona 延迟生成。这不是 v4 引入的问题。
+
+#### 4. session cache 漂移检测
+warmTurn=true 时会做 cos sim 漂移检测。如果 embedding 服务不可用（isEmbeddingEnabled=false），cache 不生效，每次都全量检索。
+
+#### 5. FRONTEND_READ_PACK_KEYS 从 11 键变 12 键
+加了 domainAtomFacts，dossierSlice 从第 4 位下移到第 9 位。如果有测试脚本硬编码了 11 或键序，需要更新（scripts/test-frontend-read-pack.mjs 已更新为 12）。
+
+#### 6. SP 章节号引用
+parentFacingStyle 的 §十八-§二十五 已不存在，v4 内容融入了 §四/§五/§六/§七/§九。dailyDialogueOrchestration.md 的 §8 引用已更新。如果你在其他地方引用了旧章节号，需要同步更新。
+
+#### 7. 不要删死代码 Agent
+有 7 个 Agent（educationDiagnosis / multiViewCorrection / eventRecording / materialUnderstanding / multiEntrySynthesis / memoryDepositionRetrieval / problemJudgment）在代码中从未被调用。用户已确认暂不删除，先留着。
+
+#### 8. 理论文档
+.trae/documents/ 下有 5 份理论文档（unified-deep-refactor-spec / product-memory-architecture / deep-portrait-v4-multihead-triangulation / gnn-family-reasoning-theory / sparse-data-harness-thick-sp-plan），是这次改造的设计依据，不是代码。如果你要理解"为什么这么改"，先读 unified-deep-refactor-spec.md。
+
+### 四、当前全链路一致性矩阵
+
+| 字段/层 | SP | 类型 | DB | 契约 | 前台 |
+|---|---|---|---|---|---|
+| epistemicStatus | ✅ | ✅ | ✅ | ✅ | ✅ post-gate |
+| evidenceTier | ✅ | ✅ | ✅ | ✅ | — |
+| factRole | ✅ | ✅ | ✅ | ✅ | — |
+| confidence | ✅ | ✅ | ✅ | ✅ | ✅ post-gate |
+| EvidenceRef | ✅ | ✅ | — | ✅ | — |
+| sceneReadings | ✅ | ✅ | — | ✅ | ✅ |
+| domainAtomFacts | ✅ | ✅ | — | ✅ | ✅ 第12键 |
+| family_agent_persona | ✅ | ✅ | ✅ | ✅ | ✅ payload |
+
+全部 ✅，没有待补项。
+
+### 五、还可以做但没做的（可选项）
+
+1. **bayesian.ts 接入 model_review job**：reviewer.ts 做似然更新（目前 bayesian.ts 是独立数学函数，尚未接入 job pipeline）
+2. **bayesian.ts 接入 deep_mechanism pipeline**：新假设设 prior + 归一化 posterior
+3. **清理 3 个死代码调用函数**：callAgentTextStream / callParentAgentJson / callParentAgentTextStream（用户已确认暂不动）
+4. **清理 2 个 @deprecated 文件**：section-llm-enrich.ts / second-me-content.ts
+
+### 六、部署状态
+
+- 最新 commit：`5cfe3b6`（2026-07-23 08:30）
+- 服务器 PM2 yujian + yujian-jobs 都 online
+- PORTRAIT_V3=1 已开启
+- DB 迁移 6 列就位
+- 测试消息跑通：retrievalEpisodeCount=19 + post-gate 不误杀 + prose 正常产出
+- deep_mechanism_review job 在跑（LLM warmup 超时是预存问题）
+
 ## 2026-07-23 07:00 | Trae | v4 全阶段完成（A-G + L0 全部落地 + 部署验证）
 
 **做了什么**
