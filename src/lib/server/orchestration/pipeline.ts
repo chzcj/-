@@ -266,6 +266,9 @@ export async function runOrchestrationPipeline(input: OrchestrationInput): Promi
       relevantPendingHypotheses: retrievalPacket.pendingHypotheses,
       relevantFamilyInteractionPatterns: retrievalPacket.familyInteractionPatterns,
       matchedMechanisms: retrievalPacket.matchedMechanisms,
+      // v4：补 dossierSlice + domainAtomFacts（之前 orchestration pipeline 漏传）
+      dossierSlice: retrievalPacket.dossierSlice || [],
+      domainAtomFacts: retrievalPacket.domainAtomFacts || [],
       recentDiagnosis: [],
       parentNarrativePattern: flattenParentUnderstanding(retrievalPacket.parentNarrativePattern || {}),
       childQuotes: retrievalPacket.childQuotes,

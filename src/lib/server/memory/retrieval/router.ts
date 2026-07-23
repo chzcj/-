@@ -137,24 +137,29 @@ export async function buildDailyDialogueRetrievalPacket(
   // 注意：即使上游传入 fast，也不能跳过本轮 query 的语义检索；否则同线程会锁死首轮记忆。
   let recentEvents: string[]
   let supportingEvidence: string[]
+  let domainAtomFacts: string[]
   const pack = query ? await retrieveContextPack(query, { familyId: tenant.familyId, childId: tenant.childId }) : undefined
   if (pack) {
     const episodeTexts = pack.episodes.map(e => e.summary)
+    // v4：高价值 atom 独立通道，不再打平混进 supportingEvidence（保留 sourceType 让 SP 能区分）
     const highValueAtomTexts = pack.episodes
       .flatMap(e => e.atoms.filter(a => a.isHighValue).map(a => a.content))
       .concat(pack.extraHighValueAtoms.map(a => a.content))
+    domainAtomFacts = [...new Set(highValueAtomTexts)].slice(0, 40)
     recentEvents = episodeTexts.length > 0 ? episodeTexts : allEvents.slice(-20)
-    supportingEvidence = [...episodeTexts.slice(0, 8), ...highValueAtomTexts.slice(0, 7)]
-      .filter((value, index, values) => values.indexOf(value) === index)
+    // supportingEvidence 只保留 episode summary，atom 走 domainAtomFacts 独立通道
+    supportingEvidence = [...new Set(episodeTexts.slice(0, 8))]
       .slice(0, 15)
     if (supportingEvidence.length === 0) supportingEvidence = allEvents.slice(-12)
   } else if (query && isEmbeddingEnabled() && allEvents.length > 0) {
     const ranked = await rankByRelevance(query, allEvents, (e) => e, 20)
     recentEvents = ranked.map(r => r.item)
     supportingEvidence = ranked.slice(0, 15).map(r => r.item)
+    domainAtomFacts = []
   } else {
     recentEvents = allEvents.slice(-20)
     supportingEvidence = allEvents.slice(-12)
+    domainAtomFacts = []
   }
 
   const slice = getFrontendReadSliceLimits()
@@ -261,6 +266,7 @@ export async function buildDailyDialogueRetrievalPacket(
     parentVerbatimSnippets,
     entryFacts,
     entryEvidencePackSummaries,
+    domainAtomFacts,
     familyInteractionPatterns,
     parentNarrativePattern: buildParentUnderstanding(parentPattern, packs),
     recommendedHandling: {

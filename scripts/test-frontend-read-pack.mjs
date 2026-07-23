@@ -27,7 +27,8 @@ console.log('=== FrontendReadSchema 契约测试 ===\n')
 console.log('1. FRONTEND_READ_PACK_KEYS 键序')
 assert(FRONTEND_READ_PACK_KEYS[0] === 'childStructureModels', '首键 childStructureModels')
 assert(FRONTEND_READ_PACK_KEYS.includes('dossierSlice'), '含 dossierSlice 键')
-assert(FRONTEND_READ_PACK_KEYS.length === 11, `共 11 个键 (got ${FRONTEND_READ_PACK_KEYS.length})`)
+assert(FRONTEND_READ_PACK_KEYS.includes('domainAtomFacts'), '含 domainAtomFacts 键（v4）')
+assert(FRONTEND_READ_PACK_KEYS.length === 12, `共 12 个键 (got ${FRONTEND_READ_PACK_KEYS.length})`)
 
 // 2. pickFrontendReadPack 形状
 console.log('\n2. pickFrontendReadPack 形状')

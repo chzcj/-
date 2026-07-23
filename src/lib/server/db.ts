@@ -276,6 +276,30 @@ async function ensureVectorSchema(): Promise<boolean> {
           CREATE INDEX IF NOT EXISTS idx_episodes_tenant
             ON evidence_episodes (family_id, child_id);
         `);
+        // v4 迁移：为已存在的 fact_atoms 表补 6 列（CREATE TABLE IF NOT EXISTS 对已存在表无操作）
+        await pool.query(`
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fact_atoms' AND column_name='epistemic_status') THEN
+              ALTER TABLE fact_atoms ADD COLUMN epistemic_status TEXT NOT NULL DEFAULT 'reported';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fact_atoms' AND column_name='evidence_tier') THEN
+              ALTER TABLE fact_atoms ADD COLUMN evidence_tier TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fact_atoms' AND column_name='fact_role') THEN
+              ALTER TABLE fact_atoms ADD COLUMN fact_role TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fact_atoms' AND column_name='ecological_layer') THEN
+              ALTER TABLE fact_atoms ADD COLUMN ecological_layer TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fact_atoms' AND column_name='business_time') THEN
+              ALTER TABLE fact_atoms ADD COLUMN business_time TIMESTAMPTZ;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fact_atoms' AND column_name='confidence') THEN
+              ALTER TABLE fact_atoms ADD COLUMN confidence NUMERIC(3,2);
+            END IF;
+          END $$;
+        `);
         return true;
       } catch (error) {
         console.error('[pgvector] schema 初始化失败，向量检索降级到应用层:', error);

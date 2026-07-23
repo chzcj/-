@@ -4,21 +4,25 @@ import { MATCHED_MECHANISMS_CARD_LIMIT } from '@/lib/server/memory/deep-modeling
 /**
  * 前端 AI（daily prose/section）只读子集键序。
  * 稳定前缀在前、动态后缀在后，与 prompt cache 对齐。
+ * v4：dossierSlice 下移到后段（每轮按 query 切片必变，排在前面会破坏 cache 前缀）
  * 契约见 docs/contracts/read-contract.md
  *
  * 双路径：FAMILY_MEMORY_THICK_PACK=0|off|false → 旧薄切（回退）；默认厚包。
  */
 export const FRONTEND_READ_PACK_KEYS = [
+  // 稳定前缀区（家庭级不变 / 慢变）
   'childStructureModels',
   'entryEvidence',
-  'entryFacts',
-  'dossierSlice',
   'matchedMechanisms',
   'familyPatterns',
   'parentUnderstanding',
-  'recentEvents',
   'pendingHypotheses',
   'childQuotes',
+  'entryFacts',
+  // 动态后缀区（每轮变）
+  'dossierSlice',
+  'domainAtomFacts',
+  'recentEvents',
   'parentVerbatimSnippets',
 ] as const
 
@@ -50,6 +54,7 @@ const SLICE_LIMITS_THIN: Record<FrontendReadPackKey, number> = {
   pendingHypotheses: 3,
   childQuotes: 4,
   parentVerbatimSnippets: 4,
+  domainAtomFacts: 10,
 }
 
 /** 厚包：面向深度前台表达，保留字段级预算而非截断为薄包。 */
@@ -65,6 +70,7 @@ const SLICE_LIMITS_THICK: Record<FrontendReadPackKey, number> = {
   pendingHypotheses: 20,
   childQuotes: 32,
   parentVerbatimSnippets: 32,
+  domainAtomFacts: 40,
 }
 
 export function getFrontendReadSliceLimits(): Record<FrontendReadPackKey, number> {
@@ -91,6 +97,7 @@ export function pickFrontendReadPack(ctx: RetrievedContext): FrontendReadSchema 
     pendingHypotheses: ctx.relevantPendingHypotheses?.slice(0, limits.pendingHypotheses) || [],
     childQuotes: ctx.childQuotes?.slice(0, limits.childQuotes) || [],
     parentVerbatimSnippets: ctx.parentVerbatimSnippets?.slice(0, limits.parentVerbatimSnippets) || [],
+    domainAtomFacts: ctx.domainAtomFacts?.slice(0, limits.domainAtomFacts) || [],
   }
 }
 

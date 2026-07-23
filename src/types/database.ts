@@ -823,6 +823,8 @@ export interface DailyDialogueRetrievalPacket {
   entryFacts: string[]
   /** 四模块证据包摘要（供 entryEvidence；勿与 episode supportingEvidence 混用） */
   entryEvidencePackSummaries?: string[]
+  /** v4：按问题域检索的原子事实独立通道（高价值 atom 保留 sourceType，不打平混进 supportingEvidence） */
+  domainAtomFacts?: string[]
   familyInteractionPatterns: string[]
   parentNarrativePattern: Record<string, unknown>
   recommendedHandling: {

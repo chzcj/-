@@ -91,6 +91,7 @@ const PACK_FIELD_GUIDE: Record<string, string> = {
   entryEvidence: '五入口证据包摘要 — 引用具体场景',
   entryFacts: '四模块具体事实 — 须通读全部条目；可择与本题最相关的一条融入',
   dossierSlice: '整合理解底稿切片（主源）— 按本轮问题选取；优先于 matchedMechanisms',
+  domainAtomFacts: 'v4 原子事实网络 — 按问题域检索的高价值 atom；回答细场景时必须引用 ≥2 条',
   recentEvents: '近期对话或事件片段 — 体现「越来越认识这个孩子」',
   pendingHypotheses: '内部待验证方向 — 翻译成生活语言，禁止输出字段感',
   matchedMechanisms: '兜底离散模式卡 — 仅 dossierSlice 缺失时使用，禁止理论卡名',
