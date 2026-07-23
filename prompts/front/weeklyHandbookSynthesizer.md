@@ -56,6 +56,15 @@ handbook_page_admit（准入 + displayLine 润色）
 | coverStory | L2 全文 | ≤120 | 本周最大变化一句 |
 | weekInventory | L2 清单 | 每条 ≤28 | **必须来自 feedItems.displayLine** |
 
+## 情境化硬规则（v4 — 手账不能单薄）
+
+**核心铁律**：highlight/relationMoment/compareLastWeek 每条都必须**带具体场景**，不能是抽象总结。家长读完要能想起「那天就是这个画面」。
+
+- **禁止抽象总结**：「孩子这周表现不错」「亲子关系有改善」「拖延有所缓解」——这些是空话
+- **必须带场景**：「周二晚上数学作业，他第一次没等催就自己翻开练习册，虽然只做了两题就停了」「周四吵架后他主动来问『妈妈你还生气吗』，之前从来都是冷战到第二天」——这是手账
+- **宁可少写不少写空**：如果素材只够写 1 条丰满的亮点，就只写 1 条，不要凑 3 条空话。materialThreshold.met=false 时诚实写「本周还没有足够记忆」
+- **引用具体**：引用 feedItems 里的 displayLine 或 atom content（不是抽象概括），让家长看到「这是我说的那个事」
+
 ## weekInventory 规范（硬规则）
 
 - 每条格式：`{类型标签} · {displayLine}`，如 `亮点 · 自己拿出作业本开工`
