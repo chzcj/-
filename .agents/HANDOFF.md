@@ -23,6 +23,48 @@ Cursor、Trae、Codex 收工前各追加一条；开工前运行 `npm run sync:g
 - 别动哪些文件 / 已知问题
 ```
 
+## 2026-07-23 09:00 | Trae | P0+P1+核心改造：预演handoff/atom情境化/手账丰富化/画像页/tensions翻译
+
+> Cursor 你好，这轮 Trae 做了用户要求的 P0 硬 gap + 预演核心改造 + atom 质量升级 + 画像/手账情境化。共改 ~15 文件、3 个新文件、2 个 SP 加硬规则段。
+
+### 改了什么
+
+**P0-2c tensions 家长可读翻译**
+- [portrait-card-enrich.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/profile/portrait-card-enrich.ts)：新增 `translateTensionForParent` + `translateTensionsForParent`，12 条学术→人话映射（如"高情感接纳与低行为结构之间的失衡"→"你们很懂孩子的感受，但管学习时的规矩还没立稳"）。enrich 兜底不再直出学术 title。
+
+**P0-4a 交流→预演 handoff 补全**
+- [DailyAiMessage.tsx](file:///Users/mac/Desktop/育见-2/src/components/daily/DailyAiMessage.tsx)：handoff payload 加 `retrievalPackDigest`（understandingCard/evidenceBasis/deepAnalysis/adviceSeed/confidenceMode）
+- [rehearsal/page.tsx](file:///Users/mac/Desktop/育见-2/app/rehearsal/page.tsx)：读取 handoffDigest，fetch brief 时带 parentText + retrievalPackDigest
+- [rehearsal/brief/route.ts](file:///Users/mac/Desktop/育见-2/app/api/rehearsal/brief/route.ts)：用 parentText 做检索 query（比场景标题语义准），retrievalPackDigest 注入 SP payload
+- [rehearsalSceneBrief.md](file:///Users/mac/Desktop/育见-2/prompts/front/rehearsalSceneBrief.md)：SP 加上下文衔接硬规则（parentText 非空时 sceneSituation 必须与交流页衔接）
+
+**atom 情境化（核心：高质量事实需要情境）**
+- [episodeExtractor.md](file:///Users/mac/Desktop/育见-2/prompts/background/episodeExtractor.md)：新增「atom content 情境化规则」段——content 从裸事实改为`[场景标签] 事实主体 + 情境线索`，30-80 字。Worked Example 同步更新。
+- [atom-curation.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/memory/episode/atom-curation.ts)（新建）：每10轮高精选——从近期家长原话做跨轮批量提取，产出带情境的高质量 atom（isHighValue=true, evidenceTier=cross_scene）
+- [queue.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/jobs/queue.ts)：加 `atom_curation` JobType + handler
+- [daily/stream/route.ts](file:///Users/mac/Desktop/育见-2/app/api/daily/stream/route.ts)：每10轮触发 atom_curation job
+
+**预演场景动态聚类**
+- [scene-pain-ranker.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/rehearsal/scene-pain-ranker.ts)：未匹配到固定 5 cluster 的 turn 收集后，≥5 条时附加 dynamic 场景占位。PainClusterId 加 `dynamic` 类型。
+- [rehearsal/analyze/route.ts](file:///Users/mac/Desktop/育见-2/app/api/rehearsal/analyze/route.ts)：retrievalPack 补 dossierSlice + domainAtomFacts
+
+**P0-3a + P1 applyHubData 接字段 + BFF clamp**
+- [family-profile/page.tsx](file:///Users/mac/Desktop/育见-2/app/family-profile/page.tsx)：applyHubData 接 5 个被忽略字段（pendingHypothesesList/highlights/highlightMoments/thinkingChips）
+- [digest-limits.ts](file:///Users/mac/Desktop/育见-2/src/lib/server/memory/deep-modeling/digest-limits.ts)：新增 `clampMatchedMechanismsForFrontend`（1 主 2 次 = 3 条）
+- [how-to-speak/route.ts](file:///Users/mac/Desktop/育见-2/app/api/daily/how-to-speak/route.ts)：matchedMechanisms 从 slice(0,10) 改为 clampMatchedMechanismsForFrontend
+
+**画像页/手账情境化硬规则**
+- [dailyPortraitRefresh.md](file:///Users/mac/Desktop/育见-2/prompts/front/dailyPortraitRefresh.md)：新增「情境化硬规则」段——禁止抽象标签、必须带场景、每条 item ≥15 字、引用 atom/原话、数据不够降数量不降质量
+- [weeklyHandbookSynthesizer.md](file:///Users/mac/Desktop/育见-2/prompts/front/weeklyHandbookSynthesizer.md)：新增「情境化硬规则」段——禁止抽象总结、必须带场景、宁可少写不少写空
+
+### Cursor 需要注意
+
+1. **atom_curation 是新 JobType**：如果你在改 queue.ts，注意 type 联合里加了 `atom_curation`
+2. **scene-pain-ranker 加了 dynamic 类型**：PainClusterId 联合多了 `'dynamic'`，EXTENDED_SCENE_SEEDS 也加了 dynamic 条目
+3. **hubCards 类型扩展**：family-profile/page.tsx 的 hubCards state 加了 5 个可选字段，如果你在用 hubCards 注意类型
+4. **episodeExtractor SP 输出格式变了**：atom content 现在要求带场景标签（`[作业前] ...`），旧的裸事实格式不再合规
+5. **PENDING**：P1-2b(Job↔UI时序)、P1-2a(六卡summary偏薄-需LLM重跑)、P2(audit:fullchain/read-contract drift)、v4可选项(bayesian接入job) 未做
+
 ## 2026-07-23 16:15 | Cursor | 任务页 A 版落地（Web + MP）
 
 **做了什么**
